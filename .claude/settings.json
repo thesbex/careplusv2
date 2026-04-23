@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mvn *)",
+      "Bash(./mvnw *)",
+      "Bash(docker *)",
+      "Bash(psql *)",
+      "Bash(pg_dump *)",
+      "Bash(pg_restore *)",
+      "Bash(java --version)",
+      "Bash(javac --version)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(git commit *)",
+      "Bash(git init)",
+      "Bash(git init *)",
+      "Bash(git branch)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git show *)",
+      "Bash(git tag *)",
+      "Bash(pwd)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(mkdir *)",
+      "Bash(tree *)",
+      "Bash(curl http://localhost:*)",
+      "Bash(curl -s http://localhost:*)",
+      "Bash(curl -v http://localhost:*)",
+      "Bash(curl -X * http://localhost:*)",
+      "Bash(curl -X * -H * http://localhost:*)",
+      "Bash(curl -X * -H * -d * http://localhost:*)",
+      "Bash(curl -H * http://localhost:*)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git push)",
+      "Bash(rm -rf *)",
+      "Bash(docker system prune *)",
+      "Bash(docker volume rm *)"
+    ]
+  }
+}

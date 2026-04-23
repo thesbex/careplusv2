@@ -1,0 +1,55 @@
+# Build output
+target/
+*.class
+*.jar
+*.war
+
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets & local config
+.env
+.env.local
+application-secrets.yml
+application-secrets.yaml
+*.pem
+*.key
+*.p12
+*.jks
+
+# Local DB data
+postgres-data/
+pgdata/
+
+# Logs
+logs/
+*.log
+
+# Test output
+**/surefire-reports/
+**/failsafe-reports/
+
+# Generated OpenAPI clients
+generated/
+
+# Node (future front)
+node_modules/
+
+# Claude local overrides (settings.json is committed, settings.local.json is not)
+.claude/settings.local.json
