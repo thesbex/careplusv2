@@ -102,11 +102,12 @@ Expected:
 - `GET /api/config/document-templates` — ADMIN
 - `PUT /api/config/document-templates/{type}` — ADMIN — update template HTML
 
-## Actuator & meta (J1)
+## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe
-- `GET /v3/api-docs` — authenticated — OpenAPI JSON
-- `GET /swagger-ui.html` — authenticated — Swagger UI
+- `GET /actuator/info` — public — info
+- `GET /v3/api-docs` — public in J1 (will tighten in J2) — OpenAPI JSON
+- `GET /swagger-ui.html` — public in J1 — Swagger UI
 
 ## How to update this file
 
