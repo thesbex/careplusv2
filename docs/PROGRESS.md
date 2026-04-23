@@ -33,6 +33,18 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 **Blockers**: none.
 
+### 2026-04-23 — Vitals permission broadened
+
+**Shipped:**
+- ADR-013 added: vitals recordable by SECRETAIRE/ASSISTANT/MEDECIN (not just ASSISTANT). Reflects real Moroccan cabinet staffing diversity.
+- `docs/WORKFLOWS.md` permission matrix updated (Record vitals + View vitals history now include SECRETAIRE).
+- `docs/WORKFLOWS.md` WF3 reworded: "operator" instead of "A", + inline-vitals shortcut when médecin takes them himself.
+- `docs/API.md` updated: `/vitals` and `/queue` endpoints role list broadened.
+
+**State**: setup still complete, zero code. Permission model now reflects flexibility.
+
+**Next action**: unchanged — awaiting user GO for J1 + decisions on the 4 critical items (GitHub remote, CI from J1, slash commands, pilot cabinet).
+
 ## How to update this file
 
 At end of every session:

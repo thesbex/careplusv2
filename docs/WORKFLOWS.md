@@ -74,11 +74,14 @@ Rules: no double-booking (except reason=Urgence), 5-min buffer (configurable), r
 
 ### WF3 — Vitals intake
 
-1. A picks next `Arrivé` → moves to `EnAttenteConstantes`
+Vitals can be recorded by **any** of SECRETAIRE / ASSISTANT / MEDECIN — whichever makes sense for the cabinet setup (dedicated assistant, polyvalent secretary, or doctor taking them himself at consultation start).
+
+1. Operator (S/A/M) picks next `Arrivé` → moves to `EnAttenteConstantes`
 2. Opens vitals form: TA, température, poids, taille (BMI auto), FC, SpO2, glycémie capillaire
 3. Previous vitals visible as graph (post-MVP)
 4. Out-of-range flags (post-MVP)
 5. Validate → `ConstantesPrises` → visible to Médecin
+6. If M takes vitals himself at consultation start, step 1 can be skipped: `Arrivé` → direct `EnConsultation` with vitals captured inline in the consultation screen.
 
 ### WF4 — Consultation (core)
 
@@ -145,8 +148,8 @@ Cron daily 02h → `pg_dump` → AES-256-GCM encryption (key from cabinet master
 | Create/move/cancel RDV | ✅ | ✅ | ✅ | ✅ |
 | Check-in patient | ✅ | ✅ | ✅ | ✅ |
 | Reorder queue | ❌ | ✅ | ✅ | ✅ |
-| Record vitals | ❌ | ✅ | ✅ | ❌ |
-| View vitals history | ❌ | ✅ | ✅ | ✅ |
+| Record vitals | ✅ | ✅ | ✅ | ❌ |
+| View vitals history | ✅ | ✅ | ✅ | ✅ |
 | Create/sign consultation | ❌ | ❌ | ✅ | ❌ |
 | Amend signed consultation | ❌ | ❌ | ✅ (own only) | ❌ |
 | Prescribe | ❌ | ❌ | ✅ | ❌ |

@@ -81,6 +81,13 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 **Choice**: Sequential number assignment inside a DB transaction with a dedicated counter row (`billing_invoice_sequence`) locked via `SELECT FOR UPDATE`. Format `YYYY-NNNNNN`. Cancellation via `CreditNote`, never by deleting/renumbering.
 **Consequence**: Performance impact is negligible at expected volumes. Correctness preserved under concurrent issuance.
 
+## ADR-013 — Vitals: recordable by SECRETAIRE / ASSISTANT / MEDECIN
+**Date**: 2026-04-23
+**Status**: accepted
+**Context**: Moroccan generalist cabinets vary in staffing. Some have a dedicated assistante/infirmière taking vitals, others have the secretary cumulate accueil + vitals, others have the médecin take vitals himself at consultation start. Restricting to one role would exclude valid configurations.
+**Choice**: Allow `POST /api/appointments/{id}/vitals` and vitals history read to all three roles (SECRETAIRE, ASSISTANT, MEDECIN). ADMIN excluded (non-operational role). Workflow WF3 is optional: if the médecin takes vitals himself, `Arrivé` can go directly to `EnConsultation` with vitals captured inline.
+**Consequence**: Permission matrix flexibility. No code branching needed — the same endpoint serves all three. The cabinet's own staffing decides which role uses it.
+
 ## ADR-012 — Database language: English code, French data
 **Date**: 2026-04-23
 **Status**: accepted
