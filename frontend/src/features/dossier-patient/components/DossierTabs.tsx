@@ -34,7 +34,7 @@ export function DossierTabs({ value, onValueChange, children }: DossierTabsProps
     <RadixTabs.Root
       value={value}
       onValueChange={(v) => onValueChange(v as DossierTab)}
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
     >
       <RadixTabs.List
         aria-label="Sections du dossier patient"
@@ -104,7 +104,7 @@ export function DossierTabPanel({
   return (
     <RadixTabs.Content
       value={value}
-      style={{ flex: 1, display: 'flex', overflow: 'hidden' }}
+      style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}
     >
       {children}
     </RadixTabs.Content>

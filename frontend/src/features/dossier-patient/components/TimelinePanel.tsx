@@ -11,7 +11,7 @@ interface TimelinePanelProps {
 
 export function TimelinePanel({ events }: TimelinePanelProps) {
   return (
-    <div className="scroll" style={{ padding: '20px 24px', overflow: 'auto' }}>
+    <div className="scroll" style={{ padding: '20px 24px' }}>
       <div
         style={{
           fontSize: 11,
