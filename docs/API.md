@@ -41,28 +41,23 @@ Expected:
 - `DELETE /api/appointments/{id}` — same — cancel with reason
 - `GET /api/working-hours` — all — cabinet hours
 
-## presence (J5)
+## presence + clinical (J5) ✅
+
+- `POST /api/appointments/{id}/check-in` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — stamps arrived_at, transitions PLANIFIE/CONFIRME → ARRIVE
+- `GET /api/queue` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — today's queue (ARRIVE, EN_ATTENTE_CONSTANTES, CONSTANTES_PRISES, EN_CONSULTATION), ordered by start_at
+- `POST /api/appointments/{id}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — records vital signs, advances appointment to CONSTANTES_PRISES, auto-computes BMI
+- `GET /api/patients/{patientId}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — vitals history for a patient, newest first
+- `POST /api/consultations` — MEDECIN/ADMIN — starts a draft consultation linked to an appointment, advances to EN_CONSULTATION
+- `GET /api/consultations/{id}` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — fetch consultation
+- `PUT /api/consultations/{id}` — MEDECIN/ADMIN — update draft fields (motif, examination, diagnosis, notes); 409 if already SIGNEE
+- `POST /api/consultations/{id}/sign` — MEDECIN/ADMIN — locks consultation (SIGNEE), stamps signed_at, publishes ConsultationSigneeEvent, advances appointment to CONSULTATION_TERMINEE
+- `POST /api/consultations/{id}/follow-up` — MEDECIN/ADMIN — creates CONTROLE appointment with origin_consultation_id set
+
+## clinical (J6) — prescriptions
 
 _Not yet implemented._
 
 Expected:
-- `POST /api/appointments/{id}/check-in` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN
-- `GET /api/queue` — SECRETAIRE/ASSISTANT/MEDECIN — current queue for polling
-
-## clinical (J5+J6)
-
-_Not yet implemented._
-
-Expected (J5):
-- `POST /api/appointments/{id}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN
-- `GET /api/patients/{id}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN
-- `POST /api/consultations` — MEDECIN — starts draft
-- `PUT /api/consultations/{id}` — MEDECIN — update draft
-- `POST /api/consultations/{id}/sign` — MEDECIN — lock
-- `GET /api/consultations/{id}` — MEDECIN/ADMIN
-- `GET /api/patients/{id}/consultations` — MEDECIN
-
-Expected (J6):
 - `POST /api/consultations/{id}/prescriptions` — MEDECIN
 - `GET /api/prescriptions/{id}` — MEDECIN
 - `GET /api/prescriptions/{id}/pdf` — MEDECIN — streams PDF bytes

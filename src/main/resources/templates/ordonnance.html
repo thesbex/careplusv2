@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<!--
+  Ordonnance (prescription) PDF template.
+  Variables:
+    cabinet.name       — Cabinet name (from configuration_clinic_settings or dev fallback)
+    cabinet.address    — Cabinet address
+    cabinet.city       — City
+    cabinet.phone      — Phone
+    cabinet.inpe       — INPE (identifiant national du praticien étranger)
+    cabinet.cnom       — CNOM (Conseil National de l'Ordre des Médecins) number
+    doctor.fullName    — Practitioner first + last name
+    patient.fullName   — Patient first + last name
+    patient.birthDate  — Patient date of birth (formatted)
+    patient.cin        — Patient CIN
+    prescription.date  — Issue date (formatted dd/MM/yyyy)
+    prescription.type  — Prescription type label (FR)
+    lines              — List of PrescriptionLine with fields:
+                          medicationName, dosage, frequency, duration,
+                          instructions, quantity, freeText
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+        }
+        .page {
+            padding: 20mm 20mm 25mm 20mm;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+            display: table;
+            width: 100%;
+        }
+        .header-left {
+            display: table-cell;
+            width: 60%;
+        }
+        .header-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .cabinet-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .cabinet-meta {
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.5;
+        }
+        .doc-title {
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+            padding: 4px 10px;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        .patient-box {
+            background: #f0f4ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            font-size: 10pt;
+        }
+        .patient-box strong {
+            font-size: 11pt;
+        }
+        .issue-date {
+            text-align: right;
+            font-size: 10pt;
+            color: #555;
+            margin-bottom: 12px;
+        }
+        .rx-section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2563eb;
+            border-bottom: 1px solid #c7d2fe;
+            margin-bottom: 8px;
+            padding-bottom: 3px;
+        }
+        .rx-line {
+            margin-bottom: 10px;
+            padding-left: 12px;
+        }
+        .rx-line-name {
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        .rx-line-detail {
+            font-size: 10pt;
+            color: #333;
+            padding-left: 8px;
+        }
+        .rx-free-text {
+            font-size: 10pt;
+            font-style: italic;
+            margin-bottom: 10px;
+            padding-left: 12px;
+        }
+        .footer {
+            border-top: 1px solid #c7d2fe;
+            padding-top: 12px;
+            margin-top: 30px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left {
+            display: table-cell;
+            width: 60%;
+            font-size: 9pt;
+            color: #777;
+        }
+        .footer-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+        }
+        .signature-area {
+            border: 1px dashed #aaa;
+            height: 50px;
+            width: 160px;
+            margin-left: auto;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 4px;
+            font-size: 9pt;
+            color: #888;
+        }
+        .allergy-warning {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 9pt;
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="cabinet-name" th:text="${cabinet.name}">Cabinet Médical</div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                <span>Tél : </span><span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOC TITLE -->
+    <div class="doc-title" th:text="${prescription.type}">ORDONNANCE</div>
+
+    <!-- ISSUE DATE -->
+    <div class="issue-date">
+        Casablanca, le <span th:text="${prescription.date}">01/01/2026</span>
+    </div>
+
+    <!-- PATIENT BOX -->
+    <div class="patient-box">
+        <strong>Patient : </strong>
+        <span th:text="${patient.fullName}">Prénom NOM</span>
+        <span th:if="${patient.birthDate != null}">
+            &#160;|&#160; Né(e) le : <span th:text="${patient.birthDate}">01/01/1980</span>
+        </span>
+        <span th:if="${patient.cin != null and !patient.cin.isEmpty()}">
+            &#160;|&#160; CIN : <span th:text="${patient.cin}">XXXXXXXX</span>
+        </span>
+    </div>
+
+    <!-- ALLERGY OVERRIDE WARNING -->
+    <div class="allergy-warning" th:if="${allergyOverride}">
+        Avertissement : cette ordonnance a été émise avec dérogation d'allergie connue.
+    </div>
+
+    <!-- PRESCRIPTION LINES -->
+    <div class="rx-section-title">Prescription</div>
+
+    <div th:each="line, iterStat : ${lines}">
+        <!-- Medication line -->
+        <div class="rx-line" th:if="${line.medicationName != null}">
+            <span class="rx-line-name">
+                <span th:text="${iterStat.count}">1</span>.
+                <span th:text="${line.medicationName}">Médicament</span>
+                <span th:if="${line.quantity != null}"> × <span th:text="${line.quantity}">1</span></span>
+            </span>
+            <div class="rx-line-detail" th:if="${line.dosage != null}">
+                Posologie : <span th:text="${line.dosage}">posologie</span>
+            </div>
+            <div class="rx-line-detail" th:if="${line.frequency != null}">
+                Fréquence : <span th:text="${line.frequency}">fréquence</span>
+            </div>
+            <div class="rx-line-detail" th:if="${line.duration != null}">
+                Durée : <span th:text="${line.duration}">durée</span>
+            </div>
+            <div class="rx-line-detail" th:if="${line.instructions != null}">
+                Instructions : <span th:text="${line.instructions}">instructions</span>
+            </div>
+        </div>
+        <!-- Free-text line -->
+        <div class="rx-free-text" th:if="${line.medicationName == null and line.freeText != null}">
+            <span th:text="${iterStat.count}">1</span>. <span th:text="${line.freeText}">texte libre</span>
+        </div>
+    </div>
+
+    <div th:if="${lines == null or lines.isEmpty()}">
+        <p style="color:#888;font-style:italic;">Aucune ligne de prescription.</p>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            Document généré par CarePlus &mdash; confidentiel médical
+        </div>
+        <div class="footer-right">
+            <div class="signature-area">Cachet du médecin</div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

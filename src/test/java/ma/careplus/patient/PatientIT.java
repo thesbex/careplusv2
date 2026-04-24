@@ -10,6 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import ma.careplus.identity.infrastructure.security.LoginRateLimitFilter;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,9 +71,12 @@ class PatientIT {
     String secEmail;
     String medEmail;
     String asstEmail;
+    /** Token cache: reuse JWT within a single test to stay within the 5-login rate limit. */
+    final Map<String, String> tokenCache = new HashMap<>();
 
     @BeforeEach
     void seed() {
+        tokenCache.clear();
         rateLimitFilter.clearBucketsForTests();
         // wipe patient data
         jdbc.update("DELETE FROM patient_allergy");
@@ -102,12 +107,17 @@ class PatientIT {
     }
 
     private String tokenFor(String email) throws Exception {
+        if (tokenCache.containsKey(email)) {
+            return tokenCache.get(email);
+        }
         MvcResult r = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"" + PWD + "\"}"))
                 .andExpect(status().isOk()).andReturn();
-        return objectMapper.readTree(r.getResponse().getContentAsString())
+        String token = objectMapper.readTree(r.getResponse().getContentAsString())
                 .get("accessToken").asText();
+        tokenCache.put(email, token);
+        return token;
     }
 
     private String bearer(String email) throws Exception {

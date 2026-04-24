@@ -5,6 +5,7 @@ import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import ma.careplus.catalog.application.AllergyConflictException;
 import ma.careplus.identity.application.AccountLockedException;
 import ma.careplus.identity.application.InvalidCredentialsException;
 import ma.careplus.identity.application.InvalidTokenException;
@@ -93,6 +94,19 @@ public class GlobalExceptionHandler {
         pd.setProperty("timestamp", OffsetDateTime.now());
         pd.setProperty("correlationId", MDC.get("correlationId"));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);
+    }
+
+    @ExceptionHandler(AllergyConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleAllergyConflict(AllergyConflictException ex, HttpServletRequest req) {
+        Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("type", "allergy-conflict");
+        body.put("title", "Conflit allergique");
+        body.put("medication", ex.getMedication());
+        body.put("allergy", ex.getAllergy());
+        body.put("status", 422);
+        body.put("timestamp", OffsetDateTime.now());
+        body.put("correlationId", MDC.get("correlationId"));
+        return ResponseEntity.status(422).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(body);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
