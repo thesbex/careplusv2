@@ -53,25 +53,24 @@ Expected:
 - `POST /api/consultations/{id}/sign` — MEDECIN/ADMIN — locks consultation (SIGNEE), stamps signed_at, publishes ConsultationSigneeEvent, advances appointment to CONSULTATION_TERMINEE
 - `POST /api/consultations/{id}/follow-up` — MEDECIN/ADMIN — creates CONTROLE appointment with origin_consultation_id set
 
-## clinical (J6) — prescriptions
+## catalog + prescriptions (J6) ✅
 
-_Not yet implemented._
+### Acts and tariffs
+- `GET /api/catalog/acts` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — list all active acts
+- `POST /api/catalog/acts` — MEDECIN/ADMIN — create act (code, name, type)
+- `PUT /api/catalog/acts/{id}` — MEDECIN/ADMIN — update act name/type
+- `DELETE /api/catalog/acts/{id}` — MEDECIN/ADMIN — deactivate act (soft: sets active=false)
+- `POST /api/catalog/acts/{id}/tariffs` — MEDECIN/ADMIN — add tier tariff (closes previous open row for same act+tier)
+- `GET /api/catalog/acts/{id}/tariffs` — all roles — tariff history for act
 
-Expected:
-- `POST /api/consultations/{id}/prescriptions` — MEDECIN
-- `GET /api/prescriptions/{id}` — MEDECIN
-- `GET /api/prescriptions/{id}/pdf` — MEDECIN — streams PDF bytes
+### Medications
+- `GET /api/catalog/medications?q=` — all roles — search by commercial name or DCI (molecule); limit 20
 
-## catalog (J6)
-
-_Not yet implemented._
-
-Expected:
-- `GET /api/catalog/medications` — MEDECIN — query: `q`
-- `POST /api/catalog/medications` — MEDECIN/ADMIN — extend personal catalog
-- `POST /api/catalog/medications/import` — ADMIN — CSV import
-- `GET /api/catalog/acts` — all — acts + tariffs
-- `GET /api/catalog/insurances` — all
+### Prescriptions
+- `POST /api/consultations/{consultationId}/prescriptions` — MEDECIN/ADMIN — creates prescription + lines; enforces BROUILLON status; checks patient allergies for DRUG prescriptions (422 AllergyConflict unless allergyOverride=true)
+- `GET /api/consultations/{consultationId}/prescriptions` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — list prescriptions for consultation
+- `GET /api/prescriptions/{id}` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — get prescription with lines
+- `GET /api/prescriptions/{id}/pdf` — MEDECIN/ADMIN — generate and stream ordonnance PDF (openhtmltopdf + Thymeleaf), Content-Type application/pdf
 
 ## billing (J7)
 
