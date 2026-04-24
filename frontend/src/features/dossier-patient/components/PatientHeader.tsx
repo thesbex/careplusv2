@@ -10,9 +10,10 @@ import type { PatientSummary } from '../types';
 
 interface PatientHeaderProps {
   patient: PatientSummary;
+  onEdit?: () => void;
 }
 
-export function PatientHeader({ patient }: PatientHeaderProps) {
+export function PatientHeader({ patient, onEdit }: PatientHeaderProps) {
   return (
     <div
       style={{
@@ -60,7 +61,7 @@ export function PatientHeader({ patient }: PatientHeaderProps) {
         <Button>
           <Print /> Imprimer
         </Button>
-        <Button>
+        <Button onClick={onEdit}>
           <Edit /> Modifier
         </Button>
         <Button variant="primary">
