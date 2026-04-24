@@ -12,14 +12,17 @@
   inset: 0;
   background: rgba(20, 18, 12, 0.35);
   backdrop-filter: blur(1px);
-  display: grid;
-  place-items: center;
   z-index: 100;
 }
 
 .prise-rdv-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 101;
   width: 720px;
-  max-height: 720px;
+  max-height: 88vh;
   background: var(--surface);
   border-radius: 10px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);

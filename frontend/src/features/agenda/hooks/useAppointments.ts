@@ -26,14 +26,18 @@ const STATUS_MAP: Record<string, AppointmentStatus> = {
   CLOS: 'done',
 };
 
-function weekWindow(): { from: string; to: string; days: WeekDay[] } {
+const MONTH_FR = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+
+function weekWindow(offset = 0): { from: string; to: string; days: WeekDay[]; weekLabel: string; todayKey: DayKey | null } {
   const now = new Date();
-  const dow = now.getDay(); // 0=Sun
+  const dow = now.getDay();
   const diffToMon = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(now);
-  monday.setDate(now.getDate() + diffToMon);
+  monday.setDate(now.getDate() + diffToMon + offset * 7);
   monday.setHours(0, 0, 0, 0);
 
+  const saturday = new Date(monday);
+  saturday.setDate(monday.getDate() + 5);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
   sunday.setHours(23, 59, 59, 999);
@@ -44,7 +48,17 @@ function weekWindow(): { from: string; to: string; days: WeekDay[] } {
     return { key, label: FIXTURE_DAYS[i]?.label ?? key, date: String(d.getDate()) };
   });
 
-  return { from: monday.toISOString(), to: sunday.toISOString(), days };
+  const monMonth = MONTH_FR[monday.getMonth()] ?? '';
+  const satMonth = MONTH_FR[saturday.getMonth()] ?? '';
+  const weekLabel = monday.getMonth() === saturday.getMonth()
+    ? `${monday.getDate()} – ${saturday.getDate()} ${monMonth} ${monday.getFullYear()}`
+    : `${monday.getDate()} ${monMonth} – ${saturday.getDate()} ${satMonth} ${monday.getFullYear()}`;
+
+  const todayDow = now.getDay();
+  const todayKey: DayKey | null = todayDow === 0 ? null : (DAY_KEYS[todayDow - 1] ?? null);
+  const isCurrentWeek = offset === 0;
+
+  return { from: monday.toISOString(), to: sunday.toISOString(), days, weekLabel, todayKey: isCurrentWeek ? todayKey : null };
 }
 
 function adapt(a: AppointmentApi, days: WeekDay[]): Appointment {
@@ -69,15 +83,17 @@ function adapt(a: AppointmentApi, days: WeekDay[]): Appointment {
   };
 }
 
-export function useWeekAppointments(): {
+export function useWeekAppointments(weekOffset = 0): {
   days: WeekDay[];
   appointments: Appointment[];
   arrivals: Arrival[];
+  weekLabel: string;
+  todayKey: DayKey | null;
   isLoading: boolean;
   error: string | null;
 } {
   const userId = useAuthStore((s) => s.user?.id);
-  const { from, to, days } = weekWindow();
+  const { from, to, days, weekLabel, todayKey } = weekWindow(weekOffset);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['appointments', userId, from],
@@ -95,6 +111,8 @@ export function useWeekAppointments(): {
     days,
     appointments: (data ?? []).map((a) => adapt(a, days)),
     arrivals: [],
+    weekLabel,
+    todayKey,
     isLoading,
     error: error ? 'Impossible de charger l\'agenda.' : null,
   };
