@@ -1,26 +1,36 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import type { ConsultationApi } from './useConsultation';
 
-export function useSignConsultation() {
+export function useSignConsultation(id?: string) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (id: string) =>
-      api.post(`/consultations/${id}/sign`).then((r) => r.data),
-    onSuccess: (_data, id) => {
-      void queryClient.invalidateQueries({ queryKey: ['consultation', id] });
+    mutationFn: () => {
+      if (!id) throw new Error('consultation id required');
+      return api.post<ConsultationApi>(`/consultations/${id}/sign`).then((r) => r.data);
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['consultation', id], data);
       void queryClient.invalidateQueries({ queryKey: ['queue'] });
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] });
     },
   });
 
-  function sign(id?: string) {
-    if (!id) return;
-    mutation.mutate(id);
+  async function sign(): Promise<boolean> {
+    if (!id) return false;
+    try {
+      await mutation.mutateAsync();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   return {
     sign,
     isSigning: mutation.isPending,
     signed: mutation.isSuccess,
+    error: mutation.error ? 'Signature impossible. Réessayez.' : null,
   };
 }

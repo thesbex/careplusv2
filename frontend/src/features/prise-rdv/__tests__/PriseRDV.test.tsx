@@ -26,6 +26,9 @@ vi.mock('../hooks/usePatientSearch', () => ({
 vi.mock('../hooks/useCreateAppointment', () => ({
   useCreateAppointment: () => ({ createAppointment: async () => ({ id: 'test-id' }), isPending: false, error: null }),
 }));
+vi.mock('../hooks/useMonthAvailability', () => ({
+  useMonthAvailability: () => ({ availableDates: new Set<string>(), isLoading: false }),
+}));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -90,21 +93,20 @@ describe('<PriseRDVDialog />', () => {
     expect(screen.getByText('Salim Bouazzaoui')).toBeInTheDocument();
   });
 
-  it('selecting a candidate highlights it', () => {
+  it('selecting a candidate shows the selected patient card', () => {
     renderDialog();
     const row = screen.getByRole('option', { name: /Salma Bennani/ });
     fireEvent.click(row);
-    expect(row).toHaveAttribute('aria-selected', 'true');
+    // candidates list replaced by selected-patient card
+    expect(screen.getByText('Salma Bennani')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Changer' })).toBeInTheDocument();
   });
 
-  it('renders date, time, and duration fields with sensible defaults', () => {
+  it('renders the calendar and duration select with sensible defaults', () => {
     renderDialog();
-    // Date defaults to today in JJ/MM/AAAA
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    expect(screen.getByLabelText('Date')).toHaveValue(`${dd}/${mm}/${today.getFullYear()}`);
-    expect(screen.getByLabelText('Heure')).toHaveValue('09:00');
+    // Calendar is rendered (month nav buttons present)
+    expect(screen.getByRole('button', { name: 'Mois précédent' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mois suivant' })).toBeInTheDocument();
     // Duration select defaults to 20 minutes
     const dur = screen.getByLabelText('Durée') as HTMLSelectElement;
     expect(dur.value).toBe('20');
@@ -157,10 +159,11 @@ describe('<PriseRDVDialog />', () => {
     expect(screen.getByRole('button', { name: 'Fermer' })).toBeInTheDocument();
   });
 
-  it('renders the slot hint with available slots text', () => {
+  it('renders available slot buttons from useAvailability', () => {
     renderDialog();
-    expect(screen.getByText(/Créneaux libres vendredi/)).toBeInTheDocument();
-    expect(screen.getByText('10:30')).toBeInTheDocument();
+    const group = screen.getByRole('group', { name: 'Créneaux disponibles' });
+    expect(group).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '10:30' })).toBeInTheDocument();
   });
 
   it('does not render when open=false', () => {

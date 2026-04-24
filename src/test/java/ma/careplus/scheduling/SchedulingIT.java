@@ -273,6 +273,31 @@ class SchedulingIT {
     }
 
     @Test
+    void listReturnsPatientFullName() throws Exception {
+        OffsetDateTime start = nextTuesday9am();
+        mockMvc.perform(post("/api/appointments")
+                        .header("Authorization", bearer(secEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "patientId", patientId.toString(),
+                                "practitionerId", practitionerId.toString(),
+                                "startAt", start.toString(),
+                                "durationMinutes", 30))))
+                .andExpect(status().isCreated());
+
+        OffsetDateTime from = start.minusHours(1);
+        OffsetDateTime to   = start.plusHours(2);
+        mockMvc.perform(get("/api/appointments")
+                        .header("Authorization", bearer(secEmail))
+                        .param("practitionerId", practitionerId.toString())
+                        .param("from", from.toString())
+                        .param("to", to.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].patientFullName").value("Mohamed Alami"));
+    }
+
+    @Test
     void unauthenticatedIsRejected() throws Exception {
         mockMvc.perform(get("/api/reasons"))
                 .andExpect(status().isUnauthorized());

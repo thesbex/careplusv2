@@ -19,6 +19,18 @@ vi.mock('../hooks/useQueue', () => ({
   useQueue: () => ({ queue: QUEUE, kpis: KPIS, upcoming: UPCOMING, isLoading: false, error: null }),
 }));
 
+vi.mock('../hooks/useCheckIn', () => ({
+  useCheckIn: () => ({ checkIn: vi.fn().mockResolvedValue(undefined), isPending: false, error: null }),
+}));
+
+vi.mock('../hooks/useStartConsultation', () => ({
+  useStartConsultation: () => ({
+    startConsultation: vi.fn().mockResolvedValue({ id: 'c1' }),
+    isPending: false,
+    error: null,
+  }),
+}));
+
 // ── Helpers ──────────────────────────────────────────────
 
 function renderDesktop() {

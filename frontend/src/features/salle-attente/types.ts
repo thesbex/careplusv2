@@ -10,6 +10,10 @@ export type WaitingPatientStatus = 'arrived' | 'waiting' | 'vitals' | 'consult' 
 
 /** One entry in the active queue (patient who has arrived). */
 export interface QueueEntry {
+  /** Appointment id (used for check-in, vitals, consultation start). */
+  appointmentId?: string;
+  /** Patient id (used to start consultation). */
+  patientId?: string;
   name: string;
   /** Scheduled appointment time "HH:MM". */
   apt: string;

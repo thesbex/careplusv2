@@ -11,6 +11,8 @@ import type { QueueEntry, QueueKpi, UpcomingPatient } from './types';
 /** Active queue — patients who have arrived. Verbatim from prototype. */
 export const QUEUE: QueueEntry[] = [
   {
+    appointmentId: 'apt-1',
+    patientId: 'pat-1',
     name: 'Mohamed Alami',
     apt: '09:00',
     arrived: '08:54',
@@ -22,6 +24,8 @@ export const QUEUE: QueueEntry[] = [
     reason: 'Consultation de suivi',
   },
   {
+    appointmentId: 'apt-2',
+    patientId: 'pat-2',
     name: 'Fatima Z. Lahlou',
     apt: '09:30',
     arrived: '09:22',
@@ -32,6 +36,8 @@ export const QUEUE: QueueEntry[] = [
     reason: 'Suivi grossesse 24 SA',
   },
   {
+    appointmentId: 'apt-3',
+    patientId: 'pat-3',
     name: 'Youssef Ziani',
     apt: '10:00',
     arrived: '09:41',
@@ -42,6 +48,8 @@ export const QUEUE: QueueEntry[] = [
     reason: 'Première consultation',
   },
   {
+    appointmentId: 'apt-4',
+    patientId: 'pat-4',
     name: 'Ahmed Cherkaoui',
     apt: '15:00',
     arrived: '09:46',

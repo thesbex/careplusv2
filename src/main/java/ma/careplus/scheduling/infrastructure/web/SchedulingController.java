@@ -13,6 +13,8 @@ import ma.careplus.scheduling.infrastructure.web.dto.AppointmentView;
 import ma.careplus.scheduling.infrastructure.web.dto.AvailabilitySlot;
 import ma.careplus.scheduling.infrastructure.web.dto.CancelAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
+import ma.careplus.scheduling.infrastructure.web.dto.CreateLeaveRequest;
+import ma.careplus.scheduling.infrastructure.web.dto.LeaveView;
 import ma.careplus.scheduling.infrastructure.web.dto.MoveAppointmentRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
@@ -66,7 +68,8 @@ public class SchedulingController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
         return jdbc.query("""
-                SELECT a.id, a.patient_id, p.first_name, p.last_name,
+                SELECT a.id, a.patient_id,
+                       (p.first_name || ' ' || p.last_name) AS patient_full_name,
                        a.practitioner_id, a.reason_id, r.label AS reason_label,
                        a.type, a.origin_consultation_id,
                        a.start_at, a.end_at, a.status, a.cancel_reason,
@@ -83,7 +86,7 @@ public class SchedulingController {
                 (rs, i) -> new AppointmentView(
                         (UUID) rs.getObject("id"),
                         (UUID) rs.getObject("patient_id"),
-                        rs.getString("first_name") + " " + rs.getString("last_name"),
+                        rs.getString("patient_full_name"),
                         (UUID) rs.getObject("practitioner_id"),
                         (UUID) rs.getObject("reason_id"),
                         rs.getString("reason_label"),
@@ -138,6 +141,36 @@ public class SchedulingController {
                         r.getId(), r.getCode(), r.getLabel(),
                         r.getDurationMinutes(), r.getColorHex()))
                 .toList();
+    }
+
+    // ── Practitioner leaves ────────────────────────────────────────
+
+    @GetMapping("/practitioners/{practitionerId}/leaves")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<LeaveView> listLeaves(@PathVariable UUID practitionerId) {
+        return service.listLeaves(practitionerId).stream()
+                .map(l -> new LeaveView(l.getId(), l.getStartDate(), l.getEndDate(), l.getReason()))
+                .toList();
+    }
+
+    @PostMapping("/practitioners/{practitionerId}/leaves")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<LeaveView> createLeave(
+            @PathVariable UUID practitionerId,
+            @Valid @RequestBody CreateLeaveRequest req) {
+        var l = service.createLeave(practitionerId, req);
+        return ResponseEntity
+                .created(URI.create("/api/practitioners/" + practitionerId + "/leaves/" + l.getId()))
+                .body(new LeaveView(l.getId(), l.getStartDate(), l.getEndDate(), l.getReason()));
+    }
+
+    @DeleteMapping("/practitioners/{practitionerId}/leaves/{leaveId}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deleteLeave(
+            @PathVariable UUID practitionerId,
+            @PathVariable UUID leaveId) {
+        service.deleteLeave(practitionerId, leaveId);
+        return ResponseEntity.noContent().build();
     }
 
     // ── Mapping ────────────────────────────────────────────────────

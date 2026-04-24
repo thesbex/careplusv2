@@ -1,15 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import { CONSULTATION_PATIENT, CONSULTATION_SESSION } from '../fixtures';
-import type { ConsultationPatient, ConsultationSession } from '../types';
 
-interface ConsultationApi {
+export interface ConsultationApi {
   id: string;
   patientId: string;
   practitionerId: string;
-  appointmentId: string;
+  appointmentId: string | null;
   versionNumber: number;
-  status: string;
+  status: 'BROUILLON' | 'SIGNEE';
   motif: string | null;
   examination: string | null;
   diagnosis: string | null;
@@ -20,36 +18,24 @@ interface ConsultationApi {
   updatedAt: string;
 }
 
-function adapt(c: ConsultationApi): ConsultationSession {
-  const startedAt = new Date(c.startedAt);
-  const elapsed = Math.floor((Date.now() - startedAt.getTime()) / 60_000);
-
-  return {
-    ...CONSULTATION_SESSION,
-    patientName: CONSULTATION_SESSION.patientName,
-    startedAt: startedAt.toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' }),
-    timer: `${elapsed} min`,
-    status: c.status === 'SIGNEE' ? 'Signée' : 'Brouillon',
-    autoSavedAt: new Date(c.updatedAt).toLocaleTimeString('fr-MA', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    soap: {
-      subjectif: c.motif ?? '',
-      objectif: c.examination ?? '',
-      analyse: c.diagnosis ?? '',
-      plan: c.notes ?? '',
-    },
-  };
+export interface UpdateConsultationPayload {
+  motif?: string;
+  examination?: string;
+  diagnosis?: string;
+  notes?: string;
 }
 
-export function useConsultation(id?: string): {
-  patient: ConsultationPatient;
-  session: ConsultationSession;
+export interface UseConsultationResult {
+  consultation: ConsultationApi | null;
   isLoading: boolean;
   error: string | null;
-  updateDraft: (data: Partial<ConsultationApi>) => Promise<void>;
-} {
+  update: (payload: UpdateConsultationPayload) => Promise<ConsultationApi>;
+  isSaving: boolean;
+  saveError: string | null;
+  lastSavedAt: Date | null;
+}
+
+export function useConsultation(id?: string): UseConsultationResult {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
@@ -60,23 +46,25 @@ export function useConsultation(id?: string): {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (updates: Partial<ConsultationApi>) =>
-      api.put<ConsultationApi>(`/consultations/${id}`, updates).then((r) => r.data),
+    mutationFn: (payload: UpdateConsultationPayload) =>
+      api.put<ConsultationApi>(`/consultations/${id}`, payload).then((r) => r.data),
     onSuccess: (updated) => {
       queryClient.setQueryData(['consultation', id], updated);
     },
   });
 
-  async function updateDraft(updates: Partial<ConsultationApi>): Promise<void> {
-    if (!id) return;
-    await updateMutation.mutateAsync(updates);
+  async function update(payload: UpdateConsultationPayload): Promise<ConsultationApi> {
+    if (!id) throw new Error('consultation id required');
+    return updateMutation.mutateAsync(payload);
   }
 
   return {
-    patient: CONSULTATION_PATIENT,
-    session: data ? adapt(data) : CONSULTATION_SESSION,
+    consultation: data ?? null,
     isLoading,
     error: error ? 'Impossible de charger la consultation.' : null,
-    updateDraft,
+    update,
+    isSaving: updateMutation.isPending,
+    saveError: updateMutation.error ? 'Échec de la sauvegarde.' : null,
+    lastSavedAt: data ? new Date(data.updatedAt) : null,
   };
 }

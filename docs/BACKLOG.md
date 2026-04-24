@@ -27,6 +27,15 @@ Anything explicitly out of the 7-day MVP goes here. Append-only list of ideas/fe
 - SSE real-time queue (replace polling)
 - Waiting-room display screen (tablet view with "next patient")
 - No-show counter per patient, flag after 3 consecutive
+- **Mobile congé screen** : port `/parametres` leave management to mobile (CongesPage.mobile.tsx). Low-priority since secretaries manage this on desktop.
+- **Congé overlap warning** : when creating a new leave that overlaps an existing confirmed appointment, show a warning listing the affected appointments (don't auto-cancel, just inform). Requires a query joining `scheduling_appointment` with the new leave date range.
+
+## Multi-practitioner cabinet
+
+- **Practitioner selector in PriseRDVDialog** : when a cabinet has more than one doctor, the secretary needs to pick which doctor the RDV is for. Currently `practitionerId` is always the logged-in user. Add a `<Select>` in step 2 of the dialog populated from `GET /api/practitioners` (new endpoint listing active identity_user with MEDECIN role).
+- **Multi-practitioner agenda view** : allow switching between practitioners in the agenda toolbar (or a side-by-side day view). A secretary should be able to see all doctors' agendas at once.
+- **Practitioner management screen** : ADMIN screen to create/deactivate practitioners, set working hours per practitioner (currently working hours are cabinet-global), and assign roles.
+- **Per-practitioner revenue split** : moved here from Billing — relevant only once multi-practitioner is wired.
 
 ## Billing
 

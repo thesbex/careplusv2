@@ -1,27 +1,84 @@
 /**
- * Left panel: patient at a glance.
- * Ported verbatim from the left column in EcranConsultation (screens/consultation.jsx).
- * Shows avatar, name/age/sex/dossierNo, allergy pill, conditions pill, vitals panel,
- * current medications, and last follow-up notes.
+ * Left panel: patient at a glance (live data).
+ * Receives patient summary + latest vitals; renders skeleton while loading.
  */
 import { Panel } from '@/components/ui/Panel';
 import { Warn } from '@/components/icons';
-import type { ConsultationPatient } from '../types';
+import type { PatientSummary } from '@/features/dossier-patient/types';
+import type { VitalsApi } from '../hooks/useLatestVitals';
 
 interface PatientContextCardProps {
-  patient: ConsultationPatient;
+  patient: PatientSummary | null;
+  vitals: VitalsApi | null;
 }
 
-export function PatientContextCard({ patient }: PatientContextCardProps) {
+function SectionH({ children }: { children: React.ReactNode }) {
   return (
     <div
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        color: 'var(--ink-3)',
+        marginBottom: 6,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function VitalRow({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <span style={{ color: 'var(--ink-3)' }}>{k}</span>
+      <span className="tnum" style={warn ? { color: 'var(--amber)', fontWeight: 600 } : undefined}>
+        {v}
+      </span>
+    </div>
+  );
+}
+
+export function PatientContextCard({ patient, vitals }: PatientContextCardProps) {
+  if (!patient) {
+    return (
+      <div
+        className="scroll"
+        style={{
+          borderRight: '1px solid var(--border)',
+          background: 'var(--surface-2)',
+          padding: 16,
+          overflow: 'auto',
+          color: 'var(--ink-3)',
+          fontSize: 12,
+        }}
+      >
+        Chargement du patient…
+      </div>
+    );
+  }
+
+  const vitalsTime = vitals
+    ? new Date(vitals.recordedAt).toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' })
+    : null;
+
+  const ta =
+    vitals?.systolicMmhg != null && vitals.diastolicMmhg != null
+      ? `${vitals.systolicMmhg} / ${vitals.diastolicMmhg}`
+      : null;
+  const taWarn = vitals?.systolicMmhg != null && vitals.systolicMmhg >= 130;
+  const bmiWarn = vitals?.bmi != null && (vitals.bmi >= 25 || vitals.bmi < 18.5);
+
+  return (
+    <div
+      className="scroll"
       style={{
         borderRight: '1px solid var(--border)',
         background: 'var(--surface-2)',
         padding: 16,
         overflow: 'auto',
       }}
-      className="scroll"
     >
       <div className="cp-avatar lg" style={{ marginBottom: 10 }} aria-hidden="true">
         {patient.initials}
@@ -33,104 +90,63 @@ export function PatientContextCard({ patient }: PatientContextCardProps) {
         {patient.age} ans · {patient.sex} · {patient.dossierNo}
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4,
-          marginTop: 10,
-          marginBottom: 14,
-        }}
-      >
-        <span className="pill allergy">
-          <Warn aria-hidden="true" /> Allergie : {patient.allergy}
-        </span>
-        <span className="pill">{patient.conditions}</span>
-      </div>
-
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--ink-3)',
-          marginBottom: 6,
-        }}
-      >
-        Constantes {patient.vitalsTime}
-      </div>
-      <Panel style={{ marginBottom: 14 }}>
-        <div style={{ padding: '10px 12px', fontSize: 12 }}>
-          {patient.vitals.map(({ k, v, warn }) => (
-            <div
-              key={k}
-              style={{ display: 'flex', justifyContent: 'space-between' }}
-            >
-              <span style={{ color: 'var(--ink-3)' }}>{k}</span>
-              <span
-                className="tnum"
-                style={warn ? { color: 'var(--amber)', fontWeight: 600 } : undefined}
-              >
-                {v}
-              </span>
-            </div>
-          ))}
+      {patient.allergies.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
+          <span className="pill allergy">
+            <Warn aria-hidden="true" /> Allergie : {patient.allergies.join(', ')}
+          </span>
         </div>
-      </Panel>
+      )}
 
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--ink-3)',
-          marginBottom: 6,
-        }}
-      >
-        Traitement en cours
-      </div>
-      <div style={{ fontSize: 12 }}>
-        {patient.currentMedications.map((med, i) => (
-          <div
-            key={med.name}
-            style={{
-              padding: '6px 0',
-              borderBottom:
-                i < patient.currentMedications.length - 1
-                  ? '1px dashed var(--border)'
-                  : undefined,
-            }}
-          >
-            <div style={{ fontWeight: 550 }}>{med.name}</div>
-            <div style={{ color: 'var(--ink-3)', fontSize: 11 }}>
-              {med.posology} · {med.since}
-            </div>
+      <div style={{ marginTop: 14 }}>
+        <SectionH>Constantes {vitalsTime ?? '—'}</SectionH>
+        <Panel>
+          <div style={{ padding: '10px 12px', fontSize: 12 }}>
+            {!vitals && (
+              <div style={{ color: 'var(--ink-3)' }}>Aucune constante enregistrée.</div>
+            )}
+            {vitals && (
+              <>
+                {ta && <VitalRow k="TA" v={ta} warn={taWarn} />}
+                {vitals.heartRateBpm != null && (
+                  <VitalRow k="FC" v={String(vitals.heartRateBpm)} />
+                )}
+                {vitals.temperatureC != null && (
+                  <VitalRow k="T°" v={vitals.temperatureC.toFixed(1).replace('.', ',')} />
+                )}
+                {vitals.spo2Percent != null && (
+                  <VitalRow k="SpO₂" v={`${vitals.spo2Percent}%`} />
+                )}
+                {vitals.bmi != null && (
+                  <VitalRow
+                    k="IMC"
+                    v={vitals.bmi.toFixed(1).replace('.', ',')}
+                    warn={bmiWarn}
+                  />
+                )}
+              </>
+            )}
           </div>
-        ))}
+        </Panel>
       </div>
 
-      <div
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: 'var(--ink-3)',
-          marginTop: 16,
-          marginBottom: 6,
-        }}
-      >
-        Dernier suivi
-      </div>
-      <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-        {patient.followUps.map((f, i) => (
-          <div key={i} style={i > 0 ? { marginTop: 6 } : undefined}>
-            {f.date} — {f.note}
+      {patient.antecedents && (
+        <div style={{ marginTop: 14 }}>
+          <SectionH>Antécédents</SectionH>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'pre-line' }}>
+            {patient.antecedents || 'Aucun'}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {patient.chronicTreatment && (
+        <div style={{ marginTop: 14 }}>
+          <SectionH>Traitement en cours</SectionH>
+          <div style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'pre-line' }}>
+            {patient.chronicTreatment}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

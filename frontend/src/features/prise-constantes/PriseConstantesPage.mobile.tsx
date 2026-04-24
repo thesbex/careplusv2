@@ -18,6 +18,8 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Heart, Thermo, Signal, Warn } from '@/components/icons';
 import { useRecordVitals } from './hooks/useRecordVitals';
+import { useAppointment } from './hooks/useAppointment';
+import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { vitalsFormSchema, type VitalsFormValues } from './schema';
 import { DEFAULT_VITALS } from './fixtures';
 import './prise-constantes.css';
@@ -36,6 +38,11 @@ export default function PriseConstantesMobilePage() {
   const navigate = useNavigate();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
+  const { appointment } = useAppointment(appointmentId);
+  const { patient } = usePatient(appointment?.patientId);
+  const patientName = patient?.fullName ?? 'Chargement…';
+  const allergyLabel =
+    patient && patient.allergies.length > 0 ? patient.allergies.join(', ') : null;
 
   const {
     register,
@@ -79,18 +86,20 @@ export default function PriseConstantesMobilePage() {
             />
           }
           title="Constantes"
-          sub="Mohamed Alami"
+          sub={patientName}
         />
       }
     >
       <form onSubmit={onSubmit} noValidate>
         <div className="mb-pad-lg">
 
-          {/* Allergy warning bar — verbatim from prototype */}
-          <div className="pc-m-allergy-bar">
-            <Warn />
-            <span>Allergie : Pénicilline</span>
-          </div>
+          {/* Allergy warning bar — shown only if patient has allergies */}
+          {allergyLabel && (
+            <div className="pc-m-allergy-bar">
+              <Warn />
+              <span>Allergie : {allergyLabel}</span>
+            </div>
+          )}
 
           {/* Section heading */}
           <div className="m-section-h">

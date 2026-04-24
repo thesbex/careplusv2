@@ -34,6 +34,8 @@ function toWaited(arrivedAt: string | null): string {
 
 function adapt(e: QueueEntryApi): QueueEntry {
   const entry: QueueEntry = {
+    appointmentId: e.appointmentId,
+    patientId: e.patientId,
     name: e.patientFullName,
     apt: toHHMM(e.scheduledAt),
     arrived: toHHMM(e.arrivedAt),

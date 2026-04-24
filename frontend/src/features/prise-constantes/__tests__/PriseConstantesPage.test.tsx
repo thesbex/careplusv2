@@ -23,6 +23,59 @@ vi.mock('../hooks/useRecordVitals', () => ({
   }),
 }));
 
+vi.mock('../hooks/useAppointment', () => ({
+  useAppointment: () => ({
+    appointment: {
+      id: 'a1',
+      patientId: 'p1',
+      practitionerId: 'u1',
+      startAt: '2026-04-24T10:00:00Z',
+      endAt: '2026-04-24T10:30:00Z',
+      status: 'ARRIVE',
+      type: null,
+      reasonLabel: 'Première consultation',
+      originConsultationId: null,
+      arrivedAt: '2026-04-24T09:41:00Z',
+      createdAt: '2026-04-24T08:00:00Z',
+      updatedAt: '2026-04-24T09:41:00Z',
+    },
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('@/features/dossier-patient/hooks/usePatient', () => ({
+  usePatient: () => ({
+    patient: {
+      id: 'p1',
+      dossierNo: 'PT-001',
+      initials: 'YZ',
+      fullName: 'Youssef Ziani',
+      sex: 'H',
+      age: 38,
+      cin: '—',
+      birthDate: '1988-01-01',
+      phone: '—',
+      email: '—',
+      bloodGroup: '—',
+      insurance: '—',
+      allergies: ['Pénicilline'],
+      allergyNotes: '',
+      antecedents: '',
+      chronicTreatment: '',
+      timeline: [],
+      lastVitals: [],
+      lastVitalsDate: '',
+      currentMedications: [],
+      currentMedicationsSince: '',
+      admin: [],
+    },
+    raw: null,
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 // ── Helpers ──────────────────────────────────────────────
 
 function renderDesktop() {
@@ -68,7 +121,7 @@ describe('<PriseConstantesPage /> (desktop)', () => {
       'Prise des constantes',
     );
     expect(container.querySelector('.cp-topbar-sub')).toHaveTextContent(
-      'Youssef Ziani · 38 ans · RDV 10:00',
+      /Youssef Ziani · 38 ans · RDV \d{2}:\d{2}/,
     );
   });
 
@@ -177,13 +230,14 @@ describe('<PriseConstantesPage /> (desktop)', () => {
 // ── Mobile suite ─────────────────────────────────────────
 
 describe('<PriseConstantesMobilePage />', () => {
-  it('renders mobile topbar with title "Constantes" and sub "Mohamed Alami"', () => {
+  it('renders mobile topbar with title "Constantes" and patient name from backend', () => {
     renderMobile();
     expect(screen.getByText('Constantes')).toBeInTheDocument();
-    expect(screen.getByText('Mohamed Alami')).toBeInTheDocument();
+    // Mocked usePatient resolves to "Youssef Ziani"
+    expect(screen.getAllByText('Youssef Ziani').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('renders the allergy warning bar verbatim', () => {
+  it('renders the allergy warning bar built from patient data', () => {
     renderMobile();
     expect(screen.getByText('Allergie : Pénicilline')).toBeInTheDocument();
   });

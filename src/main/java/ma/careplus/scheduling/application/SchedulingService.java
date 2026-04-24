@@ -11,11 +11,14 @@ import java.util.UUID;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentReason;
 import ma.careplus.scheduling.domain.AppointmentStatus;
+import ma.careplus.scheduling.domain.PractitionerLeave;
 import ma.careplus.scheduling.domain.WorkingHours;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentReasonRepository;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
 import ma.careplus.scheduling.infrastructure.persistence.HolidayRepository;
+import ma.careplus.scheduling.infrastructure.persistence.PractitionerLeaveRepository;
 import ma.careplus.scheduling.infrastructure.persistence.WorkingHoursRepository;
+import ma.careplus.scheduling.infrastructure.web.dto.CreateLeaveRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.AvailabilitySlot;
 import ma.careplus.scheduling.infrastructure.web.dto.CancelAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
@@ -52,15 +55,18 @@ public class SchedulingService {
     private final AppointmentReasonRepository reasonRepository;
     private final WorkingHoursRepository workingHoursRepository;
     private final HolidayRepository holidayRepository;
+    private final PractitionerLeaveRepository leaveRepository;
 
     public SchedulingService(AppointmentRepository appointmentRepository,
                              AppointmentReasonRepository reasonRepository,
                              WorkingHoursRepository workingHoursRepository,
-                             HolidayRepository holidayRepository) {
+                             HolidayRepository holidayRepository,
+                             PractitionerLeaveRepository leaveRepository) {
         this.appointmentRepository = appointmentRepository;
         this.reasonRepository = reasonRepository;
         this.workingHoursRepository = workingHoursRepository;
         this.holidayRepository = holidayRepository;
+        this.leaveRepository = leaveRepository;
     }
 
     // ── Create ─────────────────────────────────────────────────────
@@ -75,6 +81,12 @@ public class SchedulingService {
             throw new BusinessException(
                     "APPT_ON_HOLIDAY",
                     "Impossible de créer un rendez-vous un jour férié.",
+                    HttpStatus.CONFLICT.value());
+        }
+        if (leaveRepository.existsActiveOnDate(req.practitionerId(), dayInCabinet)) {
+            throw new BusinessException(
+                    "APPT_ON_LEAVE",
+                    "Le praticien est en congé ce jour-là.",
                     HttpStatus.CONFLICT.value());
         }
 
@@ -142,6 +154,12 @@ public class SchedulingService {
                     "Impossible de déplacer un rendez-vous vers un jour férié.",
                     HttpStatus.CONFLICT.value());
         }
+        if (leaveRepository.existsActiveOnDate(existing.getPractitionerId(), dayInCabinet)) {
+            throw new BusinessException(
+                    "APPT_ON_LEAVE",
+                    "Le praticien est en congé ce jour-là.",
+                    HttpStatus.CONFLICT.value());
+        }
 
         List<Appointment> overlap = appointmentRepository.findOverlapping(
                 existing.getPractitionerId(), newStart, newEnd, existing.getId());
@@ -198,7 +216,8 @@ public class SchedulingService {
         LocalDate endDay = to.atZoneSameInstant(CABINET_ZONE).toLocalDate();
 
         while (!day.isAfter(endDay)) {
-            if (holidayRepository.findByDate(day).isEmpty()) {
+            if (holidayRepository.findByDate(day).isEmpty()
+                    && !leaveRepository.existsActiveOnDate(practitionerId, day)) {
                 int dow = day.getDayOfWeek().getValue();
                 for (WorkingHours wh : workingHoursRepository.findByDayOfWeekAndActiveTrue(dow)) {
                     emitSlotsForRange(day, wh, practitionerId, slotMinutes, from, to, slots);
@@ -265,6 +284,39 @@ public class SchedulingService {
     @Transactional(readOnly = true)
     public List<AppointmentReason> listActiveReasons() {
         return reasonRepository.findByActiveTrueOrderByLabel();
+    }
+
+    // ── Practitioner leaves ────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<PractitionerLeave> listLeaves(UUID practitionerId) {
+        return leaveRepository.findByPractitionerIdOrderByStartDateAsc(practitionerId);
+    }
+
+    public PractitionerLeave createLeave(UUID practitionerId, CreateLeaveRequest req) {
+        if (req.endDate().isBefore(req.startDate())) {
+            throw new BusinessException(
+                    "LEAVE_INVALID_DATES",
+                    "La date de fin doit être postérieure ou égale à la date de début.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+        PractitionerLeave leave = new PractitionerLeave();
+        leave.setId(UUID.randomUUID());
+        leave.setPractitionerId(practitionerId);
+        leave.setStartDate(req.startDate());
+        leave.setEndDate(req.endDate());
+        leave.setReason(req.reason());
+        leave.setCreatedAt(OffsetDateTime.now());
+        return leaveRepository.save(leave);
+    }
+
+    public void deleteLeave(UUID practitionerId, UUID leaveId) {
+        PractitionerLeave l = leaveRepository.findById(leaveId)
+                .orElseThrow(() -> new NotFoundException("LEAVE_NOT_FOUND", "Congé introuvable : " + leaveId));
+        if (!l.getPractitionerId().equals(practitionerId)) {
+            throw new BusinessException("LEAVE_ACCESS_DENIED", "Ce congé n'appartient pas à ce praticien.", 403);
+        }
+        leaveRepository.delete(l);
     }
 
     // Offset alignment — used by tests that pass instants in UTC
