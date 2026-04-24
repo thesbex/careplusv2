@@ -1,20 +1,64 @@
 /**
- * Screen 12 — Login (desktop)
- * Ported from design/prototype/screens/login.jsx.
- * J2 will wire onSubmit to POST /api/auth/login; for now the form is static.
+ * Screen 12 — Login (desktop).
+ * Ported from design/prototype/screens/login.jsx and wired to the real
+ * backend (J2): POST /api/auth/login returns accessToken + sets the HttpOnly
+ * `careplus_refresh` cookie.
  */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Eye, Lock } from '@/components/icons';
+import { useLogin } from '@/lib/auth/useAuth';
+import { toProblemDetail } from '@/lib/api/problemJson';
+import { loginSchema, type LoginValues } from './schema';
 import './login.css';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const loginMutation = useLogin();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: 'f.benjelloun@cab-elamrani.ma',
+      password: '',
+    },
+  });
+
+  const redirectTo = (location.state as { from?: string } | null)?.from ?? '/agenda';
+
+  const onSubmit = handleSubmit(async (values) => {
+    try {
+      await loginMutation.mutateAsync(values);
+      navigate(redirectTo, { replace: true });
+    } catch (err) {
+      const problem = toProblemDetail(err);
+      if (problem.status === 401) {
+        setError('password', { type: 'server', message: 'Identifiants incorrects' });
+      } else if (problem.status === 429) {
+        toast.error('Trop de tentatives. Réessayez dans 15 minutes.', { duration: 6000 });
+      } else if (problem.violations?.length) {
+        problem.violations.forEach((v) =>
+          setError(v.field as keyof LoginValues, { type: 'server', message: v.message }),
+        );
+      } else {
+        toast.error(problem.title, { description: problem.detail });
+      }
+    }
+  });
 
   return (
     <div className="login-root">
@@ -64,14 +108,7 @@ export default function LoginPage() {
 
       {/* Right: form */}
       <div className="login-form-wrap">
-        <form
-          className="login-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            // J2: wire to POST /api/auth/login; for now just navigate to agenda.
-            navigate('/agenda');
-          }}
-        >
+        <form className="login-form" onSubmit={onSubmit} noValidate>
           <div className="login-form-eyebrow">Connexion professionnelle</div>
           <h2 className="login-form-title">Bon retour, docteur.</h2>
           <p className="login-form-sub">
@@ -84,9 +121,16 @@ export default function LoginPage() {
               id="login-email"
               type="email"
               autoComplete="email"
-              defaultValue="f.benjelloun@cab-elamrani.ma"
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? 'login-email-err' : undefined}
               style={{ height: 40 }}
+              {...register('email')}
             />
+            {errors.email && (
+              <div id="login-email-err" className="help" style={{ color: 'var(--danger)' }}>
+                {errors.email.message}
+              </div>
+            )}
           </Field>
 
           <Field className="login-form-field-tight">
@@ -96,8 +140,10 @@ export default function LoginPage() {
                 id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                defaultValue="••••••••••••"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'login-password-err' : undefined}
                 style={{ height: 40, paddingRight: 38 }}
+                {...register('password')}
               />
               <Button
                 variant="ghost"
@@ -110,6 +156,11 @@ export default function LoginPage() {
                 <Eye />
               </Button>
             </div>
+            {errors.password && (
+              <div id="login-password-err" className="help" style={{ color: 'var(--danger)' }}>
+                {errors.password.message}
+              </div>
+            )}
           </Field>
 
           <div className="login-form-row">
@@ -125,9 +176,10 @@ export default function LoginPage() {
             type="submit"
             variant="primary"
             size="lg"
+            disabled={isSubmitting || loginMutation.isPending}
             style={{ width: '100%', justifyContent: 'center', height: 44, fontSize: 14 }}
           >
-            <Lock /> Se connecter
+            <Lock /> {isSubmitting || loginMutation.isPending ? 'Connexion…' : 'Se connecter'}
           </Button>
 
           <div className="login-form-separator">

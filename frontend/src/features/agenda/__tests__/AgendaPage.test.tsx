@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { axe } from 'jest-axe';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import AgendaPage from '../AgendaPage';
 
 function renderAgenda() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter(
     [
       { path: '/agenda', element: <AgendaPage /> },
@@ -13,7 +15,11 @@ function renderAgenda() {
     ],
     { initialEntries: ['/agenda'] },
   );
-  return render(<RouterProvider router={router} />);
+  return render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 describe('<AgendaPage /> (desktop)', () => {
