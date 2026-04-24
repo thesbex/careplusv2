@@ -144,6 +144,13 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 **Choice**: Each sprint day J2–J7 owns BOTH a backend feature and the corresponding frontend screen(s). J8 becomes a thinner wrap-up day (Paramétrage + mobile parity sweep + E2E + tag). Frontend pauses are explicit — any screen whose backend dependency hasn't shipped yet is stubbed with a mock hook and marked `TODO(backend:Jx)`. Mobile and desktop are produced in the same pass per screen, not as separate phases.
 **Consequence**: MVP compresses 10 → 8 days. Each J_x checkpoint is an end-to-end demo of the day's feature, not just a backend test. Higher cognitive load per day (two tiers at once) but the integration pain is spread across the sprint rather than dumped at the end. Pause rule enforced by `frontend-module-scaffolder` checking for required endpoints before starting a slice.
 
+## ADR-022 — Cloud staging on Render free tier + Neon free Postgres (pre-paid); upgrade-in-place later
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: We need a shareable staging URL that auto-deploys on every push to `main` so the pilot cabinet can review screens without waiting for on-premise installs (which come later via jpackage, ADR-020 still holds for prod). Budget constraint: free-only for now, willing to pay once the pilot validates. 2026 free-tier landscape is narrower than it was — Fly.io and Railway killed their free tiers in 2024 and 2023 respectively.
+**Choice**: **Render** (web service, free: 512 MB / 750 h / cold-start after 15 min idle) for the fat-jar container + **Neon** (Postgres, free: 0.5 GB forever, Frankfurt region). Deploy is triggered by Render's native GitHub integration on push to `main` — no `.github/workflows/deploy.yml` needed; existing `ci.yml` stays as the quality gate. Dockerfile is 3-stage (Node → Maven → distroless Java 21) so the runtime image ships only the jar.
+**Consequence**: $0 to validate. Cold starts make demos require a warm-up `curl`, acceptable at MVP pre-pilot scale. Upgrade to Render Starter ($7/mo) + Neon Launch ($19/mo) is a dropdown click each — same URLs, same secrets, no migration. The Dockerfile is host-agnostic, so eventual migration to OVH Casablanca for data residency is `docker compose up` on a VPS. Rejected alternatives documented in `docs/DEPLOY.md`.
+
 ## ADR-018 — Frontend regression cadence: day-boundary only, not per-iteration
 **Date**: 2026-04-24
 **Status**: accepted

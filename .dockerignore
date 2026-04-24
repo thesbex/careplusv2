@@ -1,0 +1,46 @@
+# Keep the build context tiny — speeds up `docker build` uploads and avoids
+# accidentally baking secrets or dev artefacts into the image.
+
+# Version control
+.git/
+.gitignore
+.github/
+
+# IDEs / editor
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Java build output (we rebuild inside the image)
+target/
+*.log
+*.class
+
+# Maven wrapper caches (we use system Maven in the builder stage)
+.mvn/wrapper/maven-wrapper.jar
+
+# Frontend build artefacts (we rebuild inside the image)
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+
+# Design handoff — not shipped to prod
+design/
+
+# Docs — shipped via the repo, not the image
+docs/
+*.md
+!DOCKER.md
+
+# Local overrides
+docker-compose.override.yml
+.env
+.env.local
+.env.*.local
