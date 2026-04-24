@@ -9,15 +9,25 @@ export interface WeekDay {
 }
 
 export interface Appointment {
+  /** Backend id — present when loaded from API, absent for fixtures. */
+  id?: string;
+  /** Backend patient id — present when loaded from API. */
+  patientId?: string;
+  /** ISO start datetime. */
+  startAt?: string;
+  /** Duration in minutes. */
+  durationMinutes?: number;
   day: DayKey;
   /** "HH:MM" 24h. */
   start: string;
-  /** Duration in minutes. */
+  /** Duration in minutes (UI). */
   dur: number;
   patient: string;
   reason: string;
   status: AppointmentStatus;
   allergy?: string;
+  /** Backend status name (PLANIFIE / CONFIRME / ARRIVE / ...). */
+  rawStatus?: string;
 }
 
 export interface Arrival {
