@@ -76,11 +76,11 @@ describe('<PriseRDVDialog />', () => {
     expect(screen.getByText(/Étape 3 · Motif/i)).toBeInTheDocument();
   });
 
-  it('renders the patient search input with default value', () => {
+  it('renders the patient search input empty by default', () => {
     renderDialog();
     const input = screen.getByPlaceholderText('Nom, téléphone ou CIN…');
     expect(input).toBeInTheDocument();
-    expect(input).toHaveValue('Salma B');
+    expect(input).toHaveValue('');
   });
 
   it('shows the 3 patient candidates for default query', () => {
@@ -97,10 +97,14 @@ describe('<PriseRDVDialog />', () => {
     expect(row).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('renders date, time, and duration fields with prototype defaults', () => {
+  it('renders date, time, and duration fields with sensible defaults', () => {
     renderDialog();
-    expect(screen.getByLabelText('Date')).toHaveValue('24/04/2026');
-    expect(screen.getByLabelText('Heure')).toHaveValue('10:30');
+    // Date defaults to today in JJ/MM/AAAA
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    expect(screen.getByLabelText('Date')).toHaveValue(`${dd}/${mm}/${today.getFullYear()}`);
+    expect(screen.getByLabelText('Heure')).toHaveValue('09:00');
     // Duration select defaults to 20 minutes
     const dur = screen.getByLabelText('Durée') as HTMLSelectElement;
     expect(dur.value).toBe('20');
@@ -120,9 +124,10 @@ describe('<PriseRDVDialog />', () => {
     });
   });
 
-  it('renders the "Consultation de suivi" reason as selected by default', () => {
+  it('auto-selects the first reason once reasons load', async () => {
     renderDialog();
-    const btn = screen.getByRole('button', { name: 'Consultation de suivi' });
+    // Fixture REASON_OPTIONS[0] is "Première consultation"
+    const btn = await screen.findByRole('button', { name: 'Première consultation' });
     expect(btn).toHaveAttribute('aria-pressed', 'true');
   });
 
