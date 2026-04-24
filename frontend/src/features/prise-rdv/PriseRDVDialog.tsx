@@ -4,9 +4,6 @@
  *
  * Radix Dialog wraps the form — provides keyboard navigation, focus trap,
  * Escape to close, and WAI-ARIA roles (ADR-015: Radix for a11y affordances).
- *
- * Submit handler logs + closes for now.
- * TODO(backend:J4): wire to POST /api/appointments.
  */
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -20,6 +17,7 @@ import { Close, Search, Plus, Clock } from '@/components/icons';
 import { usePatientSearch } from './hooks/usePatientSearch';
 import { useReasons } from './hooks/useReasons';
 import { useAvailability } from './hooks/useAvailability';
+import { useCreateAppointment } from './hooks/useCreateAppointment';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
@@ -52,10 +50,18 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
   const { candidates } = usePatientSearch(patientQuery);
   const { reasons } = useReasons();
   const { hintText } = useAvailability(watch('date'));
+  const { createAppointment, isPending, error } = useCreateAppointment();
 
-  function onSubmit(data: RdvFormValues) {
-    // TODO(backend:J4): POST /api/appointments
-    console.log('[PriseRDVDialog] submit', data);
+  async function onSubmit(data: RdvFormValues) {
+    if (!selectedPatientId) return;
+    await createAppointment({
+      patientId: selectedPatientId,
+      date: data.date,
+      time: data.time,
+      durationMin: data.durationMin,
+      reasonId: selectedReasonId,
+      notes: data.notes,
+    }).catch(() => null);
     onOpenChange(false);
   }
 
@@ -82,7 +88,7 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
           </div>
 
           {/* Scrollable body */}
-          <form onSubmit={handleSubmit(onSubmit)}>
+          <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }}>
             <div className="prise-rdv-body scroll">
 
               {/* Step 1: Patient */}
@@ -220,11 +226,16 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
                 <input type="checkbox" {...register('sendSms')} defaultChecked />
                 Envoyer un SMS de confirmation
               </label>
+              {error && (
+                <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{error}</div>
+              )}
               <div className="prise-rdv-footer-actions">
                 <Dialog.Close asChild>
                   <Button type="button">Annuler</Button>
                 </Dialog.Close>
-                <Button type="submit" variant="primary">Confirmer le RDV</Button>
+                <Button type="submit" variant="primary" disabled={isPending}>
+                  {isPending ? 'Enregistrement…' : 'Confirmer le RDV'}
+                </Button>
               </div>
             </div>
           </form>

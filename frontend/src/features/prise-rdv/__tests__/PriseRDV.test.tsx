@@ -23,6 +23,9 @@ vi.mock('../hooks/useAvailability', () => ({
 vi.mock('../hooks/usePatientSearch', () => ({
   usePatientSearch: () => ({ candidates: PATIENT_SUGGESTIONS, isLoading: false, error: null }),
 }));
+vi.mock('../hooks/useCreateAppointment', () => ({
+  useCreateAppointment: () => ({ createAppointment: async () => ({ id: 'test-id' }), isPending: false, error: null }),
+}));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
