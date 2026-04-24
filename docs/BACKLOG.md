@@ -19,6 +19,7 @@ Anything explicitly out of the 7-day MVP goes here. Append-only list of ideas/fe
 
 ## Scheduling & presence
 
+- **Email reminder batch** : cron J-1 (et J-7 pour les contrôles) qui envoie un email au patient pour lui rappeler son rendez-vous (nouvelle consultation ou visite de contrôle planifiée). Provider email abstrait (SMTP cabinet ou SaaS comme Brevo/Mailjet). Template bilingue FR/AR. Opt-out patient gérable depuis le dossier. Lié à `AppointmentType` (CONSULTATION | CONTROLE | URGENCE) — le type `CONTROLE` est créé lors de la planification du contrôle en fin de consultation (voir WORKFLOWS.md WF4).
 - SMS reminder cron J-1 with opt-in patient response parsing
 - Waiting-list with auto-notify on cancellation
 - Recurring appointments (chronic patient every 3 months)

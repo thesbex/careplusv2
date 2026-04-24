@@ -11,11 +11,14 @@ import ma.careplus.clinical.domain.Consultation;
 import ma.careplus.clinical.domain.VitalSigns;
 import ma.careplus.clinical.infrastructure.web.dto.ConsultationView;
 import ma.careplus.clinical.infrastructure.web.dto.CreateConsultationRequest;
+import ma.careplus.clinical.infrastructure.web.dto.FollowUpRequest;
+import ma.careplus.clinical.infrastructure.web.dto.FollowUpResponse;
 import ma.careplus.clinical.infrastructure.web.dto.QueueEntryView;
 import ma.careplus.clinical.infrastructure.web.dto.RecordVitalsRequest;
 import ma.careplus.clinical.infrastructure.web.dto.UpdateConsultationRequest;
 import ma.careplus.clinical.infrastructure.web.dto.VitalSignsView;
 import ma.careplus.scheduling.domain.Appointment;
+import ma.careplus.scheduling.domain.AppointmentType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -119,6 +122,24 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ConsultationView sign(@PathVariable UUID id) {
         return toView(consultationService.sign(id));
+    }
+
+    @PostMapping("/consultations/{id}/follow-up")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<FollowUpResponse> followUp(
+            @PathVariable UUID id,
+            @Valid @RequestBody FollowUpRequest req,
+            Authentication auth) {
+        UUID practitionerId = UUID.fromString(auth.getName());
+        Appointment followUp = consultationService.scheduleFollowUp(id, req, practitionerId);
+        return ResponseEntity.created(URI.create("/api/appointments/" + followUp.getId()))
+                .body(new FollowUpResponse(
+                        followUp.getId(),
+                        followUp.getPatientId(),
+                        followUp.getOriginConsultationId(),
+                        AppointmentType.CONTROLE.name(),
+                        followUp.getStartAt(),
+                        followUp.getEndAt()));
     }
 
     // ── Mapping ───────────────────────────────────────────────────

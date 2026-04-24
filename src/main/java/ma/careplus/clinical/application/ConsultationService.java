@@ -7,12 +7,15 @@ import ma.careplus.clinical.domain.ConsultationSigneeEvent;
 import ma.careplus.clinical.domain.ConsultationStatus;
 import ma.careplus.clinical.infrastructure.persistence.ConsultationRepository;
 import ma.careplus.clinical.infrastructure.web.dto.CreateConsultationRequest;
+import ma.careplus.clinical.infrastructure.web.dto.FollowUpRequest;
 import ma.careplus.clinical.infrastructure.web.dto.UpdateConsultationRequest;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentStatus;
+import ma.careplus.scheduling.domain.AppointmentType;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
+import java.time.ZoneId;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -107,5 +110,40 @@ public class ConsultationService {
                 c.getId(), c.getPatientId(), c.getPractitionerId(),
                 c.getAppointmentId(), now));
         return c;
+    }
+
+    /**
+     * Schedules a follow-up (CONTROLE) appointment linked to a signed consultation.
+     * MEDECIN only — enforcement is at the controller layer via @PreAuthorize.
+     * TODO(post-MVP:events): replace direct AppointmentRepository write with a
+     *   ScheduleFollowUpRequestedEvent consumed by the scheduling module.
+     */
+    public Appointment scheduleFollowUp(UUID consultationId, FollowUpRequest req, UUID practitionerId) {
+        Consultation c = get(consultationId);
+
+        // Resolve practitionerId from the linked appointment if not passed
+        UUID docId = practitionerId;
+        if (c.getAppointmentId() != null) {
+            appointmentRepository.findById(c.getAppointmentId()).ifPresent(a -> {
+                // intentionally not overriding docId — it comes from the authenticated user
+            });
+        }
+
+        OffsetDateTime startAt = req.date().atTime(req.time())
+                .atZone(ZoneId.of("Africa/Casablanca"))
+                .toOffsetDateTime();
+        OffsetDateTime endAt = startAt.plusMinutes(30); // default 30-min follow-up
+
+        Appointment followUp = new Appointment();
+        followUp.setPatientId(c.getPatientId());
+        followUp.setPractitionerId(docId);
+        followUp.setReasonId(req.reasonId());
+        followUp.setStartAt(startAt);
+        followUp.setEndAt(endAt);
+        followUp.setStatus(AppointmentStatus.PLANIFIE);
+        followUp.setType(AppointmentType.CONTROLE);
+        followUp.setOriginConsultationId(consultationId);
+
+        return appointmentRepository.save(followUp);
     }
 }

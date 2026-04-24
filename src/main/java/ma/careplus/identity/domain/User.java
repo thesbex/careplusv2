@@ -68,6 +68,9 @@ public class User {
     @Column(name = "updated_by")
     private UUID updatedBy;
 
+    @Column(name = "can_start_consultation", nullable = false)
+    private boolean canStartConsultation = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "identity_user_role",
@@ -125,4 +128,7 @@ public class User {
     public boolean isLocked() {
         return lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now());
     }
+
+    public boolean isCanStartConsultation() { return canStartConsultation; }
+    public void setCanStartConsultation(boolean v) { this.canStartConsultation = v; }
 }

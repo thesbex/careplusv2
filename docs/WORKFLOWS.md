@@ -95,7 +95,7 @@ A habilitated SECRETAIRE or ASSISTANT (flag `canStartConsultation` on user) may 
 5. M writes: motif, examen clinique, diagnostic, notes
 6. M prescribes: médicaments / analyses / radios / certificat / arrêt travail
 7. Allergy cross-check: blocking alert requires explicit override (audit-logged)
-8. M plans follow-up (optional) → pre-books compatible slot
+8. M plans follow-up (optional) → pre-books a **contrôle** appointment directly from the consultation screen. The new appointment is typed `CONTROLE`, linked to the current consultation (`origin_consultation_id`), and pre-filled with the same patient + reason "Contrôle suite consultation". Slot selection uses the same availability engine as Prise de RDV. The booked slot appears immediately in the agenda.
 9. **Before closing, M may adjust the invoice total** (line amounts, discount, supplements) — the editable draft reflects the live total. Patient premium discount (if any) pre-applied; mutuelle information surfaced for tiers-payant downstream (post-MVP).
 10. M signs → `Signée` (lock)
 11. On signature: PDFs generated, invoice draft persisted with the adjusted total, event notifies secretary. M may either issue/pay the invoice himself or leave it to SECRETAIRE / ASSISTANT.

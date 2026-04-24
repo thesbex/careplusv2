@@ -8,6 +8,7 @@ import java.util.Map;
 import ma.careplus.identity.application.AccountLockedException;
 import ma.careplus.identity.application.InvalidCredentialsException;
 import ma.careplus.identity.application.InvalidTokenException;
+import org.springframework.security.access.AccessDeniedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -92,6 +93,18 @@ public class GlobalExceptionHandler {
         pd.setProperty("timestamp", OffsetDateTime.now());
         pd.setProperty("correlationId", MDC.get("correlationId"));
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ProblemDetail> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Accès refusé.");
+        pd.setType(URI.create("https://careplus.ma/errors/FORBIDDEN"));
+        pd.setTitle("FORBIDDEN");
+        pd.setInstance(URI.create(req.getRequestURI()));
+        pd.setProperty("code", "FORBIDDEN");
+        pd.setProperty("timestamp", OffsetDateTime.now());
+        pd.setProperty("correlationId", MDC.get("correlationId"));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);
     }
 
     @ExceptionHandler(Exception.class)
