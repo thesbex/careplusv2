@@ -2,6 +2,7 @@ package ma.careplus.identity.infrastructure.web;
 
 import jakarta.validation.Valid;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -93,11 +94,15 @@ public class AdminUserController {
                 """,
                 userId, req.email(), hash, req.firstName(), req.lastName(), req.phone(), now, now);
 
-        // Resolve role codes → role UUIDs in a single query.
+        // Resolve role codes → role UUIDs. IN (?, ?, ...) with dynamic placeholders
+        // — more portable than Postgres ANY(?) + Java String[] which depends on
+        // pgjdbc-specific array binding that varies across driver versions.
+        // Safe: placeholders are generated from COUNT only, never from user input.
+        String placeholders = String.join(",", Collections.nCopies(normalized.size(), "?"));
         List<UUID> roleIds = jdbc.query(
-                "SELECT id FROM identity_role WHERE code = ANY (?)",
+                "SELECT id FROM identity_role WHERE code IN (" + placeholders + ")",
                 (rs, i) -> (UUID) rs.getObject("id"),
-                (Object) normalized.toArray(new String[0]));
+                normalized.toArray());
 
         for (UUID roleId : roleIds) {
             jdbc.update("INSERT INTO identity_user_role (user_id, role_id) VALUES (?, ?)",
