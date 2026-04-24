@@ -16,6 +16,7 @@ import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.MoveAppointmentRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,9 +37,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class SchedulingController {
 
     private final SchedulingService service;
+    private final JdbcTemplate jdbc;
 
-    public SchedulingController(SchedulingService service) {
+    public SchedulingController(SchedulingService service, JdbcTemplate jdbc) {
         this.service = service;
+        this.jdbc = jdbc;
     }
 
     // ── Appointments ───────────────────────────────────────────────
@@ -62,7 +65,40 @@ public class SchedulingController {
             @RequestParam UUID practitionerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
-        return service.listInWindow(practitionerId, from, to).stream().map(this::toView).toList();
+        return jdbc.query("""
+                SELECT a.id, a.patient_id, p.first_name, p.last_name,
+                       a.practitioner_id, a.reason_id, r.label AS reason_label,
+                       a.type, a.origin_consultation_id,
+                       a.start_at, a.end_at, a.status, a.cancel_reason,
+                       a.walk_in, a.urgency, a.arrived_at, a.created_at, a.updated_at
+                FROM scheduling_appointment a
+                JOIN patient_patient p ON p.id = a.patient_id
+                LEFT JOIN scheduling_appointment_reason r ON r.id = a.reason_id
+                WHERE a.practitioner_id = ?
+                  AND a.start_at >= ?
+                  AND a.start_at <  ?
+                  AND a.status NOT IN ('ANNULE','NO_SHOW')
+                ORDER BY a.start_at
+                """,
+                (rs, i) -> new AppointmentView(
+                        (UUID) rs.getObject("id"),
+                        (UUID) rs.getObject("patient_id"),
+                        rs.getString("first_name") + " " + rs.getString("last_name"),
+                        (UUID) rs.getObject("practitioner_id"),
+                        (UUID) rs.getObject("reason_id"),
+                        rs.getString("reason_label"),
+                        rs.getString("type"),
+                        (UUID) rs.getObject("origin_consultation_id"),
+                        rs.getObject("start_at", OffsetDateTime.class),
+                        rs.getObject("end_at", OffsetDateTime.class),
+                        rs.getString("status"),
+                        rs.getString("cancel_reason"),
+                        rs.getBoolean("walk_in"),
+                        rs.getBoolean("urgency"),
+                        rs.getObject("arrived_at", OffsetDateTime.class),
+                        rs.getObject("created_at", OffsetDateTime.class),
+                        rs.getObject("updated_at", OffsetDateTime.class)),
+                practitionerId, from, to);
     }
 
     @PutMapping("/appointments/{id}")
@@ -110,8 +146,12 @@ public class SchedulingController {
         return new AppointmentView(
                 a.getId(),
                 a.getPatientId(),
+                null,
                 a.getPractitionerId(),
                 a.getReasonId(),
+                null,
+                a.getType() != null ? a.getType().name() : "CONSULTATION",
+                a.getOriginConsultationId(),
                 a.getStartAt(),
                 a.getEndAt(),
                 a.getStatus().name(),

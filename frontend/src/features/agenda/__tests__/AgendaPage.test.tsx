@@ -1,9 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import AgendaPage from '../AgendaPage';
+import { APPOINTMENTS, ARRIVALS, WEEK_DAYS } from '../fixtures';
+
+vi.mock('../hooks/useAppointments', () => ({
+  useWeekAppointments: () => ({
+    days: WEEK_DAYS,
+    appointments: APPOINTMENTS,
+    arrivals: ARRIVALS,
+    isLoading: false,
+    error: null,
+  }),
+}));
 
 function renderAgenda() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
