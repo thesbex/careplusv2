@@ -2,11 +2,19 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
+import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import LoginPage from '../LoginPage';
+
+function renderLogin() {
+  const router = createMemoryRouter([{ path: '/login', element: <LoginPage /> }], {
+    initialEntries: ['/login'],
+  });
+  return render(<RouterProvider router={router} />);
+}
 
 describe('<LoginPage />', () => {
   it('renders the bilingual hero + form with the right copy', () => {
-    render(<LoginPage />);
+    renderLogin();
 
     // Hero
     expect(screen.getByText('careplus')).toBeInTheDocument();
@@ -32,7 +40,7 @@ describe('<LoginPage />', () => {
 
   it('toggles password visibility when the eye button is clicked', async () => {
     const user = userEvent.setup();
-    render(<LoginPage />);
+    renderLogin();
 
     const password = screen.getByLabelText('Mot de passe') as HTMLInputElement;
     expect(password.type).toBe('password');
@@ -47,7 +55,7 @@ describe('<LoginPage />', () => {
   });
 
   it('has no accessibility violations', async () => {
-    const { container } = render(<LoginPage />);
+    const { container } = renderLogin();
     const results = await axe(container);
     expect(results).toHaveNoViolations();
   });
