@@ -19,6 +19,14 @@ function Lbl({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', marginBottom: 4 }}>{children}</div>;
 }
 
+function sanitizeName(v: string) {
+  return v.replace(/[^a-zA-ZÀ-ÿ؀-ۿ\s'\-]/g, '');
+}
+
+function isValidName(v: string) {
+  return /^[a-zA-ZÀ-ÿ؀-ۿ\s'\-]{2,}$/.test(v.trim());
+}
+
 function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
@@ -237,8 +245,12 @@ function NewPatientPanel({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      setValidationError('Prénom et nom sont obligatoires.');
+    if (!isValidName(form.firstName)) {
+      setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
+      return;
+    }
+    if (!isValidName(form.lastName)) {
+      setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
       return;
     }
     if (!form.phone.trim()) {
@@ -281,10 +293,10 @@ function NewPatientPanel({
         {/* Identity */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><Lbl>Prénom *</Lbl>
-            <Input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Mohamed" autoFocus />
+            <Input value={form.firstName} onChange={(e) => set('firstName', sanitizeName(e.target.value))} placeholder="Mohamed" autoFocus />
           </div>
           <div><Lbl>Nom *</Lbl>
-            <Input value={form.lastName} onChange={(e) => set('lastName', e.target.value)} placeholder="Alami" />
+            <Input value={form.lastName} onChange={(e) => set('lastName', sanitizeName(e.target.value))} placeholder="Alami" />
           </div>
         </div>
 

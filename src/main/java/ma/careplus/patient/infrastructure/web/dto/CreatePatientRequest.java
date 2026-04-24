@@ -8,14 +8,14 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record CreatePatientRequest(
-        @NotBlank @Size(max = 64) String firstName,
-        @NotBlank @Size(max = 64) String lastName,
+        @NotBlank @Size(min = 2, max = 64) @Pattern(regexp = "[\\p{L}\\s'\\-]+", message = "Prénom invalide") String firstName,
+        @NotBlank @Size(min = 2, max = 64) @Pattern(regexp = "[\\p{L}\\s'\\-]+", message = "Nom invalide") String lastName,
         @Pattern(regexp = "M|F|O", message = "gender must be M, F or O")
         @Size(max = 8)
         String gender,
         LocalDate birthDate,
         @Size(max = 32) String cin,
-        @NotBlank @Size(max = 32) @Pattern(regexp = "[\\d\\s+\\-().]{6,32}", message = "Numéro de téléphone invalide") String phone,
+        @Size(max = 32) @Pattern(regexp = "[\\d\\s+\\-().]{6,32}", message = "Numéro de téléphone invalide") String phone,
         @Size(max = 32) String emergencyPhone,
         @Email @Size(max = 255) String email,
         @Size(max = 512) String address,
