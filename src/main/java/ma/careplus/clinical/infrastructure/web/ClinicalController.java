@@ -2,6 +2,7 @@ package ma.careplus.clinical.infrastructure.web;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.clinical.application.ConsultationService;
@@ -109,6 +110,25 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ConsultationView get(@PathVariable UUID id) {
         return toView(consultationService.get(id));
+    }
+
+    @GetMapping("/consultations")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<ConsultationView> list(
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID practitionerId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false) UUID patientId,
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime from,
+            @org.springframework.web.bind.annotation.RequestParam(required = false)
+            @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME)
+            OffsetDateTime to,
+            Authentication auth) {
+        if (patientId != null) {
+            return consultationService.listForPatient(patientId).stream().map(this::toView).toList();
+        }
+        UUID pid = practitionerId != null ? practitionerId : UUID.fromString(auth.getName());
+        return consultationService.listForPractitioner(pid, from, to).stream().map(this::toView).toList();
     }
 
     @PutMapping("/consultations/{id}")

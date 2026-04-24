@@ -73,6 +73,22 @@ public class ConsultationService {
                         "CONSULT_NOT_FOUND", "Consultation introuvable : " + id));
     }
 
+    @Transactional(readOnly = true)
+    public java.util.List<Consultation> listForPractitioner(UUID practitionerId,
+                                                            OffsetDateTime from,
+                                                            OffsetDateTime to) {
+        if (from != null && to != null) {
+            return consultationRepository
+                    .findByPractitionerIdAndStartedAtBetweenOrderByStartedAtDesc(practitionerId, from, to);
+        }
+        return consultationRepository.findByPractitionerIdOrderByStartedAtDesc(practitionerId);
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.List<Consultation> listForPatient(UUID patientId) {
+        return consultationRepository.findByPatientIdOrderByStartedAtDesc(patientId);
+    }
+
     public Consultation update(UUID id, UpdateConsultationRequest req) {
         Consultation c = get(id);
         if (c.isSigned()) {
