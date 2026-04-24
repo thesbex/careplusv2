@@ -91,11 +91,12 @@ export function useWeekAppointments(weekOffset = 0): {
   todayKey: DayKey | null;
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 } {
   const userId = useAuthStore((s) => s.user?.id);
   const { from, to, days, weekLabel, todayKey } = weekWindow(weekOffset);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['appointments', userId, from],
     queryFn: () =>
       api
@@ -115,5 +116,6 @@ export function useWeekAppointments(weekOffset = 0): {
     todayKey,
     isLoading,
     error: error ? 'Impossible de charger l\'agenda.' : null,
+    refetch,
   };
 }
