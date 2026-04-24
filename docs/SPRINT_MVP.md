@@ -77,12 +77,14 @@ Goal: a working **full-stack** application — backend exercisable via Swagger +
 ### J3 — patient module (backend) + dossier screen (frontend parallel)
 
 **Backend:**
-- [ ] Entities: `Patient`, `Allergy`, `Antecedent`
+- [ ] Entities: `Patient` (with `tier` NORMAL/PREMIUM, `hasMutuelle`, `insuranceId`, `insurancePolicyNumber`), `Allergy`, `Antecedent` (with `category` enum — 17 values across 6 clinical groups, ADR-023), `PatientNote`
 - [ ] `POST /api/patients`, `GET /api/patients/{id}`, `GET /api/patients?q=...` (search), `PUT /api/patients/{id}`, `DELETE /api/patients/{id}` (soft)
-- [ ] `POST /api/patients/{id}/allergies`, `POST /api/patients/{id}/antecedents`
+- [ ] `POST /api/patients/{id}/allergies`, `POST /api/patients/{id}/antecedents` (required `category`)
+- [ ] `POST /api/patients/{id}/notes`, `GET /api/patients/{id}/notes` — free-form médecin notes, timestamped, authored (MEDECIN only)
+- [ ] `PUT /api/patients/{id}/tier` (MEDECIN/ADMIN), `PUT /api/patients/{id}/mutuelle` (S/A/M/ADMIN)
 - [ ] Search: full-text on last_name + first_name + phone + cin (Postgres tsvector + btree index)
-- [ ] Integration test: CRUD happy path + search
-- [ ] Permission rules applied via `@PreAuthorize`
+- [ ] Integration test: CRUD happy path + search + tier change + mutuelle change + antecedent per category + patient note authored and visible
+- [ ] Permission rules applied via `@PreAuthorize` (tier/notes MEDECIN-gated)
 - [ ] Backend regression checkpoint
 
 **Frontend (parallel):**
@@ -116,15 +118,16 @@ Goal: a working **full-stack** application — backend exercisable via Swagger +
 ### J5 — presence + clinical pt1 (backend) + salle/constantes/consultation (frontend parallel)
 
 **Backend:**
+- [ ] Flyway V003: `user.can_start_consultation` flag (ADR-023)
 - [ ] `POST /api/appointments/{id}/check-in`
 - [ ] `GET /api/queue?role=ASSISTANT` returns current queue (polling endpoint)
 - [ ] `POST /api/appointments/{id}/vitals` records `VitalSigns`
 - [ ] `GET /api/patients/{id}/vitals` returns history
-- [ ] `POST /api/consultations` starts consultation (state `Brouillon`)
+- [ ] `POST /api/consultations` starts consultation (state `Brouillon`) — allowed for MEDECIN always, and for SECRETAIRE/ASSISTANT iff `user.canStartConsultation = true` (ADR-023). Clinical content (diagnosis/prescription/sign) MEDECIN-only regardless.
 - [ ] `PUT /api/consultations/{id}` updates draft
-- [ ] `POST /api/consultations/{id}/sign` transitions to `Signée` (locks)
+- [ ] `POST /api/consultations/{id}/sign` transitions to `Signée` (locks) — MEDECIN only
 - [ ] Signing emits `ConsultationSigneeEvent` (listeners added J6/J7)
-- [ ] Integration test: walk the full flow check-in → vitals → consultation → sign
+- [ ] Integration test: (a) full flow check-in → vitals → consultation → sign; (b) habilitated S starts consultation but is 403 on sign/prescribe; (c) non-habilitated S is 403 on start
 - [ ] Backend regression checkpoint
 
 **Frontend (parallel):**
@@ -138,9 +141,12 @@ Goal: a working **full-stack** application — backend exercisable via Swagger +
 ### J6 — catalog + prescription + PDF (backend) + prescription + ordonnance (frontend parallel)
 
 **Backend:**
-- [ ] Entities: `Medication`, `LabTest`, `ImagingExam`, `Act`, `Tariff`
+- [ ] Entities: `Medication`, `LabTest`, `ImagingExam`, `Act`, `Tariff` (historicized: `effective_from` / `effective_to`, per-tier rows NORMAL/PREMIUM — ADR-023)
 - [ ] `GET /api/catalog/medications?q=...`
 - [ ] `POST /api/catalog/medications` (add to personal catalog)
+- [ ] `GET /api/catalog/acts`, `POST /api/catalog/acts`, `PUT /api/catalog/acts/{id}`, `DELETE /api/catalog/acts/{id}` — MEDECIN/ADMIN (capability `MANAGE_TARIFFS`)
+- [ ] `POST /api/catalog/acts/{id}/tariffs` creates a new historical tariff row (closes the previous via `effective_to`)
+- [ ] `GET /api/catalog/acts/{id}/tariffs?at=YYYY-MM-DD` resolves effective tariff per tier
 - [ ] Entities: `Prescription`, `PrescriptionLine`
 - [ ] `POST /api/consultations/{id}/prescriptions` (type: DRUG / LAB / IMAGING / CERT / SICK_LEAVE)
 - [ ] Allergy cross-check: blocking 422 if medication matches a patient allergy, override via explicit flag + audit
@@ -160,13 +166,15 @@ Goal: a working **full-stack** application — backend exercisable via Swagger +
 ### J7 — billing (backend) + facturation + facture (frontend parallel)
 
 **Backend:**
-- [ ] Entities: `Invoice`, `InvoiceLine`, `Payment`, `CreditNote`
-- [ ] On `ConsultationSigneeEvent` → draft invoice auto-created
-- [ ] `GET /api/invoices/{id}`, `PUT /api/invoices/{id}` (edit draft), `GET /api/invoices?status=...`
-- [ ] `POST /api/invoices/{id}/issue` → atomic sequential number assignment + immutable PDF
+- [ ] Entities: `Invoice`, `InvoiceLine`, `Payment`, `CreditNote`, `ConfigPatientTier` (premium discount percent or fixed — ADR-023)
+- [ ] On `ConsultationSigneeEvent` → draft invoice auto-created with the médecin-adjusted total from the consultation. Lines resolved from acts at `signed_at` effective tariff for the patient's tier. Premium discount applied (per-act tariff row wins; else `ConfigPatientTier` default).
+- [ ] Mutuelle info (insurance + policy number) copied from patient to invoice at draft time for printing; tiers-payant emission stays post-MVP.
+- [ ] `GET /api/invoices/{id}`, `PUT /api/invoices/{id}` (edit draft — S/A/M), `GET /api/invoices?status=...`
+- [ ] `PUT /api/consultations/{id}/invoice-total` — médecin-only endpoint to adjust the draft total during WF4 step 9 (before sign)
+- [ ] `POST /api/invoices/{id}/issue` → atomic sequential number assignment + immutable PDF — S/M (not A)
 - [ ] `POST /api/invoices/{id}/payments` records a payment
 - [ ] `POST /api/invoices/{id}/credit-note` issues a credit note
-- [ ] Integration test: consultation signed → invoice created → issue → pay → credit note
+- [ ] Integration test: (a) consultation signed → invoice created → issue → pay → credit note; (b) premium patient gets discounted total; (c) médecin adjusts total pre-sign and the adjusted value is persisted on the draft; (d) historicized tariff — invoicing a past consultation uses the tariff effective at `signed_at`, not today's
 - [ ] Backend regression checkpoint
 
 **Frontend (parallel):**

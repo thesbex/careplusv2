@@ -5,6 +5,8 @@ import AgendaRoute from '@/features/agenda';
 import DossierRoute from '@/features/dossier-patient';
 import SalleAttenteRoute from '@/features/salle-attente';
 import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
+import PriseConstantesRoute from '@/features/prise-constantes';
+import ConsultationRoute from '@/features/consultation';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
@@ -87,7 +89,31 @@ export const router = createBrowserRouter(
       ),
     },
     {
+      path: '/constantes/:appointmentId',
+      element: (
+        <RequireAuth>
+          <PriseConstantesRoute />
+        </RequireAuth>
+      ),
+    },
+    {
       path: '/consultations',
+      element: (
+        <RequireAuth>
+          <ConsultationRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/consultations/:id',
+      element: (
+        <RequireAuth>
+          <ConsultationRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/_unused_placeholder_consult',
       element: (
         <RequireAuth>
           <Placeholder
