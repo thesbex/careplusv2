@@ -13,7 +13,7 @@
 import type { CSSProperties } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Heart, Thermo, Signal, Warn } from '@/components/icons';
@@ -34,7 +34,8 @@ const largeInputStyle: CSSProperties = {
 
 export default function PriseConstantesMobilePage() {
   const navigate = useNavigate();
-  const { submit, isPending } = useRecordVitals();
+  const { appointmentId } = useParams<{ appointmentId?: string }>();
+  const { submit, isPending } = useRecordVitals(appointmentId);
 
   const {
     register,

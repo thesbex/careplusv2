@@ -7,7 +7,7 @@
  * TODO(backend:J5): swap useConsultation to real TanStack Query once
  *   GET /api/consultations/:id and PUT /api/consultations/:id ship.
  */
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -21,7 +21,8 @@ import './consultation.css';
 
 export default function ConsultationPage() {
   const navigate = useNavigate();
-  const { patient, session } = useConsultation();
+  const { id } = useParams<{ id?: string }>();
+  const { patient, session } = useConsultation(id);
 
   return (
     <Screen

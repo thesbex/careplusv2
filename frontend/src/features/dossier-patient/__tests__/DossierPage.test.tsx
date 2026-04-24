@@ -1,10 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import DossierPage from '../DossierPage';
+import { PATIENT_MOHAMED_ALAMI } from '../fixtures';
+
+vi.mock('../hooks/usePatient', () => ({
+  usePatient: () => ({ patient: PATIENT_MOHAMED_ALAMI, isLoading: false, error: null }),
+}));
 
 function renderDossier(path = '/patients/PT-00482') {
   const qc = new QueryClient({

@@ -44,8 +44,18 @@ const QUICK_ACTIONS = [
 export default function DossierMobilePage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { patient } = usePatient(id);
+  const { patient, isLoading } = usePatient(id);
   const [tab, setTab] = useState<MobileDossierTab>('historique');
+
+  if (isLoading || !patient) {
+    return (
+      <MScreen tab="patients" onTabChange={(t) => navigate({ agenda: '/agenda', salle: '/salle', patients: '/patients', factu: '/facturation', menu: '/parametres' }[t])} topbar={<MTopbar title="Dossier patient" />}>
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
+          {isLoading ? 'Chargement…' : 'Patient introuvable.'}
+        </div>
+      </MScreen>
+    );
+  }
 
   return (
     <MScreen

@@ -1,9 +1,3 @@
-/**
- * Screen 03 — Dossier patient (desktop).
- * Ported from design/prototype/screens/dossier-patient.jsx.
- * Backend dependency: J3 patient module — currently uses fixtures via usePatient.
- * TODO(backend:J3): swap usePatient to real TanStack Query once GET /api/patients/:id ships.
- */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
@@ -18,8 +12,26 @@ import './dossier-patient.css';
 export default function DossierPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { patient } = usePatient(id);
+  const { patient, isLoading, error } = usePatient(id);
   const [tab, setTab] = useState<DossierTab>('timeline');
+
+  if (isLoading) {
+    return (
+      <Screen active="patients" title="Patients" sub="Chargement…" onNavigate={() => {}}>
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du dossier…</div>
+      </Screen>
+    );
+  }
+
+  if (error || !patient) {
+    return (
+      <Screen active="patients" title="Patients" sub="Erreur" onNavigate={() => {}}>
+        <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>
+          {error ?? 'Patient introuvable.'}
+        </div>
+      </Screen>
+    );
+  }
 
   return (
     <Screen
