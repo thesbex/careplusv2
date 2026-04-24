@@ -8,6 +8,7 @@ import SalleAttenteRoute from '@/features/salle-attente';
 import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
 import ConsultationRoute from '@/features/consultation';
+import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfPage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import CongesPage from '@/features/parametres/CongesPage';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
@@ -111,6 +112,14 @@ export const router = createBrowserRouter(
       element: (
         <RequireAuth>
           <ConsultationRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/prescriptions/:id',
+      element: (
+        <RequireAuth>
+          <OrdonnancePdfPage />
         </RequireAuth>
       ),
     },
