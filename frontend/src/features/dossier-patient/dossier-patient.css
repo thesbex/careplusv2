@@ -1,0 +1,29 @@
+/*
+ * Dossier patient styles (screen 03).
+ * Ported from inline styles in design/prototype/screens/dossier-patient.jsx.
+ * Only screen-specific rules live here; shared tokens come from styles/tokens.css,
+ * primitives from styles/primitives.css.
+ */
+
+/* ── Radix Tabs trigger focus ring ─────────────────────── */
+.dp-tab-list [data-radix-collection-item]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/* ── Timeline grid ──────────────────────────────────────── */
+.dp-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  overflow: hidden;
+}
+
+/* ── Summary panel scroll ───────────────────────────────── */
+.dp-summary {
+  border-left: 1px solid var(--border);
+  background: var(--surface-2);
+  overflow: auto;
+  padding: 16px;
+}
