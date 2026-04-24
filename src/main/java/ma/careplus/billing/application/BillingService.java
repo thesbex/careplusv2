@@ -229,6 +229,11 @@ public class BillingService {
     }
 
     @Transactional(readOnly = true)
+    public List<Invoice> getInvoicesForPatient(UUID patientId) {
+        return invoiceRepository.findByPatientId(patientId);
+    }
+
+    @Transactional(readOnly = true)
     public List<InvoiceLine> getLinesForInvoice(UUID invoiceId) {
         return invoiceLineRepository.findByInvoiceIdOrderByPosition(invoiceId);
     }

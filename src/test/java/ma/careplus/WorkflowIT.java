@@ -275,8 +275,13 @@ class WorkflowIT {
         assertThat(appointmentId).isNotBlank();
 
         // ── WF2: Check-in ─────────────────────────────────────────────────────
-        // Advance appointment time to today so check-in is valid
-        jdbc.update("UPDATE scheduling_appointment SET start_at = now() - interval '5 minutes', end_at = now() + interval '25 minutes' WHERE id = ?::uuid",
+        // Advance appointment time to 10:00 *today* so check-in is valid and the
+        // queue filter (start_at >= today 00:00) always includes it. Using a
+        // fixed offset from today's date avoids a midnight edge case where
+        // "now() - interval '5 min'" falls into yesterday between 00:00 and 00:05.
+        jdbc.update(
+                "UPDATE scheduling_appointment SET start_at = date_trunc('day', now()) + interval '10 hours', "
+                        + "end_at = date_trunc('day', now()) + interval '10 hours 30 minutes' WHERE id = ?::uuid",
                 appointmentId);
 
         post("/api/appointments/" + appointmentId + "/check-in", "", secToken, HttpStatus.NO_CONTENT);

@@ -20,6 +20,22 @@ export function useInvoices(status?: InvoiceStatus | 'ALL') {
   };
 }
 
+export function useInvoicesForPatient(patientId?: string) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['invoices', 'patient', patientId],
+    queryFn: () =>
+      api.get<InvoiceApi[]>('/invoices', { params: { patientId } }).then((r) => r.data),
+    enabled: !!patientId,
+    staleTime: 10_000,
+  });
+
+  return {
+    invoices: data ?? [],
+    isLoading,
+    error: error ? 'Impossible de charger les factures.' : null,
+  };
+}
+
 export function useInvoice(id?: string) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['invoice', id],

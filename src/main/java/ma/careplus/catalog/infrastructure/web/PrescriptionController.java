@@ -67,6 +67,14 @@ public class PrescriptionController {
                 .toList();
     }
 
+    @GetMapping("/api/patients/{patientId}/prescriptions")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<PrescriptionResponse> getPrescriptionsForPatient(@PathVariable UUID patientId) {
+        return prescriptionService.getPrescriptionsByPatient(patientId).stream()
+                .map(p -> toResponse(p, prescriptionService.getLinesForPrescription(p.getId())))
+                .toList();
+    }
+
     @GetMapping("/api/prescriptions/{id}")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public PrescriptionResponse getPrescription(@PathVariable UUID id) {

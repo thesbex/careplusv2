@@ -15,12 +15,16 @@ import {
 } from './hooks/useUpdatePatient';
 import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
 import { useConsultations } from '@/features/consultation/hooks/useConsultations';
+import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
+import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
+import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { PatientHeader, AllergyStrip } from './components/PatientHeader';
 import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SummaryPanel } from './components/SummaryPanel';
 import type { DossierTab } from './types';
 import './dossier-patient.css';
+import '@/features/facturation/facturation.css';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -410,6 +414,8 @@ export default function DossierPage() {
   const { consultations: patientConsultations } = useConsultations(
     raw?.id ? { patientId: raw.id } : {},
   );
+  const { prescriptions: patientPrescriptions } = usePrescriptionsForPatient(raw?.id);
+  const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
 
   async function handleNewConsultation() {
     if (!raw) return;
@@ -558,7 +564,72 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="prescr">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>22 prescriptions — à venir J6</div>
+            <div style={{ padding: '20px 24px' }}>
+              {patientPrescriptions.length === 0 ? (
+                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
+                  Aucune prescription enregistrée pour ce patient.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {patientPrescriptions.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => navigate(`/prescriptions/${p.id}`)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 14px',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        background: 'var(--surface)',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {p.type === 'DRUG'
+                            ? 'Ordonnance médicaments'
+                            : p.type === 'LAB'
+                            ? "Bon d'analyses"
+                            : p.type === 'IMAGING'
+                            ? "Bon d'imagerie"
+                            : (p.type ?? 'Document')}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
+                          {new Date(p.issuedAt).toLocaleString('fr-MA', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                          {' · '}
+                          {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                        </div>
+                      </div>
+                      {p.allergyOverride && (
+                        <span
+                          style={{
+                            fontSize: 11,
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                            background: 'var(--amber-soft)',
+                            color: 'var(--amber)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          override allergie
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </DossierTabPanel>
           <DossierTabPanel value="analyses">
             <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>9 analyses — à venir</div>
@@ -570,7 +641,70 @@ export default function DossierPage() {
             <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>7 documents — à venir</div>
           </DossierTabPanel>
           <DossierTabPanel value="factu">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>14 factures — à venir J7</div>
+            <div style={{ padding: '20px 24px' }}>
+              {patientInvoices.length === 0 ? (
+                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
+                  Aucune facture pour ce patient.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {patientInvoices.map((inv) => {
+                    const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+                    return (
+                      <button
+                        key={inv.id}
+                        type="button"
+                        onClick={() => navigate('/facturation')}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          padding: '12px 14px',
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          background: 'var(--surface)',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
+                            {inv.number ?? `BR-${inv.id.slice(0, 8).toUpperCase()}`}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
+                            {new Date(inv.issuedAt ?? inv.createdAt).toLocaleDateString('fr-MA')}
+                            {' · '}
+                            {inv.netAmount.toFixed(2).replace('.', ',')} MAD
+                            {paid > 0 && (
+                              <>
+                                {' · encaissé '}
+                                {paid.toFixed(2).replace('.', ',')} MAD
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span
+                          className={`fa-status-pill ${
+                            inv.status === 'BROUILLON'
+                              ? 'brouillon'
+                              : inv.status === 'EMISE'
+                              ? 'emise'
+                              : inv.status === 'PAYEE_PARTIELLE'
+                              ? 'partielle'
+                              : inv.status === 'PAYEE_TOTALE'
+                              ? 'totale'
+                              : 'annulee'
+                          }`}
+                        >
+                          {INVOICE_STATUS_LABEL[inv.status]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </DossierTabPanel>
         </DossierTabs>
 
