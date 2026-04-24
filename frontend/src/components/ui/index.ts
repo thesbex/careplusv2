@@ -8,3 +8,6 @@ export type { PillStatus } from './Pill';
 export { Panel, PanelHeader } from './Panel';
 export { Avatar } from './Avatar';
 export type { AvatarSize } from './Avatar';
+
+export { BrandMark } from './BrandMark';
+export type { BrandMarkSize, BrandMarkTone } from './BrandMark';

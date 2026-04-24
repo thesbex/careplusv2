@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { Eye, Lock } from '@/components/icons';
 import './login.css';
 
@@ -19,7 +20,7 @@ export default function LoginPage() {
       <div className="login-hero">
         <div className="login-hero-grid" aria-hidden="true" />
         <div className="login-hero-brand">
-          <div className="login-hero-mark">c</div>
+          <BrandMark size="lg" tone="inverted" />
           <span className="login-hero-name">careplus</span>
         </div>
 
