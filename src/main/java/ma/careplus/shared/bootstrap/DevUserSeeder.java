@@ -1,6 +1,6 @@
 package ma.careplus.shared.bootstrap;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,7 +63,7 @@ public class DevUserSeeder implements ApplicationRunner {
                     (id, email, password_hash, first_name, last_name, phone, enabled, failed_attempts, version, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, TRUE, 0, 0, ?, ?)
                 """,
-                userId, email, hash, firstName, lastName, phone, Instant.now(), Instant.now());
+                userId, email, hash, firstName, lastName, phone, OffsetDateTime.now(), OffsetDateTime.now());
         for (UUID roleId : roleIds) {
             jdbc.update("INSERT INTO identity_user_role (user_id, role_id) VALUES (?, ?)", userId, roleId);
         }
