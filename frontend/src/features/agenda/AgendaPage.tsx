@@ -8,26 +8,38 @@ import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Phone, Plus } from '@/components/icons';
 import { AgendaToolbar } from './components/AgendaToolbar';
+import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { TodayArrivals } from './components/TodayArrivals';
 import { useWeekAppointments } from './hooks/useAppointments';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
-import type { Appointment } from './types';
+import type { Appointment, DayKey } from './types';
 import './agenda.css';
+
+const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+
+function currentDayKey(): DayKey {
+  const dow = new Date().getDay();
+  return dow === 0 ? 'lun' : (DAY_KEYS[dow - 1] ?? 'lun');
+}
 
 export default function AgendaPage() {
   const navigate = useNavigate();
-  const { days, appointments, arrivals } = useWeekAppointments();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [view, setView] = useState<AgendaView>('semaine');
+  const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
+  const { days, appointments, arrivals, weekLabel, todayKey } = useWeekAppointments(weekOffset);
   const [, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
+
+  const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
 
   return (
     <>
     <Screen
       active="agenda"
       title="Agenda"
-      sub="Semaine 17 · Avr 2026"
-      pageDate="Jeudi 23 avril 2026 · 09:47"
+      sub={weekLabel}
       topbarRight={
         <>
           <Button>
@@ -51,8 +63,18 @@ export default function AgendaPage() {
         navigate(map[id]);
       }}
     >
-      <AgendaToolbar />
-      <AgendaGrid days={days} appointments={appointments} onSelect={setSelected} />
+      <AgendaToolbar
+        view={view}
+        onViewChange={(v) => { setView(v); if (v === 'jour' && !selectedDay) setSelectedDay(currentDayKey()); }}
+        weekLabel={weekLabel}
+        onPrev={() => view === 'jour' ? setSelectedDay((k) => { const i = DAY_KEYS.indexOf(k); return i > 0 ? (DAY_KEYS[i - 1] ?? k) : (setWeekOffset((o) => o - 1), DAY_KEYS[DAY_KEYS.length - 1] ?? k); }) : setWeekOffset((o) => o - 1)}
+        onNext={() => view === 'jour' ? setSelectedDay((k) => { const i = DAY_KEYS.indexOf(k); return i < DAY_KEYS.length - 1 ? (DAY_KEYS[i + 1] ?? k) : (setWeekOffset((o) => o + 1), DAY_KEYS[0] ?? k); }) : setWeekOffset((o) => o + 1)}
+        onToday={() => { setWeekOffset(0); setSelectedDay(currentDayKey()); }}
+        selectedDay={selectedDay}
+        days={days}
+        onDayChange={setSelectedDay}
+      />
+      <AgendaGrid days={visibleDays} appointments={appointments} onSelect={setSelected} {...(todayKey ? { today: todayKey } : {})} />
     </Screen>
     {showRDV && <PriseRDVDialog open={showRDV} onOpenChange={setShowRDV} />}
     </>

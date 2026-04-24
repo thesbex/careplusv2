@@ -100,7 +100,6 @@ function AllergyRow({
   onChange: (index: number, next: AllergyEntry) => void;
   onRemove: (index: number) => void;
 }) {
-  const colors = SEVERITY_COLORS[entry.severity];
   return (
     <div style={{
       border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
