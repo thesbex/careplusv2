@@ -48,6 +48,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // API + actuator — public endpoints
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/info",
@@ -57,9 +58,26 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
+                                "/api/admin/bootstrap",
                                 "/error")
                             .permitAll()
-                        .anyRequest().authenticated())
+                        // SPA — serve the React bundle + its assets anonymously.
+                        // Client-side <RequireAuth> gates protected routes; real
+                        // data still requires a JWT on /api/**.
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/favicon.ico",
+                                "/assets/**",
+                                "/static/**")
+                            .permitAll()
+                        // API + actuator — every other /api/** and /actuator/** is authenticated
+                        .requestMatchers("/api/**", "/actuator/**")
+                            .authenticated()
+                        // Anything else = SPA deep-link (e.g. /agenda, /dossier/:id).
+                        // SpaFallbackController forwards these to index.html; permit so
+                        // Spring Security doesn't 401 them before the forward happens.
+                        .anyRequest().permitAll())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint(problemJsonAuthEntryPoint())
                         .accessDeniedHandler(problemJsonAccessDeniedHandler()))
