@@ -1,0 +1,98 @@
+/*
+ * careplus design tokens
+ * Ported verbatim from design/prototype/styles.css:5–51 on 2026-04-24.
+ * Do not hardcode hex, font stacks, or radii anywhere else — always use these variables.
+ * See design/prototype/DESIGN_SYSTEM.md §2–§4 for the full rationale.
+ */
+
+@import '@fontsource/inter-tight/300.css';
+@import '@fontsource/inter-tight/400.css';
+@import '@fontsource/inter-tight/500.css';
+@import '@fontsource/inter-tight/600.css';
+@import '@fontsource/inter-tight/700.css';
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+:root {
+  /* ── Surface & ink ──────────────────────────── */
+  --bg: #f7f5f1;
+  --bg-alt: #efebe3;
+  --surface: #ffffff;
+  --surface-2: #fbfaf7;
+  --ink: #1a1a1a;
+  --ink-2: #3d3d3d;
+  --ink-3: #6b6b6b;
+  --ink-4: #9b9b9b;
+  --border: #e8e4dc;
+  --border-strong: #d6d0c3;
+  --border-soft: #efebe3;
+
+  /* ── Brand (Clinical Blue) ──────────────────── */
+  --primary: #1e5aa8;
+  --primary-hover: #174585;
+  --primary-soft: #e4edf8;
+  --primary-ink: #ffffff;
+
+  /* ── Semantic ───────────────────────────────── */
+  --amber: #b8500c;
+  --amber-soft: #fbeadb;
+  --danger: #a8321e;
+  --danger-soft: #f5e1dc;
+  --success: #3f7a3a;
+  --success-soft: #e1ecde;
+
+  /* ── Patient-status palette (pills only) ────── */
+  --status-arrived: #c7dcee;
+  --status-arrived-ink: #1c4b75;
+  --status-waiting: #f1e1a5;
+  --status-waiting-ink: #7a5b10;
+  --status-vitals: #e8d4c3;
+  --status-vitals-ink: #7a3f10;
+  --status-consult: #c9d9ee;
+  --status-consult-ink: #1e5aa8;
+  --status-done: #d8d8d2;
+  --status-done-ink: #4a4a42;
+
+  /* ── Typography ─────────────────────────────── */
+  --font-sans: 'Inter Tight', ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-serif: 'Instrument Serif', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ── Radii ──────────────────────────────────── */
+  --r-xs: 3px;
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01', 'tnum';
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Utility classes from the prototype (kept as-is) */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: normal;
+}
+.serif {
+  font-family: var(--font-serif);
+}

@@ -95,6 +95,62 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 **Choice**: Identifiers, columns, packages in English. Error messages, domain enums' display labels, PDF templates in French. I18n bundle ready for Arabic v2.
 **Consequence**: Clean contributor ramp-up, Moroccan user experience preserved.
 
+## ADR-014 — Frontend brought into MVP scope; React 18 over Angular 17
+**Date**: 2026-04-24
+**Status**: accepted, supersedes the Angular 17 + PrimeNG entry that was in `BACKLOG.md`
+**Context**: A hi-fi React/JSX prototype of all 13 screens (desktop + mobile) was delivered from Claude Design (preserved in `design/prototype/`). Porting JSX → TSX is line-for-line work; porting JSX → Angular components is a full rewrite with new bug surface. PrimeNG's theming would fight our hand-built Clinical Blue token system. Casablanca dev hiring pool skews React.
+**Choice**: React 18 + Vite + TypeScript strict, targeting a static SPA bundle served by Spring Boot (or Nginx) on-prem. Scope: `frontend/` directory, MVP days J8–J10 (after backend J7). See `docs/FRONTEND.md` for the full stack and defended rejections.
+**Consequence**: MVP grows from 7 days to 10. On exit, `v0.1.0-mvp` tag covers full-stack workflow, not just backend. Angular option sunset.
+
+## ADR-015 — Vanilla CSS + custom properties over Tailwind / CSS-in-JS
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: The prototype is authored in vanilla CSS with `--primary`, `--status-arrived`, `--r-md`, etc. — ~600 lines of tokenized CSS across `styles.css` and `mobile-styles.css`. Porting those to Tailwind class soup or runtime CSS-in-JS is net-negative work: we lose the already-correct tokens, gain no features we need, and risk drift from the design source.
+**Choice**: Keep vanilla CSS with custom properties. Copy the two CSS files to `frontend/src/styles/`, split into `tokens.css` (variables), `desktop.css`, `mobile.css`. No Tailwind, no Emotion, no styled-components, no vanilla-extract.
+**Consequence**: Dead simple theming (swap a variable, everything updates). Zero runtime style cost. Global class names require discipline (`.cp-app`, `.m-*` prefixes already enforce this).
+
+## ADR-016 — Headless primitives (Radix UI) over component kits (MUI/Mantine/Chakra/PrimeReact)
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Component kits ship their own design system — the time spent overriding them to reach Clinical Blue would exceed the time to build primitives that natively consume our tokens. Interactive a11y (focus trap, keyboard nav, ARIA) is hard to get right hand-rolled.
+**Choice**: Radix UI for interactive primitives that need a11y correctness (Dialog, DropdownMenu, Tabs, Tooltip, Popover). Hand-rolled Button/Pill/Panel/Field/Input/Avatar/AllergyChip because they're trivial and must match tokens exactly. Vaul for mobile bottom sheet. No Material / Mantine / Ant / Chakra / PrimeReact.
+**Consequence**: Bundle stays small (~50KB gz for the Radix bits we use). Our components look exactly like the prototype without fighting library opinions. If a future tablet or dashboard screen needs DataGrid-level complexity, we'll evaluate TanStack Table + more Radix rather than importing a kit.
+
+## ADR-017 — TanStack Query for server state; Zustand (auth only) for client state
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Need polling for `/api/queue` (salle d'attente refresh), optimistic updates for appointment-move and check-in, stale-while-revalidate for patient search. Also need auth user/roles available everywhere.
+**Choice**: TanStack Query v5 for all server-derived state (queries, mutations, polling, invalidation). Zustand for **auth only** — access token in memory, refresh in HttpOnly cookie, role list, current user identity. Everything else: React useState inside the component.
+**Consequence**: No Redux, no Context soup, no Jotai learning cost. TanStack Query's devtools give us debuggability; Zustand at 1KB is cheap and focused. If a future feature demands global client state (e.g. global notification center, collaborative editing), revisit.
+
+## ADR-019 — Refresh-token storage: HttpOnly cookie, access token in memory
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Login mints two tokens: a short-lived access token (15 min) used for API authorization, and a long-lived refresh token (7 days) used to rotate access tokens. Storage choice determines what an XSS attacker can steal. Medical data under Moroccan loi 9-88 means we cannot ship the easier-but-exposed option.
+**Choice**: Backend `POST /api/auth/login` returns `{accessToken}` in the JSON body AND sets `careplus_refresh` as an HttpOnly, Secure, SameSite=Strict cookie with path `/api/auth`. Frontend holds the access token in the Zustand auth store (memory only — lost on refresh, reacquired via `/api/auth/refresh` which reads the cookie). Never touches `localStorage` or `sessionStorage`.
+**Consequence**: XSS cannot exfiltrate the refresh token. A page reload triggers one silent refresh call. CSRF protection needed on `/api/auth/refresh` (SameSite=Strict suffices for modern browsers; double-submit cookie as belt-and-braces). On logout, backend clears the cookie and revokes server-side.
+
+## ADR-020 — Spring Boot serves the frontend bundle (single process on-prem)
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Cabinet deployments are one Windows machine, one install, one backup. Running Nginx + Spring Boot doubles the ops surface (two services to start, two to monitor, two to update) for no meaningful gain at 3–10 concurrent users.
+**Choice**: Vite's production build outputs to `frontend/dist/`. Maven's `frontend-maven-plugin` runs `npm ci && npm run build` during `mvn package`, then copies `frontend/dist/**` into `src/main/resources/static/` so Spring Boot's default static-resource handler serves them at `/`. SPA deep links handled by a Spring controller that forwards non-`/api/*` non-`/actuator/*` paths to `index.html`. In dev, Vite's dev server runs on `:5173` with `/api → :8080` proxy; no Spring involvement.
+**Consequence**: One `jar` ships the whole app. One `mvn spring-boot:run` gives a running stack. If a cloud deploy later wants Nginx in front, the static bundle is still buildable standalone. Build time increases by ~30s (npm install + build) — acceptable.
+
+## ADR-021 — Parallel-synchronized full-stack delivery (frontend pulls from backend)
+**Date**: 2026-04-24
+**Status**: accepted, supersedes the J8–J10 sequential frontend block previously in ADR-014
+**Context**: ADR-014 put frontend after backend (J8–J10, sequential). User preference (2026-04-24): frontend should ride alongside backend — as each backend feature ships, its matching screen ports and wires up immediately; if frontend catches up faster than backend, it pauses rather than racing ahead.
+**Choice**: Each sprint day J2–J7 owns BOTH a backend feature and the corresponding frontend screen(s). J8 becomes a thinner wrap-up day (Paramétrage + mobile parity sweep + E2E + tag). Frontend pauses are explicit — any screen whose backend dependency hasn't shipped yet is stubbed with a mock hook and marked `TODO(backend:Jx)`. Mobile and desktop are produced in the same pass per screen, not as separate phases.
+**Consequence**: MVP compresses 10 → 8 days. Each J_x checkpoint is an end-to-end demo of the day's feature, not just a backend test. Higher cognitive load per day (two tiers at once) but the integration pain is spread across the sprint rather than dumped at the end. Pause rule enforced by `frontend-module-scaffolder` checking for required endpoints before starting a slice.
+
+## ADR-018 — Frontend regression cadence: day-boundary only, not per-iteration
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Backend discipline is "run `mvn verify` after every module" because every Flyway migration + JPA change can break integration tests. Frontend is different — screens port independently, and running `npm test && npm run build` after every individual screen is friction without a matching risk.
+**Choice**: Full frontend suite (`npm run lint && npm test -- --run && npm run build`) runs only at J-day boundaries (end of J8 / J9 / J10) and before a commit that touches `frontend/**`. Per-screen: run only that screen's local test file + invoke `design-parity-auditor` (textual diff vs prototype). No full-suite invocation per screen.
+**Consequence**: Faster iteration during screen port. Discipline stays where it adds value (day boundaries, commits). Documented in `.claude/agents/regression-guard.md` and feedback memory.
+
 ---
 
 ## How to add an entry
