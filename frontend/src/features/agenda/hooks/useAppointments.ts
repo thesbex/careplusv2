@@ -4,7 +4,7 @@ import { useAuthStore } from '@/lib/auth/authStore';
 import { WEEK_DAYS as FIXTURE_DAYS } from '../fixtures';
 import type { Appointment, Arrival, WeekDay, DayKey, AppointmentStatus } from '../types';
 
-interface AppointmentApi {
+export interface AppointmentApi {
   id: string;
   patientId: string;
   patientFullName: string | null;
@@ -92,6 +92,7 @@ function adapt(a: AppointmentApi, days: WeekDay[]): Appointment {
 export function useWeekAppointments(weekOffset = 0): {
   days: WeekDay[];
   appointments: Appointment[];
+  rawAppointments: AppointmentApi[];
   arrivals: Arrival[];
   weekLabel: string;
   todayKey: DayKey | null;
@@ -117,6 +118,7 @@ export function useWeekAppointments(weekOffset = 0): {
   return {
     days,
     appointments: (data ?? []).map((a) => adapt(a, days)),
+    rawAppointments: data ?? [],
     arrivals: [],
     weekLabel,
     todayKey,
@@ -124,4 +126,31 @@ export function useWeekAppointments(weekOffset = 0): {
     error: error ? 'Impossible de charger l\'agenda.' : null,
     refetch,
   };
+}
+
+/**
+ * Fetches all appointments for a given calendar month (1st 00:00 → next month
+ * 1st 00:00). Used by the agenda month view.
+ */
+export function useMonthAppointments(year: number, month: number): {
+  appointments: AppointmentApi[];
+  isLoading: boolean;
+} {
+  const userId = useAuthStore((s) => s.user?.id);
+  const from = new Date(year, month, 1).toISOString();
+  const to = new Date(year, month + 1, 1).toISOString();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['appointments-month', userId, from],
+    queryFn: () =>
+      api
+        .get<AppointmentApi[]>(
+          `/appointments?practitionerId=${userId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+        )
+        .then((r) => r.data),
+    enabled: !!userId,
+    staleTime: 60_000,
+  });
+
+  return { appointments: data ?? [], isLoading };
 }

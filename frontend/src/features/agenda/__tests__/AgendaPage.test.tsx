@@ -10,12 +10,19 @@ vi.mock('../hooks/useAppointments', () => ({
   useWeekAppointments: () => ({
     days: WEEK_DAYS,
     appointments: APPOINTMENTS,
+    rawAppointments: [],
     arrivals: ARRIVALS,
     weekLabel: '21 – 26 avr. 2026',
     todayKey: 'jeu',
     isLoading: false,
     error: null,
+    refetch: () => Promise.resolve(),
   }),
+  useMonthAppointments: () => ({ appointments: [], isLoading: false }),
+}));
+
+vi.mock('@/features/parametres/hooks/useLeaves', () => ({
+  useLeaves: () => ({ leaves: [], isLoading: false, error: null }),
 }));
 
 function renderAgenda() {
