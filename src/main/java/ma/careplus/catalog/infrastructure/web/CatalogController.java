@@ -66,6 +66,66 @@ public class CatalogController {
                         rs.getString("kind")));
     }
 
+    public record LabTestView(UUID id, String code, String name, String category) {}
+
+    @GetMapping("/lab-tests")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<LabTestView> searchLabTests(
+            @RequestParam(required = false, defaultValue = "") String q) {
+        String trimmed = q == null ? "" : q.trim();
+        if (trimmed.isEmpty()) {
+            return jdbc.query(
+                    "SELECT id, code, name, category FROM catalog_lab_test "
+                            + "WHERE active = TRUE ORDER BY name LIMIT 20",
+                    (rs, i) -> new LabTestView(
+                            (UUID) rs.getObject("id"),
+                            rs.getString("code"),
+                            rs.getString("name"),
+                            rs.getString("category")));
+        }
+        String like = "%" + trimmed + "%";
+        return jdbc.query(
+                "SELECT id, code, name, category FROM catalog_lab_test "
+                        + "WHERE active = TRUE AND (name ILIKE ? OR code ILIKE ?) "
+                        + "ORDER BY name LIMIT 20",
+                (rs, i) -> new LabTestView(
+                        (UUID) rs.getObject("id"),
+                        rs.getString("code"),
+                        rs.getString("name"),
+                        rs.getString("category")),
+                like, like);
+    }
+
+    public record ImagingExamView(UUID id, String code, String name, String modality) {}
+
+    @GetMapping("/imaging-exams")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<ImagingExamView> searchImagingExams(
+            @RequestParam(required = false, defaultValue = "") String q) {
+        String trimmed = q == null ? "" : q.trim();
+        if (trimmed.isEmpty()) {
+            return jdbc.query(
+                    "SELECT id, code, name, modality FROM catalog_imaging_exam "
+                            + "WHERE active = TRUE ORDER BY modality, name LIMIT 20",
+                    (rs, i) -> new ImagingExamView(
+                            (UUID) rs.getObject("id"),
+                            rs.getString("code"),
+                            rs.getString("name"),
+                            rs.getString("modality")));
+        }
+        String like = "%" + trimmed + "%";
+        return jdbc.query(
+                "SELECT id, code, name, modality FROM catalog_imaging_exam "
+                        + "WHERE active = TRUE AND (name ILIKE ? OR code ILIKE ?) "
+                        + "ORDER BY modality, name LIMIT 20",
+                (rs, i) -> new ImagingExamView(
+                        (UUID) rs.getObject("id"),
+                        rs.getString("code"),
+                        rs.getString("name"),
+                        rs.getString("modality")),
+                like, like);
+    }
+
     // ── Acts ──────────────────────────────────────────────────────────────────
 
     @GetMapping("/acts")
