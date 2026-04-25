@@ -93,23 +93,41 @@ Format: `METHOD /path` — role required — short description.
 
 Note: `ConsultationSigneeEvent` listener automatically creates draft invoice (BROUILLON) with tier-based discount applied (NORMAL=0%, PREMIUM=10% per `config_patient_tier`).
 
-## configuration (J1 baseline, extended J7)
+## configuration / settings ✅ (étape 6)
 
-_Partially implemented in J1 (DB tables). Full CRUD endpoints deferred to post-MVP per scope boundary._
+- `GET /api/settings/clinic` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — single-row clinic identity. 200 if configured, 204 if not yet (first run).
+- `PUT /api/settings/clinic` — MEDECIN/ADMIN — upsert `{name, address, city, phone, email?, inpe?, cnom?, ice?, rib?}`.
+- `GET /api/settings/tiers` — all roles — list configured tier discounts (NORMAL=0%, PREMIUM=10% by default).
+- `PUT /api/settings/tiers/{tier}` — MEDECIN/ADMIN — upsert `{tier: NORMAL|PREMIUM, discountPercent}`. % in [0, 100]. Applied automatically by `BillingService` on consultation sign.
 
 Seeded defaults from V002:
 - Working hours: Mon–Fri 09:00–13:00 and 15:00–19:00, Sat 09:00–13:00 (Africa/Casablanca)
 - 16 Moroccan public holidays for 2026
-- 10 insurance providers (AMO CNSS/CNOPS + mutuelles)
+- 10 insurance providers (AMO CNSS/CNOPS + mutuelles), exposed via `/api/catalog/insurances`
 - 6 appointment reasons (PREMIERE, SUIVI, CERTIFICAT, VACCIN, URGENCE, RENOUVELLEMENT)
 - 5 document templates (ORDONNANCE, CERTIFICAT, BON_ANALYSE, BON_RADIO, FACTURE)
 - Invoice sequence initialized per year
+
+## Catalog reference reads (étapes 5.5a–d) ✅
+
+- `GET /api/catalog/insurances` — all roles — list active insurance providers `{id, code, name, kind: AMO|MUTUELLE|PRIVEE}`, sorted by kind/name.
+- `GET /api/catalog/lab-tests?q=` — all roles — search lab catalog (ILIKE name + code), top 20.
+- `GET /api/catalog/imaging-exams?q=` — all roles — search imaging catalog (ILIKE name + code), top 20.
+
+## Consultations list ✅ (étape 1.5)
+
+- `GET /api/consultations?practitionerId=&patientId=&from=&to=` — all roles — list consultations. Filters: practitioner (defaults to authenticated user), patient, date window.
+- `GET /api/patients/{patientId}/prescriptions` — all roles — all prescriptions for a patient (étape 4).
+
+## Queue payload extension ✅ (étape 7)
+
+`GET /api/queue` now returns `{appointmentId, patientId, patientFullName, scheduledAt, status, arrivedAt, hasAllergies, age, reasonLabel, practitionerName, durationMinutes, isPremium}`.
 
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)
 - `GET /actuator/info` — public — app info
-- `GET /v3/api-docs` — public — OpenAPI JSON (springdoc-openapi)
+- `GET /v3/api-docs` — public — OpenAPI JSON (springdoc-openapi). **Import this URL directly into Postman** to get a ready-made collection of every endpoint.
 - `GET /swagger-ui.html` — public — Swagger UI
 
 ## How to update this file
