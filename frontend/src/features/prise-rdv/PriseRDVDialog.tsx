@@ -142,6 +142,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
 
   async function handleSave() {
+    setValidationError(null);
     if (firstName.trim().length < 2 || lastName.trim().length < 2) {
       setValidationError('Prénom et nom requis (2 caractères min, lettres uniquement).');
       return;
@@ -171,13 +172,38 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
       });
       toast.success('Patient créé.');
       onCreated(created.id, `${created.firstName} ${created.lastName}`);
-    } catch {
-      toast.error('Création patient refusée.');
+    } catch (err) {
+      // Surface the real backend reason (CIN duplicate, validation message,
+      // etc.) instead of a vague "creation refused" toast that hides why
+      // the patient ends up not selected at confirm time.
+      const detail =
+        (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data
+          ?.message ??
+        (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data
+          ?.detail ??
+        (err as Error)?.message ??
+        'Création refusée par le serveur.';
+      setValidationError(detail);
+      toast.error('Création impossible', { description: detail });
+      // eslint-disable-next-line no-console
+      console.error('[NewPatientInline] create failed', err);
+    }
+  }
+
+  // Pressing Enter inside the mini-form must NOT submit the parent RDV form
+  // (which would surface "Veuillez sélectionner un patient" if the patient
+  // isn't created yet). Intercept Enter and trigger handleSave instead.
+  function onKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      e.stopPropagation();
+      void handleSave();
     }
   }
 
   return (
     <div
+      onKeyDown={onKeyDown}
       style={{
         marginTop: 8,
         padding: 14,
