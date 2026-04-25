@@ -78,6 +78,9 @@ public class PatientService {
         p.setBloodGroup(req.bloodGroup());
         if (req.numberChildren() != null) p.setNumberChildren(req.numberChildren());
         p.setNotes(req.notes());
+        if (req.tier() != null) p.setTier(req.tier());
+        if (req.mutuelleInsuranceId() != null) p.setMutuelleInsuranceId(req.mutuelleInsuranceId());
+        if (req.mutuellePolicyNumber() != null) p.setMutuellePoliceNumber(req.mutuellePolicyNumber());
         p.setStatus(PatientStatus.ACTIF);
         return patientRepository.save(p);
     }

@@ -84,6 +84,11 @@ export function PatientContextCard({ patient, vitals }: PatientContextCardProps)
         {patient.initials}
       </div>
       <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>
+        {patient.tier === 'PREMIUM' && (
+          <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
+            🌟
+          </span>
+        )}
         {patient.fullName}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>

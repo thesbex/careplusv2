@@ -13,5 +13,6 @@ public record PatientSummary(
         String cin,
         String phone,
         String city,
-        String status
+        String status,
+        String tier
 ) {}

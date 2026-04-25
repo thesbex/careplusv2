@@ -57,7 +57,8 @@ public class PatientMapper {
                 p.getCin(),
                 p.getPhone(),
                 p.getCity(),
-                p.getStatus().name());
+                p.getStatus().name(),
+                p.getTier());
     }
 
     public AllergyView toAllergyView(Allergy a) {

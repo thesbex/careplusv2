@@ -12,6 +12,9 @@ interface PatientViewApi {
   phone: string | null;
   email: string | null;
   bloodGroup: string | null;
+  tier?: string | null;
+  mutuelleInsuranceId?: string | null;
+  mutuellePoliceNumber?: string | null;
   allergies: { id: string; substance: string; severity: string; notes: string | null }[];
   antecedents: { id: string; type: string; description: string }[];
   createdAt: string;
@@ -27,7 +30,7 @@ function toAge(birthDate: string): number {
 }
 
 function adapt(v: PatientViewApi): PatientSummary {
-  return {
+  const summary: PatientSummary = {
     id: v.id,
     dossierNo: v.id.slice(0, 8).toUpperCase(),
     initials: `${v.firstName.charAt(0)}${v.lastName.charAt(0)}`.toUpperCase(),
@@ -41,6 +44,16 @@ function adapt(v: PatientViewApi): PatientSummary {
     bloodGroup: v.bloodGroup ?? '—',
     insurance: '—',
     allergies: v.allergies.map((a) => a.substance),
+    allergyDetails: v.allergies.map((a) => ({
+      id: a.id,
+      substance: a.substance,
+      severity: a.severity,
+    })),
+    antecedentDetails: v.antecedents.map((a) => ({
+      id: a.id,
+      type: a.type,
+      description: a.description,
+    })),
     allergyNotes: v.allergies.map((a) => a.notes).filter(Boolean).join('; '),
     antecedents: v.antecedents
       .filter((a) => a.type !== 'TRAITEMENT_CHRONIQUE')
@@ -59,6 +72,10 @@ function adapt(v: PatientViewApi): PatientSummary {
       { k: 'Date création', v: new Date(v.createdAt).toLocaleDateString('fr-MA') },
     ],
   };
+  if (v.tier === 'NORMAL' || v.tier === 'PREMIUM') summary.tier = v.tier;
+  if (v.mutuelleInsuranceId) summary.mutuelleInsuranceId = v.mutuelleInsuranceId;
+  if (v.mutuellePoliceNumber) summary.mutuellePolicyNumber = v.mutuellePoliceNumber;
+  return summary;
 }
 
 export type { PatientViewApi };

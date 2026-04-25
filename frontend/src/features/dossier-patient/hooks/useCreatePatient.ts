@@ -19,6 +19,8 @@ export interface AntecedentEntry {
   description: string;
 }
 
+export type PatientTier = 'NORMAL' | 'PREMIUM';
+
 export interface CreatePatientForm {
   firstName: string;
   lastName: string;
@@ -30,6 +32,10 @@ export interface CreatePatientForm {
   city: string;
   bloodGroup: string;
   notes: string;
+  tier: PatientTier;
+  hasMutuelle: boolean;
+  mutuelleInsuranceId: string;
+  mutuellePolicyNumber: string;
   allergies: AllergyEntry[];
   antecedents: AntecedentEntry[];
 }
@@ -56,6 +62,9 @@ export function useCreatePatient() {
         city: form.city || null,
         bloodGroup: form.bloodGroup || null,
         notes: form.notes || null,
+        tier: form.tier,
+        mutuelleInsuranceId: form.hasMutuelle ? form.mutuelleInsuranceId || null : null,
+        mutuellePolicyNumber: form.hasMutuelle ? form.mutuellePolicyNumber || null : null,
       });
 
       for (const allergy of form.allergies) {

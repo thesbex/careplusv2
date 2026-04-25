@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.UUID;
 
 public record CreatePatientRequest(
         @NotBlank @Size(min = 2, max = 64) @Pattern(regexp = "[\\p{L}\\s'\\-]+", message = "Prénom invalide") String firstName,
@@ -25,5 +26,8 @@ public record CreatePatientRequest(
         @Size(max = 128) String profession,
         @Size(max = 8) String bloodGroup,
         @PositiveOrZero Integer numberChildren,
-        String notes
+        String notes,
+        @Pattern(regexp = "NORMAL|PREMIUM", message = "tier must be NORMAL or PREMIUM") String tier,
+        UUID mutuelleInsuranceId,
+        @Size(max = 64) String mutuellePolicyNumber
 ) {}

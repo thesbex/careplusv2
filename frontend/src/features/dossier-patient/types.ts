@@ -46,7 +46,12 @@ export interface PatientSummary {
   email: string;
   bloodGroup: string;
   insurance: string;
+  tier?: 'NORMAL' | 'PREMIUM';
+  mutuelleInsuranceId?: string | null;
+  mutuellePolicyNumber?: string | null;
   allergies: string[];
+  allergyDetails?: { id: string; substance: string; severity: string }[];
+  antecedentDetails?: { id: string; type: string; description: string }[];
   allergyNotes: string;
   antecedents: string;
   chronicTreatment: string;

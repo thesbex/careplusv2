@@ -40,12 +40,22 @@ export function PatientHeader({
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.015em' }}>
+            {patient.tier === 'PREMIUM' && (
+              <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 6 }}>
+                🌟
+              </span>
+            )}
             {patient.fullName}
           </div>
           <Pill>
             ♂ {patient.sex} · {patient.age} ans
           </Pill>
           <Pill>CIN {patient.cin}</Pill>
+          {patient.tier === 'PREMIUM' && (
+            <Pill style={{ background: '#FFF3CD', color: '#7A5A00', borderColor: '#F0DA8C' }}>
+              Premium
+            </Pill>
+          )}
         </div>
         <div
           className="tnum"

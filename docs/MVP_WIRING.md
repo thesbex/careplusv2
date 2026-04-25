@@ -13,8 +13,13 @@ Read this first when resuming work. It is the source of truth for what is done, 
 | 2 | Prescription drawer + ordonnance PDF | ✅ DONE | `2bd795d` | `features/prescription/` slice; medication search; allergy override flow; iframe PDF preview |
 | 3 | Facturation list + drawer + aperçu | ✅ DONE | _next push_ | Liste filtrable + KPI cards, drawer (édit/issue/pay/credit-note), A4 print preview, "Ajuster total" wired in Consultation |
 | 4 | Dossier patient — onglets prescr / factu | ✅ DONE | _next push_ | Backend : `?patientId=` filter sur `/invoices` + `GET /api/patients/:id/prescriptions`. Frontend : tabs Prescriptions et Factures branchés sur `usePrescriptionsForPatient` / `useInvoicesForPatient`. Bonus : fix WorkflowIT midnight edge case (now()-5min → 10:00 today). |
-| 5 | Agenda interactions (clic RDV → drawer modifier/annuler) | ✅ DONE | _next push_ | Click block → AppointmentDrawer (Radix). Move (date/time/duration → PUT /appointments/:id), cancel (raison → DELETE), check-in. Toasts pour 409. Drag-to-move : skipped, post-MVP. |
-| 6 | Paramétrage + Onboarding | ⏳ NEXT | — | **Bloqué backend** : créer `SettingsController` + `GET/PUT /api/settings/clinic` |
+| 5 | Agenda interactions (clic RDV → drawer modifier/annuler) | ✅ DONE | `ba4b127` | Click block → AppointmentDrawer (Radix). Move/cancel/check-in. Drag-to-move : post-MVP. |
+| 5.5a | QA-fix : patient mutuelle + tier Premium + ATCD visibles + 🌟 | ✅ DONE | _next push_ | Backend : `CreatePatientRequest` accepte `tier`/`mutuelleInsuranceId`/`mutuellePolicyNumber` ; nouveau `GET /api/catalog/insurances` ; `PatientSummary` retourne `tier`. Frontend : section Type patient (Normal/Premium) + section Mutuelle dans le panneau création ; `usePatient` propage `allergyDetails`/`antecedentDetails`/`tier`/`mutuelle*` ; `SummaryPanel` affiche maintenant Allergies + Antécédents + Couverture en lecture directe ; étoile 🌟 dans liste, dossier, consultation. |
+| 5.5b | QA-fix : RDV nouveau patient (mini-form inline) | ⏳ NEXT | — | Bouton "Nouveau patient" dans `PriseRDVDialog` doit ouvrir un mini-form qui POSTe `/patients` puis sélectionne le patient créé. |
+| 5.5c | QA-fix : référentiels (médicaments, analyses, imagerie) seedés | ⏳ | — | Étendre `R__seed_dev.sql` à ~200 médicaments DCI Maroc, ~100 analyses NABM, ~50 imageries. |
+| 5.5d | QA-fix : prescription distincte par type (LAB / IMAGING) | ⏳ | — | Backend : `GET /catalog/lab-tests?q=` + `GET /catalog/imaging-exams?q=`. Frontend : `PrescriptionDrawer` choisit le hook search en fonction du `type`. |
+| 5.5e | QA-fix : agenda vue mois + congés affichés | ⏳ | — | `<MonthGrid>` calendrier 6×7 + overlay grisé des congés sur week + day. |
+| 6 | Paramétrage + Onboarding | ⏳ | — | **Bloqué backend** : `SettingsController` + édition `config_patient_tier` + CRUD référentiels. |
 | 7 | Queue enrichi (`age`, `reasonLabel`, `practitionerName`) | ⏳ | — | Cosmétique, retire les placeholders `0 ans` / `—` |
 | 8 | Playwright E2E + Postman + tag `v0.1.0-mvp` | ⏳ | — | 3 specs : RDV, consultation+sign+PDF, invoice |
 
