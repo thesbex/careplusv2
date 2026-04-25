@@ -12,7 +12,7 @@ import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfPage';
 import FacturationPage from '@/features/facturation/FacturationPage';
 import ApercuFacturePage from '@/features/facturation/ApercuFacturePage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
-import CongesPage from '@/features/parametres/CongesPage';
+import ParametragePage from '@/features/parametres/ParametragePage';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -158,7 +158,7 @@ export const router = createBrowserRouter(
       path: '/parametres',
       element: (
         <RequireAuth>
-          <CongesPage />
+          <ParametragePage />
         </RequireAuth>
       ),
     },
