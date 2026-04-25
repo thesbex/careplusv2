@@ -1,0 +1,105 @@
+# careplus — production / self-hosted compose stack.
+#
+# Use case 1: démo sur un VPS (OVH Scaleway Hetzner) sans Render.
+# Use case 2: cible finale = installation on-premise au cabinet (ADR cabinet).
+#
+# Le même artefact (image careplus:x.y.z) tourne ici ET en cloud serverless.
+# Voir docs/DEPLOY_DOCKER_IMAGE.md pour les providers qui prennent une image.
+#
+# Lancement :
+#   1. Construire / pull l'image :
+#        docker build -t careplus:local .
+#      ou (depuis un registry) :
+#        docker pull ghcr.io/<owner>/careplus:0.1.0
+#   2. Créer un .env.prod à partir de .env.prod.example
+#   3. docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Backup : le service `pgbackup` dump tous les jours à 02:00 Casablanca dans
+# ./backups/ — à cron-uploader vers OVH Object Storage Casablanca pour la
+# stratégie hybride définie dans CLAUDE.md.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: careplus-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-careplus}
+      POSTGRES_USER: ${POSTGRES_USER:-careplus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+      TZ: Africa/Casablanca
+      PGTZ: Africa/Casablanca
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Pas de port exposé sur l'hôte en prod : seul le réseau interne
+    # `careplus-net` peut joindre Postgres.
+    networks:
+      - careplus-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-careplus} -d ${POSTGRES_DB:-careplus}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    # Pull une version taggée d'un registry, ou build local si absent.
+    image: ${CAREPLUS_IMAGE:-careplus:local}
+    container_name: careplus-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod-cloud
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-careplus}
+      DATABASE_USER: ${POSTGRES_USER:-careplus}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      CAREPLUS_JWT_SECRET: ${CAREPLUS_JWT_SECRET:?CAREPLUS_JWT_SECRET required (openssl rand -hex 32)}
+      # Surcharge le default du Dockerfile si tu donnes plus de RAM au cabinet.
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+UseSerialGC -XX:+ExitOnOutOfMemoryError -Duser.timezone=Africa/Casablanca}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    networks:
+      - careplus-net
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # Dump quotidien de la base vers ./backups/ (rotation 7 jours).
+  # À synchroniser ensuite vers OVH Object Storage Casablanca (cron host
+  # ou rclone) — c'est la moitié "off-site" de la stratégie hybride.
+  pgbackup:
+    image: postgres:16-alpine
+    container_name: careplus-pgbackup
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-careplus}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-careplus}
+      TZ: Africa/Casablanca
+    volumes:
+      - ./backups:/backups
+    networks:
+      - careplus-net
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "0 2 * * * pg_dump -Fc -f /backups/careplus-$$(date +\%Y\%m\%d-\%H\%M).dump && find /backups -name 'careplus-*.dump' -mtime +7 -delete" > /etc/crontabs/root
+        crond -f -d 8
+
+volumes:
+  postgres-data:
+    name: careplus-postgres-prod-data
+
+networks:
+  careplus-net:
+    name: careplus-net
+    driver: bridge

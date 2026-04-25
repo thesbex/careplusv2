@@ -14,11 +14,13 @@ import { Field, FieldLabel } from '@/components/ui/Field';
 import { Select, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Close, Search, Plus } from '@/components/icons';
+import { toast } from 'sonner';
 import { usePatientSearch } from './hooks/usePatientSearch';
 import { useReasons } from './hooks/useReasons';
 import { useAvailability } from './hooks/useAvailability';
 import { useMonthAvailability } from './hooks/useMonthAvailability';
 import { useCreateAppointment } from './hooks/useCreateAppointment';
+import { useCreatePatient } from '@/features/dossier-patient/hooks/useCreatePatient';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
@@ -120,6 +122,173 @@ function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, avail
   );
 }
 
+// ── Inline new patient mini-form ──────────────────────────────────────────────
+
+interface NewPatientInlineProps {
+  onCreated: (id: string, name: string) => void;
+  onCancel: () => void;
+}
+
+function sanitizeName(v: string) {
+  return v.replace(/[^a-zA-ZÀ-ÿ؀-ۿ\s'\-]/g, '');
+}
+
+function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
+  const { create, isPending } = useCreatePatient();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [gender, setGender] = useState<'M' | 'F' | 'O'>('M');
+  const [phone, setPhone] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (firstName.trim().length < 2 || lastName.trim().length < 2) {
+      setValidationError('Prénom et nom requis (2 caractères min, lettres uniquement).');
+      return;
+    }
+    if (!phone.trim() || !/^[\d\s+\-().]{6,20}$/.test(phone.trim())) {
+      setValidationError('Téléphone requis (6-20 chiffres).');
+      return;
+    }
+    try {
+      const created = await create({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        gender,
+        birthDate: '',
+        cin: '',
+        phone: phone.trim(),
+        email: '',
+        city: '',
+        bloodGroup: '',
+        notes: '',
+        tier: 'NORMAL',
+        hasMutuelle: false,
+        mutuelleInsuranceId: '',
+        mutuellePolicyNumber: '',
+        allergies: [],
+        antecedents: [],
+      });
+      toast.success('Patient créé.');
+      onCreated(created.id, `${created.firstName} ${created.lastName}`);
+    } catch {
+      toast.error('Création patient refusée.');
+    }
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        padding: 14,
+        border: '1px solid var(--primary)',
+        background: 'var(--primary-soft)',
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--primary)' }}>
+        Nouveau patient — informations minimales
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <input
+          placeholder="Prénom *"
+          value={firstName}
+          onChange={(e) => {
+            setFirstName(sanitizeName(e.target.value));
+            setValidationError(null);
+          }}
+          style={{
+            height: 34,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '0 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            background: 'var(--surface)',
+          }}
+          autoFocus
+        />
+        <input
+          placeholder="Nom *"
+          value={lastName}
+          onChange={(e) => {
+            setLastName(sanitizeName(e.target.value));
+            setValidationError(null);
+          }}
+          style={{
+            height: 34,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '0 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            background: 'var(--surface)',
+          }}
+        />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, marginBottom: 8 }}>
+        <select
+          value={gender}
+          onChange={(e) => setGender(e.target.value as 'M' | 'F' | 'O')}
+          style={{
+            height: 34,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '0 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            background: 'var(--surface)',
+          }}
+        >
+          <option value="M">Homme</option>
+          <option value="F">Femme</option>
+          <option value="O">Autre</option>
+        </select>
+        <input
+          placeholder="Téléphone *"
+          value={phone}
+          onChange={(e) => {
+            setPhone(e.target.value.replace(/[^\d\s+\-().]/g, ''));
+            setValidationError(null);
+          }}
+          inputMode="tel"
+          style={{
+            height: 34,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '0 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            background: 'var(--surface)',
+          }}
+        />
+      </div>
+      {validationError && (
+        <div style={{ color: 'var(--danger)', fontSize: 11.5, marginBottom: 8 }}>
+          {validationError}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <Button type="button" size="sm" onClick={onCancel}>
+          Annuler
+        </Button>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          disabled={isPending}
+          onClick={() => void handleSave()}
+        >
+          {isPending ? 'Création…' : 'Créer & sélectionner'}
+        </Button>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto', alignSelf: 'center' }}>
+          Vous pourrez compléter le dossier plus tard.
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ── Dialog ────────────────────────────────────────────────────────────────────
 
 export interface PriseRDVDialogProps {
@@ -133,6 +302,7 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
   const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
   const [patientError, setPatientError] = useState<string | null>(null);
+  const [showNewPatientForm, setShowNewPatientForm] = useState(false);
 
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, '0');
@@ -264,15 +434,32 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
                         aria-label="Rechercher un patient"
                         autoFocus
                       />
-                      <Button size="sm" type="button">
-                        <Plus /> Nouveau
+                      <Button
+                        size="sm"
+                        type="button"
+                        onClick={() => setShowNewPatientForm((v) => !v)}
+                      >
+                        <Plus /> {showNewPatientForm ? 'Fermer' : 'Nouveau'}
                       </Button>
                     </div>
+
+                    {showNewPatientForm && (
+                      <NewPatientInline
+                        onCreated={(id, name) => {
+                          setSelectedPatientId(id);
+                          setSelectedPatientName(name);
+                          setShowNewPatientForm(false);
+                          setPatientError(null);
+                          setValue('patientQuery', '');
+                        }}
+                        onCancel={() => setShowNewPatientForm(false)}
+                      />
+                    )}
 
                     {patientError && (
                       <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{patientError}</div>
                     )}
-                    {candidates.length > 0 && (
+                    {!showNewPatientForm && candidates.length > 0 && (
                       <div className="prise-rdv-candidates" role="listbox" aria-label="Résultats patients">
                         {candidates.map((s) => (
                           <button
