@@ -14,5 +14,10 @@ public record QueueEntryView(
         OffsetDateTime scheduledAt,
         String status,
         OffsetDateTime arrivedAt,
-        boolean hasAllergies
+        boolean hasAllergies,
+        Integer age,
+        String reasonLabel,
+        String practitionerName,
+        Integer durationMinutes,
+        boolean isPremium
 ) {}

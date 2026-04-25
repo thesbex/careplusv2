@@ -10,6 +10,11 @@ interface QueueEntryApi {
   status: string;
   arrivedAt: string | null;
   hasAllergies: boolean;
+  age: number | null;
+  reasonLabel: string | null;
+  practitionerName: string | null;
+  durationMinutes: number | null;
+  isPremium: boolean;
 }
 
 const STATUS_MAP: Record<string, QueueEntry['status']> = {
@@ -42,8 +47,11 @@ function adapt(e: QueueEntryApi): QueueEntry {
     status: STATUS_MAP[e.status] ?? 'arrived',
     waited: toWaited(e.arrivedAt),
     room: '—',
-    age: 0,
-    reason: '',
+    age: e.age ?? 0,
+    reason: e.reasonLabel ?? '',
+    practitionerName: e.practitionerName ?? null,
+    durationMinutes: e.durationMinutes ?? null,
+    isPremium: e.isPremium,
   };
   if (e.hasAllergies) entry.allergy = 'Allergie';
   return entry;

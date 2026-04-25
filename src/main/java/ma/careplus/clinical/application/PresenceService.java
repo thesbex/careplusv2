@@ -1,7 +1,9 @@
 package ma.careplus.clinical.application;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.Period;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
@@ -72,23 +74,48 @@ public class PresenceService {
 
         return jdbc.query("""
                 SELECT a.id, a.patient_id, p.first_name, p.last_name,
-                       a.start_at, a.status, a.arrived_at,
+                       p.birth_date, p.tier,
+                       a.start_at, a.end_at, a.status, a.arrived_at,
+                       r.label AS reason_label,
+                       u.first_name AS prac_first, u.last_name AS prac_last,
                        EXISTS (SELECT 1 FROM patient_allergy al WHERE al.patient_id = a.patient_id) AS has_allergies
                 FROM scheduling_appointment a
                 JOIN patient_patient p ON p.id = a.patient_id
+                LEFT JOIN scheduling_appointment_reason r ON r.id = a.reason_id
+                LEFT JOIN identity_user u ON u.id = a.practitioner_id
                 WHERE a.start_at >= ?
                   AND a.start_at <  ?
                   AND a.status IN ('ARRIVE','EN_ATTENTE_CONSTANTES','CONSTANTES_PRISES','EN_CONSULTATION')
                 ORDER BY a.start_at
                 """,
-                (rs, i) -> new QueueEntryView(
-                        (UUID) rs.getObject("id"),
-                        (UUID) rs.getObject("patient_id"),
-                        rs.getString("first_name") + " " + rs.getString("last_name"),
-                        rs.getObject("start_at", OffsetDateTime.class),
-                        rs.getString("status"),
-                        rs.getObject("arrived_at", OffsetDateTime.class),
-                        rs.getBoolean("has_allergies")),
+                (rs, i) -> {
+                    LocalDate birth = rs.getObject("birth_date", LocalDate.class);
+                    Integer age = birth != null ? Period.between(birth, today).getYears() : null;
+                    OffsetDateTime startAt = rs.getObject("start_at", OffsetDateTime.class);
+                    OffsetDateTime endAt = rs.getObject("end_at", OffsetDateTime.class);
+                    Integer duration = (startAt != null && endAt != null)
+                            ? (int) Duration.between(startAt, endAt).toMinutes()
+                            : null;
+                    String pracFirst = rs.getString("prac_first");
+                    String pracLast = rs.getString("prac_last");
+                    String pracName = (pracFirst != null && pracLast != null)
+                            ? ("Dr. " + pracFirst + " " + pracLast)
+                            : null;
+                    String tier = rs.getString("tier");
+                    return new QueueEntryView(
+                            (UUID) rs.getObject("id"),
+                            (UUID) rs.getObject("patient_id"),
+                            rs.getString("first_name") + " " + rs.getString("last_name"),
+                            startAt,
+                            rs.getString("status"),
+                            rs.getObject("arrived_at", OffsetDateTime.class),
+                            rs.getBoolean("has_allergies"),
+                            age,
+                            rs.getString("reason_label"),
+                            pracName,
+                            duration,
+                            "PREMIUM".equals(tier));
+                },
                 from, to);
     }
 }

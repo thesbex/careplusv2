@@ -49,6 +49,11 @@ export function QueueRow({
           <Avatar initials={initials(p.name)} size="sm" />
           <div>
             <div className="sa-patient-name">
+              {p.isPremium && (
+                <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
+                  🌟
+                </span>
+              )}
               {p.name}
               {p.allergy && (
                 <Pill status="allergy" className="sa-allergy-chip">
@@ -57,14 +62,23 @@ export function QueueRow({
               )}
             </div>
             <div className="sa-patient-meta">
-              {p.age ? `${p.age} ans` : '—'}
-              {p.reason ? ` · ${p.reason}` : ''}
+              {p.age > 0 ? `${p.age} ans` : ''}
+              {p.age > 0 && p.reason ? ' · ' : ''}
+              {p.reason}
+              {!p.age && !p.reason && '—'}
             </div>
           </div>
         </div>
       </td>
 
-      <td className="sa-td tnum">{p.apt}</td>
+      <td className="sa-td tnum">
+        {p.apt}
+        {p.durationMinutes ? (
+          <span style={{ color: 'var(--ink-3)', fontWeight: 400, marginLeft: 4 }}>
+            ({p.durationMinutes}min)
+          </span>
+        ) : null}
+      </td>
       <td className="sa-td tnum">{p.arrived}</td>
 
       <td

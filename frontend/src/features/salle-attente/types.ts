@@ -30,6 +30,12 @@ export interface QueueEntry {
   age: number;
   /** Visit reason / motif. */
   reason: string;
+  /** Practitioner display name (Dr. xxx). */
+  practitionerName?: string | null;
+  /** Slot duration in minutes (from start_at..end_at). */
+  durationMinutes?: number | null;
+  /** Whether the patient is on the PREMIUM tier (renders 🌟). */
+  isPremium?: boolean;
 }
 
 /** An upcoming appointment — not yet arrived. */
