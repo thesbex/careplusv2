@@ -12,6 +12,8 @@ export interface AuthUser {
   firstName: string;
   lastName: string;
   roles: string[];
+  /** Granted permission codes (QA3-3). Empty array on legacy backends. */
+  permissions?: string[];
 }
 
 interface AuthState {
@@ -23,6 +25,7 @@ interface AuthState {
   clear: () => void;
   isAuthenticated: () => boolean;
   hasRole: (role: string) => boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -34,4 +37,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   clear: () => set({ accessToken: null, user: null }),
   isAuthenticated: () => !!get().accessToken,
   hasRole: (role: string) => get().user?.roles.includes(role) ?? false,
+  hasPermission: (permission: string) => get().user?.permissions?.includes(permission) ?? false,
 }));

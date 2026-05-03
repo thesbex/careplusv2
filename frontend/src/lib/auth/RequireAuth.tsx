@@ -33,6 +33,34 @@ export function RequireRole({ roles, children }: { roles: string[]; children: Re
   return <>{children}</>;
 }
 
+/**
+ * Restricts a route to users that hold the given permission code.
+ * Bounces to /agenda when missing, /login when not authenticated.
+ * QA3-3 v1: enforced at frontend only — backend hot path still uses
+ * hardcoded role checks.
+ */
+export function RequirePermission({
+  permission,
+  children,
+}: {
+  permission: string;
+  children: ReactNode;
+}) {
+  const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  // Backward-compat: legacy sessions (`/users/me` not yet returning
+  // permissions) keep the old role-based behaviour. The check kicks in only
+  // once the backend starts populating the field.
+  if (userPerms != null && !userPerms.includes(permission)) {
+    return <Navigate to="/agenda" replace />;
+  }
+  return <>{children}</>;
+}
+
 /** For /login and /onboarding — if you're already authenticated, bounce to /agenda. */
 export function GuestOnly({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);

@@ -2,7 +2,7 @@
  * Screen 13 — Paramétrage (desktop).
  * 4 onglets : Cabinet (settings) / Tarifs (tier discounts) / Utilisateurs / Congés.
  */
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
@@ -19,6 +19,13 @@ import {
   type ClinicSettingsForm,
 } from './hooks/useSettings';
 import { useUsers, useCreateUser, useDeactivateUser } from './hooks/useUsers';
+import {
+  useRolePermissions,
+  useUpdateRolePermissions,
+  type PermissionFlag,
+  type RoleCode,
+  type RolePermissionRow,
+} from './hooks/useRolePermissions';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { useLeaves } from './hooks/useLeaves';
 import { useCreateLeave } from './hooks/useCreateLeave';
@@ -34,13 +41,14 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'utilisateurs' | 'conges';
+type Tab = 'cabinet' | 'tarifs' | 'utilisateurs' | 'conges' | 'droits';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'cabinet', label: 'Cabinet' },
   { id: 'tarifs', label: 'Tarifs' },
   { id: 'utilisateurs', label: 'Utilisateurs' },
   { id: 'conges', label: 'Congés' },
+  { id: 'droits', label: 'Droits d’accès' },
 ];
 
 const EMPTY_FORM: ClinicSettingsForm = {
@@ -585,6 +593,127 @@ function CongesTab() {
   );
 }
 
+// ── Droits d'accès tab (QA3-3 v1) ─────────────────────────────────────────────
+
+const PERMISSIONS: { code: string; label: string; category: string }[] = [
+  { code: 'PATIENT_CREATE',     label: 'Créer / modifier un patient',           category: 'Patients' },
+  { code: 'PATIENT_READ',       label: 'Consulter les détails d’un patient',    category: 'Patients' },
+  { code: 'APPOINTMENT_READ',   label: 'Consulter le planning',                 category: 'Rendez-vous' },
+  { code: 'APPOINTMENT_CREATE', label: 'Créer un rendez-vous',                  category: 'Rendez-vous' },
+  { code: 'ARRIVAL_DECLARE',    label: 'Déclarer l’arrivée d’un patient',       category: 'Salle d’attente' },
+  { code: 'VITALS_RECORD',      label: 'Prendre les constantes (poids, tension…)', category: 'Salle d’attente' },
+  { code: 'INVOICE_READ',       label: 'Accéder au module facturation',         category: 'Facturation' },
+  { code: 'INVOICE_ISSUE',      label: 'Émettre / encaisser une facture',       category: 'Facturation' },
+];
+
+const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [
+  { code: 'SECRETAIRE', label: 'Secrétaire', readOnly: false },
+  { code: 'ASSISTANT',  label: 'Assistant(e)', readOnly: false },
+  { code: 'MEDECIN',    label: 'Médecin',    readOnly: true },
+  { code: 'ADMIN',      label: 'Administrateur', readOnly: true },
+];
+
+function DroitsTab() {
+  const { rows, isLoading, error } = useRolePermissions();
+  const { update, isPending } = useUpdateRolePermissions();
+
+  // Build a quick lookup: roleCode -> { permission -> granted }
+  const matrix = new Map<string, Map<string, boolean>>();
+  for (const r of ROLES) matrix.set(r.code, new Map());
+  for (const row of rows as RolePermissionRow[]) {
+    matrix.get(row.roleCode)?.set(row.permission, row.granted);
+  }
+
+  async function toggle(roleCode: RoleCode, permission: string, current: boolean) {
+    const flag: PermissionFlag = { permission, granted: !current };
+    try {
+      await update({ roleCode, permissions: [flag] });
+      toast.success('Droits mis à jour.');
+    } catch (err) {
+      const problem = toProblemDetail(err);
+      toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
+    }
+  }
+
+  const grouped = new Map<string, typeof PERMISSIONS>();
+  for (const p of PERMISSIONS) {
+    if (!grouped.has(p.category)) grouped.set(p.category, []);
+    grouped.get(p.category)!.push(p);
+  }
+
+  return (
+    <Panel>
+      <PanelHeader>
+        <span>Droits d’accès par rôle</span>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
+          MEDECIN / ADMIN ne sont pas modifiables — accès total par défaut.
+        </span>
+      </PanelHeader>
+      <div style={{ padding: 16, overflowX: 'auto' }}>
+        {error && (
+          <div style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{error}</div>
+        )}
+        {isLoading ? (
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
+                  Fonctionnalité
+                </th>
+                {ROLES.map((r) => (
+                  <th key={r.code} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600, textAlign: 'center', minWidth: 100 }}>
+                    {r.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...grouped.entries()].map(([cat, perms]) => (
+                <Fragment key={cat}>
+                  <tr>
+                    <td colSpan={ROLES.length + 1} style={{ padding: '10px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {cat}
+                    </td>
+                  </tr>
+                  {perms.map((p) => (
+                    <tr key={p.code}>
+                      <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
+                        {p.label}
+                      </td>
+                      {ROLES.map((r) => {
+                        const granted = matrix.get(r.code)?.get(p.code) ?? false;
+                        return (
+                          <td key={r.code} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={granted}
+                              disabled={r.readOnly || isPending}
+                              onChange={() => void toggle(r.code, p.code, granted)}
+                              aria-label={`${p.label} pour ${r.label}`}
+                              style={{ width: 16, height: 16, cursor: r.readOnly ? 'not-allowed' : 'pointer' }}
+                            />
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
+          Note v1 — la matrice contrôle l’affichage des écrans / actions côté frontend.
+          Les endpoints backend appliquent encore les rôles fixes (le verrouillage final
+          arrive dans la refonte RBAC complète, voir BACKLOG.md).
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ParametragePage() {
@@ -637,6 +766,7 @@ export default function ParametragePage() {
         {tab === 'tarifs' && <TarifsTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
+        {tab === 'droits' && <DroitsTab />}
       </div>
     </Screen>
   );

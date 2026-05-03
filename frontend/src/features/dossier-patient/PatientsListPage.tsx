@@ -215,6 +215,7 @@ function NewPatientPanel({
   const { create, isPending, error, reset } = useCreatePatient();
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'personnel' | 'medical'>('personnel');
   const { insurances } = useInsurances();
 
   function set<K extends keyof CreatePatientForm>(key: K, value: CreatePatientForm[K]) {
@@ -251,28 +252,38 @@ function NewPatientPanel({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // All current required fields (firstName, lastName, phone, birthDate) live
+    // on the Personnel tab — bounce there on validation failure so the user
+    // sees the offending field, otherwise the error message would point to a
+    // hidden field on the Médical tab.
     if (!isValidName(form.firstName)) {
+      setActiveTab('personnel');
       setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
       return;
     }
     if (!isValidName(form.lastName)) {
+      setActiveTab('personnel');
       setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
       return;
     }
     if (!form.phone.trim()) {
+      setActiveTab('personnel');
       setValidationError('Le numéro de téléphone est obligatoire.');
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
+      setActiveTab('personnel');
       setValidationError('Numéro de téléphone invalide.');
       return;
     }
     if (!form.birthDate) {
+      setActiveTab('personnel');
       setValidationError('La date de naissance est obligatoire.');
       return;
     }
     const today = new Date().toISOString().slice(0, 10);
     if (form.birthDate > today) {
+      setActiveTab('personnel');
       setValidationError('La date de naissance ne peut pas être dans le futur.');
       return;
     }
@@ -300,69 +311,196 @@ function NewPatientPanel({
         </Button>
       </div>
 
+      {/* Tabs — Personnel / Médical (QA3-2). Both tabs stay in the same form so
+          a submit from either tab posts the full payload. The non-active tab is
+          hidden via `hidden` (not unmounted) to keep validation state intact. */}
+      <div style={{ display: 'flex', gap: 4, padding: '8px 16px 0' }} role="tablist">
+        {(['personnel', 'medical'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t}
+            onClick={() => setActiveTab(t)}
+            style={{
+              flex: 1,
+              height: 34,
+              fontSize: 12.5,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              borderRadius: '6px 6px 0 0',
+              border: '1px solid var(--border)',
+              borderBottom: activeTab === t ? '1px solid var(--surface)' : '1px solid var(--border)',
+              background: activeTab === t ? 'var(--surface)' : 'var(--bg-alt)',
+              color: activeTab === t ? 'var(--primary)' : 'var(--ink-3)',
+              marginBottom: -1,
+            }}
+          >
+            {t === 'personnel' ? 'Informations personnelles' : 'Informations médicales'}
+          </button>
+        ))}
+      </div>
+
       {/* Form */}
       <form
         onSubmit={(e) => { void handleSubmit(e); }}
-        style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}
+        style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, borderTop: '1px solid var(--border)' }}
       >
-        {/* Identity */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div><Lbl>Prénom *</Lbl>
-            <Input value={form.firstName} onChange={(e) => set('firstName', sanitizeName(e.target.value))} placeholder="Mohamed" autoFocus />
+        {/* ── Onglet Personnel ───────────────────────────────────────────── */}
+        <div hidden={activeTab !== 'personnel'} style={{ display: activeTab === 'personnel' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><Lbl>Prénom *</Lbl>
+              <Input value={form.firstName} onChange={(e) => set('firstName', sanitizeName(e.target.value))} placeholder="Mohamed" autoFocus />
+            </div>
+            <div><Lbl>Nom *</Lbl>
+              <Input value={form.lastName} onChange={(e) => set('lastName', sanitizeName(e.target.value))} placeholder="Alami" />
+            </div>
           </div>
-          <div><Lbl>Nom *</Lbl>
-            <Input value={form.lastName} onChange={(e) => set('lastName', sanitizeName(e.target.value))} placeholder="Alami" />
-          </div>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div><Lbl>Sexe</Lbl>
-            <select
-              value={form.gender}
-              onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
-              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
-            >
-              <option value="M">Homme</option>
-              <option value="F">Femme</option>
-              <option value="O">Autre</option>
-            </select>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><Lbl>Sexe</Lbl>
+              <select
+                value={form.gender}
+                onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
+                style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+              >
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+                <option value="O">Autre</option>
+              </select>
+            </div>
+            <div><Lbl>Date de naissance *</Lbl>
+              <Input
+                type="date"
+                required
+                max={new Date().toISOString().slice(0, 10)}
+                value={form.birthDate}
+                onChange={(e) => set('birthDate', e.target.value)}
+              />
+            </div>
           </div>
-          <div><Lbl>Date de naissance *</Lbl>
+
+          <div><Lbl>CIN</Lbl>
+            <Input value={form.cin} onChange={(e) => set('cin', e.target.value)} placeholder="BE 328451" />
+          </div>
+
+          <div><Lbl>Téléphone *</Lbl>
             <Input
-              type="date"
-              required
-              max={new Date().toISOString().slice(0, 10)}
-              value={form.birthDate}
-              onChange={(e) => set('birthDate', e.target.value)}
+              type="tel"
+              value={form.phone}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^\d\s+\-().]/g, '');
+                set('phone', v);
+              }}
+              placeholder="+212 6 61 12 34 56"
+              inputMode="tel"
             />
           </div>
-        </div>
 
-        <div><Lbl>CIN</Lbl>
-          <Input value={form.cin} onChange={(e) => set('cin', e.target.value)} placeholder="BE 328451" />
-        </div>
+          <div><Lbl>Email</Lbl>
+            <Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="patient@email.ma" />
+          </div>
 
-        <div><Lbl>Téléphone *</Lbl>
-          <Input
-            type="tel"
-            value={form.phone}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^\d\s+\-().]/g, '');
-              set('phone', v);
-            }}
-            placeholder="+212 6 61 12 34 56"
-            inputMode="tel"
-          />
-        </div>
-
-        <div><Lbl>Email</Lbl>
-          <Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="patient@email.ma" />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><Lbl>Ville</Lbl>
             <Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Casablanca" />
           </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+          {/* Tier + Mutuelle — stay on Personnel because they drive billing,
+              not clinical decisions. */}
+          <div>
+            <Lbl>Type de patient</Lbl>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['NORMAL', 'PREMIUM'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => set('tier', t)}
+                  style={{
+                    flex: 1,
+                    height: 36,
+                    borderRadius: 6,
+                    border: `1px solid ${form.tier === t ? 'var(--primary)' : 'var(--border)'}`,
+                    background: form.tier === t ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+                </button>
+              ))}
+            </div>
+            {form.tier === 'PREMIUM' && (
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+                Une remise automatique sera appliquée à la facturation (configurée dans Paramétrage).
+              </div>
+            )}
+          </div>
+
+          <div>
+            <Lbl>A une mutuelle ?</Lbl>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {[
+                { v: false, l: 'Non' },
+                { v: true, l: 'Oui' },
+              ].map((opt) => (
+                <button
+                  key={String(opt.v)}
+                  type="button"
+                  onClick={() => set('hasMutuelle', opt.v)}
+                  style={{
+                    flex: 1,
+                    height: 36,
+                    borderRadius: 6,
+                    border: `1px solid ${form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--border)'}`,
+                    background: form.hasMutuelle === opt.v ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--ink-2)',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {form.hasMutuelle && (
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+              <div>
+                <Lbl>Compagnie</Lbl>
+                <select
+                  value={form.mutuelleInsuranceId}
+                  onChange={(e) => set('mutuelleInsuranceId', e.target.value)}
+                  style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+                >
+                  <option value="">— Sélectionner —</option>
+                  {insurances.map((ins) => (
+                    <option key={ins.id} value={ins.id}>
+                      {ins.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Lbl>N° de police</Lbl>
+                <Input
+                  value={form.mutuellePolicyNumber}
+                  onChange={(e) => set('mutuellePolicyNumber', e.target.value)}
+                  placeholder="—"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Onglet Médical ─────────────────────────────────────────────── */}
+        <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
           <div><Lbl>Groupe sanguin</Lbl>
             <select
               value={form.bloodGroup}
@@ -375,139 +513,48 @@ function NewPatientPanel({
               ))}
             </select>
           </div>
-        </div>
 
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
-        {/* Tier + Mutuelle */}
-        <div>
-          <Lbl>Type de patient</Lbl>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['NORMAL', 'PREMIUM'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => set('tier', t)}
-                style={{
-                  flex: 1,
-                  height: 36,
-                  borderRadius: 6,
-                  border: `1px solid ${form.tier === t ? 'var(--primary)' : 'var(--border)'}`,
-                  background: form.tier === t ? 'var(--primary-soft)' : 'var(--surface)',
-                  color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
-                  fontWeight: 600,
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
-              </button>
-            ))}
-          </div>
-          {form.tier === 'PREMIUM' && (
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-              Une remise automatique sera appliquée à la facturation (configurée dans Paramétrage).
-            </div>
-          )}
-        </div>
-
-        <div>
-          <Lbl>A une mutuelle ?</Lbl>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {[
-              { v: false, l: 'Non' },
-              { v: true, l: 'Oui' },
-            ].map((opt) => (
-              <button
-                key={String(opt.v)}
-                type="button"
-                onClick={() => set('hasMutuelle', opt.v)}
-                style={{
-                  flex: 1,
-                  height: 36,
-                  borderRadius: 6,
-                  border: `1px solid ${form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--border)'}`,
-                  background: form.hasMutuelle === opt.v ? 'var(--primary-soft)' : 'var(--surface)',
-                  color: form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--ink-2)',
-                  fontFamily: 'inherit',
-                  cursor: 'pointer',
-                }}
-              >
-                {opt.l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {form.hasMutuelle && (
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-            <div>
-              <Lbl>Compagnie</Lbl>
-              <select
-                value={form.mutuelleInsuranceId}
-                onChange={(e) => set('mutuelleInsuranceId', e.target.value)}
-                style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
-              >
-                <option value="">— Sélectionner —</option>
-                {insurances.map((ins) => (
-                  <option key={ins.id} value={ins.id}>
-                    {ins.name}
-                  </option>
+          {/* Allergies */}
+          <div>
+            <SectionHeader label="Allergies" onAdd={addAllergy} />
+            {form.allergies.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucune allergie enregistrée.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {form.allergies.map((a, i) => (
+                  <AllergyRow key={i} entry={a} index={i} onChange={updateAllergy} onRemove={removeAllergy} />
                 ))}
-              </select>
-            </div>
-            <div>
-              <Lbl>N° de police</Lbl>
-              <Input
-                value={form.mutuellePolicyNumber}
-                onChange={(e) => set('mutuellePolicyNumber', e.target.value)}
-                placeholder="—"
-              />
-            </div>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
-        {/* Allergies */}
-        <div>
-          <SectionHeader label="Allergies" onAdd={addAllergy} />
-          {form.allergies.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucune allergie enregistrée.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {form.allergies.map((a, i) => (
-                <AllergyRow key={i} entry={a} index={i} onChange={updateAllergy} onRemove={removeAllergy} />
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Antécédents */}
+          <div>
+            <SectionHeader label="Antécédents" onAdd={addAntecedent} />
+            {form.antecedents.length === 0 ? (
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucun antécédent enregistré.</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {form.antecedents.map((a, i) => (
+                  <AntecedentRow key={i} entry={a} index={i} onChange={updateAntecedent} onRemove={removeAntecedent} />
+                ))}
+              </div>
+            )}
+          </div>
 
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
-        {/* Antécédents */}
-        <div>
-          <SectionHeader label="Antécédents" onAdd={addAntecedent} />
-          {form.antecedents.length === 0 ? (
-            <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucun antécédent enregistré.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {form.antecedents.map((a, i) => (
-                <AntecedentRow key={i} entry={a} index={i} onChange={updateAntecedent} onRemove={removeAntecedent} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Divider */}
-        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
-
-        {/* Notes */}
-        <div><Lbl>Notes libres</Lbl>
-          <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
+          {/* Notes médicales */}
+          <div><Lbl>Notes médicales libres</Lbl>
+            <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 80 }} />
+          </div>
         </div>
 
         {(validationError ?? error) && (

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Phone, Plus } from '@/components/icons';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { AgendaToolbar } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
@@ -44,6 +45,11 @@ export default function AgendaPage() {
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
   const [rdvPrefill, setRdvPrefill] = useState<{ date: string; time: string } | null>(null);
+  // QA3-3 v1: hide the create-RDV CTA when the role doesn't grant the
+  // permission. Backward-compat: if `permissions` is undefined (legacy
+  // session before /users/me started returning the field), treat as allowed.
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const canCreateRdv = userPerms == null || userPerms.includes('APPOINTMENT_CREATE');
 
   // Month view state — independent of weekOffset.
   const todayDate = new Date();
@@ -139,6 +145,7 @@ export default function AgendaPage() {
   }
 
   function handleSlotClick(dayKey: DayKey, time: string) {
+    if (!canCreateRdv) return;
     setRdvPrefill({ date: isoOfDayKey(dayKey), time });
     setShowRDV(true);
   }
@@ -175,15 +182,17 @@ export default function AgendaPage() {
             <Button>
               <Phone /> Appel rapide
             </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                setRdvPrefill(null);
-                setShowRDV(true);
-              }}
-            >
-              <Plus /> Nouveau RDV
-            </Button>
+            {canCreateRdv && (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setRdvPrefill(null);
+                  setShowRDV(true);
+                }}
+              >
+                <Plus /> Nouveau RDV
+              </Button>
+            )}
           </>
         }
         right={<TodayArrivals arrivals={arrivals} />}

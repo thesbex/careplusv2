@@ -30,6 +30,8 @@ interface NavItem {
   section: 'flux' | 'config';
   /** If set, the item is only rendered when the current user holds at least one of these role codes. */
   requiresRoles?: string[];
+  /** If set, the item is only rendered when the current user has the permission. */
+  requiresPermission?: string;
 }
 
 const ITEMS: NavItem[] = [
@@ -37,7 +39,7 @@ const ITEMS: NavItem[] = [
   { id: 'patients', label: 'Patients', Icon: Users, section: 'flux' },
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
-  { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux' },
+  { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux', requiresPermission: 'INVOICE_READ' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
 ];
 
@@ -66,10 +68,17 @@ export function Sidebar({
 }: SidebarProps) {
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
+  const userPerms = sessionUser?.permissions;
 
-  const visible = ITEMS.filter(
-    (i) => !i.requiresRoles || i.requiresRoles.some((r) => userRoles.includes(r)),
-  );
+  const visible = ITEMS.filter((i) => {
+    if (i.requiresRoles && !i.requiresRoles.some((r) => userRoles.includes(r))) return false;
+    // Backward-compat: hide only when permissions array is populated and the
+    // permission is missing. Legacy sessions keep all items visible.
+    if (i.requiresPermission && userPerms != null && !userPerms.includes(i.requiresPermission)) {
+      return false;
+    }
+    return true;
+  });
   const flux = visible.filter((i) => i.section === 'flux');
   const config = visible.filter((i) => i.section === 'config');
   const resolvedUser =

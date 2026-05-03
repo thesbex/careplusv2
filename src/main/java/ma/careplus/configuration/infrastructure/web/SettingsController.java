@@ -171,6 +171,57 @@ public class SettingsController {
         return ResponseEntity.ok(new TierConfigView(id, req.tier(), req.discountPercent()));
     }
 
+    // ── Role × permission matrix (QA3-3 v1) ───────────────────────────────────
+
+    public record RolePermissionView(String roleCode, String permission, boolean granted) {}
+
+    public record UpdateRolePermissionsRequest(
+            @jakarta.validation.constraints.NotEmpty
+            List<@Valid PermissionFlag> permissions
+    ) {}
+
+    public record PermissionFlag(
+            @NotBlank @Size(max = 64) String permission,
+            @jakarta.validation.constraints.NotNull Boolean granted
+    ) {}
+
+    @GetMapping("/api/settings/role-permissions")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<List<RolePermissionView>> listRolePermissions() {
+        List<RolePermissionView> rows = jdbc.query(
+                "SELECT role_code, permission, granted FROM identity_role_permission "
+                        + "ORDER BY role_code, permission",
+                (rs, i) -> new RolePermissionView(
+                        rs.getString("role_code"),
+                        rs.getString("permission"),
+                        rs.getBoolean("granted")));
+        return ResponseEntity.ok(rows);
+    }
+
+    @PutMapping("/api/settings/role-permissions/{roleCode}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<List<RolePermissionView>> updateRolePermissions(
+            @PathVariable String roleCode,
+            @Valid @RequestBody UpdateRolePermissionsRequest req) {
+        // Validate role code against the canonical list — anything else is rejected.
+        if (!List.of("SECRETAIRE", "ASSISTANT", "MEDECIN", "ADMIN").contains(roleCode)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+        for (PermissionFlag flag : req.permissions()) {
+            int updated = jdbc.update(
+                    "UPDATE identity_role_permission SET granted = ?, updated_at = now() "
+                            + "WHERE role_code = ? AND permission = ?",
+                    flag.granted(), roleCode, flag.permission());
+            if (updated == 0) {
+                jdbc.update(
+                        "INSERT INTO identity_role_permission (role_code, permission, granted) "
+                                + "VALUES (?, ?, ?)",
+                        roleCode, flag.permission(), flag.granted());
+            }
+        }
+        return listRolePermissions();
+    }
+
     private static String nullIfBlank(String s) {
         return s == null || s.isBlank() ? null : s;
     }
