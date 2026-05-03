@@ -125,13 +125,14 @@ export default function PriseConstantesPage() {
   // failed to load. Showing a half-loaded form means the medic could record
   // vitals while looking at stale / wrong / fixture data.
   const navMap = {
-    agenda:   '/agenda',
-    patients: '/patients',
-    salle:    '/salle',
-    consult:  '/consultations',
-    factu:    '/facturation',
-    catalogue:'/catalogue',
-    params:   '/parametres',
+    agenda:       '/agenda',
+    patients:     '/patients',
+    salle:        '/salle',
+    consult:      '/consultations',
+    factu:        '/facturation',
+    vaccinations: '/vaccinations',
+    catalogue:    '/catalogue',
+    params:       '/parametres',
   } as const;
   if (aptError || patError) {
     return (

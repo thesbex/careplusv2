@@ -31,6 +31,7 @@ import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
+import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -39,11 +40,12 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
+  vaccinations: '/vaccinations',
   catalogue: '/catalogue',
           params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'cabinet', label: 'Cabinet' },
@@ -53,6 +55,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'utilisateurs', label: 'Utilisateurs' },
   { id: 'conges', label: 'Congés' },
   { id: 'droits', label: 'Droits d’accès' },
+  { id: 'vaccinations', label: 'Vaccinations' },
 ];
 
 const EMPTY_FORM: ClinicSettingsForm = {
@@ -780,6 +783,7 @@ export default function ParametragePage() {
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}
+        {tab === 'vaccinations' && <VaccinationParamTab />}
       </div>
     </Screen>
   );

@@ -8,11 +8,13 @@ import {
   Settings,
   ChevronDown,
   Pill,
+  Heart,
 } from '@/components/icons';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
+import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -23,7 +25,8 @@ export type SidebarScreen =
   | 'consult'
   | 'factu'
   | 'catalogue'
-  | 'params';
+  | 'params'
+  | 'vaccinations';
 
 interface NavItem {
   id: SidebarScreen;
@@ -42,13 +45,14 @@ const ITEMS: NavItem[] = [
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
   { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux', requiresPermission: 'INVOICE_READ' },
+  { id: 'vaccinations', label: 'Vaccinations', Icon: Heart, section: 'flux' },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
 ];
 
 export interface SidebarProps {
   active?: SidebarScreen;
-  counts?: { salle?: number };
+  counts?: { salle?: number; vaccinations?: number };
   cabinet?: { name: string; city: string };
   user?: { name: string; role: string; initials: string };
   onNavigate?: (id: SidebarScreen) => void;
@@ -70,10 +74,13 @@ export function Sidebar({
   onNavigate,
 }: SidebarProps) {
   // Sans `counts` explicite on n'affiche aucun badge — c'est <Screen> qui
-  // souscrit à useQueue() et nous passe la valeur live. Avant 2026-05-01,
-  // ce default était `{ salle: 3 }` (relique du portage prototype) et toutes
-  // les pages affichaient un faux badge "3" sur la Salle d'attente.
+  // souscrit à useQueue() et nous passe la valeur live.
   const safeCounts = counts ?? {};
+
+  // Vaccination overdue badge — polled every 30 s.
+  // Only active when the caller didn't provide an explicit vaccinations count.
+  const liveVaccinations = useVaccinationOverdueCount(safeCounts.vaccinations === undefined);
+  const vaccinationsBadge = safeCounts.vaccinations ?? liveVaccinations ?? 0;
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -98,7 +105,7 @@ export function Sidebar({
             ROLE_LABELS[
               ROLE_PRIORITY.find((r) => sessionUser.roles.includes(r)) ?? sessionUser.roles[0] ?? ''
             ] ?? 'Utilisateur',
-          initials: `${sessionUser.firstName[0] ?? ''}${sessionUser.lastName[0] ?? ''}`.toUpperCase(),
+          initials: `${sessionUser.firstName?.[0] ?? ''}${sessionUser.lastName?.[0] ?? ''}`.toUpperCase(),
         }
       : { name: '—', role: 'Non connecté', initials: '?' });
 
@@ -118,7 +125,13 @@ export function Sidebar({
           key={it.id}
           item={it}
           active={active === it.id}
-          badge={it.id === 'salle' ? safeCounts.salle : undefined}
+          badge={
+            it.id === 'salle'
+              ? safeCounts.salle
+              : it.id === 'vaccinations'
+              ? (vaccinationsBadge > 0 ? vaccinationsBadge : undefined)
+              : undefined
+          }
           onClick={() => onNavigate?.(it.id)}
         />
       ))}

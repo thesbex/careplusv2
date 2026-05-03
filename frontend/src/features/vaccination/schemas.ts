@@ -58,3 +58,42 @@ export const UpdateDoseSchema = z.object({
 });
 
 export type UpdateDoseValues = z.infer<typeof UpdateDoseSchema>;
+
+// ── Paramétrage schemas ────────────────────────────────────────────────────────
+
+/**
+ * Schema for creating/editing a vaccine in the catalog.
+ * code must be UPPERCASE alphanumeric, 2-32 chars.
+ */
+// HTML <select> sans valeur sélectionnée renvoie une chaîne vide ; on la
+// normalise en undefined avant l'enum-check pour ne pas faire échouer la
+// validation au submit.
+const emptyToUndef = (v: unknown) => (v === '' ? undefined : v);
+
+export const UpsertVaccineSchema = z.object({
+  code: z
+    .string()
+    .min(2, 'Code requis (2 caractères minimum)')
+    .max(32)
+    .regex(/^[A-Z0-9_-]+$/, 'Code : lettres majuscules, chiffres, _ ou - uniquement'),
+  nameFr: z.string().min(1, 'Nom requis').max(200),
+  manufacturerDefault: z.preprocess(emptyToUndef, z.string().max(200).optional()),
+  routeDefault: z.preprocess(emptyToUndef, z.enum(['IM', 'SC', 'PO', 'ID']).optional()),
+  active: z.boolean(),
+  isPni: z.boolean(),
+});
+
+export type UpsertVaccineValues = z.infer<typeof UpsertVaccineSchema>;
+
+/**
+ * Schema for creating/editing a scheduled dose.
+ */
+export const UpsertScheduleDoseSchema = z.object({
+  vaccineId: z.string().uuid('Vaccin requis'),
+  doseNumber: z.number().int().min(1, 'Numéro de dose requis (>= 1)'),
+  targetAgeDays: z.number().int().min(0, 'Âge cible requis (>= 0)'),
+  toleranceDays: z.number().int().min(0, 'Tolérance requise (>= 0)'),
+  labelFr: z.string().min(1, 'Libellé requis').max(200),
+});
+
+export type UpsertScheduleDoseValues = z.infer<typeof UpsertScheduleDoseSchema>;

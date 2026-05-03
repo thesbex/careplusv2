@@ -14,6 +14,7 @@ import FacturationPage from '@/features/facturation/FacturationRoute';
 import ApercuFacturePage from '@/features/facturation/ApercuFactureRoute';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import ParametragePage from '@/features/parametres/ParametrageRoute';
+import VaccinationsQueueRoute from '@/features/vaccination/VaccinationsQueueRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
@@ -170,6 +171,14 @@ export const router = createBrowserRouter(
         <RequirePermission permission="INVOICE_READ">
           <ApercuFacturePage />
         </RequirePermission>
+      ),
+    },
+    {
+      path: '/vaccinations',
+      element: (
+        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+          <VaccinationsQueueRoute />
+        </RequireRole>
       ),
     },
     {
