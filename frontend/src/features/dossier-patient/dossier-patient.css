@@ -13,17 +13,45 @@
 }
 
 /* ── Timeline grid ──────────────────────────────────────── */
+/*
+ * `min-height: 0` is CRITICAL here. Grid + flex children default to
+ * `min-height: auto` which expands to fit content — that defeats the
+ * parent's `overflow: hidden` and pushes the entire dossier (including
+ * the TimelinePanel) below the viewport, forcing the user to scroll the
+ * outer Screen shell just to see the first timeline event. The child
+ * rule extends `min-height: 0` + `overflow: auto` to both grid cells
+ * (TimelinePanel + SummaryPanel) so each column scrolls independently
+ * within the visible dossier frame.
+ */
 .dp-content {
   flex: 1;
   display: grid;
   grid-template-columns: 1fr 340px;
   overflow: hidden;
+  min-height: 0;
 }
 
-/* ── Summary panel scroll ───────────────────────────────── */
+.dp-content > * {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* ── Summary panel chrome (scroll now inherited) ──────────── */
 .dp-summary {
   border-left: 1px solid var(--border);
   background: var(--surface-2);
-  overflow: auto;
   padding: 16px;
+}
+
+/* ── Tablet: stack summary below timeline ─────────────────── */
+@media (max-width: 900px) {
+  .dp-content {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+  }
+  .dp-summary {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
 }
