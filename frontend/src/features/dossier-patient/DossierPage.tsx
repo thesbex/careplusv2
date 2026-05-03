@@ -23,6 +23,7 @@ import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SummaryPanel } from './components/SummaryPanel';
 import { DocumentsPanel } from './components/DocumentsPanel';
+import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import './dossier-patient.css';
@@ -617,6 +618,9 @@ export default function DossierPage() {
                 </div>
               )}
             </div>
+          </DossierTabPanel>
+          <DossierTabPanel value="vitals">
+            <VitalsEvolutionPanel patientId={raw.id} />
           </DossierTabPanel>
           <DossierTabPanel value="prescr">
             <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>

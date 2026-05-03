@@ -17,6 +17,7 @@ import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePre
 import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { usePatient } from './hooks/usePatient';
+import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
@@ -242,13 +243,15 @@ export default function DossierMobilePage() {
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {(['historique', 'consults', 'rx', 'factu', 'admin'] as MobileDossierTab[]).map(
+          {(['historique', 'consults', 'vitals', 'rx', 'factu', 'admin'] as MobileDossierTab[]).map(
             (t) => {
               const label =
                 t === 'historique'
                   ? 'Historique'
                   : t === 'consults'
                   ? `Consult. (${patientConsultations.length})`
+                  : t === 'vitals'
+                  ? 'Constantes'
                   : t === 'rx'
                   ? `Ordo. (${patientPrescriptions.length})`
                   : t === 'factu'
@@ -403,6 +406,8 @@ export default function DossierMobilePage() {
             )}
           </>
         )}
+
+        {tab === 'vitals' && <VitalsEvolutionPanel patientId={patient.id} />}
 
         {tab === 'rx' && (
           <>

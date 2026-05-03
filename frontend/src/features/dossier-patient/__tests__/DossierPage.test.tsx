@@ -104,13 +104,14 @@ describe('<DossierPage /> (desktop)', () => {
     expect(alert).toHaveTextContent('Amlodipine 5mg, Atorvastatine 20mg');
   });
 
-  it('renders the 7 dossier tabs', () => {
+  it('renders the 8 dossier tabs (incl. Constantes)', () => {
     renderDossier();
     const tablist = screen.getByRole('tablist', { name: 'Sections du dossier patient' });
     expect(tablist).toBeInTheDocument();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(7);
+    expect(tabs).toHaveLength(8);
     expect(tabs[0]).toHaveTextContent('Chronologie');
+    expect(tabs[2]).toHaveTextContent('Constantes');
   });
 
   it('renders the Chronologie tab as active by default', () => {

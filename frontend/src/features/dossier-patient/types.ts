@@ -66,6 +66,7 @@ export interface PatientSummary {
 export type DossierTab =
   | 'timeline'
   | 'consults'
+  | 'vitals'
   | 'prescr'
   | 'analyses'
   | 'imagerie'
@@ -75,6 +76,7 @@ export type DossierTab =
 export type MobileDossierTab =
   | 'historique'
   | 'consults'
+  | 'vitals'
   | 'rx'
   | 'factu'
   | 'admin';
