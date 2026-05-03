@@ -63,14 +63,22 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - **Fix prévu** : (a) zod `birthDate: z.string().min(1)` côté frontend + asterisk visible · (b) `@NotNull` côté backend `CreatePatientRequest.birthDate` + Flyway migration `ALTER TABLE patient ALTER COLUMN birth_date SET NOT NULL` (vérifier qu'aucun existant n'est null avant — `UPDATE` requis sinon).
 - **Leçon** : pour chaque champ "optionnel", se demander "est-ce qu'un médecin peut prescrire sans ?". Si non, c'est obligatoire.
 
-### QA2-2 — Upload historique patient (anciens docs : prescriptions, analyses, radios) — **[CHANGE / NEW FEATURE]**
-- **Demande** : à la création d'un patient, pouvoir uploader des PDFs/images d'anciens documents fournis par d'autres médecins, classés par type (prescription / analyse / imagerie / autre).
-- **Hors scope MVP** : aucun module fichier/upload n'existe (pas de S3/MinIO, pas de table `patient_document`).
-- **Scope estimé** :
-  - Backend : nouveau module `documents` — table `patient_document (id, patient_id, type {PRESCRIPTION_HISTORIQUE, ANALYSE_HISTORIQUE, IMAGERIE_HISTORIQUE, AUTRE}, original_filename, mime_type, size_bytes, storage_key, uploaded_at, uploaded_by, notes)`. Endpoints `POST /api/patients/{id}/documents` (multipart), `GET /api/patients/{id}/documents`, `GET /api/documents/{id}/content` (stream), `DELETE`. Limites : 10MB / fichier, types autorisés PDF/JPEG/PNG/HEIC.
-  - Stockage : on-premise → disque local sous `/var/careplus/documents/<patient_id>/<doc_id>`. Backup auto OVH inclut ce dossier.
-  - Frontend : zone drag-drop dans le panneau "Nouveau patient" (sous Antécédents) + tab Historique (cf QA2-4).
-- **Lié à** : QA2-4 (l'onglet de visualisation est l'autre moitié de cette feature).
+### QA2-2 — Upload historique patient (anciens docs : prescriptions, analyses, radios) — **[CHANGE / NEW FEATURE]** ✅ LIVRÉ 2026-04-27
+- **Demande initiale** : à la création/modification d'un patient, pouvoir uploader des PDFs/images d'anciens documents fournis par d'autres médecins, classés par type (prescription / analyse / imagerie / autre).
+- **Re-confirmé en QA wave 4 (2026-04-27)** : "Dans la partie informations medicale je ne retrouve pas la possibilité de telecharger sur le serveur les document relatifs aux anciennes prescriptions, resultat d'analyses, de radio, compte rendu …"
+- **Livré** :
+  - Backend : module `ma.careplus.documents` — V009 + entité `PatientDocument` + service + 4 endpoints (`POST /api/patients/{id}/documents`, `GET /api/patients/{id}/documents`, `GET /api/documents/{id}/content`, `DELETE /api/documents/{id}`). Whitelist MIME stricte (PDF/JPEG/PNG/WebP/HEIC). Plafond 10 Mo via `spring.servlet.multipart.max-file-size`. Soft-delete via `deleted_at`. IT couvre upload + list + download + 415 (mime rejeté) + 400 (type inconnu) + 403 (assistant) + 204 (delete medecin) + 404 (patient inconnu).
+  - Stockage : `DocumentStorage` — filesystem local sous `careplus.documents.root` (défaut `./data/documents`, fallback `${java.io.tmpdir}/careplus-documents` pour les ITs). Clé : `<patient_id>/<doc_id>.<ext>`. Garde-fou contre path traversal (vérifie que la clé reste sous root après normalisation).
+  - Frontend : `usePatientDocuments` hook (TanStack Query, multipart) + `DocumentsPanel` réutilisable. Branché dans (a) onglet "Documents" du dossier (toutes catégories + chips de filtre), (b) onglets "Analyses" + "Imagerie" pré-filtrés, (c) onglet "Informations médicales" du panneau Modifier (variante `compact`). Téléchargement via blob (le JWT est en mémoire, pas en cookie HttpOnly → `window.open` ne suffit pas).
+- **Choix de design notés** :
+  - Pas de S3/MinIO pour le MVP : déploiement on-premise (ADR-020), un disque local + backup OVH (déjà prévu post-MVP) suffit. Migrer vers S3 plus tard ne casse que `DocumentStorage`.
+  - Permissions alignées sur la matrice RBAC v1 : upload via `PATIENT_CREATE` (assistant lecture-seule), delete réservé MEDECIN/ADMIN.
+  - Pas d'antivirus inline (ClamAV) : ajouterait une dépendance native, hors scope. Tracé dans `Risques sécurité` ci-dessous.
+- **Limites connues à itérer plus tard** :
+  - Pas de drag-drop visuel (juste `<input type=file>`) — esthétique seulement.
+  - Pas de prévisualisation in-app (le clic télécharge, le navigateur prend le relais pour l'ouverture).
+  - Impossible d'uploader pendant la création d'un patient (le panneau "Nouveau patient" doit d'abord créer le record). À ajouter en post-create flow ("voulez-vous ajouter des documents ?") quand un cabinet pilote en ressentira le besoin.
+- **Pourquoi le manque existait initialement** : le périmètre MVP (`SPRINT_MVP.md`) ne listait pas la gestion documentaire. Les onglets Analyses/Imagerie/Documents étaient des placeholders compilés dans le port du prototype. Le vrai signal terrain est arrivé via QA wave 2 — feature livrée immédiatement après confirmation en wave 4.
 
 ### QA2-3 — Clic sur plage horaire vide dans l'agenda → ouvre la dialog RDV pré-remplie — **[BUG]**
 - **État actuel** : `AgendaGrid` rend des cellules `.ag-daycol` mais sans `onClick` sur les cellules vides (`components/AgendaGrid.tsx`). Seuls les blocs RDV existants sont cliquables → ouvrent `AppointmentDrawer`. Pour créer un RDV il faut cliquer "Nouveau RDV" en haut.

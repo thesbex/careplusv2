@@ -22,6 +22,7 @@ import { PatientHeader, AllergyStrip } from './components/PatientHeader';
 import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SummaryPanel } from './components/SummaryPanel';
+import { DocumentsPanel } from './components/DocumentsPanel';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import './dossier-patient.css';
@@ -423,6 +424,15 @@ function EditPatientPanel({
           <div><Lbl>Notes médicales libres</Lbl>
             <Textarea value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
           </div>
+
+          {/* ── Divider ───────────────────────────────────────────────── */}
+          <div style={{ height: 1, background: 'var(--border)' }} />
+
+          {/* ── Documents historiques (QA2-2) ─────────────────────────── */}
+          <div>
+            <Lbl>Documents historiques</Lbl>
+            <DocumentsPanel patientId={patientId} compact />
+          </div>
         </div>
 
         {(validationError ?? error) && (
@@ -676,13 +686,19 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="analyses">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>9 analyses — à venir</div>
+            <div style={{ padding: '20px 24px' }}>
+              <DocumentsPanel patientId={raw.id} filter="ANALYSE" />
+            </div>
           </DossierTabPanel>
           <DossierTabPanel value="imagerie">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>3 imageries — à venir</div>
+            <div style={{ padding: '20px 24px' }}>
+              <DocumentsPanel patientId={raw.id} filter="IMAGERIE" />
+            </div>
           </DossierTabPanel>
           <DossierTabPanel value="docs">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>7 documents — à venir</div>
+            <div style={{ padding: '20px 24px' }}>
+              <DocumentsPanel patientId={raw.id} />
+            </div>
           </DossierTabPanel>
           <DossierTabPanel value="factu">
             <div style={{ padding: '20px 24px' }}>

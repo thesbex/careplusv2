@@ -23,6 +23,11 @@ spring:
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 12MB
 
 server:
   port: 8080
@@ -32,6 +37,10 @@ server:
   forward-headers-strategy: framework
 
 careplus:
+  documents:
+    # Racine filesystem où sont stockés les binaires (QA2-2). En prod on-premise
+    # cible un dossier dédié sur le SSD du cabinet, inclus dans le backup.
+    root: ${CAREPLUS_DOCUMENTS_ROOT:./data/documents}
   deployment-mode: ${CAREPLUS_DEPLOYMENT_MODE:ON_PREMISE}
   enabled: ${CAREPLUS_ENABLED:true}
   time:
