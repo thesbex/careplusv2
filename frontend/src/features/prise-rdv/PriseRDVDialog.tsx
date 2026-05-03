@@ -26,9 +26,10 @@ import './prise-rdv.css';
 export interface PriseRDVDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onCreated?: () => void;
 }
 
-export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
+export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialogProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
   const [patientError, setPatientError] = useState<string | null>(null);
@@ -77,7 +78,10 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
       reasonId: selectedReasonId,
       ...(data.notes ? { notes: data.notes } : {}),
     }).catch(() => null);
-    if (result) onOpenChange(false);
+    if (result) {
+      onCreated?.();
+      onOpenChange(false);
+    }
   }
 
   return (

@@ -28,7 +28,7 @@ export default function AgendaPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [view, setView] = useState<AgendaView>('semaine');
   const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
-  const { days, appointments, arrivals, weekLabel, todayKey } = useWeekAppointments(weekOffset);
+  const { days, appointments, arrivals, weekLabel, todayKey, refetch } = useWeekAppointments(weekOffset);
   const [, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
 
@@ -76,7 +76,13 @@ export default function AgendaPage() {
       />
       <AgendaGrid days={visibleDays} appointments={appointments} onSelect={setSelected} {...(todayKey ? { today: todayKey } : {})} />
     </Screen>
-    {showRDV && <PriseRDVDialog open={showRDV} onOpenChange={setShowRDV} />}
+    {showRDV && (
+      <PriseRDVDialog
+        open={showRDV}
+        onOpenChange={setShowRDV}
+        onCreated={() => { setWeekOffset(0); void refetch(); }}
+      />
+    )}
     </>
   );
 }
