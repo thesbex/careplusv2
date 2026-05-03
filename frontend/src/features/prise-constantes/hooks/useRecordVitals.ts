@@ -9,13 +9,13 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
   const mutation = useMutation({
     mutationFn: (values: VitalsFormValues) =>
       api.post(`/appointments/${appointmentId}/vitals`, {
-        systolicMmhg: values.tensionSys,
-        diastolicMmhg: values.tensionDia,
-        heartRateBpm: values.pulse,
-        spo2Percent: values.spo2,
-        temperatureC: values.tempC,
-        weightKg: values.weightKg,
-        heightCm: values.heightCm,
+        systolicMmhg: values.tensionSys ?? null,
+        diastolicMmhg: values.tensionDia ?? null,
+        heartRateBpm: values.pulse ?? null,
+        spo2Percent: values.spo2 ?? null,
+        temperatureC: values.tempC ?? null,
+        weightKg: values.weightKg ?? null,
+        heightCm: values.heightCm ?? null,
         glycemiaGPerL: values.glycemia ?? null,
         notes: values.notes ?? null,
       }),
