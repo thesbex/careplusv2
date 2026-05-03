@@ -140,8 +140,12 @@ public class PatientController {
 
     // ── Notes ──────────────────────────────────────────────────────
 
+    // V010 (assistant_full_access) a donné à ASSISTANT la parité avec
+    // MEDECIN sur les notes patient. L'annotation est restée bloquée
+    // sur MEDECIN-seul (drift, audit 2026-05-01) ; PatientIT
+    // .createNote_asSecretaire_returns403 prouve l'écart.
     @PostMapping("/{id}/notes")
-    @PreAuthorize("hasRole('MEDECIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<PatientNoteResponse> createNote(
             @PathVariable UUID id,
             @Valid @RequestBody CreatePatientNoteRequest req,
