@@ -10,6 +10,9 @@ import { expect, request, test } from '@playwright/test';
 import { apiLogin, authedApi, USERS } from './helpers';
 
 test.describe('Invoice lifecycle', () => {
+  // Pure API drive — pas d'assertions UI, on n'a rien à re-jouer en mobile.
+  test.skip(({ isMobile }) => isMobile, 'API-only spec, viewport-agnostic');
+
   test('sign → draft → issue → pay → PAYEE_TOTALE', async () => {
     const ctx = await request.newContext();
     const sec = await apiLogin(ctx, USERS.secretaire.email, USERS.secretaire.password);

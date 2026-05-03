@@ -60,9 +60,16 @@ test.describe('RDV lifecycle', () => {
     const queue = await apiSec.get('/queue').then((r) => r.json() as Promise<{ appointmentId: string }[]>);
     expect(queue.some((q) => q.appointmentId === appointment.id)).toBe(true);
 
-    // UI assertion — the salle d'attente row exists.
+    // UI assertion — la salle d'attente affiche au moins un patient.
+    // Desktop : <tr> dans <table.sa-queue-table>. Mobile : <button.m-row>.
+    // On évite les sélecteurs CSS spécifiques à l'un ou l'autre shell en
+    // assertant simplement l'absence de l'empty-state mobile + la présence
+    // d'au moins une ligne (table tr OU button.m-row).
     await uiLogin(page, USERS.secretaire.email, USERS.secretaire.password);
     await page.goto('/salle');
-    await expect(page.locator('table.sa-queue-table tbody tr')).not.toHaveCount(0);
+    await expect(page.getByText('Aucun patient présent')).toHaveCount(0);
+    await expect(
+      page.locator('table.sa-queue-table tbody tr, button.m-row'),
+    ).not.toHaveCount(0);
   });
 });

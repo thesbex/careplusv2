@@ -34,6 +34,14 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
+    // careplus a une vraie déclinaison mobile (`<Page>.mobile.tsx` + `<Page>Route.tsx`
+    // qui switche via `useIsMobile`, breakpoint 640 px). Sans ce project les écrans
+    // mobiles partaient en régression silencieuse. Pixel 5 (393×851) déclenche
+    // useIsMobile=true et `isMobile` sur le contexte test.
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 5'] },
+    },
   ],
   // Vite is launched automatically; the backend must be started manually
   // (start it before running `npm run e2e`).

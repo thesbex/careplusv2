@@ -24,6 +24,12 @@
  *      même en POST direct, le backend retourne 403 (gate Spring Security)
  *
  * Pré-requis : Spring Boot + Vite up, dev profile (cf. playwright.config.ts).
+ *
+ * Viewports : la suite tourne dans les deux projects Playwright (`chromium`
+ * desktop + `mobile` Pixel 5). Les scénarios marqués `test.skip(isMobile,
+ * '… feature gap')` correspondent à des features non encore portées sur
+ * mobile (Tarifs admin, Téléverser résultat post-sign, Photographier patient,
+ * Importer CSV catalogue) — chacun est un GAP à corriger.
  */
 import { expect, test } from '@playwright/test';
 import { apiLogin, authedApi, uiLogin, USERS } from './helpers';
@@ -97,10 +103,22 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     await expect(page.getByLabel('Tension systolique')).toBeVisible({ timeout: 10_000 });
 
     // Each numeric vital must be empty — never the prototype defaults
-    // (132 / 84 / 78 / 98 / 36.9 / 74 / 178).
-    for (const label of ['Tension systolique', 'Tension diastolique', 'Fréquence cardiaque', 'Saturation O₂', 'Température', 'Poids', 'Taille']) {
+    // (132 / 84 / 78 / 98 / 36.9 / 74 / 178). Les regex /^Poids/ et /^Taille/
+    // matchent à la fois desktop (`aria-label="Poids"`) et mobile
+    // (`aria-label="Poids (kg)"`), ce qui permet à ce test de tourner
+    // dans les deux projects Playwright.
+    const labels: (string | RegExp)[] = [
+      'Tension systolique',
+      'Tension diastolique',
+      'Fréquence cardiaque',
+      'Saturation O₂',
+      'Température',
+      /^Poids/,
+      /^Taille/,
+    ];
+    for (const label of labels) {
       const value = await page.getByLabel(label).inputValue();
-      expect(value, `${label} should start empty`).toBe('');
+      expect(value, `${String(label)} should start empty`).toBe('');
     }
 
     // The motif textarea must NOT contain the fixture sentence.
@@ -114,7 +132,12 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     await expect(page.getByText('TA légèrement élevée')).toHaveCount(0);
   });
 
-  test('3. Tarifs tab does not trigger "Maximum update depth exceeded"', async ({ page }) => {
+  test('3. Tarifs tab does not trigger "Maximum update depth exceeded"', async ({ page, isMobile }) => {
+    // ParametragePage.mobile.tsx est un menu de liens (pas d'onglets), donc
+    // pas de surface "Tarifs" sur mobile pour reproduire la boucle de re-render.
+    // GAP : si on porte un jour les onglets admin (Tarifs / Prestations / Droits)
+    // sur mobile, retirer ce skip et adapter le sélecteur.
+    test.skip(isMobile, 'Mobile parametres has no Tarifs tab — feature is desktop-only');
     const consoleErrors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -177,7 +200,12 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     void user;
   });
 
-  test('6. SIGNEE consultation still allows uploading LAB/IMAGING result (Y. Boutaleb 2026-05-01)', async ({ page, request }) => {
+  test('6. SIGNEE consultation still allows uploading LAB/IMAGING result (Y. Boutaleb 2026-05-01)', async ({ page, request, isMobile }) => {
+    // Mobile ConsultationPage.mobile.tsx n'expose PAS le bouton « Téléverser
+    // résultat » sur les lignes de prescription LAB/IMAGING — il n'y a que la
+    // liste des ordonnances générées. GAP mobile : porter le DocumentUploadButton
+    // dans la mobile variant. Tant que ce n'est pas fait, on skip ici.
+    test.skip(isMobile, 'Mobile consultation lacks « Téléverser résultat » button — feature gap');
     // Le médecin signe une consultation et le patient revient des jours plus
     // tard avec ses analyses / radios. Avant le fix, le bouton « Téléverser
     // résultat » était désactivé dès que la consultation passait à SIGNEE
@@ -246,7 +274,11 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     await expect(page.getByText(/Voir résultat/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test('7. Webcam modal surfaces actionable hints when OS hides every camera', async ({ page }) => {
+  test('7. Webcam modal surfaces actionable hints when OS hides every camera', async ({ page, isMobile }) => {
+    // PatientsListPage.mobile.tsx n'a pas de CTA « Nouveau patient » → la
+    // modale « Photographier » n'est accessible que depuis le desktop.
+    // GAP : porter la création patient + capture photo sur mobile.
+    test.skip(isMobile, 'Mobile patients screen has no « Nouveau patient » CTA — feature gap');
     // Pin the new diagnostic UX (vs. the dead-end "Aucune caméra détectée"
     // pré-2026-05-01). We force the test to behave like a PC where the OS
     // refuses to expose any video device — same situation Chrome reports
@@ -283,7 +315,11 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     await expect(page.getByRole('button', { name: /^Capturer$/ })).toBeDisabled();
   });
 
-  test('8. Catalog meds CSV import — drag the file into the IHM, table updates', async ({ page }) => {
+  test('8. Catalog meds CSV import — drag the file into the IHM, table updates', async ({ page, isMobile }) => {
+    // CataloguePage.mobile.tsx n'embarque pas le `CatalogImportButton` — le
+    // bouton « Importer CSV » n'existe que côté desktop. GAP mobile : porter
+    // le bouton (le service backend est déjà multi-rôle, c'est purement UI).
+    test.skip(isMobile, 'Mobile catalogue lacks « Importer CSV » button — feature gap');
     // QA5-2 — le médecin doit pouvoir étoffer son catalogue depuis un CSV
     // (DCI / forme / dosage non encore connus). Le bouton « Importer CSV »
     // envoie le fichier en multipart à /catalog/medications/import.
@@ -326,7 +362,11 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     await expect(page.getByText(`QA-IHM-${stamp}-bis`).first()).toBeVisible();
   });
 
-  test('9. SECRETAIRE: « Importer CSV » button is hidden in the IHM', async ({ page }) => {
+  test('9. SECRETAIRE: « Importer CSV » button is hidden in the IHM', async ({ page, isMobile }) => {
+    // Le bouton n'existe pas en mobile (cf. test 8). L'assertion mobile serait
+    // vacuously true. On skip pour ne pas masquer un futur portage qui
+    // oublierait le gate RBAC côté mobile.
+    test.skip(isMobile, 'Mobile catalogue lacks the button entirely — gate is N/A');
     // Front-side gate (RBAC store filters by role). The matching backend 403
     // path is covered by CatalogImportIT.importMedications_secretaire_returns403
     // — keeping it out of Playwright avoids exhausting the login rate limit

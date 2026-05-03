@@ -11,6 +11,10 @@ import { expect, request, test } from '@playwright/test';
 import { apiLogin, authedApi, USERS } from './helpers';
 
 test.describe('Consultation lifecycle', () => {
+  // Pure API drive — no UI assertions, donc pas de raison de re-jouer en
+  // mobile (le viewport ne change rien aux requêtes HTTP).
+  test.skip(({ isMobile }) => isMobile, 'API-only spec, viewport-agnostic');
+
   test('vitals → SOAP → sign → PDF', async () => {
     const ctx = await request.newContext();
     const sec = await apiLogin(ctx, USERS.secretaire.email, USERS.secretaire.password);
