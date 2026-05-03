@@ -265,10 +265,9 @@ describe('<PriseConstantesMobilePage />', () => {
     expect(screen.getByText('Ref. ≥ 95')).toBeInTheDocument();
   });
 
-  it('renders previous-value hints for TA and FC', () => {
+  it('does not render fake "Prec." hints (no real previous-vitals data wired)', () => {
     renderMobile();
-    expect(screen.getByText('Prec. 135/85')).toBeInTheDocument();
-    expect(screen.getByText('Prec. 78')).toBeInTheDocument();
+    expect(screen.queryByText(/^Prec\./)).not.toBeInTheDocument();
   });
 
   it('renders Poids · Taille · IMC field group label', () => {

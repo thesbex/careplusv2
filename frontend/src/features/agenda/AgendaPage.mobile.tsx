@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Plus, Warn } from '@/components/icons';
 import { useWeekAppointments } from './hooks/useAppointments';
@@ -28,7 +28,8 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function AgendaMobilePage() {
   const navigate = useNavigate();
-  const { days, appointments, isLoading } = useWeekAppointments();
+  const [weekOffset, setWeekOffset] = useState(0);
+  const { days, appointments, weekLabel, isLoading } = useWeekAppointments(weekOffset);
   const [selectedDay, setSelectedDay] = useState<DayKey>(todayKey);
 
   const dayAppointments = appointments.filter((a) => a.day === selectedDay);
@@ -37,18 +38,7 @@ export default function AgendaMobilePage() {
   return (
     <MScreen
       tab="agenda"
-      topbar={
-        <MTopbar
-          brand
-          left={<MIconBtn icon="Menu" label="Menu" />}
-          right={
-            <>
-              <MIconBtn icon="Search" label="Rechercher" />
-              <MIconBtn icon="Bell" badge label="Notifications" />
-            </>
-          }
-        />
-      }
+      topbar={<MTopbar brand />}
       onTabChange={(tab: MobileTab) => {
         const map: Record<MobileTab, string> = {
           agenda: '/agenda',
@@ -71,6 +61,86 @@ export default function AgendaMobilePage() {
         </button>
       }
     >
+      {/* Week navigation strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '8px 16px',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          gap: 8,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setWeekOffset((o) => o - 1)}
+          aria-label="Semaine précédente"
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '6px 10px',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            color: 'var(--ink-2)',
+            fontSize: 12,
+          }}
+        >
+          ‹ Préc.
+        </button>
+        <div
+          style={{
+            flex: 1,
+            textAlign: 'center',
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--ink-2)',
+          }}
+        >
+          {weekLabel}
+        </div>
+        <div style={{ display: 'flex', gap: 4 }}>
+          {weekOffset !== 0 && (
+            <button
+              type="button"
+              onClick={() => setWeekOffset(0)}
+              style={{
+                background: 'transparent',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '6px 10px',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                color: 'var(--primary)',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              Auj.
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setWeekOffset((o) => o + 1)}
+            aria-label="Semaine suivante"
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '6px 10px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              color: 'var(--ink-2)',
+              fontSize: 12,
+            }}
+          >
+            Suiv. ›
+          </button>
+        </div>
+      </div>
+
       <div className="m-daytabs" role="tablist" aria-label="Jour">
         {days.map((d) => (
           <button
@@ -106,10 +176,26 @@ export default function AgendaMobilePage() {
                 </div>
               ) : (
                 dayAppointments.map((r, i) => (
-                  <div key={i} className="m-tl-row">
+                  <div key={r.id ?? i} className="m-tl-row">
                     <div className="m-tl-hour">{r.start}</div>
                     <div className="m-tl-col filled">
-                      <div className={`m-tl-block ${r.status}`}>
+                      <button
+                        type="button"
+                        className={`m-tl-block ${r.status}`}
+                        onClick={() => {
+                          if (r.patientId) navigate(`/patients/${r.patientId}`);
+                        }}
+                        style={{
+                          width: '100%',
+                          textAlign: 'left',
+                          font: 'inherit',
+                          fontFamily: 'inherit',
+                          color: 'inherit',
+                          cursor: r.patientId ? 'pointer' : 'default',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                        aria-label={`Ouvrir le dossier de ${r.patient}`}
+                      >
                         <div className="m-tl-block-h">
                           <span className="m-tl-block-time">
                             {r.start} · {r.dur} min
@@ -125,7 +211,7 @@ export default function AgendaMobilePage() {
                             <Warn /> {r.allergy}
                           </div>
                         )}
-                      </div>
+                      </button>
                     </div>
                   </div>
                 ))

@@ -133,7 +133,6 @@ export default function PriseConstantesMobilePage() {
               />
               <span className="pc-m-input-unit">mmHg</span>
             </div>
-            <div className="pc-m-prev">Prec. 135/85</div>
           </div>
 
           {/* Fréquence cardiaque */}
@@ -154,7 +153,6 @@ export default function PriseConstantesMobilePage() {
               />
               <span className="pc-m-input-unit">bpm</span>
             </div>
-            <div className="pc-m-prev">Prec. 78</div>
           </div>
 
           {/* Température */}

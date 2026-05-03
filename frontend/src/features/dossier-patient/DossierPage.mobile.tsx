@@ -6,25 +6,42 @@
  */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Warn, Phone, Calendar, Pill as PillIcon, File } from '@/components/icons';
+import { Warn, Phone, Calendar, Stetho, Lock } from '@/components/icons';
+import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
+import { useConsultations } from '@/features/consultation/hooks/useConsultations';
+import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
+import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
+import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { usePatient } from './hooks/usePatient';
 import type { MobileDossierTab } from './types';
-
-const QUICK_ACTIONS = [
-  { ico: Phone, lbl: 'Appeler' },
-  { ico: Calendar, lbl: 'RDV' },
-  { ico: PillIcon, lbl: 'Rx' },
-  { ico: File, lbl: 'Notes' },
-] as const;
 
 export default function DossierMobilePage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
-  const { patient, isLoading } = usePatient(id);
+  const { patient, raw, isLoading } = usePatient(id);
   const [tab, setTab] = useState<MobileDossierTab>('historique');
+  const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
+  const { consultations: patientConsultations } = useConsultations(
+    raw?.id ? { patientId: raw.id } : {},
+  );
+  const { prescriptions: patientPrescriptions } = usePrescriptionsForPatient(raw?.id);
+  const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
+
+  async function handleStartConsultation() {
+    if (!raw) return;
+    try {
+      const created = await startConsultation({ patientId: raw.id });
+      void navigate(`/consultations/${created.id}`);
+    } catch {
+      toast.error('Impossible de démarrer la consultation', {
+        description: 'Le rôle MEDECIN est requis pour cette action.',
+      });
+    }
+  }
 
   if (isLoading || !patient) {
     return (
@@ -53,7 +70,6 @@ export default function DossierMobilePage() {
         <MTopbar
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
           title="Dossier patient"
-          right={<MIconBtn icon="MoreH" label="Plus d'actions" />}
         />
       }
     >
@@ -97,40 +113,80 @@ export default function DossierMobilePage() {
       </div>
 
       <div className="mb-pad">
-        {/* Quick action buttons */}
+        {/* Primary CTA — start consultation (POST /consultations) */}
+        <button
+          type="button"
+          className="m-btn primary"
+          style={{ height: 44, marginBottom: 16 }}
+          disabled={isStartingConsult}
+          onClick={() => {
+            void handleStartConsultation();
+          }}
+        >
+          <Stetho aria-hidden="true" />{' '}
+          {isStartingConsult ? 'Démarrage…' : 'Démarrer consultation'}
+        </button>
+
+        {/* Rx / Notes need a consultation context — omitted vs. prototype 4-grid. */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr 1fr',
+            gridTemplateColumns: '1fr 1fr',
             gap: 8,
             marginBottom: 16,
           }}
         >
-          {QUICK_ACTIONS.map(({ ico: Ico, lbl }) => (
-            <button
-              key={lbl}
-              type="button"
-              style={{
-                background: 'var(--bg-alt)',
-                border: 0,
-                borderRadius: 10,
-                padding: '10px 4px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                color: 'var(--ink)',
-                fontSize: 11,
-                fontWeight: 550,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-              aria-label={lbl}
-            >
-              <Ico aria-hidden="true" />
-              <span>{lbl}</span>
-            </button>
-          ))}
+          {(() => {
+            const phoneHref =
+              raw?.phone ? `tel:${raw.phone.replace(/\s+/g, '')}` : null;
+            const tileStyle = {
+              background: 'var(--bg-alt)',
+              border: 0,
+              borderRadius: 10,
+              padding: '10px 4px',
+              display: 'flex',
+              flexDirection: 'column' as const,
+              alignItems: 'center' as const,
+              gap: 4,
+              color: 'var(--ink)',
+              fontSize: 11,
+              fontWeight: 550,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              textDecoration: 'none',
+            };
+            return (
+              <>
+                {phoneHref ? (
+                  <a href={phoneHref} style={tileStyle} aria-label={`Appeler ${patient.fullName}`}>
+                    <Phone aria-hidden="true" />
+                    <span>Appeler</span>
+                  </a>
+                ) : (
+                  <button type="button" disabled style={{ ...tileStyle, opacity: 0.5, cursor: 'default' }} aria-label="Appeler (numéro indisponible)">
+                    <Phone aria-hidden="true" />
+                    <span>Appeler</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  style={tileStyle}
+                  aria-label="Prendre un rendez-vous"
+                  onClick={() => {
+                    if (!raw) return;
+                    const params = new URLSearchParams({
+                      patientId: raw.id,
+                      patientName: patient.fullName,
+                    });
+                    void navigate(`/rdv/new?${params.toString()}`);
+                  }}
+                >
+                  <Calendar aria-hidden="true" />
+                  <span>RDV</span>
+                </button>
+              </>
+            );
+          })()}
         </div>
 
         {/* Key info card */}
@@ -173,20 +229,59 @@ export default function DossierMobilePage() {
           </div>
         </div>
 
-        {/* Segmented tab control */}
-        <div className="m-segmented" role="tablist" aria-label="Sections">
-          {(['historique', 'analyses', 'admin'] as MobileDossierTab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              className={tab === t ? 'on' : ''}
-              onClick={() => setTab(t)}
-            >
-              {t === 'historique' ? 'Historique' : t === 'analyses' ? 'Analyses' : 'Admin.'}
-            </button>
-          ))}
+        {/* Segmented tab control — horizontally scrollable to fit 5 tabs */}
+        <div
+          role="tablist"
+          aria-label="Sections"
+          style={{
+            display: 'flex',
+            gap: 6,
+            overflowX: 'auto',
+            paddingBottom: 8,
+            marginBottom: 8,
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {(['historique', 'consults', 'rx', 'factu', 'admin'] as MobileDossierTab[]).map(
+            (t) => {
+              const label =
+                t === 'historique'
+                  ? 'Historique'
+                  : t === 'consults'
+                  ? `Consult. (${patientConsultations.length})`
+                  : t === 'rx'
+                  ? `Ordo. (${patientPrescriptions.length})`
+                  : t === 'factu'
+                  ? `Factures (${patientInvoices.length})`
+                  : 'Admin.';
+              const on = tab === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setTab(t)}
+                  style={{
+                    flexShrink: 0,
+                    height: 32,
+                    padding: '0 14px',
+                    borderRadius: 16,
+                    border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
+                    background: on ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: on ? 'var(--primary)' : 'var(--ink-2)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            },
+          )}
         </div>
 
         {/* Timeline (visible in historique tab) — wired to patient.timeline. */}
@@ -247,10 +342,187 @@ export default function DossierMobilePage() {
             </div>
           ))}
 
-        {tab === 'analyses' && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-            Analyses — à venir
-          </div>
+        {tab === 'consults' && (
+          <>
+            {patientConsultations.length === 0 ? (
+              <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
+                Aucune consultation enregistrée.
+              </div>
+            ) : (
+              <div className="m-card">
+                {patientConsultations.map((c, i) => {
+                  const isSigned = c.status === 'SIGNEE';
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => navigate(`/consultations/${c.id}`)}
+                      className="m-row"
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        background: 'transparent',
+                        borderTop:
+                          i === 0 ? 'none' : '1px solid var(--border-soft)',
+                        fontFamily: 'inherit',
+                        font: 'inherit',
+                        cursor: 'pointer',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <div className="m-row-pri">
+                        <div className="m-row-main">
+                          Consultation #{c.id.slice(0, 8).toUpperCase()}
+                        </div>
+                        <div className="m-row-sub">
+                          {new Date(c.startedAt).toLocaleDateString('fr-MA', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                          {c.motif ? ` · ${c.motif.slice(0, 40)}` : ''}
+                        </div>
+                      </div>
+                      <span
+                        className={`m-pill ${isSigned ? 'done' : 'consult'}`}
+                        style={{ marginRight: 6 }}
+                      >
+                        {isSigned ? (
+                          <>
+                            <Lock aria-hidden="true" /> Signée
+                          </>
+                        ) : (
+                          'Brouillon'
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'rx' && (
+          <>
+            {patientPrescriptions.length === 0 ? (
+              <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
+                Aucune ordonnance enregistrée.
+              </div>
+            ) : (
+              <div className="m-card">
+                {patientPrescriptions.map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => navigate(`/prescriptions/${p.id}`)}
+                    className="m-row"
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      background: 'transparent',
+                      borderTop:
+                        i === 0 ? 'none' : '1px solid var(--border-soft)',
+                      fontFamily: 'inherit',
+                      font: 'inherit',
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}
+                  >
+                    <div className="m-row-pri">
+                      <div className="m-row-main">
+                        {p.type ?? 'Ordonnance'} ·{' '}
+                        {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                      </div>
+                      <div className="m-row-sub">
+                        {new Date(p.issuedAt).toLocaleDateString('fr-MA', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {tab === 'factu' && (
+          <>
+            {patientInvoices.length === 0 ? (
+              <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
+                Aucune facture enregistrée.
+              </div>
+            ) : (
+              <div className="m-card">
+                {patientInvoices.map((inv, i) => {
+                  const paid = inv.payments.reduce((s, x) => s + x.amount, 0);
+                  return (
+                    <button
+                      key={inv.id}
+                      type="button"
+                      onClick={() => navigate(`/facturation/${inv.id}/apercu`)}
+                      className="m-row"
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        background: 'transparent',
+                        borderTop:
+                          i === 0 ? 'none' : '1px solid var(--border-soft)',
+                        fontFamily: 'inherit',
+                        font: 'inherit',
+                        cursor: 'pointer',
+                        WebkitTapHighlightColor: 'transparent',
+                      }}
+                    >
+                      <div className="m-row-pri">
+                        <div className="m-row-main">
+                          {inv.number ??
+                            `BR-${inv.id.slice(0, 8).toUpperCase()}`}{' '}
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: 'var(--ink-3)',
+                              fontWeight: 500,
+                            }}
+                          >
+                            · {INVOICE_STATUS_LABEL[inv.status]}
+                          </span>
+                        </div>
+                        <div className="m-row-sub">
+                          {new Date(
+                            inv.issuedAt ?? inv.createdAt,
+                          ).toLocaleDateString('fr-MA')}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div
+                          className="tnum"
+                          style={{ fontSize: 13, fontWeight: 600 }}
+                        >
+                          {inv.netAmount.toFixed(2).replace('.', ',')} MAD
+                        </div>
+                        {paid > 0 && (
+                          <div
+                            className="tnum"
+                            style={{
+                              fontSize: 11,
+                              color: '#2E7D32',
+                              marginTop: 2,
+                            }}
+                          >
+                            {paid.toFixed(2).replace('.', ',')} payé
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
 
         {tab === 'admin' && (

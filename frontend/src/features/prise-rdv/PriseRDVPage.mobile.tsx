@@ -27,16 +27,31 @@ export default function PriseRDVMobilePage() {
   const patientNameParam = searchParams.get('patientName') ?? null;
 
   const today = new Date();
-  const dd = String(today.getDate()).padStart(2, '0');
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const yyyy = today.getFullYear();
-  const todayStr = `${dd}/${mm}/${yyyy}`;
+
+  function fmtDmy(d: Date): string {
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}/${mm}/${d.getFullYear()}`;
+  }
+
+  function fmtIso(d: Date): string {
+    return d.toISOString().slice(0, 10);
+  }
+
+  const todayIso = fmtIso(today);
+  const [selectedDateIso, setSelectedDateIso] = useState<string>(todayIso);
+  // Convert ISO yyyy-mm-dd back to dd/mm/yyyy for the API.
+  const selectedDateDmy = (() => {
+    const [y, m, d] = selectedDateIso.split('-');
+    return `${d}/${m}/${y}`;
+  })();
 
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<number>(20);
   const [patientError, setPatientError] = useState<string | null>(null);
+  const [slotError, setSlotError] = useState<string | null>(null);
 
-  const { slots } = useAvailability(todayStr, selectedDuration);
+  const { slots } = useAvailability(selectedDateDmy, selectedDuration);
   const { reasons } = useReasons();
   const { createAppointment, isPending, error } = useCreateAppointment();
 
@@ -45,7 +60,7 @@ export default function PriseRDVMobilePage() {
     defaultValues: {
       patientId: patientIdParam,
       patientQuery: '',
-      date: todayStr,
+      date: fmtDmy(today),
       time: selectedSlot ?? '09:00',
       durationMin: selectedDuration,
       reasonId: null,
@@ -55,14 +70,21 @@ export default function PriseRDVMobilePage() {
   });
 
   async function onSubmit(data: RdvFormValues) {
+    setPatientError(null);
+    setSlotError(null);
     if (!patientIdParam) {
       setPatientError('Aucun patient sélectionné.');
       return;
     }
+    if (!selectedSlot) {
+      setSlotError('Sélectionnez un créneau disponible.');
+      return;
+    }
+    void data;
     const result = await createAppointment({
       patientId: patientIdParam,
-      date: data.date,
-      time: selectedSlot ?? data.time,
+      date: selectedDateDmy,
+      time: selectedSlot,
       durationMin: selectedDuration,
       reasonId: data.reasonId,
       ...(data.notes ? { notes: data.notes } : {}),
@@ -78,7 +100,6 @@ export default function PriseRDVMobilePage() {
         <MTopbar
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
           title="Nouveau RDV"
-          sub="Étape 2/3"
           right={
             <span
               style={{ color: 'var(--ink-3)', fontSize: 13, padding: '0 12px', fontWeight: 550 }}
@@ -157,9 +178,25 @@ export default function PriseRDVMobilePage() {
             </div>
           </div>
 
+          {/* Date picker */}
+          <div className="m-field">
+            <label htmlFor="m-rdv-date">Date</label>
+            <input
+              id="m-rdv-date"
+              className="m-input"
+              type="date"
+              min={todayIso}
+              value={selectedDateIso}
+              onChange={(e) => {
+                setSelectedDateIso(e.target.value);
+                setSelectedSlot(null);
+              }}
+            />
+          </div>
+
           {/* Available slots */}
           <div className="m-section-h" style={{ marginTop: 6 }}>
-            <h3>Créneaux disponibles · {dd}/{mm}/{yyyy}</h3>
+            <h3>Créneaux disponibles · {selectedDateDmy}</h3>
           </div>
           {slots.length === 0 ? (
             <div style={{ color: 'var(--ink-3)', fontSize: 13, marginBottom: 18 }}>
@@ -175,13 +212,19 @@ export default function PriseRDVMobilePage() {
                     type="button"
                     aria-pressed={isOn}
                     className={`prise-rdv-m-slot${isOn ? ' selected' : ''}`}
-                    onClick={() => setSelectedSlot(s.time)}
+                    onClick={() => {
+                      setSelectedSlot(s.time);
+                      setSlotError(null);
+                    }}
                   >
                     {s.time}
                   </button>
                 );
               })}
             </div>
+          )}
+          {slotError && (
+            <div style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 8 }}>{slotError}</div>
           )}
 
           {/* Note */}

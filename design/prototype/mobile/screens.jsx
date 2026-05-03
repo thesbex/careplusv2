@@ -209,6 +209,11 @@ function MDossier() {
       </div>
 
       <div className="mb-pad">
+        {/* Primary CTA — start consultation (POST /consultations) */}
+        <button className="m-btn primary" style={{height: 44, marginBottom: 16}}>
+          <Icon.Stetho /> Démarrer consultation
+        </button>
+
         {/* Quick action buttons */}
         <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 16}}>
           {[
@@ -331,30 +336,60 @@ function MSalle() {
         </div>
 
         <div className="m-card">
-          {patients.map((p, i) => (
-            <div key={i} className="m-row">
-              <div style={{
-                width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center',
-                background: 'var(--primary-soft)', color: 'var(--primary)', fontSize: 13, fontWeight: 600,
-              }}>
-                {p.name.split(' ').map(w => w[0]).slice(0,2).join('')}
-              </div>
-              <div className="m-row-pri">
-                <div className="m-row-main">{p.name}</div>
-                <div style={{display: 'flex', gap: 6, alignItems: 'center', marginTop: 4, flexWrap: 'wrap'}}>
-                  <span className={`m-pill ${p.status}`}>
-                    {p.status === 'consult' ? 'En consult.' : p.status === 'vitals' ? 'Constantes' : p.status === 'arrived' ? 'Arrivé' : 'Confirmé'}
-                  </span>
-                  {p.room && <span style={{fontSize: 11, color: 'var(--ink-3)', fontWeight: 550}}>· {p.room}</span>}
-                  {p.allergy && <span className="m-pill allergy" style={{fontSize: 10, padding: '2px 6px'}}><Icon.Warn /> {p.allergy}</span>}
-                </div>
-              </div>
-              <div style={{textAlign: 'right'}}>
-                <div className="m-row-time">{p.apt}</div>
-                <div style={{fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2}}>{p.since !== '—' ? `Depuis ${p.since}` : 'pas arrivé'}</div>
-              </div>
+          {patients.length === 0 ? (
+            <div style={{padding: '32px 16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13}}>
+              Aucun patient présent
             </div>
-          ))}
+          ) : patients.map((p, i) => {
+            const isDone     = p.status === 'done';
+            const isConsult  = p.status === 'consult';
+            const startable  = !isDone && !isConsult; // arrived / waiting / vitals
+            return (
+              <button
+                key={i}
+                className="m-row"
+                disabled={isDone}
+                style={{
+                  width: '100%', textAlign: 'left', background: 'transparent',
+                  border: 0, borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
+                  fontFamily: 'inherit', font: 'inherit', cursor: isDone ? 'default' : 'pointer',
+                  opacity: isDone ? 0.6 : 1,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div style={{
+                  width: 38, height: 38, borderRadius: 10, display: 'grid', placeItems: 'center',
+                  background: 'var(--primary-soft)', color: 'var(--primary)', fontSize: 13, fontWeight: 600,
+                }}>
+                  {p.name.split(' ').map(w => w[0]).slice(0,2).join('')}
+                </div>
+                <div className="m-row-pri">
+                  <div className="m-row-main">{p.name}</div>
+                  <div style={{display: 'flex', gap: 6, alignItems: 'center', marginTop: 4, flexWrap: 'wrap'}}>
+                    <span className={`m-pill ${p.status}`}>
+                      {isConsult ? 'En consult.' : p.status === 'vitals' ? 'Constantes' : p.status === 'arrived' ? 'Arrivé' : p.status === 'done' ? 'Terminé' : 'Confirmé'}
+                    </span>
+                    {p.room && <span style={{fontSize: 11, color: 'var(--ink-3)', fontWeight: 550}}>· {p.room}</span>}
+                    {p.allergy && <span className="m-pill allergy" style={{fontSize: 10, padding: '2px 6px'}}><Icon.Warn /> {p.allergy}</span>}
+                  </div>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                  <div style={{textAlign: 'right'}}>
+                    <div className="m-row-time">{p.apt}</div>
+                    <div style={{fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2}}>{p.since !== '—' ? `Depuis ${p.since}` : 'pas arrivé'}</div>
+                  </div>
+                  {!isDone && (
+                    <span style={{
+                      color: startable ? 'var(--primary)' : 'var(--ink-4)',
+                      display: 'grid', placeItems: 'center',
+                    }}>
+                      {startable ? <Icon.Stetho /> : <Icon.ChevronRight />}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </MScreen>

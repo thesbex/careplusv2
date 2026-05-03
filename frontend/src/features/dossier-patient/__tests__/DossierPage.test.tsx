@@ -207,12 +207,14 @@ describe('<DossierMobilePage />', () => {
     expect(alert).toHaveTextContent('Pénicilline');
   });
 
-  it('renders 4 quick-action buttons', () => {
+  it('renders the wired quick-action buttons (Appeler + RDV)', () => {
     renderMobileDossier();
-    expect(screen.getByRole('button', { name: 'Appeler' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'RDV' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rx' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Notes' })).toBeInTheDocument();
+    // Appeler renders as <a tel:…> if patient.phone exists, else as a disabled button.
+    const appeler =
+      screen.queryByRole('link', { name: /Appeler/ }) ??
+      screen.getByRole('button', { name: /Appeler/ });
+    expect(appeler).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Prendre un rendez-vous' })).toBeInTheDocument();
   });
 
   it('renders the 3-item segmented control with Historique selected', () => {

@@ -72,4 +72,9 @@ export type DossierTab =
   | 'docs'
   | 'factu';
 
-export type MobileDossierTab = 'historique' | 'analyses' | 'admin';
+export type MobileDossierTab =
+  | 'historique'
+  | 'consults'
+  | 'rx'
+  | 'factu'
+  | 'admin';

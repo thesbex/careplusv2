@@ -1,19 +1,19 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import LoginPage from '@/features/login/LoginPage';
+import LoginPage from '@/features/login/LoginRoute';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
 import DossierRoute from '@/features/dossier-patient';
-import PatientsListPage from '@/features/dossier-patient/PatientsListPage';
+import PatientsListPage from '@/features/dossier-patient/PatientsListRoute';
 import SalleAttenteRoute from '@/features/salle-attente';
 import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
 import ConsultationRoute from '@/features/consultation';
 import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfPage';
-import FacturationPage from '@/features/facturation/FacturationPage';
-import ApercuFacturePage from '@/features/facturation/ApercuFacturePage';
+import FacturationPage from '@/features/facturation/FacturationRoute';
+import ApercuFacturePage from '@/features/facturation/ApercuFactureRoute';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
-import ParametragePage from '@/features/parametres/ParametragePage';
-import CataloguePage from '@/features/catalogue/CataloguePage';
+import ParametragePage from '@/features/parametres/ParametrageRoute';
+import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -165,9 +165,9 @@ export const router = createBrowserRouter(
     {
       path: '/parametres',
       element: (
-        <RequireRole roles={['ADMIN', 'MEDECIN']}>
+        <RequireAuth>
           <ParametragePage />
-        </RequireRole>
+        </RequireAuth>
       ),
     },
     {

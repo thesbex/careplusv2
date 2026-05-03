@@ -151,7 +151,6 @@ export default function ConsultationMobilePage() {
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
           title="Consultation"
           sub={patient ? patient.fullName : 'Chargement…'}
-          right={<MIconBtn icon="MoreH" label="Plus d'actions" />}
         />
       }
     >

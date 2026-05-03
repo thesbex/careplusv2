@@ -186,9 +186,9 @@ describe('<PriseRDVMobilePage />', () => {
     expect(screen.getByText('Nouveau RDV')).toBeInTheDocument();
   });
 
-  it('renders the step sub-label "Étape 2/3"', () => {
+  it('does not render the misleading "Étape 2/3" sub-label (no multi-step wizard)', () => {
     renderMobilePage();
-    expect(screen.getByText('Étape 2/3')).toBeInTheDocument();
+    expect(screen.queryByText('Étape 2/3')).not.toBeInTheDocument();
   });
 
   it('renders the back button and Annuler action', () => {
