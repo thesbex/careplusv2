@@ -35,8 +35,10 @@ export async function authedApi(token: string): Promise<APIRequestContext> {
 /** Drives the UI login form so subsequent navigation runs as that user. */
 export async function uiLogin(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
-  await page.getByLabel(/email/i).fill(email);
-  await page.getByLabel(/mot de passe/i).fill(password);
+  // Exact labels — the page also contains "Mot de passe oublié" + show/hide
+  // aria-label, which would make a loose regex ambiguous in strict mode.
+  await page.getByLabel(/^Adresse e[- ]?mail$/i).fill(email);
+  await page.getByLabel('Mot de passe', { exact: true }).fill(password);
   await page.getByRole('button', { name: /se connecter/i }).click();
   await page.waitForURL((u) => !u.pathname.includes('/login'), { timeout: 10_000 });
 }

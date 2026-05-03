@@ -17,6 +17,11 @@
  *   7. Quand l'OS n'expose AUCUNE caméra (Windows Privacy = OFF, kill-switch),
  *      la modale « Photographier » affiche un titre + des consignes
  *      actionnables, pas seulement « Aucune caméra détectée » sans suite
+ *   8. Import CSV catalogue médicaments — le bouton « Importer CSV » envoie
+ *      le fichier au bon endpoint et la table affiche les lignes ajoutées
+ *      sans recharger la page (rapport Y. Boutaleb 2026-05-01)
+ *   9. SECRETAIRE ne voit PAS le bouton « Importer CSV » (gate front) — et
+ *      même en POST direct, le backend retourne 403 (gate Spring Security)
  *
  * Pré-requis : Spring Boot + Vite up, dev profile (cf. playwright.config.ts).
  */
@@ -276,6 +281,62 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
 
     // « Capturer » must be disabled — no stream, no capture.
     await expect(page.getByRole('button', { name: /^Capturer$/ })).toBeDisabled();
+  });
+
+  test('8. Catalog meds CSV import — drag the file into the IHM, table updates', async ({ page }) => {
+    // QA5-2 — le médecin doit pouvoir étoffer son catalogue depuis un CSV
+    // (DCI / forme / dosage non encore connus). Le bouton « Importer CSV »
+    // envoie le fichier en multipart à /catalog/medications/import.
+    await uiLogin(page, USERS.medecin.email, USERS.medecin.password);
+    await page.goto('/catalogue');
+
+    // Two QA-prefixed rows that won't collide with the seed data even on
+    // re-runs (upsert by commercial_name+dci+form+dosage).
+    const stamp = Date.now();
+    const csv = [
+      'commercial_name,dci,form,dosage,atc_code,tags,active',
+      `QA-IHM-${stamp},Guaifenesine,sirop,200mg/5ml,R05CA03,mucolytique,true`,
+      `QA-IHM-${stamp}-bis,Paracetamol,suppositoire,150mg,N02BE01,antalgique,true`,
+    ].join('\n');
+
+    // Wait for « Importer CSV » to be visible (RBAC: MEDECIN sees it).
+    const importButton = page.getByRole('button', { name: /Importer CSV/i });
+    await expect(importButton).toBeVisible({ timeout: 10_000 });
+
+    // setInputFiles works against the hidden <input type="file"> the button
+    // proxies to — same code path as a real user picking a file.
+    const fileInput = page.locator('input[type="file"][accept*="csv"]');
+    await fileInput.setInputFiles({
+      name: `qa-${stamp}.csv`,
+      mimeType: 'text/csv',
+      buffer: Buffer.from(csv, 'utf8'),
+    });
+
+    // Either « Import OK » (everything new) or « Import partiel » (re-run hit
+    // upsert path) — both are success states.
+    await expect(page.getByText(/Import OK|Import partiel/i)).toBeVisible({
+      timeout: 10_000,
+    });
+
+    // The freshly-imported rows must surface in the table without a page
+    // reload — proves the refresh-tick wiring fires after the import.
+    await expect(page.getByText(`QA-IHM-${stamp}`).first()).toBeVisible({
+      timeout: 5_000,
+    });
+    await expect(page.getByText(`QA-IHM-${stamp}-bis`).first()).toBeVisible();
+  });
+
+  test('9. SECRETAIRE: « Importer CSV » button is hidden in the IHM', async ({ page }) => {
+    // Front-side gate (RBAC store filters by role). The matching backend 403
+    // path is covered by CatalogImportIT.importMedications_secretaire_returns403
+    // — keeping it out of Playwright avoids exhausting the login rate limit
+    // (5 / 15 min / IP) when the suite re-runs locally.
+    await uiLogin(page, USERS.secretaire.email, USERS.secretaire.password);
+    await page.goto('/catalogue');
+    await expect(page.getByText(/médicament/i).first()).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(page.getByRole('button', { name: /Importer CSV/i })).toHaveCount(0);
   });
 
   test.fixme(
