@@ -10,9 +10,11 @@ interface AgendaGridProps {
   today?: DayKey;
   /** "HH:MM" — used to position the now-line. */
   now?: string;
+  /** Days that fall in a practitioner-leave range. Painted with a striped overlay. */
+  leaveDays?: Set<DayKey>;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, today = 'jeu', now = '09:47' }: AgendaGridProps) {
+export function AgendaGrid({ days, appointments, onSelect, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
   const nowTop = pxFromMin(toMin(now));
   return (
     <div className="ag-grid-wrap">
@@ -35,7 +37,16 @@ export function AgendaGrid({ days, appointments, onSelect, today = 'jeu', now = 
             ))}
           </div>
           {days.map((d) => (
-            <div key={d.key} className={`ag-daycol ${d.key === today ? 'today' : ''}`}>
+            <div
+              key={d.key}
+              className={[
+                'ag-daycol',
+                d.key === today ? 'today' : '',
+                leaveDays?.has(d.key) ? 'leave' : '',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
               {HOURS.map((h) => (
                 <div key={h} className="ag-hour-cell" />
               ))}

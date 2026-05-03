@@ -392,3 +392,134 @@
   border-top: 1px solid var(--border);
   background: var(--surface);
 }
+
+/* ── Leave overlay (week + day views) ────────────────────────────────────── */
+.ag-daycol.leave {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 8px,
+    rgba(0, 0, 0, 0.04) 8px,
+    rgba(0, 0, 0, 0.04) 16px
+  );
+}
+.ag-daycol.leave::after {
+  content: 'Congé';
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--amber);
+  background: var(--amber-soft);
+  border: 1px solid #E8CFA9;
+  padding: 2px 8px;
+  border-radius: 999px;
+  z-index: 2;
+  pointer-events: none;
+}
+.ag-daycol {
+  position: relative;
+}
+
+/* ── Month grid ──────────────────────────────────────────────────────────── */
+.ag-month {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+.ag-month-head {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.ag-month-head-cell {
+  padding: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  text-align: center;
+}
+.ag-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  flex: 1;
+  overflow: auto;
+}
+.ag-month-cell {
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 90px;
+  font-family: inherit;
+  text-align: left;
+  position: relative;
+}
+.ag-month-cell:hover {
+  background: var(--primary-soft);
+}
+.ag-month-cell.outside {
+  background: var(--bg-alt);
+  color: var(--ink-3);
+  cursor: default;
+}
+.ag-month-cell.outside:hover {
+  background: var(--bg-alt);
+}
+.ag-month-cell.today {
+  background: var(--primary-soft);
+  border: 2px solid var(--primary);
+}
+.ag-month-cell.leave {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 6px,
+    rgba(229, 162, 50, 0.12) 6px,
+    rgba(229, 162, 50, 0.12) 12px
+  );
+}
+.ag-month-day-num {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.ag-month-cell.outside .ag-month-day-num {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.ag-month-leave-tag {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--amber);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ag-month-apt-pill {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ag-month-more {
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
