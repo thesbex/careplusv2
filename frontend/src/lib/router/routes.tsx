@@ -9,6 +9,8 @@ import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
 import ConsultationRoute from '@/features/consultation';
 import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfPage';
+import FacturationPage from '@/features/facturation/FacturationPage';
+import ApercuFacturePage from '@/features/facturation/ApercuFacturePage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import CongesPage from '@/features/parametres/CongesPage';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
@@ -140,7 +142,15 @@ export const router = createBrowserRouter(
       path: '/facturation',
       element: (
         <RequireAuth>
-          <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />
+          <FacturationPage />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/facturation/:id/apercu',
+      element: (
+        <RequireAuth>
+          <ApercuFacturePage />
         </RequireAuth>
       ),
     },

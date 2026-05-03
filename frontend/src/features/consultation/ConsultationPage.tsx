@@ -23,6 +23,8 @@ import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import type { PrescriptionType } from '@/features/prescription/types';
+import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
+import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
 import { PatientContextCard } from './components/PatientContextCard';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
 import { SignatureLock } from './components/SignatureLock';
@@ -66,7 +68,10 @@ export default function ConsultationPage() {
   const { vitals } = useLatestVitals(consultation?.patientId);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
+  const { invoice } = useInvoiceByConsultation(id);
+  const { adjustTotal, isPending: isAdjusting } = useAdjustInvoiceTotal();
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
+  const [adjustingDiscount, setAdjustingDiscount] = useState<number | null>(null);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -315,17 +320,80 @@ export default function ConsultationPage() {
             Facturation
           </div>
           <Panel className="cs-billing-panel">
-            <div
-              style={{
-                padding: '10px 12px',
-                fontSize: 12,
-                color: 'var(--ink-3)',
-              }}
-            >
-              {isSigned
-                ? 'Facture brouillon créée — voir Facturation.'
-                : 'La facture brouillon sera générée à la signature.'}
-            </div>
+            {!invoice && (
+              <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
+                {isSigned
+                  ? 'Facture brouillon en cours de création…'
+                  : 'La facture brouillon sera générée à la signature.'}
+              </div>
+            )}
+            {invoice && (
+              <div style={{ padding: '10px 12px', fontSize: 12 }}>
+                <div className="cs-billing-row">
+                  <span style={{ color: 'var(--ink-3)' }}>Sous-total</span>
+                  <span className="tnum">{invoice.totalAmount.toFixed(2).replace('.', ',')} MAD</span>
+                </div>
+                {invoice.discountAmount > 0 && (
+                  <div className="cs-billing-row">
+                    <span style={{ color: 'var(--ink-3)' }}>Remise</span>
+                    <span className="tnum">- {invoice.discountAmount.toFixed(2).replace('.', ',')} MAD</span>
+                  </div>
+                )}
+                <div className="cs-billing-total">
+                  <span>Net à régler</span>
+                  <span className="tnum">{invoice.netAmount.toFixed(2).replace('.', ',')} MAD</span>
+                </div>
+                {!isSigned && id && (
+                  <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="Remise (MAD)"
+                      value={adjustingDiscount ?? ''}
+                      onChange={(e) =>
+                        setAdjustingDiscount(e.target.value === '' ? null : Number(e.target.value))
+                      }
+                      style={{
+                        flex: 1,
+                        height: 28,
+                        border: '1px solid var(--border)',
+                        borderRadius: 4,
+                        padding: '0 6px',
+                        fontSize: 12,
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={isAdjusting || adjustingDiscount === null}
+                      onClick={() => {
+                        if (adjustingDiscount === null) return;
+                        adjustTotal({
+                          consultationId: id,
+                          discountAmount: adjustingDiscount,
+                        })
+                          .then(() => {
+                            toast.success('Total ajusté.');
+                            setAdjustingDiscount(null);
+                          })
+                          .catch(() => toast.error('Ajustement refusé (rôle médecin requis).'));
+                      }}
+                    >
+                      Ajuster
+                    </Button>
+                  </div>
+                )}
+                {isSigned && (
+                  <Button
+                    size="sm"
+                    style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
+                    onClick={() => navigate('/facturation')}
+                  >
+                    Ouvrir la facture →
+                  </Button>
+                )}
+              </div>
+            )}
           </Panel>
         </div>
       </form>
