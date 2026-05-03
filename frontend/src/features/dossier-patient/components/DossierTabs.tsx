@@ -102,10 +102,7 @@ export function DossierTabPanel({
   children: React.ReactNode;
 }) {
   return (
-    <RadixTabs.Content
-      value={value}
-      style={{ flex: 1, display: 'flex', overflow: 'hidden', minHeight: 0 }}
-    >
+    <RadixTabs.Content value={value} className="dp-tab-panel">
       {children}
     </RadixTabs.Content>
   );

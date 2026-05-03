@@ -12,6 +12,21 @@
   border-radius: var(--r-sm);
 }
 
+/* ── Tab panels ─────────────────────────────────────────── */
+/*
+ * Radix sets the `hidden` attribute on inactive Content elements to hide them.
+ * An inline `display: flex` style would override that — all panels would render
+ * simultaneously and share the available height. Instead, only set display:flex
+ * on the active panel via the data-state attribute so Radix's hidden behaviour
+ * is preserved.
+ */
+.dp-tab-panel[data-state='active'] {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
 /* ── Timeline grid ──────────────────────────────────────── */
 /*
  * `min-height: 0` is CRITICAL here. Grid + flex children default to

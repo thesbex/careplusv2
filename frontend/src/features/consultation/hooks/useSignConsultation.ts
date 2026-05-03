@@ -1,25 +1,26 @@
-/**
- * Hook for signing/locking a consultation.
- *
- * Currently a mock that logs the action.
- * TODO(backend:J5): replace with:
- *   useMutation({ mutationFn: (id) => api.post(`/api/consultations/${id}/sign`) })
- */
-import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 
 export function useSignConsultation() {
-  const [isSigning, setIsSigning] = useState(false);
-  const [signed, setSigned] = useState(false);
+  const queryClient = useQueryClient();
 
-  function sign(_id?: string) {
-    setIsSigning(true);
-    // TODO(backend:J5): POST /api/consultations/:id/sign
-    console.log('[useSignConsultation] mock sign for', _id);
-    setTimeout(() => {
-      setIsSigning(false);
-      setSigned(true);
-    }, 400);
+  const mutation = useMutation({
+    mutationFn: (id: string) =>
+      api.post(`/consultations/${id}/sign`).then((r) => r.data),
+    onSuccess: (_data, id) => {
+      void queryClient.invalidateQueries({ queryKey: ['consultation', id] });
+      void queryClient.invalidateQueries({ queryKey: ['queue'] });
+    },
+  });
+
+  function sign(id?: string) {
+    if (!id) return;
+    mutation.mutate(id);
   }
 
-  return { sign, isSigning, signed };
+  return {
+    sign,
+    isSigning: mutation.isPending,
+    signed: mutation.isSuccess,
+  };
 }

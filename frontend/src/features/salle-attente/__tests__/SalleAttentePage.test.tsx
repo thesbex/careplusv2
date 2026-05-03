@@ -6,13 +6,18 @@
  * Per ADR-018: run only this suite during development:
  *   npm test -- --run features/salle-attente
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import SalleAttentePage from '../SalleAttentePage';
 import SalleAttenteMobilePage from '../SalleAttentePage.mobile';
+import { QUEUE, KPIS, UPCOMING } from '../fixtures';
+
+vi.mock('../hooks/useQueue', () => ({
+  useQueue: () => ({ queue: QUEUE, kpis: KPIS, upcoming: UPCOMING, isLoading: false, error: null }),
+}));
 
 // ── Helpers ──────────────────────────────────────────────
 

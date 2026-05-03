@@ -13,7 +13,7 @@
  */
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Panel } from '@/components/ui/Panel';
 import { Field } from '@/components/ui/Field';
@@ -28,7 +28,8 @@ import './prise-constantes.css';
 
 export default function PriseConstantesPage() {
   const navigate = useNavigate();
-  const { submit, isPending } = useRecordVitals();
+  const { appointmentId } = useParams<{ appointmentId?: string }>();
+  const { submit, isPending } = useRecordVitals(appointmentId);
 
   const {
     register,

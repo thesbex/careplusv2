@@ -6,13 +6,22 @@
  * Per ADR-018: run only this suite during development:
  *   npm test -- --run features/prise-constantes
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import PriseConstantesPage from '../PriseConstantesPage';
 import PriseConstantesMobilePage from '../PriseConstantesPage.mobile';
+
+vi.mock('../hooks/useRecordVitals', () => ({
+  useRecordVitals: () => ({
+    submit: vi.fn().mockResolvedValue(undefined),
+    isPending: false,
+    isSuccess: false,
+    error: null,
+  }),
+}));
 
 // ── Helpers ──────────────────────────────────────────────
 

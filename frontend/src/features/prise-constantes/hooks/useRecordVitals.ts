@@ -1,35 +1,37 @@
-/**
- * useRecordVitals — mock submission hook for Prise des constantes (screen 05).
- *
- * TODO(backend:J5): swap to useMutation POSTing
- *   POST /api/appointments/:appointmentId/vitals
- * once the J5 vitals module ships.
- * The VitalsFormValues type already mirrors the expected backend DTO shape,
- * so the swap will be structural only (replace the setTimeout mock with
- * the axios call through the JWT-interceptor client).
- */
-import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 import type { UseRecordVitalsResult } from '../types';
 import type { VitalsFormValues } from '../schema';
 
-export function useRecordVitals(): UseRecordVitalsResult {
-  const [isPending, setIsPending] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
+  const queryClient = useQueryClient();
 
-  async function submit(_values: VitalsFormValues): Promise<void> {
-    setIsPending(true);
-    setError(null);
-    try {
-      // Simulate async network round-trip
-      await new Promise<void>((resolve) => setTimeout(resolve, 400));
-      setIsSuccess(true);
-    } catch {
-      setError('Erreur lors de l\'enregistrement. Réessayez.');
-    } finally {
-      setIsPending(false);
-    }
+  const mutation = useMutation({
+    mutationFn: (values: VitalsFormValues) =>
+      api.post(`/appointments/${appointmentId}/vitals`, {
+        systolicMmhg: values.tensionSys,
+        diastolicMmhg: values.tensionDia,
+        heartRateBpm: values.pulse,
+        spo2Percent: values.spo2,
+        temperatureC: values.tempC,
+        weightKg: values.weightKg,
+        heightCm: values.heightCm,
+        glycemiaGPerL: values.glycemia ?? null,
+        notes: values.notes ?? null,
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['queue'] });
+    },
+  });
+
+  async function submit(values: VitalsFormValues): Promise<void> {
+    await mutation.mutateAsync(values);
   }
 
-  return { submit, isPending, isSuccess, error };
+  return {
+    submit,
+    isPending: mutation.isPending,
+    isSuccess: mutation.isSuccess,
+    error: mutation.error ? 'Erreur lors de l\'enregistrement. Réessayez.' : null,
+  };
 }
