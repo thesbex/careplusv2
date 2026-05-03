@@ -25,7 +25,9 @@ export function useCancelAppointment() {
 
   return {
     cancel: (appointmentId: string, reason?: string) =>
-      mutation.mutateAsync({ appointmentId, reason }),
+      mutation.mutateAsync(
+        reason === undefined ? { appointmentId } : { appointmentId, reason },
+      ),
     isPending: mutation.isPending,
     error: mutation.error ? "Erreur lors de l'annulation du RDV." : null,
   };

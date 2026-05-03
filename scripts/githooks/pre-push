@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Catch frontend TypeScript errors that would break Render's Docker build
+# (`tsc --noEmit && vite build` runs inside the container — local typecheck
+# is the last line of defense before push).
+#
+# Activation : `git config core.hooksPath scripts/githooks` once in this clone.
+# Skip pour 1 push : `git push --no-verify`.
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Range of commits about to be pushed (read from stdin per pre-push protocol).
+range_changed_files() {
+  while read -r local_ref local_sha remote_ref remote_sha; do
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+      continue
+    fi
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+      git diff --name-only "$local_sha" 2>/dev/null || true
+    else
+      git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null || true
+    fi
+  done
+}
+
+CHANGED=$(range_changed_files | sort -u)
+
+if echo "$CHANGED" | grep -qE '^frontend/'; then
+  echo "[pre-push] frontend/* touched → running tsc --noEmit + vite build"
+  cd "$REPO_ROOT/frontend"
+  if ! npm run build > /tmp/careplus-prepush-build.log 2>&1; then
+    echo
+    echo "[pre-push] FRONTEND BUILD FAILED — push blocked."
+    echo "Cette même erreur cassera le déploiement Render. Détails :"
+    echo "----------------------------------------------------------"
+    tail -30 /tmp/careplus-prepush-build.log
+    echo "----------------------------------------------------------"
+    echo "Skip ponctuel : git push --no-verify (déconseillé)."
+    exit 1
+  fi
+  echo "[pre-push] frontend build OK."
+fi
+
+# Backend: si Java/Maven touché, on suggère mvn verify mais on ne le force pas
+# (trop lent — fait par regression-guard avant chaque commit, déjà couvert).
+if echo "$CHANGED" | grep -qE '^src/(main|test)/java/'; then
+  echo "[pre-push] backend Java touché — n'oublie pas mvn verify (regression-guard agent)."
+fi
+
+exit 0

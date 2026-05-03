@@ -35,6 +35,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 11. **Parallel-synchronized delivery (ADR-021).** Each J-day owns a backend feature AND the matching frontend screen(s). Frontend pauses if it catches up — never race ahead of backend. Mobile + desktop ship in the same pass per screen, not as separate phases.
 12. **Auth tokens: refresh in HttpOnly cookie, access in memory only (ADR-019).** Never `localStorage`. Never `sessionStorage`.
 13. **Packaging: one process (ADR-020).** Maven builds the Vite bundle and Spring Boot serves it from `src/main/resources/static/`. No Nginx in the cabinet deployment.
+14. **Before every push that touches `frontend/**`, run the full prod build locally.** Either let the `pre-push` hook (`scripts/githooks/pre-push`, activated via `git config core.hooksPath scripts/githooks`) catch it, OR run `cd frontend && npm run build` by hand. Render's Docker stage runs `tsc --noEmit && vite build` with `exactOptionalPropertyTypes: true` — a passing `tsc --noEmit` on touched files is NOT enough, the project-wide build must be green. Skipping this once = a broken Render deploy.
 
 ## Tech stack (frozen for MVP)
 
