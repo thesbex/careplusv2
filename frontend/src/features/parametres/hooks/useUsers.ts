@@ -17,7 +17,7 @@ export interface CreateUserForm {
   firstName: string;
   lastName: string;
   phone: string;
-  roleNames: string[];
+  roles: string[];
 }
 
 export function useUsers() {

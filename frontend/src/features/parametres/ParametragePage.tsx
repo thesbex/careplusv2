@@ -286,7 +286,7 @@ function UtilisateursTab() {
         firstName: draft.firstName,
         lastName: draft.lastName,
         phone: draft.phone,
-        roleNames: [draft.role],
+        roles: [draft.role],
       });
       toast.success('Utilisateur créé.');
       setShowForm(false);

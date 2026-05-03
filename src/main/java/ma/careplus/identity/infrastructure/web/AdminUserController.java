@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import ma.careplus.identity.infrastructure.web.dto.AdminUserView;
 import ma.careplus.identity.infrastructure.web.dto.CreateUserRequest;
 import ma.careplus.identity.infrastructure.web.dto.UserView;
 import ma.careplus.shared.error.BusinessException;
@@ -18,6 +19,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -51,6 +55,58 @@ public class AdminUserController {
     public AdminUserController(JdbcTemplate jdbc, PasswordEncoder passwordEncoder) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<AdminUserView> listUsers() {
+        // Single query with users + role codes via array_agg, ordered by name.
+        // LEFT JOIN so users without any role still appear (defensive).
+        String sql = """
+                SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.enabled,
+                       COALESCE(array_agg(r.code) FILTER (WHERE r.code IS NOT NULL), '{}'::text[]) AS roles
+                  FROM identity_user u
+             LEFT JOIN identity_user_role ur ON ur.user_id = u.id
+             LEFT JOIN identity_role r       ON r.id = ur.role_id
+              GROUP BY u.id
+              ORDER BY u.last_name, u.first_name
+                """;
+        return jdbc.query(sql, (rs, i) -> {
+            String[] roles = (String[]) rs.getArray("roles").getArray();
+            return new AdminUserView(
+                    (UUID) rs.getObject("id"),
+                    rs.getString("email"),
+                    rs.getString("first_name"),
+                    rs.getString("last_name"),
+                    rs.getString("phone"),
+                    rs.getBoolean("enabled"),
+                    List.of(roles));
+        });
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<Void> deactivateUser(@PathVariable UUID id) {
+        // Soft-disable: flip the enabled flag rather than DELETE. Users own
+        // historical data (audit logs, consultations) so hard-deletion would
+        // break referential integrity. Disabled users can no longer log in
+        // (handled by AuthService) but their past actions remain attributable.
+        int updated = jdbc.update(
+                "UPDATE identity_user SET enabled = FALSE, updated_at = now() WHERE id = ? AND enabled = TRUE",
+                id);
+        if (updated == 0) {
+            throw new BusinessException(
+                    "USER_NOT_FOUND_OR_ALREADY_DISABLED",
+                    "Utilisateur introuvable ou déjà désactivé.",
+                    HttpStatus.NOT_FOUND.value());
+        }
+        // Revoke all live refresh tokens so the disabled session can't survive.
+        jdbc.update(
+                "UPDATE identity_refresh_token SET revoked_at = now() WHERE user_id = ? AND revoked_at IS NULL",
+                id);
+        log.info("Admin disabled user {}", id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping
