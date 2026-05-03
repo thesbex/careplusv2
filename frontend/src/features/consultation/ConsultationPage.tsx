@@ -37,6 +37,7 @@ import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
 import { SignatureLock } from './components/SignatureLock';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
+import { useSuspendConsultation } from './hooks/useSuspendConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
 import { consultationDraftSchema, consultationSignSchema } from './schema';
 import type { ConsultationFormValues } from './types';
@@ -77,6 +78,7 @@ export default function ConsultationPage() {
   // = bilan neuf, dialog vide.
   const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
+  const { suspend, isSuspending } = useSuspendConsultation(id);
   const { prescriptions } = usePrescriptions(id);
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
@@ -88,6 +90,7 @@ export default function ConsultationPage() {
   const [certificatOpen, setCertificatOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
+  const isSuspended = consultation?.status === 'SUSPENDUE' && !isSigned;
   // Le footer "Certificat" rouvre le PDF du dernier certificat généré pour
   // la consultation. Désactivé tant qu'aucun cert n'existe.
   const latestCert = [...prescriptions].reverse().find((p) => p.type === 'CERT');
@@ -237,8 +240,8 @@ export default function ConsultationPage() {
 
         <div className="cs-soap-col">
           <div className="cs-soap-toolbar">
-            <Pill status={isSigned ? 'done' : 'consult'} dot>
-              {isSigned ? 'Signée' : 'En consultation'}
+            <Pill status={isSigned ? 'done' : isSuspended ? 'arrived' : 'consult'} dot>
+              {isSigned ? 'Signée' : isSuspended ? 'Suspendue' : 'En consultation'}
             </Pill>
             <span className="tnum" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
               Démarrée {startedLabel}
@@ -271,7 +274,29 @@ export default function ConsultationPage() {
                 : `Enregistré automatiquement · ${savedLabel}`}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <Button type="button" onClick={() => navigate('/salle')}>
+              <Button
+                type="button"
+                disabled={isSuspending || isSigned}
+                onClick={async () => {
+                  // Flush any pending autosave so we don't lose in-flight edits.
+                  if (timerRef.current) {
+                    clearTimeout(timerRef.current);
+                    timerRef.current = null;
+                    try {
+                      await update(apiFromForm(getValues()));
+                    } catch {
+                      /* autosave error already toasted by watcher */
+                    }
+                  }
+                  const ok = await suspend();
+                  if (ok) {
+                    toast.success('Consultation suspendue. Patient remis dans la file.');
+                    void navigate('/salle');
+                  } else {
+                    toast.error('Suspension refusée par le serveur.');
+                  }
+                }}
+              >
                 Suspendre
               </Button>
               <Button

@@ -97,10 +97,52 @@ public class ConsultationService {
                     "Une consultation signée ne peut plus être modifiée. Créer un amendement.",
                     HttpStatus.CONFLICT.value());
         }
+        // Auto-resume: any edit on a SUSPENDUE consultation flips it back
+        // to BROUILLON and pulls the patient out of the queue into EN_CONSULTATION.
+        if (c.getStatus() == ConsultationStatus.SUSPENDUE) {
+            c.setStatus(ConsultationStatus.BROUILLON);
+            if (c.getAppointmentId() != null) {
+                appointmentRepository.findById(c.getAppointmentId()).ifPresent(a -> {
+                    if (a.getStatus() == AppointmentStatus.CONSTANTES_PRISES
+                            || a.getStatus() == AppointmentStatus.ARRIVE
+                            || a.getStatus() == AppointmentStatus.EN_ATTENTE_CONSTANTES) {
+                        a.setStatus(AppointmentStatus.EN_CONSULTATION);
+                    }
+                });
+            }
+        }
         if (req.motif() != null)       c.setMotif(req.motif());
         if (req.examination() != null) c.setExamination(req.examination());
         if (req.diagnosis() != null)   c.setDiagnosis(req.diagnosis());
         if (req.notes() != null)       c.setNotes(req.notes());
+        return c;
+    }
+
+    /**
+     * Suspend a draft consultation: doctor steps out, patient returns to the queue.
+     * - Consultation status: BROUILLON → SUSPENDUE (idempotent if already SUSPENDUE).
+     * - Linked appointment: EN_CONSULTATION → CONSTANTES_PRISES.
+     * - Refused on a signed/amended consultation.
+     */
+    public Consultation suspend(UUID id) {
+        Consultation c = get(id);
+        if (c.isSigned()) {
+            throw new BusinessException(
+                    "CONSULT_LOCKED",
+                    "Impossible de suspendre une consultation déjà signée.",
+                    HttpStatus.CONFLICT.value());
+        }
+        if (c.getStatus() == ConsultationStatus.SUSPENDUE) {
+            return c; // idempotent
+        }
+        c.setStatus(ConsultationStatus.SUSPENDUE);
+        if (c.getAppointmentId() != null) {
+            appointmentRepository.findById(c.getAppointmentId()).ifPresent(a -> {
+                if (a.getStatus() == AppointmentStatus.EN_CONSULTATION) {
+                    a.setStatus(AppointmentStatus.CONSTANTES_PRISES);
+                }
+            });
+        }
         return c;
     }
 

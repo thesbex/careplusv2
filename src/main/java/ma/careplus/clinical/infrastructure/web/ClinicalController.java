@@ -157,6 +157,12 @@ public class ClinicalController {
         return toView(consultationService.sign(id));
     }
 
+    @PostMapping("/consultations/{id}/suspend")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
+    public ConsultationView suspend(@PathVariable UUID id) {
+        return toView(consultationService.suspend(id));
+    }
+
     @PostMapping("/consultations/{id}/follow-up")
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<FollowUpResponse> followUp(

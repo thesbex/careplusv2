@@ -7,7 +7,7 @@ export interface ConsultationApi {
   practitionerId: string;
   appointmentId: string | null;
   versionNumber: number;
-  status: 'BROUILLON' | 'SIGNEE';
+  status: 'BROUILLON' | 'SUSPENDUE' | 'SIGNEE' | 'AMENDEE';
   motif: string | null;
   examination: string | null;
   diagnosis: string | null;

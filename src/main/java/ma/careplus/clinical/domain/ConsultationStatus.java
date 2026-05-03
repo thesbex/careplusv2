@@ -1,8 +1,9 @@
 package ma.careplus.clinical.domain;
 
-/** V001 clinical_consultation.status values. */
+/** clinical_consultation.status values (CHECK enforced since V019). */
 public enum ConsultationStatus {
     BROUILLON,
+    SUSPENDUE,
     SIGNEE,
     AMENDEE
 }

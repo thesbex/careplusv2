@@ -110,6 +110,8 @@ class ConsultationPageIT {
     UUID patientId;
     UUID consultationId;      // BROUILLON
     UUID signedConsultId;     // SIGNEE — pour tester les gardes
+    UUID consultWithApptId;   // BROUILLON liée à un RDV EN_CONSULTATION (pour suspend)
+    UUID apptInConsultId;     // RDV EN_CONSULTATION lié à consultWithApptId
 
     // Cached token (login once per role per test — rate limiter cleared in @BeforeEach)
     private String medToken;
@@ -182,6 +184,21 @@ class ConsultationPageIT {
                     version_number, version, started_at, signed_at, created_at, updated_at)
                 VALUES (?, ?, ?, 'SIGNEE', 1, 0, now(), now(), now(), now())
                 """, signedConsultId, patientId, medId);
+
+        // RDV EN_CONSULTATION + consultation BROUILLON liée — surface du bouton Suspendre
+        apptInConsultId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO scheduling_appointment (id, patient_id, practitioner_id, start_at, end_at,
+                    status, walk_in, urgency, version, created_at, updated_at)
+                VALUES (?, ?, ?, now(), now() + interval '30 minutes',
+                        'EN_CONSULTATION', FALSE, FALSE, 0, now(), now())
+                """, apptInConsultId, patientId, medId);
+        consultWithApptId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO clinical_consultation (id, patient_id, practitioner_id, appointment_id,
+                    status, version_number, version, started_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'BROUILLON', 1, 0, now(), now(), now())
+                """, consultWithApptId, patientId, medId, apptInConsultId);
 
         // Acquire tokens once per test (rate limiter cleared above)
         medToken = bearer(medEmail);
@@ -440,5 +457,127 @@ class ConsultationPageIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("BROUILLON"))
                 .andExpect(jsonPath("$.id").value(consultationId.toString()));
+    }
+
+    // ── Scénario 9 — Suspendre : la consultation passe en SUSPENDUE et le RDV recule ──
+    //
+    // BUG d'origine : le bouton Suspendre n'appelait que navigate('/salle'). Le patient
+    // restait visible "En consultation" dans la salle d'attente alors que le médecin
+    // l'avait quitté. Ce test fixe désormais le contrat : POST /suspend doit
+    //  (a) marquer la consultation SUSPENDUE
+    //  (b) ramener le RDV de EN_CONSULTATION → CONSTANTES_PRISES (file d'attente).
+
+    @Test
+    @DisplayName("Suspendre — POST /consultations/{id}/suspend marque SUSPENDUE et "
+            + "ramène le RDV à CONSTANTES_PRISES")
+    void suspend_flipsConsultationAndAppointmentBack() throws Exception {
+        mockMvc.perform(post("/api/consultations/" + consultWithApptId + "/suspend")
+                        .header("Authorization", medToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUSPENDUE"));
+
+        String consultStatus = jdbc.queryForObject(
+                "SELECT status FROM clinical_consultation WHERE id = ?",
+                String.class, consultWithApptId);
+        assertThat(consultStatus)
+                .as("La consultation doit être en SUSPENDUE en DB après suspend")
+                .isEqualTo("SUSPENDUE");
+
+        String apptStatus = jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, apptInConsultId);
+        assertThat(apptStatus)
+                .as("Le RDV doit reculer EN_CONSULTATION → CONSTANTES_PRISES "
+                    + "pour réapparaître dans la file")
+                .isEqualTo("CONSTANTES_PRISES");
+    }
+
+    // ── Scénario 10 — Suspendre puis éditer : auto-resume ────────────────────
+    //
+    // Quand le médecin revient sur la consultation suspendue et tape (ou autosave PUT),
+    // on auto-reprend : SUSPENDUE → BROUILLON et le RDV repart en EN_CONSULTATION.
+
+    @Test
+    @DisplayName("Reprise auto — un PUT sur une consultation SUSPENDUE la repasse en "
+            + "BROUILLON et le RDV en EN_CONSULTATION")
+    void put_onSuspended_autoResumes() throws Exception {
+        // Étape 1 : suspendre
+        mockMvc.perform(post("/api/consultations/" + consultWithApptId + "/suspend")
+                        .header("Authorization", medToken))
+                .andExpect(status().isOk());
+
+        // Étape 2 : éditer (autosave)
+        mockMvc.perform(put("/api/consultations/" + consultWithApptId)
+                        .header("Authorization", medToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "diagnosis": "Reprise après pause" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("BROUILLON"));
+
+        String apptStatus = jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, apptInConsultId);
+        assertThat(apptStatus)
+                .as("Le RDV doit repartir en EN_CONSULTATION après reprise")
+                .isEqualTo("EN_CONSULTATION");
+    }
+
+    // ── Scénario 11 — Suspend idempotent ─────────────────────────────────────
+
+    @Test
+    @DisplayName("Suspendre idempotent — un second POST /suspend renvoie SUSPENDUE "
+            + "sans erreur et sans casser le statut RDV")
+    void suspend_isIdempotent() throws Exception {
+        mockMvc.perform(post("/api/consultations/" + consultWithApptId + "/suspend")
+                        .header("Authorization", medToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/consultations/" + consultWithApptId + "/suspend")
+                        .header("Authorization", medToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUSPENDUE"));
+
+        String apptStatus = jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, apptInConsultId);
+        assertThat(apptStatus).isEqualTo("CONSTANTES_PRISES");
+    }
+
+    // ── Scénario 12 — Garde : suspend refusé sur consultation SIGNEE ──────────
+
+    @Test
+    @DisplayName("Suspendre — POST /suspend sur SIGNEE renvoie 409 CONSULT_LOCKED")
+    void suspend_onSigned_isRejected() throws Exception {
+        mockMvc.perform(post("/api/consultations/" + signedConsultId + "/suspend")
+                        .header("Authorization", medToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONSULT_LOCKED"));
+
+        String stillSigned = jdbc.queryForObject(
+                "SELECT status FROM clinical_consultation WHERE id = ?",
+                String.class, signedConsultId);
+        assertThat(stillSigned).isEqualTo("SIGNEE");
+    }
+
+    // ── Scénario 13 — RBAC : secrétaire ne peut pas suspendre ─────────────────
+
+    @Test
+    @DisplayName("RBAC — Secrétaire ne peut pas POST /suspend (403), parité avec @PreAuthorize")
+    void suspend_secretaire_isForbidden() throws Exception {
+        mockMvc.perform(post("/api/consultations/" + consultWithApptId + "/suspend")
+                        .header("Authorization", secToken))
+                .andExpect(status().isForbidden());
+
+        // État inchangé
+        String consultStatus = jdbc.queryForObject(
+                "SELECT status FROM clinical_consultation WHERE id = ?",
+                String.class, consultWithApptId);
+        assertThat(consultStatus).isEqualTo("BROUILLON");
+        String apptStatus = jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, apptInConsultId);
+        assertThat(apptStatus).isEqualTo("EN_CONSULTATION");
     }
 }

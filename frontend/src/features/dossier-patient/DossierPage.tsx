@@ -672,10 +672,10 @@ export default function DossierPage() {
                         )}
                       </div>
                       <span
-                        className={`pill ${c.status === 'SIGNEE' ? 'done' : 'consult'}`}
+                        className={`pill ${c.status === 'SIGNEE' ? 'done' : c.status === 'SUSPENDUE' ? 'arrived' : 'consult'}`}
                         style={{ fontSize: 11 }}
                       >
-                        {c.status === 'SIGNEE' ? 'Signée' : 'Brouillon'}
+                        {c.status === 'SIGNEE' ? 'Signée' : c.status === 'SUSPENDUE' ? 'Suspendue' : 'Brouillon'}
                       </span>
                     </button>
                   ))}
