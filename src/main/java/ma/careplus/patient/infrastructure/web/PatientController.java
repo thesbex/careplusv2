@@ -2,6 +2,7 @@ package ma.careplus.patient.infrastructure.web;
 
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import ma.careplus.patient.application.PatientService;
 import ma.careplus.patient.domain.Allergy;
@@ -11,16 +12,21 @@ import ma.careplus.patient.infrastructure.web.dto.AllergyView;
 import ma.careplus.patient.infrastructure.web.dto.AntecedentView;
 import ma.careplus.patient.infrastructure.web.dto.CreateAllergyRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreateAntecedentRequest;
+import ma.careplus.patient.infrastructure.web.dto.CreatePatientNoteRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreatePatientRequest;
+import ma.careplus.patient.infrastructure.web.dto.PatientNoteResponse;
 import ma.careplus.patient.infrastructure.web.dto.PatientSummary;
 import ma.careplus.patient.infrastructure.web.dto.PatientView;
+import ma.careplus.patient.infrastructure.web.dto.UpdateMutuelleRequest;
 import ma.careplus.patient.infrastructure.web.dto.UpdatePatientRequest;
+import ma.careplus.patient.infrastructure.web.dto.UpdateTierRequest;
 import ma.careplus.patient.infrastructure.web.mapper.PatientMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,13 +38,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Patient CRUD + search + allergies + antecedents.
+ * Patient CRUD + search + allergies + antecedents + notes + tier + mutuelle.
  *
- * Permissions (per ADR-013 + WORKFLOWS.md role matrix):
+ * Permissions (per ADR-013 + ADR-023 + WORKFLOWS.md role matrix):
  *   - SECRETAIRE / MEDECIN / ADMIN: create, update, read, search
  *   - ASSISTANT: read only
- *   - soft-delete restricted to MEDECIN + ADMIN
- *   - allergies & antecedents: SECRETAIRE/MEDECIN/ADMIN can add
+ *   - soft-delete: MEDECIN + ADMIN
+ *   - allergies & antecedents: SECRETAIRE/MEDECIN/ADMIN
+ *   - notes (create): MEDECIN only
+ *   - tier update: MEDECIN, ADMIN
+ *   - mutuelle update: SECRETAIRE, ASSISTANT, MEDECIN, ADMIN
  */
 @RestController
 @RequestMapping("/api/patients")
@@ -113,5 +122,63 @@ public class PatientController {
         Antecedent created = service.addAntecedent(id, req);
         return ResponseEntity.created(URI.create("/api/patients/" + id + "/antecedents/" + created.getId()))
                 .body(mapper.toAntecedentView(created));
+    }
+
+    @DeleteMapping("/{id}/allergies/{allergyId}")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deleteAllergy(@PathVariable UUID id, @PathVariable UUID allergyId) {
+        service.deleteAllergy(id, allergyId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/antecedents/{antecedentId}")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deleteAntecedent(@PathVariable UUID id, @PathVariable UUID antecedentId) {
+        service.deleteAntecedent(id, antecedentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Notes ──────────────────────────────────────────────────────
+
+    @PostMapping("/{id}/notes")
+    @PreAuthorize("hasRole('MEDECIN')")
+    public ResponseEntity<PatientNoteResponse> createNote(
+            @PathVariable UUID id,
+            @Valid @RequestBody CreatePatientNoteRequest req,
+            Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        PatientNoteResponse created = service.createNote(id, req, actorId);
+        return ResponseEntity.created(URI.create("/api/patients/" + id + "/notes/" + created.id()))
+                .body(created);
+    }
+
+    @GetMapping("/{id}/notes")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<List<PatientNoteResponse>> getNotes(@PathVariable UUID id) {
+        return ResponseEntity.ok(service.getNotes(id));
+    }
+
+    // ── Tier & mutuelle ────────────────────────────────────────────
+
+    @PutMapping("/{id}/tier")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public PatientView updateTier(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateTierRequest req,
+            Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        Patient p = service.updateTier(id, req.tier(), actorId);
+        return mapper.toView(p, service.getAllergies(id), service.getAntecedents(id));
+    }
+
+    @PutMapping("/{id}/mutuelle")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public PatientView updateMutuelle(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMutuelleRequest req,
+            Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        Patient p = service.updateMutuelle(id, req.insuranceId(), req.policyNumber(), actorId);
+        return mapper.toView(p, service.getAllergies(id), service.getAntecedents(id));
     }
 }
