@@ -27,4 +27,26 @@ public interface StockLotRepository extends JpaRepository<StockLot, UUID> {
     @Query("SELECT COALESCE(SUM(l.quantity), 0) FROM StockLot l "
             + "WHERE l.articleId = :articleId AND l.status = 'ACTIVE'")
     long sumActiveQuantity(@Param("articleId") UUID articleId);
+
+    /**
+     * List lots for an article with optional status filter (null = all statuses).
+     * Ordered by expires_on ASC.
+     */
+    @Query("""
+            SELECT l FROM StockLot l
+            WHERE l.articleId = :articleId
+              AND (:status IS NULL OR l.status = :status)
+            ORDER BY l.expiresOn ASC, l.createdAt ASC
+            """)
+    List<StockLot> findByArticleIdWithOptionalStatus(
+            @Param("articleId") UUID articleId,
+            @Param("status") StockLotStatus status);
+
+    /**
+     * Nearest expiry date among ACTIVE lots for an article.
+     * Returns null if no active lots.
+     */
+    @Query("SELECT MIN(l.expiresOn) FROM StockLot l "
+            + "WHERE l.articleId = :articleId AND l.status = 'ACTIVE'")
+    java.time.LocalDate findNearestExpiry(@Param("articleId") UUID articleId);
 }

@@ -1,5 +1,6 @@
 package ma.careplus.stock.application;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.stock.domain.StockArticle;
@@ -11,8 +12,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Public API for stock catalog (articles + suppliers) — Étape 1.
- * Does NOT include movement, lot, or alert logic (Étapes 2/3).
+ * Public API for stock catalog (articles + suppliers).
+ * Étape 2 additions: getCurrentQuantity + getNearestExpiry.
  */
 public interface StockCatalogService {
 
@@ -49,4 +50,18 @@ public interface StockCatalogService {
 
     /** Soft-delete: active=false. */
     void deactivateArticle(UUID id);
+
+    // ── Computed fields (delegates to StockMovementService / StockLotRepository) ─
+
+    /**
+     * Current stock quantity for an article.
+     * Delegates to StockMovementService.getCurrentQuantity().
+     */
+    long getCurrentQuantity(UUID articleId);
+
+    /**
+     * Nearest expiry date among ACTIVE lots of a MEDICAMENT_INTERNE article.
+     * Returns null if the article does not track lots or has no active lots.
+     */
+    LocalDate getNearestExpiry(UUID articleId);
 }

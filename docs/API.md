@@ -182,7 +182,28 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 - `PUT /api/stock/suppliers/{id}` — MEDECIN/ADMIN — update supplier.
 - `DELETE /api/stock/suppliers/{id}` — MEDECIN/ADMIN — soft-delete (active=false).
 
-**Note Étape 1**: movements/lots/alerts endpoints are not yet exposed (Étapes 2/3). `currentQuantity` on `StockArticleView` is always 0 until Étape 2.
+## stock — Étape 2 mouvements + FIFO + lots (2026-05-03) ✅
+
+### Mouvements — `/api/stock/articles/{id}/movements`
+
+- `POST /api/stock/articles/{id}/movements` — RBAC par type (voir matrice) — body `{type: IN|OUT|ADJUSTMENT, quantity, reason?, lotNumber?, expiresOn?}`.
+  - `IN` : SECRETAIRE/ASSISTANT/MEDECIN/ADMIN. Pour MEDICAMENT_INTERNE : `lotNumber` + `expiresOn` requis (400 `LOT_REQUIRED` sinon). Crée/incrémente le lot. Retourne 201 + `StockMovementView`.
+  - `OUT` : ASSISTANT/MEDECIN/ADMIN (SECRETAIRE → 403). Pour MEDICAMENT_INTERNE : FIFO automatique sur lots ACTIVE triés par `expires_on ASC`. Retourne 201 + `List<StockMovementView>` (un row par lot consommé). 422 `INSUFFICIENT_STOCK` si stock < quantity.
+  - `ADJUSTMENT` : SECRETAIRE/ASSISTANT/MEDECIN/ADMIN. `quantity` = nouvelle quantité totale. `reason` obligatoire (400 `REASON_REQUIRED` sinon). Retourne 201 + `StockMovementView`.
+- `GET /api/stock/articles/{id}/movements` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — historique paginé desc. Query: `type` (IN|OUT|ADJUSTMENT), `from` (ISO datetime), `to` (ISO datetime), `page` (default 0), `size` (default 20). Returns `PageView<StockMovementView>`.
+
+`StockMovementView` : `{id, articleId, lotId?, type, quantity (|delta| affiché), reason?, performedBy: {id, name}, performedAt}`.
+
+### Lots — `/api/stock/articles/{id}/lots` et `/api/stock/lots/{lotId}/inactivate`
+
+- `GET /api/stock/articles/{id}/lots` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste lots de l'article. Query: `status` (ACTIVE|EXHAUSTED|INACTIVE; default null = tous). Retourne `List<StockLotView>`.
+- `PUT /api/stock/lots/{lotId}/inactivate` — MEDECIN/ADMIN — bascule lot ACTIVE → INACTIVE (rappel fournisseur). Idempotent si déjà INACTIVE. 409 `LOT_EXHAUSTED` si épuisé.
+
+`StockLotView` : `{id, articleId, lotNumber, expiresOn, quantity, status, daysUntilExpiry (calculé depuis today), createdAt, updatedAt}`.
+
+**Note Étape 2** : `currentQuantity` sur `StockArticleView` est maintenant calculé en temps réel. `nearestExpiry` (date lot ACTIVE le plus proche) ajouté à `StockArticleView` pour MEDICAMENT_INTERNE. Alertes/worklist exposées en Étape 3.
+
+**Migration V025** : Suppression de la contrainte `CHECK (quantity > 0)` sur `stock_movement` pour permettre les deltas négatifs des ajustements sur articles sans tracking de lots.
 
 ## Actuator & meta (J1) ✅
 

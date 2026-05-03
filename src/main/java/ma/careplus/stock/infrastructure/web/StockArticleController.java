@@ -66,7 +66,7 @@ public class StockArticleController {
                 category, supplierId, q, includeInactive, PageRequest.of(page, size));
 
         java.util.List<StockArticleView> content = resultPage.getContent().stream()
-                .map(a -> enrich(a, 0L))
+                .map(this::enrich)
                 .toList();
 
         return PageView.of(content, resultPage.getTotalElements(), page, size);
@@ -76,7 +76,7 @@ public class StockArticleController {
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<StockArticleView> getArticle(@PathVariable UUID id) {
         StockArticle article = catalogService.getArticle(id);
-        return ResponseEntity.ok(enrich(article, 0L));
+        return ResponseEntity.ok(enrich(article));
     }
 
     @PostMapping
@@ -84,7 +84,7 @@ public class StockArticleController {
     public ResponseEntity<StockArticleView> createArticle(
             @Valid @RequestBody StockArticleWriteRequest req) {
         StockArticle article = catalogService.createArticle(req);
-        StockArticleView view = enrich(article, 0L);
+        StockArticleView view = enrich(article);
         return ResponseEntity.created(URI.create("/api/stock/articles/" + view.id()))
                 .body(view);
     }
@@ -95,7 +95,7 @@ public class StockArticleController {
             @PathVariable UUID id,
             @Valid @RequestBody StockArticleWriteRequest req) {
         StockArticle article = catalogService.updateArticle(id, req);
-        return ResponseEntity.ok(enrich(article, 0L));
+        return ResponseEntity.ok(enrich(article));
     }
 
     @DeleteMapping("/{id}")
@@ -106,11 +106,15 @@ public class StockArticleController {
     }
 
     /**
-     * Enriches the base MapStruct view with computed fields.
-     * supplierName: resolved from supplierRepo if supplierId is present.
-     * currentQuantity: placeholder 0 in Étape 1 (computed in Étape 2).
+     * Enriches the base MapStruct view with computed fields:
+     * - supplierName: resolved from supplierRepo if supplierId is present.
+     * - currentQuantity: computed via StockCatalogService (delegates to StockMovementService).
+     * - nearestExpiry: nearest active lot expiry for MEDICAMENT_INTERNE.
+     *
+     * Note: supplierRepo injection in controller is an accepted exception (same-module access,
+     * consistent with Étape 1 convention exception).
      */
-    private StockArticleView enrich(StockArticle article, long currentQuantity) {
+    private StockArticleView enrich(StockArticle article) {
         StockArticleView base = mapper.toArticleView(article);
         String supplierName = null;
         if (article.getSupplierId() != null) {
@@ -118,6 +122,9 @@ public class StockArticleController {
                     .map(s -> s.getName())
                     .orElse(null);
         }
+        long currentQty = catalogService.getCurrentQuantity(article.getId());
+        java.time.LocalDate nearestExpiry = catalogService.getNearestExpiry(article.getId());
+
         return new StockArticleView(
                 base.id(),
                 base.code(),
@@ -130,7 +137,8 @@ public class StockArticleController {
                 base.location(),
                 base.active(),
                 base.tracksLots(),
-                currentQuantity,
+                currentQty,
+                nearestExpiry,
                 base.version(),
                 base.createdAt(),
                 base.updatedAt()

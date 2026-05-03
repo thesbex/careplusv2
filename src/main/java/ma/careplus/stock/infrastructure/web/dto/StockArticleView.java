@@ -1,13 +1,14 @@
 package ma.careplus.stock.infrastructure.web.dto;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import ma.careplus.stock.domain.StockArticleCategory;
 
 /**
  * Read DTO for a stock article.
- * currentQuantity is a placeholder (0) in Étape 1.
- * Étape 2 will populate it from stock_movement / stock_lot.
+ * currentQuantity is computed from stock_movement / stock_lot.
+ * nearestExpiry: nearest expiry date among ACTIVE lots (MEDICAMENT_INTERNE only), null otherwise.
  */
 public record StockArticleView(
         UUID id,
@@ -22,6 +23,7 @@ public record StockArticleView(
         boolean active,
         boolean tracksLots,
         long currentQuantity,
+        LocalDate nearestExpiry,
         long version,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

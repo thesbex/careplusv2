@@ -9,6 +9,8 @@ import org.mapstruct.Mapping;
 
 /**
  * MapStruct mapper for stock module DTOs.
+ * StockMovementView and StockLotView are built directly (not via MapStruct)
+ * because they require resolved user name and computed daysUntilExpiry.
  */
 @Mapper(componentModel = "spring")
 public interface StockMapper {
@@ -17,11 +19,11 @@ public interface StockMapper {
 
     /**
      * Maps StockArticle to StockArticleView.
-     * supplierName and currentQuantity are not on the entity — they must be
-     * set by the service layer after mapping via enrichment or a dedicated factory method.
-     * We ignore them here and let the service call toArticleView(entity, supplierName, currentQty).
+     * supplierName, currentQuantity, and nearestExpiry are not on the entity —
+     * they must be set by the controller via enrichment.
      */
     @Mapping(target = "supplierName", ignore = true)
     @Mapping(target = "currentQuantity", ignore = true)
+    @Mapping(target = "nearestExpiry", ignore = true)
     StockArticleView toArticleView(StockArticle entity);
 }

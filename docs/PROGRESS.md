@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Stock interne — Étape 1 livrée (schéma + référentiel articles + fournisseurs)
+**Phase**: Stock interne — Étape 2 livrée (mouvements + FIFO + lots inactivation)
 **Last update**: 2026-05-03
-**Build**: Backend — 338/338 mvn verify (10 nouveaux StockCatalogIT + 328 existants). Frontend — 410/418 (inchangé).
-**Next action**: Stock Étape 2 — `StockMovementService` (recordIn, recordOut, recordAdjustment, FIFO), endpoints `/articles/{id}/movements` POST/GET + `/articles/{id}/lots` GET + `/lots/{id}/inactivate` PUT, IT `StockMovementIT` (12 scénarios).
+**Build**: Backend — 350/350 mvn verify (12 nouveaux StockMovementIT + 338 existants). Frontend — 410/418 (inchangé).
+**Next action**: Stock Étape 3 — `StockAlertService.queryAlerts()` : articles below threshold + lots péremption < J30. Endpoints `/api/stock/alerts` + `/api/stock/alerts/count`. IT `StockAlertIT` (5 scénarios).
 
 ### 2026-05-03 — Vaccination Étapes 5 + 6 (worklist + Paramétrage + QA + docs)
 
@@ -39,6 +39,28 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
 ## Session log
+
+### 2026-05-03 — Stock interne Étape 2 (mouvements + FIFO + lots inactivation)
+
+**Shipped:**
+- V025__stock_movement_adjustment_signed.sql — suppression contrainte `CHECK (quantity > 0)` sur `stock_movement` pour autoriser les deltas négatifs des ajustements non-lots.
+- `StockMovementService` interface + `StockMovementServiceImpl` — `recordIn` (LOT_REQUIRED pour médicaments), `recordOut` (FIFO ACTIVE lots triés expires_on/created_at, INSUFFICIENT_STOCK 422), `recordAdjustment` (REASON_REQUIRED, delta signé pour non-lots), `getCurrentQuantity`, `listMovements`, `countMovements`.
+- `StockLotService` interface + `StockLotServiceImpl` — `inactivateLot` (LOT_EXHAUSTED 409, idempotent), `listLotsForArticle` (filtre optionnel status).
+- `StockCatalogServiceImpl` mis à jour — `getCurrentQuantity` et `getNearestExpiry` délèguent aux nouveaux services.
+- `StockArticleView` étendu — `nearestExpiry: LocalDate` calculé.
+- `StockMovementRepository` mis à jour — `computeQuantityFromMovements` inclut ADJUSTMENT signé ; `findByArticleIdFiltered` / `countByArticleIdFiltered` en native SQL (contournement Postgres type-inference sur enum nullable).
+- `StockLotRepository` mis à jour — `findByArticleIdWithOptionalStatus` + `findNearestExpiry`.
+- Nouveaux DTOs records : `StockMovementWriteRequest`, `StockMovementView`, `StockLotView` (daysUntilExpiry calculé), `PerformedByView`.
+- `StockMovementController` — POST /movements (RBAC IN/OUT/ADJUSTMENT), GET /movements paginé filtré.
+- `StockLotController` — GET /lots, PUT /lots/{id}/inactivate.
+- `StockArticleController` refactoré — currentQuantity + nearestExpiry enrichis via StockCatalogService.
+- `StockMovementIT` — 12 scénarios : IN consommable, IN médicament+lot, LOT_REQUIRED 400, OUT consommable, FIFO single-lot, FIFO multi-lots exhaustion, INSUFFICIENT_STOCK 422, ADJUSTMENT+reason, REASON_REQUIRED 400, RBAC OUT SEC403/ASST201, lot inactivate FIFO ignoré, historique paginé+filtré.
+
+**Convention exception**: delta négatif stocké dans `stock_movement.quantity` pour les ajustements sur articles sans tracking lots (convention "toujours positif" relaxée via V025). Affiché en valeur absolue dans `StockMovementView.quantity`.
+
+**State**: `mvn verify` → BUILD SUCCESS, 350/350 (338 existants + 12 nouveaux).
+**Next action**: Stock Étape 3 — `StockAlertService`, endpoints `/api/stock/alerts` + `/api/stock/alerts/count`, `StockAlertIT` (5 scénarios).
+**Blockers**: none.
 
 ### 2026-05-03 — Stock interne Étape 1 (schéma + référentiel articles + fournisseurs)
 

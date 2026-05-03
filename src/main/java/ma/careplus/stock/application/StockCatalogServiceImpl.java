@@ -1,6 +1,7 @@
 package ma.careplus.stock.application;
 
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.shared.error.BusinessException;
@@ -9,6 +10,7 @@ import ma.careplus.stock.domain.StockArticle;
 import ma.careplus.stock.domain.StockArticleCategory;
 import ma.careplus.stock.domain.StockSupplier;
 import ma.careplus.stock.infrastructure.persistence.StockArticleRepository;
+import ma.careplus.stock.infrastructure.persistence.StockLotRepository;
 import ma.careplus.stock.infrastructure.persistence.StockMovementRepository;
 import ma.careplus.stock.infrastructure.persistence.StockSupplierRepository;
 import ma.careplus.stock.infrastructure.web.dto.StockArticleWriteRequest;
@@ -25,16 +27,24 @@ public class StockCatalogServiceImpl implements StockCatalogService {
     private final StockSupplierRepository supplierRepo;
     private final StockArticleRepository articleRepo;
     private final StockMovementRepository movementRepo;
+    private final StockLotRepository lotRepo;
     private final EntityManager entityManager;
+    // Lazy-style: StockMovementService is injected here to avoid circular deps
+    // (StockMovementServiceImpl depends on StockArticleRepository, not StockCatalogService)
+    private final StockMovementService movementService;
 
     public StockCatalogServiceImpl(StockSupplierRepository supplierRepo,
                                    StockArticleRepository articleRepo,
                                    StockMovementRepository movementRepo,
-                                   EntityManager entityManager) {
+                                   StockLotRepository lotRepo,
+                                   EntityManager entityManager,
+                                   StockMovementService movementService) {
         this.supplierRepo = supplierRepo;
         this.articleRepo = articleRepo;
         this.movementRepo = movementRepo;
+        this.lotRepo = lotRepo;
         this.entityManager = entityManager;
+        this.movementService = movementService;
     }
 
     // ── Suppliers ─────────────────────────────────────────────────────────────
@@ -178,5 +188,19 @@ public class StockCatalogServiceImpl implements StockCatalogService {
                         "Article introuvable : " + id));
         a.setActive(false);
         articleRepo.save(a);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long getCurrentQuantity(UUID articleId) {
+        return movementService.getCurrentQuantity(articleId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LocalDate getNearestExpiry(UUID articleId) {
+        StockArticle a = articleRepo.findById(articleId).orElse(null);
+        if (a == null || !a.isTracksLots()) return null;
+        return lotRepo.findNearestExpiry(articleId);
     }
 }
