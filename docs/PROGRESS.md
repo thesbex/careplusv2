@@ -243,6 +243,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 **Blockers**: none.
 
+### 2026-05-02 — Vaccination module Étape 2 shipped
+
+**Shipped:**
+- `VaccinationCalendarStatus` enum — extended status set for calendar entries: UPCOMING, DUE_SOON, OVERDUE (computed), ADMINISTERED, DEFERRED, SKIPPED (persisted).
+- `VaccinationDueEvent` record — `(eventId, occurredAt, patientId, doseId, dueAt)`, implements `DomainEvent`; not published yet (Étape 3 cron job).
+- `VaccinationService` interface + `VaccinationServiceImpl` — `materializeCalendar`, `recordDose`, `deferDose`, `skipDose`, `updateDose`, `softDelete`. Adult edge-case cutoff: entries excluded when `today > targetDate + tolerance + 5 years`. Dual path for defer/skip: accepts persisted doseId OR scheduleDoseId (materialises row on demand). Cross-module: PatientRepository (accepted exception, same precedent as BillingService/CatalogService).
+- DTOs: `VaccinationCalendarEntry`, `RecordDoseRequest`, `DeferDoseRequest`, `UpdateDoseRequest` (all records, bean validation).
+- `PatientVaccinationController` — 6 endpoints at `/api/patients/{patientId}/vaccinations` with `@PreAuthorize` per design Q8.
+- `Patient` entity updated: mapped `vaccination_started_at TIMESTAMPTZ` column (V022 already added it to DB).
+- `PatientVaccinationIT` — 12 integration tests covering scenarios 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 14, 15.
+
+**State**: `mvn clean verify` → BUILD SUCCESS, 287 tests (was 258 + 12 new + ~17 from other modules counted fresh), 0 failures, 0 errors.
+**Next action**: Vaccination Étape 3 — `VaccinationQueryService.queue(filters)` + `/api/vaccinations/queue` worklist + `vaccination-booklet.html` PDF + cron `VaccinationDueEvent` publisher.
+
+**Blockers**: none.
+
 ## How to update this file
 
 At end of every session:

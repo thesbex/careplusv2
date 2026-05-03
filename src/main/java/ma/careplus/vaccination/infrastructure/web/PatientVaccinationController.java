@@ -1,0 +1,99 @@
+package ma.careplus.vaccination.infrastructure.web;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+import ma.careplus.vaccination.application.VaccinationService;
+import ma.careplus.vaccination.infrastructure.web.dto.DeferDoseRequest;
+import ma.careplus.vaccination.infrastructure.web.dto.RecordDoseRequest;
+import ma.careplus.vaccination.infrastructure.web.dto.UpdateDoseRequest;
+import ma.careplus.vaccination.infrastructure.web.dto.VaccinationCalendarEntry;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Patient-level vaccination calendar and dose management.
+ *
+ * Base path: /api/patients/{patientId}/vaccinations
+ *
+ * GET    /                — tous les rôles authentifiés — calendrier matérialisé
+ * POST   /                — MEDECIN/ASSISTANT/ADMIN — saisir une dose ADMINISTERED
+ * PUT    /{doseId}        — MEDECIN/ADMIN — modifier une dose
+ * POST   /{doseId}/defer  — MEDECIN/ASSISTANT/ADMIN — reporter (DEFERRED)
+ * POST   /{doseId}/skip   — MEDECIN/ADMIN — sauter (SKIPPED)
+ * DELETE /{doseId}        — MEDECIN/ADMIN — soft-delete
+ */
+@RestController
+@RequestMapping("/api/patients/{patientId}/vaccinations")
+@Tag(name = "vaccination", description = "Module vaccination enfant — dossier patient")
+public class PatientVaccinationController {
+
+    private final VaccinationService vaccinationService;
+
+    public PatientVaccinationController(VaccinationService vaccinationService) {
+        this.vaccinationService = vaccinationService;
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<List<VaccinationCalendarEntry>> getCalendar(
+            @PathVariable UUID patientId) {
+        return ResponseEntity.ok(vaccinationService.materializeCalendar(patientId));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyRole('MEDECIN','ASSISTANT','ADMIN')")
+    public ResponseEntity<VaccinationCalendarEntry> recordDose(
+            @PathVariable UUID patientId,
+            @Valid @RequestBody RecordDoseRequest request) {
+        VaccinationCalendarEntry entry = vaccinationService.recordDose(patientId, request);
+        return ResponseEntity.created(
+                URI.create("/api/patients/" + patientId + "/vaccinations/" + entry.id()))
+                .body(entry);
+    }
+
+    @PutMapping("/{doseId}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<VaccinationCalendarEntry> updateDose(
+            @PathVariable UUID patientId,
+            @PathVariable UUID doseId,
+            @Valid @RequestBody UpdateDoseRequest request) {
+        return ResponseEntity.ok(vaccinationService.updateDose(patientId, doseId, request));
+    }
+
+    @PostMapping("/{doseId}/defer")
+    @PreAuthorize("hasAnyRole('MEDECIN','ASSISTANT','ADMIN')")
+    public ResponseEntity<VaccinationCalendarEntry> deferDose(
+            @PathVariable UUID patientId,
+            @PathVariable UUID doseId,
+            @Valid @RequestBody DeferDoseRequest request) {
+        return ResponseEntity.ok(vaccinationService.deferDose(patientId, doseId, request));
+    }
+
+    @PostMapping("/{doseId}/skip")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<VaccinationCalendarEntry> skipDose(
+            @PathVariable UUID patientId,
+            @PathVariable UUID doseId) {
+        return ResponseEntity.ok(vaccinationService.skipDose(patientId, doseId));
+    }
+
+    @DeleteMapping("/{doseId}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> softDelete(
+            @PathVariable UUID patientId,
+            @PathVariable UUID doseId) {
+        vaccinationService.softDelete(patientId, doseId);
+        return ResponseEntity.noContent().build();
+    }
+}

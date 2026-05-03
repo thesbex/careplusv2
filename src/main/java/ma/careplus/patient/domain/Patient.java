@@ -96,6 +96,10 @@ public class Patient {
     @Column(name = "photo_document_id")
     private UUID photoDocumentId;
 
+    /** Date of first vaccination dose entry. Added in V022 (vaccination module). */
+    @Column(name = "vaccination_started_at", columnDefinition = "TIMESTAMPTZ")
+    private OffsetDateTime vaccinationStartedAt;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -179,6 +183,8 @@ public class Patient {
     public void setMutuellePoliceNumber(String mutuellePoliceNumber) { this.mutuellePoliceNumber = mutuellePoliceNumber; }
     public UUID getPhotoDocumentId() { return photoDocumentId; }
     public void setPhotoDocumentId(UUID photoDocumentId) { this.photoDocumentId = photoDocumentId; }
+    public OffsetDateTime getVaccinationStartedAt() { return vaccinationStartedAt; }
+    public void setVaccinationStartedAt(OffsetDateTime vaccinationStartedAt) { this.vaccinationStartedAt = vaccinationStartedAt; }
     public long getVersion() { return version; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

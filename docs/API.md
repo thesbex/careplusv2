@@ -137,6 +137,23 @@ Seeded defaults from V002:
 - `PUT /api/vaccinations/schedule/{id}` — MEDECIN/ADMIN — update schedule dose; 409 if duplicate; 404 if not found
 - `DELETE /api/vaccinations/schedule/{id}` — MEDECIN/ADMIN — hard delete; 404 if not found
 
+## vaccination — Étape 2 dossier patient (2026-05-02) ✅
+
+### Patient vaccination calendar
+
+- `GET /api/patients/{patientId}/vaccinations` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — materialised calendar: persisted rows ∪ computed PLANNED entries. Sorted by `targetDate` ASC. Each `VaccinationCalendarEntry` has `{id?, scheduleDoseId?, vaccineId, vaccineCode, vaccineName, doseNumber, doseLabel, targetDate, toleranceDays, status, administeredAt?, lotNumber?, route?, site?, administeredByName?, deferralReason?, notes?, version?}`. `id` is absent if dose not yet materialised. `status` ∈ `UPCOMING|DUE_SOON|OVERDUE|ADMINISTERED|DEFERRED|SKIPPED`.
+- `POST /api/patients/{patientId}/vaccinations` — MEDECIN/ASSISTANT/ADMIN — record dose ADMINISTERED `{vaccineId, doseNumber, administeredAt, lotNumber (required), scheduleDoseId?, route?, site?, administeredBy?, notes?}` → 201; 409 `VACCINATION_ALREADY_RECORDED` if (patient, vaccineId, doseNumber) duplicate (non-deleted); 422 if scheduleDoseId does not match vaccineId.
+- `PUT /api/patients/{patientId}/vaccinations/{doseId}` — MEDECIN/ADMIN — update dose `{administeredAt?, lotNumber?, route?, site?, administeredBy?, deferralReason?, notes?, version (required)}` → 200; 409 `OPTIMISTIC_LOCK_CONFLICT` if version diverges; 404 if dose not found.
+- `POST /api/patients/{patientId}/vaccinations/{doseId}/defer` — MEDECIN/ASSISTANT/ADMIN — defer dose `{reason}` → 200; `doseId` may be a persisted row id OR a `scheduleDoseId` (row materialised on demand); 404 if neither.
+- `POST /api/patients/{patientId}/vaccinations/{doseId}/skip` — MEDECIN/ADMIN — skip dose → 200; same materialisation logic as defer.
+- `DELETE /api/patients/{patientId}/vaccinations/{doseId}` — MEDECIN/ADMIN — soft-delete (sets `deleted_at`); calendar re-computes that slot as PLANNED/DUE_SOON/OVERDUE; 204.
+
+Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 years` are excluded from the computed calendar (patient too old for pediatric PNI).
+
+### Domain event (not yet published — Étape 3)
+
+`VaccinationDueEvent(eventId, occurredAt, patientId, doseId, dueAt)` — record class in place; published by cron job in Étape 3 (Notifications module).
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)
