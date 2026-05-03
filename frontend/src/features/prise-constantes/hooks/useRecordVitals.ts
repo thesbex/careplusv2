@@ -20,7 +20,16 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
         notes: values.notes ?? null,
       }),
     onSuccess: () => {
+      // Invalidate every cache that surfaces vitals so the new measurement is
+      // visible without a manual refresh: salle d'attente queue, agenda
+      // appointments (status flips to CONSTANTES_PRISES), the dossier patient
+      // header that shows "Dernières constantes", and the consultation page
+      // that pulls them via useLatestVitals.
       void queryClient.invalidateQueries({ queryKey: ['queue'] });
+      void queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      void queryClient.invalidateQueries({ queryKey: ['patient-vitals'] });
+      void queryClient.invalidateQueries({ queryKey: ['patient'] });
+      void queryClient.invalidateQueries({ queryKey: ['appointment'] });
     },
   });
 

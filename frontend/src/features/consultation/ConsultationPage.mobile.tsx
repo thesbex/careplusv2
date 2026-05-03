@@ -11,9 +11,11 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Warn, Lock } from '@/components/icons';
+import { Warn, Lock, ChevronRight } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
+import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import type { PrescriptionType } from '@/features/prescription/types';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
@@ -60,7 +62,8 @@ export default function ConsultationMobilePage() {
   const { patient } = usePatient(consultation?.patientId);
   const { vitals } = useLatestVitals(consultation?.patientId);
   const { sign, isSigning, signed } = useSignConsultation(id);
-  const [rxOpen, setRxOpen] = useState(false);
+  const { prescriptions } = usePrescriptions(id);
+  const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -253,38 +256,128 @@ export default function ConsultationMobilePage() {
             : 'Enregistré automatiquement.'}
         </div>
 
-        <div className="cs-m-action-row">
+        {/* Prescriptions creation buttons (DRUG / LAB / IMAGING). */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr',
+            gap: 8,
+            marginTop: 16,
+          }}
+        >
           <button
             type="button"
             className="m-btn"
-            style={{ height: 44 }}
+            style={{ height: 40, fontSize: 12 }}
             disabled={isSigned || !consultation}
-            onClick={() => setRxOpen(true)}
+            onClick={() => setRxOpen('DRUG')}
           >
-            Rx
+            Médic.
           </button>
           <button
             type="button"
+            className="m-btn"
+            style={{ height: 40, fontSize: 12 }}
+            disabled={isSigned || !consultation}
+            onClick={() => setRxOpen('LAB')}
+          >
+            Analyses
+          </button>
+          <button
+            type="button"
+            className="m-btn"
+            style={{ height: 40, fontSize: 12 }}
+            disabled={isSigned || !consultation}
+            onClick={() => setRxOpen('IMAGING')}
+          >
+            Imagerie
+          </button>
+        </div>
+
+        {/* Documents générés — list of prescriptions for this consultation. */}
+        <div className="m-section-h" style={{ marginTop: 18 }}>
+          <h3>Documents générés</h3>
+          {prescriptions.length > 0 && <span className="more">{prescriptions.length}</span>}
+        </div>
+        {prescriptions.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
+            Aucune ordonnance créée pour cette consultation.
+          </div>
+        ) : (
+          <div className="m-card">
+            {prescriptions.map((p, i) => {
+              const typeLabel =
+                p.type === 'DRUG'
+                  ? 'Médicaments'
+                  : p.type === 'LAB'
+                  ? 'Analyses'
+                  : p.type === 'IMAGING'
+                  ? 'Imagerie'
+                  : (p.type ?? '—');
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => navigate(`/prescriptions/${p.id}`)}
+                  className="m-row"
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    border: 0,
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
+                    fontFamily: 'inherit',
+                    font: 'inherit',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  <div className="m-row-pri">
+                    <div className="m-row-main">
+                      Ordonnance · {p.lines.length} ligne
+                      {p.lines.length > 1 ? 's' : ''}
+                    </div>
+                    <div className="m-row-sub">
+                      {typeLabel} ·{' '}
+                      {new Date(p.issuedAt).toLocaleDateString('fr-MA', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="cs-m-action-row" style={{ marginTop: 18 }}>
+          <button
+            type="button"
             className="m-btn primary"
-            style={{ height: 44 }}
+            style={{ height: 44, gridColumn: '1 / -1' }}
             disabled={isSigned || !consultation || isSigning}
             onClick={() => {
               void handleSign();
             }}
           >
-            <Lock aria-hidden="true" /> {isSigned ? 'Signée' : 'Clôturer'}
+            <Lock aria-hidden="true" /> {isSigned ? 'Signée' : 'Clôturer la consultation'}
           </button>
         </div>
       </div>
       {consultation && rxOpen && (
         <PrescriptionDrawer
-          open={rxOpen}
-          onOpenChange={setRxOpen}
+          open={!!rxOpen}
+          onOpenChange={(o) => {
+            if (!o) setRxOpen(null);
+          }}
           consultationId={consultation.id}
           patientAllergies={patient?.allergies ?? []}
-          type="DRUG"
+          type={rxOpen}
           onCreated={(prescriptionId) => {
-            setRxOpen(false);
+            setRxOpen(null);
             void navigate(`/prescriptions/${prescriptionId}`);
           }}
         />

@@ -8,7 +8,7 @@ import SalleAttenteRoute from '@/features/salle-attente';
 import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
 import ConsultationRoute from '@/features/consultation';
-import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfPage';
+import OrdonnancePdfPage from '@/features/prescription/OrdonnancePdfRoute';
 import FacturationPage from '@/features/facturation/FacturationRoute';
 import ApercuFacturePage from '@/features/facturation/ApercuFactureRoute';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
