@@ -1,0 +1,140 @@
+package ma.careplus.catalog.infrastructure.web;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+import ma.careplus.catalog.application.CatalogService;
+import ma.careplus.catalog.domain.Act;
+import ma.careplus.catalog.domain.Medication;
+import ma.careplus.catalog.domain.Tariff;
+import ma.careplus.catalog.infrastructure.web.dto.ActRequest;
+import ma.careplus.catalog.infrastructure.web.dto.ActResponse;
+import ma.careplus.catalog.infrastructure.web.dto.MedicationResponse;
+import ma.careplus.catalog.infrastructure.web.dto.TariffRequest;
+import ma.careplus.catalog.infrastructure.web.dto.TariffResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Catalog HTTP endpoints (J6):
+ *   GET    /api/catalog/acts                     — all roles
+ *   POST   /api/catalog/acts                     — MEDECIN, ADMIN
+ *   PUT    /api/catalog/acts/{id}                — MEDECIN, ADMIN
+ *   DELETE /api/catalog/acts/{id}                — MEDECIN, ADMIN (soft: deactivate)
+ *   POST   /api/catalog/acts/{id}/tariffs        — MEDECIN, ADMIN
+ *   GET    /api/catalog/acts/{id}/tariffs        — all roles
+ *   GET    /api/catalog/medications?q=           — all roles
+ */
+@RestController
+@RequestMapping("/api/catalog")
+@Tag(name = "catalog", description = "Acts, tariffs, medications reference data")
+public class CatalogController {
+
+    private final CatalogService catalogService;
+
+    public CatalogController(CatalogService catalogService) {
+        this.catalogService = catalogService;
+    }
+
+    // ── Acts ──────────────────────────────────────────────────────────────────
+
+    @GetMapping("/acts")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<ActResponse> getActs() {
+        return catalogService.getActs().stream().map(this::toActResponse).toList();
+    }
+
+    @PostMapping("/acts")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<ActResponse> createAct(@Valid @RequestBody ActRequest req,
+                                                  Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        Act act = catalogService.createAct(req, actorId);
+        return ResponseEntity.created(URI.create("/api/catalog/acts/" + act.getId()))
+                .body(toActResponse(act));
+    }
+
+    @PutMapping("/acts/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ActResponse updateAct(@PathVariable UUID id,
+                                  @Valid @RequestBody ActRequest req,
+                                  Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        return toActResponse(catalogService.updateAct(id, req, actorId));
+    }
+
+    @DeleteMapping("/acts/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deactivateAct(@PathVariable UUID id, Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        catalogService.deactivateAct(id, actorId);
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Tariffs ───────────────────────────────────────────────────────────────
+
+    @PostMapping("/acts/{id}/tariffs")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<TariffResponse> addTariff(@PathVariable UUID id,
+                                                     @Valid @RequestBody TariffRequest req,
+                                                     Authentication auth) {
+        UUID actorId = UUID.fromString(auth.getName());
+        Tariff tariff = catalogService.addTariff(id, req, actorId);
+        return ResponseEntity.created(URI.create("/api/catalog/acts/" + id + "/tariffs/" + tariff.getId()))
+                .body(toTariffResponse(tariff));
+    }
+
+    @GetMapping("/acts/{id}/tariffs")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<TariffResponse> getTariffs(@PathVariable UUID id) {
+        return catalogService.getTariffsForAct(id).stream().map(this::toTariffResponse).toList();
+    }
+
+    // ── Medications ───────────────────────────────────────────────────────────
+
+    @GetMapping("/medications")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<MedicationResponse> searchMedications(
+            @RequestParam(required = false, defaultValue = "") String q) {
+        return catalogService.searchMedications(q).stream().map(this::toMedicationResponse).toList();
+    }
+
+    // ── Mapping ───────────────────────────────────────────────────────────────
+
+    private ActResponse toActResponse(Act act) {
+        return new ActResponse(
+                act.getId(),
+                act.getName(),
+                null,  // description not in Act entity (not in V001 schema)
+                null,  // defaultDurationMinutes not in Act entity
+                act.getType(),
+                act.isActive());
+    }
+
+    private TariffResponse toTariffResponse(Tariff t) {
+        return new TariffResponse(
+                t.getId(), t.getActId(), t.getTier(),
+                t.getAmount(), t.getEffectiveFrom(), t.getEffectiveTo());
+    }
+
+    private MedicationResponse toMedicationResponse(Medication m) {
+        return new MedicationResponse(
+                m.getId(),
+                m.getCommercialName(),
+                m.getDci(),
+                m.getForm(),
+                m.getDosage());
+    }
+}

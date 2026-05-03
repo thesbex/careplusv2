@@ -15,7 +15,7 @@ public record CreatePatientRequest(
         String gender,
         LocalDate birthDate,
         @Size(max = 32) String cin,
-        @Size(max = 32) String phone,
+        @NotBlank @Size(max = 32) String phone,
         @Size(max = 32) String emergencyPhone,
         @Email @Size(max = 255) String email,
         @Size(max = 512) String address,

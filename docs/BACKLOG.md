@@ -47,6 +47,7 @@ Anything explicitly out of the 7-day MVP goes here. Append-only list of ideas/fe
 
 ## Documents & files
 
+- **Ancien dossier patient** : lors de la création d'un patient, permettre de joindre des documents existants (anciennes prescriptions, comptes-rendus radio, bilans biologiques). Nécessite : table `patient_document` (id, patient_id, category enum PRESCRIPTION/RADIO/BIOLOGIE/AUTRE, filename, content_type, stored_path, uploaded_at, uploaded_by), endpoint `POST /patients/{id}/documents` (multipart), `GET /patients/{id}/documents`, stockage local configurable (répertoire `data/documents/` sur l'on-prem, path relatif stocké en base). Côté frontend : section "Documents apportés" dans le panneau Nouveau patient (upload via `<input type=file multiple>`, preview liste nom+type), plus tab "Documents" dans le dossier patient.
 - Patient document uploads (scans, photos, PDFs)
 - Drag-drop from device camera (mobile PWA)
 - WYSIWYG template editor with variable picker

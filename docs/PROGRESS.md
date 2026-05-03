@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Sprint MVP, J1 complete
-**Last update**: 2026-04-23
-**Build**: `BUILD SUCCESS` — 8 integration tests green (Testcontainers + Postgres 16)
-**Next action**: J2 — identity module (auth, users, JWT, rate limit, refresh token rotation)
+**Phase**: Sprint MVP, J5 complete
+**Last update**: 2026-04-24
+**Build**: `BUILD SUCCESS` — 51 integration tests green (Testcontainers + Postgres 16)
+**Next action**: J6 — prescriptions module (clinical_prescription, PDF generation via Thymeleaf + openhtmltopdf)
 
 ## Session log
 
@@ -69,6 +69,27 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **State**: `mvn clean verify` → `BUILD SUCCESS`, 8 tests / 0 failures / 0 errors, ~12s. Flyway applies 2 migrations cleanly. Postgres 16 Testcontainers provisioned properly. OpenAPI docs live at `/v3/api-docs`.
 
 **Next action**: start J2 — identity module. Scaffold entities (User, Role, RefreshToken, AuditLogEntry), implement login (rate-limit via Bucket4j), JWT access+refresh tokens via nimbus-jose-jwt, `/api/auth/*` endpoints, replace DevUserSeeder's raw JDBC with the proper identity module API, integration tests covering login → access protected → refresh → access → logout → access blocked.
+
+**Blockers**: none.
+
+### 2026-04-24 — J5 clinical module completed and hardened
+
+**Shipped:**
+- `V003__clinical_and_presence.sql` — adds `can_start_consultation BOOLEAN` to `identity_user`; adds `type VARCHAR(20)` + `origin_consultation_id UUID` (FK → `clinical_consultation`) to `scheduling_appointment`.
+- `AppointmentType` enum (CONSULTATION, CONTROLE, URGENCE) added to scheduling domain.
+- `Appointment` entity: added `type`, `originConsultationId`, `arrivedAt` setter.
+- `User` entity: added `canStartConsultation` field.
+- `ConsultationService.scheduleFollowUp()` — creates CONTROLE appointment linked to a signed consultation. TODO(post-MVP:events): replace direct repository write with event.
+- `ClinicalController`: added `POST /api/consultations/{id}/follow-up` endpoint (MEDECIN/ADMIN).
+- `FollowUpRequest` / `FollowUpResponse` DTOs.
+- Fixed `PresenceService.checkIn()`: was using JDBC to update `arrived_at` while Hibernate flushed entity with `arrivedAt=null`, overwriting it. Now uses entity setter directly.
+- Fixed `GlobalExceptionHandler`: added `AccessDeniedException` handler returning 403. Without it, `@PreAuthorize` failures were caught by the generic `Exception.class` handler returning 500.
+- Fixed `PatientIT.search_findsByFirstNameLastNameCinPhone`: test called `bearer(email)` 7 times, exhausting the 5-login rate limit. Added per-test token cache so same email reuses existing JWT.
+- `AppointmentView` record updated with `type` and `originConsultationId` fields. `SchedulingController.toView()` updated accordingly.
+
+**State**: `mvn clean verify` → `BUILD SUCCESS`, 51 tests / 0 failures / 0 errors.
+
+**Next action**: J6 — prescriptions (clinical_prescription + PDF); catalog search endpoints.
 
 **Blockers**: none.
 

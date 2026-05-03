@@ -110,6 +110,12 @@
             <artifactId>openhtmltopdf-pdfbox</artifactId>
             <version>${openhtmltopdf.version}</version>
         </dependency>
+        <!-- jsoup: HTML5 parsing for openhtmltopdf (HTML5 → W3C Document) -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.17.2</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>

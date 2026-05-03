@@ -6,11 +6,64 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Search, Users, Plus, Close } from '@/components/icons';
 import { usePatientList } from './hooks/usePatientList';
-import { useCreatePatient, type CreatePatientForm } from './hooks/useCreatePatient';
+import {
+  useCreatePatient,
+  type CreatePatientForm,
+  type AllergyEntry,
+  type AntecedentEntry,
+  type AllergySeverity,
+  type AntecedentType,
+} from './hooks/useCreatePatient';
 
 function Lbl({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', marginBottom: 4 }}>{children}</div>;
 }
+
+function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 650, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        {label}
+      </span>
+      <button
+        type="button"
+        onClick={onAdd}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 4,
+          fontSize: 12, color: 'var(--primary)', fontWeight: 550,
+          background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px',
+          borderRadius: 4, fontFamily: 'inherit',
+        }}
+      >
+        <Plus style={{ width: 12, height: 12 }} /> Ajouter
+      </button>
+    </div>
+  );
+}
+
+const SEVERITY_LABELS: Record<AllergySeverity, string> = {
+  LEGERE: 'Légère',
+  MODEREE: 'Modérée',
+  SEVERE: 'Sévère',
+};
+
+const SEVERITY_COLORS: Record<AllergySeverity, { bg: string; color: string; border: string }> = {
+  LEGERE:  { bg: 'var(--green-soft, #E8F5E9)', color: '#2E7D32', border: '#A5D6A7' },
+  MODEREE: { bg: 'var(--amber-soft, #FFF8E1)', color: '#E65100', border: '#FFCC80' },
+  SEVERE:  { bg: 'var(--danger-soft, #FFEBEE)', color: 'var(--danger)', border: '#EF9A9A' },
+};
+
+const ANTECEDENT_TYPE_LABELS: Record<AntecedentType, string> = {
+  MEDICAL:            'Médical',
+  CHIRURGICAL:        'Chirurgical',
+  FAMILIAL:           'Familial',
+  GYNECO_OBSTETRIQUE: 'Gynéco-Obstétrique',
+  HABITUS:            'Habitudes de vie',
+};
+
+const ANTECEDENT_TYPES: AntecedentType[] = [
+  'MEDICAL', 'CHIRURGICAL', 'FAMILIAL', 'GYNECO_OBSTETRIQUE', 'HABITUS',
+];
 
 function toAge(birthDate: string): number {
   const d = new Date(birthDate);
@@ -32,7 +85,113 @@ const EMPTY_FORM: CreatePatientForm = {
   city: '',
   bloodGroup: '',
   notes: '',
+  allergies: [],
+  antecedents: [],
 };
+
+function AllergyRow({
+  entry,
+  index,
+  onChange,
+  onRemove,
+}: {
+  entry: AllergyEntry;
+  index: number;
+  onChange: (index: number, next: AllergyEntry) => void;
+  onRemove: (index: number) => void;
+}) {
+  const colors = SEVERITY_COLORS[entry.severity];
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
+      display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface)',
+    }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Input
+          value={entry.substance}
+          onChange={(e) => onChange(index, { ...entry, substance: e.target.value })}
+          placeholder="Ex. Pénicilline, aspirine, iode…"
+          style={{ flex: 1, fontSize: 12.5 }}
+        />
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          aria-label="Supprimer"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0 }}
+        >
+          <Close style={{ width: 14, height: 14 }} />
+        </button>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        {(['LEGERE', 'MODEREE', 'SEVERE'] as AllergySeverity[]).map((sev) => (
+          <button
+            key={sev}
+            type="button"
+            onClick={() => onChange(index, { ...entry, severity: sev })}
+            style={{
+              fontSize: 11, fontWeight: entry.severity === sev ? 650 : 500,
+              padding: '3px 10px', borderRadius: 12, cursor: 'pointer', fontFamily: 'inherit',
+              border: `1px solid ${entry.severity === sev ? SEVERITY_COLORS[sev].border : 'var(--border)'}`,
+              background: entry.severity === sev ? SEVERITY_COLORS[sev].bg : 'transparent',
+              color: entry.severity === sev ? SEVERITY_COLORS[sev].color : 'var(--ink-3)',
+            }}
+          >
+            {SEVERITY_LABELS[sev]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AntecedentRow({
+  entry,
+  index,
+  onChange,
+  onRemove,
+}: {
+  entry: AntecedentEntry;
+  index: number;
+  onChange: (index: number, next: AntecedentEntry) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div style={{
+      border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
+      display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface)',
+    }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <select
+          value={entry.type}
+          onChange={(e) => onChange(index, { ...entry, type: e.target.value as AntecedentType })}
+          style={{
+            flex: 1, height: 32, border: '1px solid var(--border)', borderRadius: 6,
+            padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit',
+            background: 'var(--surface)', color: 'var(--ink)',
+          }}
+        >
+          {ANTECEDENT_TYPES.map((t) => (
+            <option key={t} value={t}>{ANTECEDENT_TYPE_LABELS[t]}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          aria-label="Supprimer"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0 }}
+        >
+          <Close style={{ width: 14, height: 14 }} />
+        </button>
+      </div>
+      <Textarea
+        value={entry.description}
+        onChange={(e) => onChange(index, { ...entry, description: e.target.value })}
+        placeholder="Description…"
+        style={{ height: 56, fontSize: 12.5, resize: 'vertical' }}
+      />
+    </div>
+  );
+}
 
 function NewPatientPanel({
   onClose,
@@ -45,16 +204,46 @@ function NewPatientPanel({
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  function set(key: keyof CreatePatientForm, value: string) {
+  function set<K extends keyof CreatePatientForm>(key: K, value: CreatePatientForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setValidationError(null);
     reset();
+  }
+
+  function addAllergy() {
+    set('allergies', [...form.allergies, { substance: '', severity: 'MODEREE' }]);
+  }
+
+  function updateAllergy(index: number, next: AllergyEntry) {
+    const updated = form.allergies.map((a, i) => (i === index ? next : a));
+    set('allergies', updated);
+  }
+
+  function removeAllergy(index: number) {
+    set('allergies', form.allergies.filter((_, i) => i !== index));
+  }
+
+  function addAntecedent() {
+    set('antecedents', [...form.antecedents, { type: 'MEDICAL', description: '' }]);
+  }
+
+  function updateAntecedent(index: number, next: AntecedentEntry) {
+    const updated = form.antecedents.map((a, i) => (i === index ? next : a));
+    set('antecedents', updated);
+  }
+
+  function removeAntecedent(index: number) {
+    set('antecedents', form.antecedents.filter((_, i) => i !== index));
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.firstName.trim() || !form.lastName.trim()) {
       setValidationError('Prénom et nom sont obligatoires.');
+      return;
+    }
+    if (!form.phone.trim()) {
+      setValidationError('Le numéro de téléphone est obligatoire.');
       return;
     }
     const created = await create(form).catch(() => null);
@@ -64,7 +253,7 @@ function NewPatientPanel({
   return (
     <Panel
       style={{
-        width: 400,
+        width: 440,
         flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
@@ -74,15 +263,7 @@ function NewPatientPanel({
       }}
     >
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '14px 16px',
-          borderBottom: '1px solid var(--border)',
-          gap: 8,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)', gap: 8 }}>
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Nouveau patient</span>
         <Button variant="ghost" size="sm" iconOnly aria-label="Fermer" onClick={onClose}>
           <Close />
@@ -92,8 +273,9 @@ function NewPatientPanel({
       {/* Form */}
       <form
         onSubmit={(e) => { void handleSubmit(e); }}
-        style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}
+        style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}
       >
+        {/* Identity */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><Lbl>Prénom *</Lbl>
             <Input value={form.firstName} onChange={(e) => set('firstName', e.target.value)} placeholder="Mohamed" autoFocus />
@@ -105,8 +287,11 @@ function NewPatientPanel({
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><Lbl>Sexe</Lbl>
-            <select value={form.gender} onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
-              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}>
+            <select
+              value={form.gender}
+              onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
+              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+            >
               <option value="M">Homme</option>
               <option value="F">Femme</option>
               <option value="O">Autre</option>
@@ -121,7 +306,7 @@ function NewPatientPanel({
           <Input value={form.cin} onChange={(e) => set('cin', e.target.value)} placeholder="BE 328451" />
         </div>
 
-        <div><Lbl>Téléphone</Lbl>
+        <div><Lbl>Téléphone *</Lbl>
           <Input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+212 6 61 12 34 56" />
         </div>
 
@@ -134,16 +319,59 @@ function NewPatientPanel({
             <Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Casablanca" />
           </div>
           <div><Lbl>Groupe sanguin</Lbl>
-            <select value={form.bloodGroup} onChange={(e) => set('bloodGroup', e.target.value)}
-              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}>
+            <select
+              value={form.bloodGroup}
+              onChange={(e) => set('bloodGroup', e.target.value)}
+              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+            >
               <option value="">—</option>
-              {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map((g) => <option key={g} value={g}>{g}</option>)}
+              {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
+                <option key={g} value={g}>{g}</option>
+              ))}
             </select>
           </div>
         </div>
 
-        <div><Lbl>Notes</Lbl>
-          <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Antécédents, contexte…" style={{ height: 72 }} />
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+        {/* Allergies */}
+        <div>
+          <SectionHeader label="Allergies" onAdd={addAllergy} />
+          {form.allergies.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucune allergie enregistrée.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {form.allergies.map((a, i) => (
+                <AllergyRow key={i} entry={a} index={i} onChange={updateAllergy} onRemove={removeAllergy} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+        {/* Antécédents */}
+        <div>
+          <SectionHeader label="Antécédents" onAdd={addAntecedent} />
+          {form.antecedents.length === 0 ? (
+            <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucun antécédent enregistré.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {form.antecedents.map((a, i) => (
+                <AntecedentRow key={i} entry={a} index={i} onChange={updateAntecedent} onRemove={removeAntecedent} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+        {/* Notes */}
+        <div><Lbl>Notes libres</Lbl>
+          <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
         </div>
 
         {(validationError ?? error) && (
@@ -152,7 +380,7 @@ function NewPatientPanel({
           </div>
         )}
 
-        <Button type="submit" disabled={isPending} style={{ marginTop: 4 }}>
+        <Button type="submit" variant="primary" disabled={isPending} style={{ marginTop: 4 }}>
           {isPending ? 'Enregistrement…' : 'Créer le patient'}
         </Button>
       </form>
@@ -200,11 +428,7 @@ export default function PatientsListPage() {
                 aria-label="Rechercher un patient"
               />
             </div>
-            <Button
-              onClick={() => setShowNew((v) => !v)}
-              style={{ flexShrink: 0 }}
-              aria-pressed={showNew}
-            >
+            <Button onClick={() => setShowNew((v) => !v)} style={{ flexShrink: 0 }} aria-pressed={showNew}>
               <Plus /> Nouveau patient
             </Button>
           </div>
@@ -229,16 +453,9 @@ export default function PatientsListPage() {
                     type="button"
                     onClick={() => navigate(`/patients/${p.id}`)}
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 14px',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8,
+                      background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-alt)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface)')}
@@ -271,7 +488,7 @@ export default function PatientsListPage() {
           </div>
         </div>
 
-        {/* Right: new patient panel (slides in) */}
+        {/* Right: new patient panel */}
         {showNew && (
           <NewPatientPanel
             onClose={() => setShowNew(false)}
