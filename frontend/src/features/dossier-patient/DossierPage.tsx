@@ -618,10 +618,11 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="prescr">
-            <div style={{ padding: '20px 24px' }}>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <DocumentsPanel patientId={raw.id} filter="PRESCRIPTION_HISTORIQUE" />
               {patientPrescriptions.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune prescription enregistrée pour ce patient.
+                  Aucune prescription générée pour ce patient.
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
