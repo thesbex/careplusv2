@@ -26,8 +26,12 @@ desktop.ini
 # Secrets & local config
 .env
 .env.local
+.env.prod
 application-secrets.yml
 application-secrets.yaml
+
+# Self-hosted compose stack runtime data
+backups/
 *.pem
 *.key
 *.p12

@@ -8,6 +8,11 @@ that path is tracked in [BACKLOG.md](BACKLOG.md) and NOT addressed here.
 (Postgres, free tier). Zero YAML in this repo — Render picks up the `Dockerfile`
 from the repo root automatically on every push to `main`.
 
+> **Alternative prête à l'emploi** : si on doit quitter Render (cold starts,
+> région, prix), voir [`DEPLOY_DOCKER_IMAGE.md`](DEPLOY_DOCKER_IMAGE.md) —
+> on push l'image vers GHCR et on la déploie chez Scaleway / Coolify-OVH /
+> Fly. Le `Dockerfile` et `docker-compose.prod.yml` sont déjà en place.
+
 ---
 
 ## Topology
