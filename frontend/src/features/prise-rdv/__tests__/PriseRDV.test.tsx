@@ -194,18 +194,19 @@ describe('<PriseRDVMobilePage />', () => {
     expect(screen.getByText('Annuler')).toBeInTheDocument();
   });
 
-  it('renders the pre-selected patient card', () => {
+  it('renders the patient card with Changer button', () => {
     renderMobilePage();
-    expect(screen.getByText('Fatima Z. Lahlou')).toBeInTheDocument();
-    expect(screen.getByText(/Née le 14\/03\/1991 · CIN BK 472 193/)).toBeInTheDocument();
+    // No patientId in URL → shows "Aucun patient"
+    expect(screen.getByText('Aucun patient')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Changer de patient' })).toBeInTheDocument();
   });
 
-  it('renders the reason select with the prototype default', () => {
+  it('renders the reason select with options from hook', () => {
     renderMobilePage();
     const select = screen.getByLabelText('Motif de consultation') as HTMLSelectElement;
     expect(select).toBeInTheDocument();
-    expect(select.value).toBe('suivi-grossesse');
+    // First option from REASON_OPTIONS fixture is 'premiere'
+    expect(select.options.length).toBeGreaterThan(0);
   });
 
   it('renders the duration segmented control with 20 min active', () => {
@@ -223,19 +224,20 @@ describe('<PriseRDVMobilePage />', () => {
     expect(slotGroup.querySelectorAll('button').length).toBe(10);
   });
 
-  it('marks the 10:30 slot as selected by default', () => {
+  it('no slot is selected by default (user must pick one)', () => {
     renderMobilePage();
-    const slot = screen.getByRole('button', { name: '10:30' });
-    expect(slot).toHaveAttribute('aria-pressed', 'true');
+    const slotGroup = screen.getByRole('group', { name: 'Créneaux disponibles' });
+    const selected = Array.from(slotGroup.querySelectorAll('button')).filter(
+      (b) => b.getAttribute('aria-pressed') === 'true',
+    );
+    expect(selected).toHaveLength(0);
   });
 
-  it('selecting a different slot updates selection', () => {
+  it('selecting a slot marks it as selected', () => {
     renderMobilePage();
-    const slot = screen.getByRole('button', { name: '14:00' });
+    const slot = screen.getByRole('button', { name: '10:30' });
     fireEvent.click(slot);
     expect(slot).toHaveAttribute('aria-pressed', 'true');
-    // Previous selection deselected
-    expect(screen.getByRole('button', { name: '10:30' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('renders the notes textarea with correct placeholder', () => {

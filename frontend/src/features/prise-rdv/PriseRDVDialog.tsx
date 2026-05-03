@@ -31,13 +31,14 @@ export interface PriseRDVDialogProps {
 export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
+  const [patientError, setPatientError] = useState<string | null>(null);
 
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, '0');
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const yyyy = today.getFullYear();
 
-  const { register, handleSubmit, watch, control } = useForm<RdvFormValues>({
+  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<RdvFormValues>({
     resolver: zodResolver(rdvFormSchema),
     defaultValues: {
       patientId: null,
@@ -64,8 +65,11 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
   const { createAppointment, isPending, error } = useCreateAppointment();
 
   async function onSubmit(data: RdvFormValues) {
-    if (!selectedPatientId) return;
-    await createAppointment({
+    if (!selectedPatientId) {
+      setPatientError('Veuillez sélectionner un patient.');
+      return;
+    }
+    const result = await createAppointment({
       patientId: selectedPatientId,
       date: data.date,
       time: data.time,
@@ -73,7 +77,7 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
       reasonId: selectedReasonId,
       ...(data.notes ? { notes: data.notes } : {}),
     }).catch(() => null);
-    onOpenChange(false);
+    if (result) onOpenChange(false);
   }
 
   return (
@@ -118,6 +122,9 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
                   </Button>
                 </div>
 
+                {patientError && (
+                  <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{patientError}</div>
+                )}
                 {candidates.length > 0 && (
                   <div className="prise-rdv-candidates" role="listbox" aria-label="Résultats patients">
                     {candidates.map((s) => (
@@ -127,7 +134,7 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
                         role="option"
                         aria-selected={selectedPatientId === s.id}
                         className={`prise-rdv-candidate-row${selectedPatientId === s.id ? ' selected' : ''}`}
-                        onClick={() => setSelectedPatientId(s.id)}
+                        onClick={() => { setSelectedPatientId(s.id); setPatientError(null); }}
                       >
                         <Avatar initials={s.name.split(' ').map((x) => x[0]).slice(0, 2).join('')} size="sm" />
                         <div style={{ flex: 1 }}>
@@ -151,13 +158,13 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
                 <div className="prise-rdv-creneau-grid">
                   <Field>
                     <FieldLabel htmlFor="rdv-date">Date</FieldLabel>
-                    <Input id="rdv-date" className="tnum" {...register('date')} />
-                    <FieldHelp>Format JJ/MM/AAAA</FieldHelp>
+                    <Input id="rdv-date" className="tnum" {...register('date')} style={errors.date ? { borderColor: 'var(--danger)' } : undefined} />
+                    {errors.date ? <FieldHelp style={{ color: 'var(--danger)' }}>{errors.date.message}</FieldHelp> : <FieldHelp>Format JJ/MM/AAAA</FieldHelp>}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="rdv-time">Heure</FieldLabel>
-                    <Input id="rdv-time" className="tnum" {...register('time')} />
-                    <FieldHelp>Créneau disponible</FieldHelp>
+                    <Input id="rdv-time" className="tnum" {...register('time')} style={errors.time ? { borderColor: 'var(--danger)' } : undefined} />
+                    {errors.time ? <FieldHelp style={{ color: 'var(--danger)' }}>{errors.time.message}</FieldHelp> : <FieldHelp>Créneau disponible</FieldHelp>}
                   </Field>
                   <Field>
                     <FieldLabel htmlFor="rdv-dur">Durée</FieldLabel>
