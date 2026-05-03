@@ -1,0 +1,547 @@
+/*
+ * careplus — mobile layouts.
+ * Ported verbatim from design/prototype/mobile-styles.css on 2026-04-24.
+ * The prototype rendered .cp-mobile inside a 390×844 iPhone artboard; in the
+ * real build we relax that at runtime via a @media query at the bottom of this
+ * file so the layout fills an actual phone viewport.
+ */
+
+.cp-mobile {
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+.cp-mobile *,
+.cp-mobile *::before,
+.cp-mobile *::after {
+  box-sizing: border-box;
+}
+
+/* Real-device override: when the viewport itself is a phone, let .cp-mobile fill it. */
+@media (max-width: 640px) {
+  .cp-mobile {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+  }
+}
+
+/* ── Mobile topbar ───────────────────────────────────── */
+.mt {
+  height: 52px;
+  flex-shrink: 0;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.mt-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mt-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.mt-icon {
+  width: 36px; height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.mt-icon:hover { background: var(--bg-alt); }
+.mt-icon svg { width: 18px; height: 18px; }
+
+.mt-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.mt-brand .cp-brand-mark { width: 26px; height: 26px; font-size: 13px; }
+.mt-brand-name { font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+
+/* ── Mobile body (scroll area) ──────────────────────── */
+.mb {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--bg);
+}
+.mb-pad { padding: 14px 16px; }
+.mb-pad-lg { padding: 18px 16px 28px; }
+
+/* ── Mobile bottom tab bar ──────────────────────────── */
+.mtabs {
+  height: 76px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  padding: 6px 4px 20px;
+  gap: 2px;
+}
+.mtab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  position: relative;
+}
+.mtab svg { width: 22px; height: 22px; opacity: 0.7; }
+.mtab.on { color: var(--primary); }
+.mtab.on svg { opacity: 1; }
+.mtab-badge {
+  position: absolute;
+  top: 2px;
+  right: calc(50% - 18px);
+  background: var(--amber);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  height: 15px;
+  min-width: 15px;
+  padding: 0 4px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  border: 1.5px solid var(--surface);
+}
+
+/* ── Sections / headings ─────────────────────────────── */
+.m-section-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 2px 10px;
+}
+.m-section-h h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  flex: 1;
+}
+.m-section-h .more {
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 550;
+}
+
+/* ── Cards ────────────────────────────────────────────── */
+.m-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.m-card + .m-card { margin-top: 10px; }
+
+.m-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  min-height: 56px;
+}
+.m-row + .m-row { border-top: 1px solid var(--border-soft); }
+.m-row-pri { flex: 1; min-width: 0; }
+.m-row-main {
+  font-weight: 550;
+  font-size: 14px;
+  line-height: 1.2;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-row-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+.m-row-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.m-row-chev {
+  color: var(--ink-4);
+  margin-left: auto;
+}
+
+/* ── Mobile buttons (bigger touch target) ────────────── */
+.m-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  width: 100%;
+}
+.m-btn.primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 1px 2px rgba(30,90,168,0.2);
+}
+.m-btn.secondary { background: var(--bg-alt); border-color: transparent; }
+.m-btn.sm { height: 36px; padding: 0 12px; font-size: 13px; }
+
+.m-icon-btn {
+  width: 44px; height: 44px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-alt);
+  color: var(--ink-2);
+}
+
+/* ── Mobile pills ──────────────────────────────────── */
+.m-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg-alt);
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+.m-pill.arrived { background: var(--status-arrived); color: var(--status-arrived-ink); }
+.m-pill.waiting { background: var(--status-waiting); color: var(--status-waiting-ink); }
+.m-pill.vitals  { background: var(--status-vitals);  color: var(--status-vitals-ink); }
+.m-pill.consult { background: var(--status-consult); color: var(--status-consult-ink); }
+.m-pill.done    { background: var(--status-done);    color: var(--status-done-ink); }
+.m-pill.allergy { background: var(--amber-soft); color: var(--amber); }
+
+/* ── Mobile search ──────────────────────────────────── */
+.m-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--bg-alt);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--ink-3);
+  font-size: 14px;
+  margin: 0 0 14px;
+}
+.m-search svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── Mobile forms ──────────────────────────────────── */
+.m-field { margin-bottom: 14px; }
+.m-field label {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--ink-2);
+  display: block;
+  margin-bottom: 6px;
+}
+.m-input {
+  width: 100%;
+  height: 46px;
+  padding: 0 14px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+.m-textarea {
+  min-height: 96px;
+  padding: 12px 14px;
+  line-height: 1.4;
+  resize: none;
+}
+
+/* ── Mobile day tabs ──────────────────────────────── */
+.m-daytabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 12px;
+  overflow-x: auto;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.m-daytabs::-webkit-scrollbar { display: none; }
+.m-daytab {
+  flex-shrink: 0;
+  min-width: 52px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  text-align: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ink-2);
+}
+.m-daytab .dl {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 2px;
+}
+.m-daytab .dn {
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.m-daytab.on {
+  background: var(--primary);
+  color: white;
+}
+.m-daytab.on .dl, .m-daytab.on .dn { color: white; }
+
+/* ── Vertical timeline (agenda) ───────────────────── */
+.m-tl {
+  position: relative;
+  margin: 8px 0;
+}
+.m-tl-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 16px;
+  min-height: 64px;
+}
+.m-tl-hour {
+  flex-shrink: 0;
+  width: 44px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  padding-top: 6px;
+  text-align: right;
+}
+.m-tl-col {
+  flex: 1;
+  border-left: 1px solid var(--border);
+  padding: 0 0 12px 12px;
+  position: relative;
+}
+.m-tl-col::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: 8px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.m-tl-col.filled::before { background: var(--primary); }
+.m-tl-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+}
+.m-tl-block.consult, .m-tl-block.confirmed { border-left-color: var(--primary); background: var(--primary-soft); }
+.m-tl-block.arrived   { border-left-color: #174585; background: #E4EDF8; }
+.m-tl-block.vitals    { border-left-color: var(--amber); background: #FBEFE3; }
+.m-tl-block.done      { border-left-color: var(--ink-4); background: #F5F3EE; opacity: 0.8; }
+.m-tl-block-h { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.m-tl-block-time { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+.m-tl-block-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; margin-bottom: 2px; }
+.m-tl-block-reason { font-size: 12px; color: var(--ink-3); }
+
+/* ── KPI Stat tiles ───────────────────────────────── */
+.m-stat-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.m-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.m-stat-k {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 6px;
+}
+.m-stat-v {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.m-stat-u {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+/* ── Bottom sheet / drawer ─────────────────────────── */
+.m-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  z-index: 20;
+}
+.m-sheet {
+  background: var(--surface);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 16px 24px;
+  max-height: 80%;
+  overflow-y: auto;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+}
+.m-sheet-grab {
+  width: 36px;
+  height: 5px;
+  background: var(--border-strong);
+  border-radius: 999px;
+  margin: 4px auto 14px;
+}
+.m-sheet-title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-bottom: 14px;
+}
+
+/* ── Patient header block ─────────────────────────── */
+.m-phead {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.m-phead .cp-avatar { width: 46px; height: 46px; font-size: 15px; }
+.m-phead-name {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.m-phead-meta {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ── Tab bar (inside screen) ─────────────────────── */
+.m-segmented {
+  display: flex;
+  padding: 4px;
+  gap: 2px;
+  background: var(--bg-alt);
+  border-radius: 10px;
+  margin: 0 0 14px;
+}
+.m-segmented button {
+  flex: 1;
+  height: 34px;
+  background: transparent;
+  border: 0;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--ink-3);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.m-segmented button.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+}
+
+/* ── Floating action button ────────────────────── */
+.m-fab {
+  position: absolute;
+  right: 16px;
+  bottom: 92px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--primary);
+  color: white;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 16px rgba(30,90,168,0.35), 0 1px 3px rgba(0,0,0,0.1);
+  z-index: 5;
+}
+.m-fab svg { width: 24px; height: 24px; }
+
+/* ── A4 zoomed-out preview on mobile ──────────── */
+.m-a4-preview {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  font-size: 10px;
+  line-height: 1.4;
+  color: #111;
+  transform-origin: top left;
+}
+
+/* ── Tablet (641–1023): sidebar collapses to icons ──── */
+@media (max-width: 1023px) {
+  /* reserved for future tablet adaptations if we render Screen components at tablet size */
+}

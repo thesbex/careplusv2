@@ -1,17 +1,20 @@
 /**
  * careplus — app shell.
- * Currently renders the Login + Onboarding screens via a dev screen picker.
+ * Currently renders ported screens + shell previews via a dev screen picker.
  * J2 replaces this with React Router + real auth guards.
  */
 import { useState } from 'react';
 import LoginPage from '@/features/login/LoginPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
+import { DesktopShellPreview, MobileShellPreview } from '@/features/_demo/ShellPreview';
 
-type ScreenKey = 'login' | 'onboarding';
+type ScreenKey = 'login' | 'onboarding' | 'shell-desktop' | 'shell-mobile';
 
 const SCREENS: { key: ScreenKey; label: string }[] = [
   { key: 'login', label: '12 · Login' },
   { key: 'onboarding', label: '13 · Onboarding' },
+  { key: 'shell-desktop', label: '— · Shell desktop (preview)' },
+  { key: 'shell-mobile', label: '— · Shell mobile (preview)' },
 ];
 
 export default function App() {
@@ -21,6 +24,8 @@ export default function App() {
     <>
       {screen === 'login' && <LoginPage />}
       {screen === 'onboarding' && <OnboardingPage />}
+      {screen === 'shell-desktop' && <DesktopShellPreview />}
+      {screen === 'shell-mobile' && <MobileShellPreview />}
 
       {/* Dev screen picker (removed in J2 when Router replaces it) */}
       <div
