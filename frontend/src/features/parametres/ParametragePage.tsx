@@ -30,6 +30,7 @@ import { toProblemDetail } from '@/lib/api/problemJson';
 import { useLeaves } from './hooks/useLeaves';
 import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
+import { PrestationsTab } from './components/PrestationsTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -42,11 +43,12 @@ const NAV_MAP = {
           params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'utilisateurs' | 'conges' | 'droits';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'utilisateurs' | 'conges' | 'droits';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'cabinet', label: 'Cabinet' },
   { id: 'tarifs', label: 'Tarifs' },
+  { id: 'prestations', label: 'Prestations' },
   { id: 'utilisateurs', label: 'Utilisateurs' },
   { id: 'conges', label: 'Congés' },
   { id: 'droits', label: 'Droits d’accès' },
@@ -768,6 +770,7 @@ export default function ParametragePage() {
       <div style={{ padding: 24, overflow: 'auto', flex: 1 }} className="scroll">
         {tab === 'cabinet' && <CabinetTab />}
         {tab === 'tarifs' && <TarifsTab />}
+        {tab === 'prestations' && <PrestationsTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}
