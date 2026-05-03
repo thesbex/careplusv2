@@ -4,14 +4,41 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Vaccination module — Étape 3 shipped, Étape 4 (frontend) next
-**Last update**: 2026-05-03
-**Build**: `BUILD SUCCESS` — 318 tests, 0 failures, 0 errors.
-**Next action**: Vaccination Étape 4 — frontend slice `features/vaccination/` (hooks + drawer + onglet DossierPage desktop + mobile). Then Étape 5 — page `/vaccinations` worklist + ParametragePage tabs.
+**Phase**: Vaccination module — Étape 4 (frontend dossier patient) shipped
+**Last update**: 2026-05-02
+**Build**: Frontend — `tsc --noEmit` clean, `vite build` green (33/33 tests). Backend — 318 tests green.
+**Next action**: Vaccination Étape 5 — page `/vaccinations` worklist (liste des doses à venir / en retard) + ParametragePage vaccination tab (paramétrage calendrier PNI). Backend endpoints for worklist already exist (Étape 3).
 
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
 ## Session log
+
+### 2026-05-02 — Vaccination Étape 4 (frontend dossier patient)
+
+**Shipped:**
+- `features/vaccination/types.ts` — `DoseStatus`, `RouteAdmin`, `VaccinationCalendarEntry`, `VaccineCatalogEntry`, `RecordDoseRequest`, `DeferDoseRequest`, `UpdateDoseRequest`, `AgeGroup`, `DrawerMode`, `SITE_SUGGESTIONS`
+- `features/vaccination/schemas.ts` — `RecordDoseSchema`, `DeferDoseSchema`, `UpdateDoseSchema` (zod)
+- `features/vaccination/hooks/` — 8 hooks: `useVaccinationCalendar`, `useVaccinationCatalog`, `useRecordDose`, `useDeferDose`, `useSkipDose`, `useUpdateDose`, `useDeleteDose`, `useDownloadBooklet` (arraybuffer → Blob → `URL.createObjectURL` → `window.open`)
+- `features/vaccination/components/DoseCard.tsx` — status-coloured card, RBAC-gated buttons (canRecord / canAdmin)
+- `features/vaccination/components/VaccinationCalendarTab.tsx` — desktop, vertical age-group timeline (PNI), `classifyAgeGroup` by `doseLabel` parsing, inline `DeferModal`, loading/error/empty states
+- `features/vaccination/components/RecordDoseDrawer.tsx` — desktop panel (record/view/edit), `react-hook-form` + zodResolver, site suggestions dropdown, optimistic locking 409 toast
+- `features/vaccination/components/VaccinationCalendarTab.mobile.tsx` — mobile, Vaul bottom-sheet for record/defer, fixed "Imprimer carnet" footer at bottom: 76px
+- `features/vaccination/components/RecordDoseDrawer.mobile.tsx` — Vaul drawer, grab handle, safe-area-inset-bottom
+- `features/vaccination/index.ts` — barrel re-export
+- `features/dossier-patient/types.ts` — `'vaccination'` added to `DossierTab` + `MobileDossierTab` unions
+- `features/dossier-patient/components/DossierTabs.tsx` — "Vaccination" tab between prescr and analyses
+- `features/dossier-patient/DossierPage.tsx` — `<VaccinationCalendarTab>` panel wired
+- `features/dossier-patient/DossierPage.mobile.tsx` — `<VaccinationCalendarTabMobile>` panel wired
+- `__tests__/vaccination.test.tsx` — 28 component tests (DoseCard, VaccinationCalendarTab desktop, empty state, RecordDoseDrawer, VaccinationCalendarTabMobile), jest-axe on every component
+- `__tests__/hooks.test.tsx` — 5 pure hook tests isolated from component mocks (`useVaccinationCalendar` ×3, `useRecordDose`, `useDownloadBooklet`)
+
+**Tests**: 33/33 green. All form controls carry `htmlFor`/`id` pairs → 0 axe violations.
+**Commit**: `3f5a249` — `feat(vaccination): frontend Étape 4 — onglet dossier patient + drawer + mobile`
+
+**Key technical decisions:**
+- Age-group classification parses `doseLabel` string (not patient birthdate), avoids needing the patient birth date in the calendar hook
+- Hooks split into two test files (`hooks.test.tsx` with its own `vi.mock('@/lib/api/client')`, `vaccination.test.tsx` mocking the hooks themselves) to avoid `vi.mock` / dynamic import collision
+- `hooks.test.ts` renamed to `hooks.test.tsx` (file contained JSX `<QueryClientProvider>`)
 
 ### 2026-05-01 — QA wave 5 (camera capture + patient photo + import skeleton)
 
