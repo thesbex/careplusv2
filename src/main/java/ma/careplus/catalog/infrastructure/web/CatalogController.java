@@ -2,6 +2,8 @@ package ma.careplus.catalog.infrastructure.web;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -194,8 +196,13 @@ public class CatalogController {
             String tags, boolean favorite, boolean active) {}
 
     public record MedicationWriteRequest(
-            String commercialName, String dci, String form, String dosage,
-            String tags, Boolean favorite, Boolean active) {}
+            @NotBlank @Size(max = 200) String commercialName,
+            @NotBlank @Size(max = 200) String dci,
+            @NotBlank @Size(max = 60) String form,
+            @NotBlank @Size(max = 60) String dosage,
+            @Size(max = 200) String tags,
+            Boolean favorite,
+            Boolean active) {}
 
     /**
      * Liste paginée pour l'écran Catalogue (recherche + tri par DCI puis nom).
@@ -250,7 +257,7 @@ public class CatalogController {
     @PostMapping("/medications")
     @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ResponseEntity<MedicationFullView> createMedication(
-            @RequestBody MedicationWriteRequest req) {
+            @Valid @RequestBody MedicationWriteRequest req) {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO catalog_medication "
@@ -270,7 +277,7 @@ public class CatalogController {
     @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ResponseEntity<Void> updateMedication(
             @PathVariable UUID id,
-            @RequestBody MedicationWriteRequest req) {
+            @Valid @RequestBody MedicationWriteRequest req) {
         int updated = jdbc.update(
                 "UPDATE catalog_medication SET "
                 + "commercial_name = ?, dci = ?, form = ?, dosage = ?, "
