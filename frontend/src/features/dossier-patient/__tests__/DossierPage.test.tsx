@@ -193,11 +193,12 @@ describe('<DossierMobilePage />', () => {
     expect(container.querySelector('.mt-title')).toHaveTextContent('Dossier patient');
   });
 
-  it('renders patient header with name and mobile-verbatim meta', () => {
+  it('renders patient header with name and meta derived from the patient record', () => {
     renderMobileDossier();
     expect(screen.getByText('Mohamed Alami')).toBeInTheDocument();
-    // Mobile prototype verbatim: "H · 58 ans · CIN BE 138 475"
-    expect(screen.getByText('H · 58 ans · CIN BE 138 475')).toBeInTheDocument();
+    // Meta is now `${sex} · ${age} ans · CIN ${cin}` from the real patient
+    // record. Fixture: sex='Homme', age=52, cin='BE 328451'.
+    expect(screen.getByText('Homme · 52 ans · CIN BE 328451')).toBeInTheDocument();
   });
 
   it('renders mobile allergy strip with Pénicilline', () => {

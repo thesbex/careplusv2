@@ -15,9 +15,11 @@ import { AgendaGrid } from './components/AgendaGrid';
 import { MonthGrid } from './components/MonthGrid';
 import { TodayArrivals } from './components/TodayArrivals';
 import { useWeekAppointments, useMonthAppointments } from './hooks/useAppointments';
+import { useMoveAppointment, extractConflictMessage } from './hooks/useAppointmentMutations';
 import { useLeaves } from '@/features/parametres/hooks/useLeaves';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
 import { AppointmentDrawer } from './components/AppointmentDrawer';
+import { toast } from 'sonner';
 import type { Appointment, DayKey } from './types';
 import './agenda.css';
 
@@ -50,6 +52,7 @@ export default function AgendaPage() {
   // session before /users/me started returning the field), treat as allowed.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canCreateRdv = userPerms == null || userPerms.includes('APPOINTMENT_CREATE');
+  const { moveAppointment } = useMoveAppointment();
 
   // Month view state — independent of weekOffset.
   const todayDate = new Date();
@@ -150,6 +153,30 @@ export default function AgendaPage() {
     setShowRDV(true);
   }
 
+  async function handleDragMove(appointmentId: string, dayKey: DayKey, time: string) {
+    if (!canCreateRdv) {
+      toast.error("Vous n'avez pas les droits pour déplacer un rendez-vous.");
+      return;
+    }
+    const apt = appointments.find((a) => a.id === appointmentId);
+    if (!apt) return;
+    // Build the new ISO timestamp from (target day, snapped time).
+    const iso = isoOfDayKey(dayKey);
+    const startAt = new Date(`${iso}T${time}:00`).toISOString();
+    try {
+      await moveAppointment({
+        id: appointmentId,
+        startAt,
+        durationMinutes: apt.dur,
+      });
+      toast.success('Rendez-vous déplacé.');
+      void refetch();
+    } catch (err) {
+      const conflict = extractConflictMessage(err);
+      toast.error(conflict ?? 'Échec du déplacement du rendez-vous.');
+    }
+  }
+
   function handleMonthDayClick(iso: string) {
     // Switch to "jour" view with the selected day. Compute weekOffset so the
     // week containing that day is loaded, then snap selectedDay to its DayKey.
@@ -245,6 +272,7 @@ export default function AgendaPage() {
             appointments={appointments}
             onSelect={setSelected}
             onSlotClick={handleSlotClick}
+            onMove={(id, dayKey, time) => void handleDragMove(id, dayKey, time)}
             leaveDays={leaveDays}
             {...(todayKey ? { today: todayKey } : {})}
           />

@@ -52,7 +52,14 @@ export const router = createBrowserRouter(
         </GuestOnly>
       ),
     },
-    { path: '/onboarding', element: <OnboardingPage /> },
+    {
+      path: '/onboarding',
+      element: (
+        <RequireRole roles={['ADMIN', 'MEDECIN']}>
+          <OnboardingPage />
+        </RequireRole>
+      ),
+    },
     {
       path: '/agenda',
       element: (

@@ -18,12 +18,30 @@ interface TodayArrivalsProps {
   remaining?: number;
 }
 
+function defaultDate(): string {
+  return new Date().toLocaleDateString('fr-MA', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+function defaultUpdatedAt(): string {
+  return new Date().toLocaleTimeString('fr-MA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 export function TodayArrivals({
   arrivals,
-  date = 'Jeudi 23 avril',
-  updatedAt = '09:47',
+  date,
+  updatedAt,
   remaining = 5,
 }: TodayArrivalsProps) {
+  const displayDate = date ?? defaultDate();
+  const displayUpdatedAt = updatedAt ?? defaultUpdatedAt();
   const navigate = useNavigate();
   return (
     <>
@@ -35,7 +53,7 @@ export function TodayArrivals({
           </div>
         </div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
-          {date} · mise à jour {updatedAt}
+          {displayDate} · mise à jour {displayUpdatedAt}
         </div>
       </div>
 

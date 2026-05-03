@@ -5,6 +5,8 @@ import type { Appointment } from '../types';
 interface AgendaBlockProps {
   a: Appointment;
   onClick?: (a: Appointment) => void;
+  /** When true, enable HTML5 drag-and-drop to allow moving the block. */
+  draggable?: boolean;
 }
 
 /**
@@ -13,7 +15,7 @@ interface AgendaBlockProps {
  * inline because a 15-min slot is only 18px tall.
  * Ported from design/prototype/screens/agenda.jsx:AgendaBlock.
  */
-export function AgendaBlock({ a, onClick }: AgendaBlockProps) {
+export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
   const top = pxFromMin(toMin(a.start)) + 2;
   const height = pxFromMin(a.dur) - 4;
   const compact = a.dur <= 30;
@@ -25,6 +27,13 @@ export function AgendaBlock({ a, onClick }: AgendaBlockProps) {
       style={{ top, height }}
       onClick={() => onClick?.(a)}
       aria-label={`${a.patient} à ${a.start}, ${a.reason}`}
+      draggable={draggable && !!a.id}
+      onDragStart={(e) => {
+        if (!draggable || !a.id) return;
+        // Store the appointment id; the daycol drop handler reads it back.
+        e.dataTransfer.setData('text/plain', a.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
     >
       {compact ? (
         <>

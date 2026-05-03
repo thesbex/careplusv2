@@ -163,10 +163,13 @@ describe('<SalleAttenteMobilePage />', () => {
     expect(container.querySelector('.mt-brand-name')).toHaveTextContent('careplus');
   });
 
-  it('renders the screen title and date line verbatim', () => {
+  it('renders the screen title and a dynamic date/time line', () => {
     renderMobile();
     expect(screen.getByText("Salle d'attente")).toBeInTheDocument();
-    expect(screen.getByText('Jeudi 24 avril · 10:24')).toBeInTheDocument();
+    // The date line is now derived from `new Date()`. Just assert it renders
+    // a non-empty fr-MA date string instead of a hardcoded "Jeudi 24 avril".
+    const subline = screen.getByText(/^[A-Za-zéèû]+ \d{1,2} [a-zéû]+ · \d{2}:\d{2}$/i);
+    expect(subline).toBeInTheDocument();
   });
 
   it('renders 4 mobile KPI stat tiles', () => {
@@ -175,7 +178,7 @@ describe('<SalleAttenteMobilePage />', () => {
     expect(screen.getByText('Attente moy.')).toBeInTheDocument();
     // "En consult." appears in both the KPI tile and a patient status pill
     expect(screen.getAllByText('En consult.').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Retard')).toBeInTheDocument();
+    expect(screen.getByText('Total file')).toBeInTheDocument();
   });
 
   it('renders all 4 patients from the shared queue fixture', () => {

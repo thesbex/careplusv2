@@ -8,6 +8,8 @@ interface AgendaGridProps {
   onSelect?: (a: Appointment) => void;
   /** Click on an empty area of a day column → "HH:MM" snapped to 5 min. */
   onSlotClick?: (dayKey: DayKey, time: string) => void;
+  /** Drop a dragged appointment block on a day column → new (day, "HH:MM"). */
+  onMove?: (appointmentId: string, dayKey: DayKey, time: string) => void;
   /** Day key of "today" — used to render the current-time line. */
   today?: DayKey;
   /** "HH:MM" — used to position the now-line. */
@@ -28,7 +30,7 @@ function snapTimeFromY(yPx: number, totalRows: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, onSlotClick, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
+export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
   const nowTop = pxFromMin(toMin(now));
   return (
     <div className="ag-grid-wrap">
@@ -69,6 +71,20 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, today = 
                 const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
                 onSlotClick(d.key, time);
               }}
+              onDragOver={(e) => {
+                if (!onMove) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(e) => {
+                if (!onMove) return;
+                e.preventDefault();
+                const id = e.dataTransfer.getData('text/plain');
+                if (!id) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
+                onMove(id, d.key, time);
+              }}
             >
               {HOURS.map((h) => (
                 <div key={h} className="ag-hour-cell" />
@@ -81,7 +97,12 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, today = 
               {appointments
                 .filter((a) => a.day === d.key)
                 .map((a, i) => (
-                  <AgendaBlock key={`${d.key}-${i}`} a={a} {...(onSelect ? { onClick: onSelect } : {})} />
+                  <AgendaBlock
+                    key={`${d.key}-${i}`}
+                    a={a}
+                    {...(onSelect ? { onClick: onSelect } : {})}
+                    draggable={!!onMove}
+                  />
                 ))}
             </div>
           ))}

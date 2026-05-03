@@ -14,7 +14,8 @@ import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Warn } from '@/components/icons';
-import { CURRENT_PATIENT, REFERENCE_RANGES, RECORDED_BY } from '../fixtures';
+import { CURRENT_PATIENT, REFERENCE_RANGES } from '../fixtures';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 interface PreviousVitalsCardProps {
   /** Show amber warning callout (TA élevée). */
@@ -27,12 +28,29 @@ interface PreviousVitalsCardProps {
   submitting?: boolean;
 }
 
+function formatRecordedBy(user: { firstName: string; lastName: string; roles: string[] } | null): string {
+  if (!user) return 'utilisateur · ' + new Date().toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false });
+  const ROLE_LABELS: Record<string, string> = {
+    MEDECIN: 'Médecin',
+    ADMIN: 'Administrateur',
+    ASSISTANT: 'Assistant(e)',
+    SECRETAIRE: 'Secrétaire',
+  };
+  const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE'];
+  const code = ROLE_PRIORITY.find((r) => user.roles.includes(r)) ?? user.roles[0] ?? '';
+  const role = ROLE_LABELS[code] ?? '—';
+  const time = new Date().toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${user.firstName} ${user.lastName} · ${role} · ${time}`;
+}
+
 export function PreviousVitalsCard({
   showTaWarn = true,
   onSendToConsult,
   onSaveAndWait,
   submitting = false,
 }: PreviousVitalsCardProps) {
+  const sessionUser = useAuthStore((s) => s.user);
+  const recordedBy = formatRecordedBy(sessionUser);
   return (
     <>
       {/* Patient identity */}
@@ -125,7 +143,7 @@ export function PreviousVitalsCard({
           marginTop: 10,
         }}
       >
-        Saisi par {RECORDED_BY}
+        Saisi par {recordedBy}
       </div>
     </>
   );

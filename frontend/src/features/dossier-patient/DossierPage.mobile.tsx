@@ -13,27 +13,6 @@ import { Warn, Phone, Calendar, Pill as PillIcon, File } from '@/components/icon
 import { usePatient } from './hooks/usePatient';
 import type { MobileDossierTab } from './types';
 
-const MOBILE_TIMELINE = [
-  {
-    date: '23 avr 2026',
-    kind: 'Consultation',
-    who: 'Dr. K. El Amrani',
-    summary: 'TA 135/85 — Légère augmentation. Bilan lipidique demandé.',
-  },
-  {
-    date: '25 mar 2026',
-    kind: 'Analyse',
-    who: 'Labo Atlas',
-    summary: 'Cholestérol total 2.35 g/L, LDL 1.58 g/L, HDL 0.42 g/L',
-  },
-  {
-    date: '18 mar 2026',
-    kind: 'Consultation',
-    who: 'Dr. K. El Amrani',
-    summary: 'Examen cardiovasculaire normal.',
-  },
-];
-
 const QUICK_ACTIONS = [
   { ico: Phone, lbl: 'Appeler' },
   { ico: Calendar, lbl: 'RDV' },
@@ -89,8 +68,11 @@ export default function DossierMobilePage() {
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="m-phead-name">{patient.fullName}</div>
-          {/* Mobile prototype shows "H · 58 ans · CIN BE 138 475" verbatim */}
-          <div className="m-phead-meta">H · 58 ans · CIN BE 138 475</div>
+          <div className="m-phead-meta">
+            {[patient.sex, patient.age > 0 ? `${patient.age} ans` : null, patient.cin ? `CIN ${patient.cin}` : null]
+              .filter(Boolean)
+              .join(' · ') || '—'}
+          </div>
         </div>
       </div>
 
@@ -207,10 +189,15 @@ export default function DossierMobilePage() {
           ))}
         </div>
 
-        {/* Timeline (visible in historique tab) */}
+        {/* Timeline (visible in historique tab) — wired to patient.timeline. */}
+        {tab === 'historique' && patient.timeline.length === 0 && (
+          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
+            Aucun événement enregistré.
+          </div>
+        )}
         {tab === 'historique' &&
-          MOBILE_TIMELINE.map((e, i) => (
-            <div className="m-card" key={i} style={{ marginBottom: 10 }}>
+          patient.timeline.map((e, i) => (
+            <div className="m-card" key={`${e.date}-${i}`} style={{ marginBottom: 10 }}>
               <div style={{ padding: '12px 14px' }}>
                 <div
                   style={{
@@ -240,19 +227,22 @@ export default function DossierMobilePage() {
                     }}
                   >
                     {e.date}
+                    {e.time ? ` · ${e.time}` : ''}
                   </span>
                 </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    lineHeight: 1.5,
-                    color: 'var(--ink-2)',
-                    marginBottom: 4,
-                  }}
-                >
-                  {e.summary}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{e.who}</div>
+                {(e.title || e.summary) && (
+                  <div
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: 'var(--ink-2)',
+                      marginBottom: 4,
+                    }}
+                  >
+                    {e.summary ?? e.title}
+                  </div>
+                )}
+                {e.who && <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{e.who}</div>}
               </div>
             </div>
           ))}

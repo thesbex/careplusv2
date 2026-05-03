@@ -102,10 +102,11 @@ describe('router', () => {
     expect(screen.getByText(/Écran prévu pour le jour J4/)).toBeInTheDocument();
   });
 
-  it('/onboarding renders the wizard (public)', () => {
+  it('/onboarding renders the wizard (first step is the cabinet identity form)', () => {
+    setAuthed();
     renderAt('/onboarding');
     expect(
-      screen.getByRole('heading', { name: 'Quand recevez-vous vos patients ?' }),
+      screen.getByRole('heading', { name: 'Identité du cabinet' }),
     ).toBeInTheDocument();
   });
 

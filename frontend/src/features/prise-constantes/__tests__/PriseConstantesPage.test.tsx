@@ -200,7 +200,9 @@ describe('<PriseConstantesPage /> (desktop)', () => {
 
   it('renders the "Saisi par" footer line', () => {
     renderDesktop();
-    expect(screen.getByText(/Saisi par Leila Berrada/)).toBeInTheDocument();
+    // The footer is now derived from the auth store; with no user signed in
+    // (unmocked store), it falls back to the literal "utilisateur · HH:MM".
+    expect(screen.getByText(/Saisi par/)).toBeInTheDocument();
   });
 
   it('renders the IMC bar with calculated BMI', () => {

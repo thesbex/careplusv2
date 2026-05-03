@@ -458,3 +458,19 @@
     padding: 0 16px;
   }
 }
+
+/* Wizard form panels (added when the static screen 3 was replaced by a 4-step wired flow). */
+.ob-form-panel {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ob-section-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 8px 0 0;
+}

@@ -29,7 +29,23 @@ function initials(name: string): string {
 
 export default function SalleAttenteMobilePage() {
   const navigate = useNavigate();
-  const { queue } = useQueue();
+  const { queue, kpis } = useQueue();
+  const todayLabel = new Date().toLocaleDateString('fr-MA', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const updatedLabel = new Date().toLocaleTimeString('fr-MA', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  // Mobile shows a 4-tile KPI grid; the hook returns 2 generic KPIs so we
+  // derive the remaining counts from the queue itself. Keeps a single source
+  // of truth (the /queue endpoint) instead of a parallel hardcoded set.
+  const aVoir = queue.filter((q) => q.status === 'arrived' || q.status === 'waiting' || q.status === 'vitals').length;
+  const enConsult = queue.filter((q) => q.status === 'consult').length;
+  const avgWait = kpis.find((k) => k.label === 'Attente moy.')?.value ?? '0';
 
   return (
     <MScreen
@@ -63,30 +79,28 @@ export default function SalleAttenteMobilePage() {
           Salle d'attente
         </div>
         <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 14 }}>
-          Jeudi 24 avril · 10:24
+          {todayLabel} · {updatedLabel}
         </div>
 
-        {/* KPI stat grid — 2×2 */}
+        {/* KPI stat grid — 2×2, dérivé du même /queue que desktop. */}
         <div className="m-stat-grid">
           <div className="m-stat">
             <div className="m-stat-k">À voir</div>
-            <div className="m-stat-v">4</div>
+            <div className="m-stat-v">{aVoir}</div>
           </div>
           <div className="m-stat">
             <div className="m-stat-k">Attente moy.</div>
             <div className="m-stat-v">
-              12<span className="m-stat-u">min</span>
+              {avgWait}<span className="m-stat-u">min</span>
             </div>
           </div>
           <div className="m-stat">
             <div className="m-stat-k">En consult.</div>
-            <div className="m-stat-v">1</div>
+            <div className="m-stat-v">{enConsult}</div>
           </div>
           <div className="m-stat">
-            <div className="m-stat-k">Retard</div>
-            <div className="m-stat-v" style={{ color: 'var(--amber)' }}>
-              +7<span className="m-stat-u">min</span>
-            </div>
+            <div className="m-stat-k">Total file</div>
+            <div className="m-stat-v">{queue.length}</div>
           </div>
         </div>
 
