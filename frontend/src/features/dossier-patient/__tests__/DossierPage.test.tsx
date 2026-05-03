@@ -19,6 +19,19 @@ vi.mock('@/features/salle-attente/hooks/useStartConsultation', () => ({
   }),
 }));
 
+vi.mock('@/features/prescription/hooks/usePrescriptions', () => ({
+  usePrescriptionsForPatient: () => ({ prescriptions: [], isLoading: false, error: null }),
+  usePrescriptions: () => ({ prescriptions: [], isLoading: false }),
+  usePrescription: () => ({ prescription: null, isLoading: false, error: null }),
+}));
+
+vi.mock('@/features/facturation/hooks/useInvoices', () => ({
+  useInvoicesForPatient: () => ({ invoices: [], isLoading: false, error: null }),
+  useInvoices: () => ({ invoices: [], isLoading: false, error: null, refetch: () => Promise.resolve() }),
+  useInvoice: () => ({ invoice: null, isLoading: false, error: null, refetch: () => Promise.resolve() }),
+  useInvoiceByConsultation: () => ({ invoice: null, isLoading: false }),
+}));
+
 vi.mock('../hooks/usePatient', () => ({
   usePatient: () => ({
     patient: PATIENT_MOHAMED_ALAMI,

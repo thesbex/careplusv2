@@ -50,8 +50,11 @@ public class BillingController {
     @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
     public ResponseEntity<List<InvoiceResponse>> listInvoices(
             @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) UUID patientId,
             Authentication auth) {
-        List<Invoice> invoices = billingService.getInvoices(status);
+        List<Invoice> invoices = patientId != null
+                ? billingService.getInvoicesForPatient(patientId)
+                : billingService.getInvoices(status);
         return ResponseEntity.ok(invoices.stream().map(this::toResponse).toList());
     }
 

@@ -155,6 +155,11 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
+    public List<Prescription> getPrescriptionsByPatient(UUID patientId) {
+        return prescriptionRepository.findByPatientIdOrderByIssuedAtDesc(patientId);
+    }
+
+    @Transactional(readOnly = true)
     public List<PrescriptionLine> getLinesForPrescription(UUID prescriptionId) {
         return prescriptionLineRepository.findByPrescriptionIdOrderBySortOrderAsc(prescriptionId);
     }

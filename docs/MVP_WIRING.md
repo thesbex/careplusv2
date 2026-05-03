@@ -12,8 +12,8 @@ Read this first when resuming work. It is the source of truth for what is done, 
 | 1.5 | Consultation list + dossier "Nouvelle consultation" | ✅ DONE | `0dce51d` | New `GET /api/consultations` endpoint; `/consultations` shows list; dossier button wired |
 | 2 | Prescription drawer + ordonnance PDF | ✅ DONE | `2bd795d` | `features/prescription/` slice; medication search; allergy override flow; iframe PDF preview |
 | 3 | Facturation list + drawer + aperçu | ✅ DONE | _next push_ | Liste filtrable + KPI cards, drawer (édit/issue/pay/credit-note), A4 print preview, "Ajuster total" wired in Consultation |
-| 4 | Dossier patient — onglets prescr / factu | ⏳ NEXT | — | Réutilise hooks Étape 2/3 ; onglet "Consults" déjà câblé en `0dce51d` |
-| 5 | Agenda interactions (clic RDV → drawer modifier/annuler) | ⏳ | — | + drag-to-move optimistic |
+| 4 | Dossier patient — onglets prescr / factu | ✅ DONE | _next push_ | Backend : `?patientId=` filter sur `/invoices` + `GET /api/patients/:id/prescriptions`. Frontend : tabs Prescriptions et Factures branchés sur `usePrescriptionsForPatient` / `useInvoicesForPatient`. Bonus : fix WorkflowIT midnight edge case (now()-5min → 10:00 today). |
+| 5 | Agenda interactions (clic RDV → drawer modifier/annuler) | ⏳ NEXT | — | + drag-to-move optimistic |
 | 6 | Paramétrage + Onboarding | ⏳ | — | **Bloqué backend** : créer `SettingsController` + `GET/PUT /api/settings/clinic` |
 | 7 | Queue enrichi (`age`, `reasonLabel`, `practitionerName`) | ⏳ | — | Cosmétique, retire les placeholders `0 ans` / `—` |
 | 8 | Playwright E2E + Postman + tag `v0.1.0-mvp` | ⏳ | — | 3 specs : RDV, consultation+sign+PDF, invoice |
