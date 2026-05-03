@@ -167,6 +167,9 @@
   border-left: 1px solid var(--border);
   position: relative;
 }
+.ag-daycol.clickable {
+  cursor: copy;
+}
 .ag-hour-cell {
   height: var(--ag-row);
   border-bottom: 1px solid var(--border);

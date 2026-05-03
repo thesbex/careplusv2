@@ -139,6 +139,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState<'M' | 'F' | 'O'>('M');
   const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
 
   async function handleSave() {
@@ -151,12 +152,20 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
       setValidationError('Téléphone requis (6-20 chiffres).');
       return;
     }
+    if (!birthDate) {
+      setValidationError('Date de naissance requise.');
+      return;
+    }
+    if (birthDate > new Date().toISOString().slice(0, 10)) {
+      setValidationError('La date de naissance ne peut pas être dans le futur.');
+      return;
+    }
     try {
       const created = await create({
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         gender,
-        birthDate: '',
+        birthDate,
         cin: '',
         phone: phone.trim(),
         email: '',
@@ -289,6 +298,31 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
           }}
         />
       </div>
+      <div style={{ marginBottom: 8 }}>
+        <input
+          type="date"
+          value={birthDate}
+          max={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => {
+            setBirthDate(e.target.value);
+            setValidationError(null);
+          }}
+          aria-label="Date de naissance"
+          style={{
+            width: '100%',
+            height: 34,
+            border: '1px solid var(--border)',
+            borderRadius: 6,
+            padding: '0 10px',
+            fontSize: 13,
+            fontFamily: 'inherit',
+            background: 'var(--surface)',
+          }}
+        />
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+          Date de naissance *
+        </div>
+      </div>
       {validationError && (
         <div style={{ color: 'var(--danger)', fontSize: 11.5, marginBottom: 8 }}>
           {validationError}
@@ -321,9 +355,19 @@ export interface PriseRDVDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  /** ISO yyyy-MM-dd to pre-select in the calendar (e.g. when opened from an empty agenda slot). */
+  prefilledDate?: string;
+  /** "HH:mm" to pre-select as the time (used together with prefilledDate). */
+  prefilledTime?: string;
 }
 
-export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialogProps) {
+export function PriseRDVDialog({
+  open,
+  onOpenChange,
+  onCreated,
+  prefilledDate,
+  prefilledTime,
+}: PriseRDVDialogProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
@@ -335,16 +379,26 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const yyyy = today.getFullYear();
 
-  const [calYear, setCalYear] = useState(yyyy);
-  const [calMonth, setCalMonth] = useState(today.getMonth());
+  // Prefilled date/time take precedence when the dialog is opened from a
+  // click on an empty agenda slot. Convert the ISO yyyy-MM-dd into the
+  // dd/MM/yyyy format the existing form uses.
+  const initialDate = (() => {
+    if (!prefilledDate) return `${dd}/${mm}/${yyyy}`;
+    const [Y, M, D] = prefilledDate.split('-');
+    return `${D}/${M}/${Y}`;
+  })();
+  const initialDateObj = prefilledDate ? new Date(`${prefilledDate}T00:00:00`) : today;
+
+  const [calYear, setCalYear] = useState(initialDateObj.getFullYear());
+  const [calMonth, setCalMonth] = useState(initialDateObj.getMonth());
 
   const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<RdvFormValues>({
     resolver: zodResolver(rdvFormSchema),
     defaultValues: {
       patientId: null,
       patientQuery: '',
-      date: `${dd}/${mm}/${yyyy}`,
-      time: '',
+      date: initialDate,
+      time: prefilledTime ?? '',
       durationMin: 20,
       reasonId: null,
       notes: '',

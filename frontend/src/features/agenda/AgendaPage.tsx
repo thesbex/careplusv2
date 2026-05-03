@@ -43,6 +43,7 @@ export default function AgendaPage() {
   const { days, appointments, arrivals, weekLabel, todayKey, refetch } = useWeekAppointments(weekOffset);
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
+  const [rdvPrefill, setRdvPrefill] = useState<{ date: string; time: string } | null>(null);
 
   // Month view state — independent of weekOffset.
   const todayDate = new Date();
@@ -123,6 +124,25 @@ export default function AgendaPage() {
     setWeekOffset((o) => o + 1);
   }
 
+  function isoOfDayKey(dayKey: DayKey): string {
+    // Mirror leaveDays computation: find Monday of the displayed week, then add offset.
+    const now = new Date();
+    const dow = now.getDay();
+    const diffToMon = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon + weekOffset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const idx = DAY_KEYS.indexOf(dayKey);
+    const target = new Date(monday);
+    target.setDate(monday.getDate() + (idx === -1 ? 0 : idx));
+    return isoOfDate(target);
+  }
+
+  function handleSlotClick(dayKey: DayKey, time: string) {
+    setRdvPrefill({ date: isoOfDayKey(dayKey), time });
+    setShowRDV(true);
+  }
+
   function handleMonthDayClick(iso: string) {
     // Switch to "jour" view with the selected day. Compute weekOffset so the
     // week containing that day is loaded, then snap selectedDay to its DayKey.
@@ -155,7 +175,13 @@ export default function AgendaPage() {
             <Button>
               <Phone /> Appel rapide
             </Button>
-            <Button variant="primary" onClick={() => setShowRDV(true)}>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setRdvPrefill(null);
+                setShowRDV(true);
+              }}
+            >
               <Plus /> Nouveau RDV
             </Button>
           </>
@@ -209,6 +235,7 @@ export default function AgendaPage() {
             days={visibleDays}
             appointments={appointments}
             onSelect={setSelected}
+            onSlotClick={handleSlotClick}
             leaveDays={leaveDays}
             {...(todayKey ? { today: todayKey } : {})}
           />
@@ -217,11 +244,16 @@ export default function AgendaPage() {
       {showRDV && (
         <PriseRDVDialog
           open={showRDV}
-          onOpenChange={setShowRDV}
+          onOpenChange={(o) => {
+            setShowRDV(o);
+            if (!o) setRdvPrefill(null);
+          }}
           onCreated={() => {
+            setRdvPrefill(null);
             setWeekOffset(0);
             void refetch();
           }}
+          {...(rdvPrefill ? { prefilledDate: rdvPrefill.date, prefilledTime: rdvPrefill.time } : {})}
         />
       )}
       <AppointmentDrawer

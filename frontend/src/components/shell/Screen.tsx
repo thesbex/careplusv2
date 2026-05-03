@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Sidebar, type SidebarScreen, type SidebarProps } from './Sidebar';
 import { Topbar, type TopbarProps } from './Topbar';
+import { PatientSearchSpotlight } from './PatientSearchSpotlight';
 import '@/styles/shell.css';
 
 export interface ScreenProps {
@@ -32,6 +33,20 @@ export function Screen({
   onNavigate,
   topbarProps,
 }: ScreenProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // ⌘K / Ctrl+K opens the patient spotlight from anywhere in the desktop app.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const sidebarProps: SidebarProps = {
     active,
     ...(counts !== undefined ? { counts } : {}),
@@ -46,6 +61,7 @@ export function Screen({
           {...(sub !== undefined ? { sub } : {})}
           {...(pageDate !== undefined ? { pageDate } : {})}
           {...(topbarRight !== undefined ? { right: topbarRight } : {})}
+          onSearchOpen={() => setSearchOpen(true)}
           {...topbarProps}
         />
         <div className="cp-content">
@@ -53,6 +69,7 @@ export function Screen({
           {right && <div className="cp-rightpanel">{right}</div>}
         </div>
       </div>
+      <PatientSearchSpotlight open={searchOpen} onOpenChange={setSearchOpen} />
     </div>
   );
 }

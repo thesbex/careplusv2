@@ -6,6 +6,8 @@ interface AgendaGridProps {
   days: WeekDay[];
   appointments: Appointment[];
   onSelect?: (a: Appointment) => void;
+  /** Click on an empty area of a day column → "HH:MM" snapped to 5 min. */
+  onSlotClick?: (dayKey: DayKey, time: string) => void;
   /** Day key of "today" — used to render the current-time line. */
   today?: DayKey;
   /** "HH:MM" — used to position the now-line. */
@@ -14,7 +16,19 @@ interface AgendaGridProps {
   leaveDays?: Set<DayKey>;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
+const FIRST_HOUR = 8;
+const SNAP_MIN = 5;
+
+function snapTimeFromY(yPx: number, totalRows: number): string {
+  const max = totalRows * 60;
+  const totalMin = Math.max(0, Math.min(max - SNAP_MIN, (yPx / 72) * 60));
+  const snapped = Math.round(totalMin / SNAP_MIN) * SNAP_MIN;
+  const h = FIRST_HOUR + Math.floor(snapped / 60);
+  const m = snapped % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+export function AgendaGrid({ days, appointments, onSelect, onSlotClick, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
   const nowTop = pxFromMin(toMin(now));
   return (
     <div className="ag-grid-wrap">
@@ -43,9 +57,18 @@ export function AgendaGrid({ days, appointments, onSelect, today = 'jeu', now = 
                 'ag-daycol',
                 d.key === today ? 'today' : '',
                 leaveDays?.has(d.key) ? 'leave' : '',
+                onSlotClick ? 'clickable' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
+              onClick={(e) => {
+                if (!onSlotClick) return;
+                // Ignore clicks that bubbled from an existing appointment block.
+                if ((e.target as HTMLElement).closest('.ag-block')) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
+                onSlotClick(d.key, time);
+              }}
             >
               {HOURS.map((h) => (
                 <div key={h} className="ag-hour-cell" />

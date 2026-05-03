@@ -55,7 +55,7 @@ export function useCreatePatient() {
         firstName: form.firstName,
         lastName: form.lastName,
         gender: form.gender,
-        birthDate: form.birthDate || null,
+        birthDate: form.birthDate,
         cin: form.cin || null,
         phone: form.phone,
         email: form.email || null,

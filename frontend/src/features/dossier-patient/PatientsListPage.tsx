@@ -267,6 +267,15 @@ function NewPatientPanel({
       setValidationError('Numéro de téléphone invalide.');
       return;
     }
+    if (!form.birthDate) {
+      setValidationError('La date de naissance est obligatoire.');
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    if (form.birthDate > today) {
+      setValidationError('La date de naissance ne peut pas être dans le futur.');
+      return;
+    }
     const created = await create(form).catch(() => null);
     if (created) onCreated(created.id);
   }
@@ -318,8 +327,14 @@ function NewPatientPanel({
               <option value="O">Autre</option>
             </select>
           </div>
-          <div><Lbl>Date de naissance</Lbl>
-            <Input type="date" value={form.birthDate} onChange={(e) => set('birthDate', e.target.value)} />
+          <div><Lbl>Date de naissance *</Lbl>
+            <Input
+              type="date"
+              required
+              max={new Date().toISOString().slice(0, 10)}
+              value={form.birthDate}
+              onChange={(e) => set('birthDate', e.target.value)}
+            />
           </div>
         </div>
 
