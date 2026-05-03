@@ -4,10 +4,12 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Sprint MVP, J6 complete
+**Phase**: Sprint MVP — J8 backend done, frontend in progress (screens remaining: constantes, consultation, prescription, ordonnance, facturation, paramétrage)
 **Last update**: 2026-04-24
-**Build**: `BUILD SUCCESS` — 60 integration tests green (Testcontainers + Postgres 16)
-**Next action**: J7 — billing module (invoice, payment, credit note, ConsultationSigneeEvent → invoice draft)
+**Build**: `BUILD SUCCESS` — 75 integration tests green. Frontend: `tsc --noEmit` clean.
+**Next action**: Resume J8 frontend porting — Prise des constantes → Consultation SOAP → Prescription drawer → Aperçu ordonnance → Facturation → Paramétrage → Playwright E2E → tag v0.1.0-mvp.
+
+> ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
 ## Session log
 
@@ -113,6 +115,96 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **State**: `mvn clean verify` → `BUILD SUCCESS`, 60 tests / 0 failures / 0 errors. All prior modules green.
 
 **Next action**: J7 — billing module. `ConsultationSigneeEvent` listener creates draft invoice. Invoice CRUD, issue (sequential number), payment, credit note, PDF.
+
+**Blockers**: none.
+
+### 2026-04-24 — J7 billing module shipped
+
+**Shipped:**
+- `V005__billing.sql` — adds `tier`, `mutuelle_insurance_id`, `mutuelle_policy_number` to `patient_patient`; adds `discount_amount`, `net_amount`, `mutuelle_insurance_id`, `mutuelle_policy_number`, `adjusted_by`, `adjusted_at`, `version` to `billing_invoice`; creates `config_patient_tier` table seeded with NORMAL=0% and PREMIUM=10%.
+- `Patient` entity extended with `tier`, `mutuelleInsuranceId`, `mutuellePoliceNumber` fields (V005 columns).
+- `ma.careplus.billing.domain` — `Invoice`, `InvoiceLine`, `Payment`, `CreditNote`, `ConfigPatientTier` JPA entities; `InvoiceStatus` and `PaymentMode` enums.
+- `ma.careplus.billing.infrastructure.persistence` — `InvoiceRepository`, `InvoiceLineRepository`, `PaymentRepository`, `CreditNoteRepository`, `ConfigPatientTierRepository`, `InvoiceSequenceRepository` (SELECT FOR UPDATE, ADR-011 compliant).
+- `ma.careplus.billing.application.BillingService` — `@TransactionalEventListener(AFTER_COMMIT)` listener creates draft invoice on `ConsultationSigneeEvent`; tier discount applied from `config_patient_tier`; `updateInvoice`, `adjustTotal`, `issueInvoice` (sequential number via `InvoiceSequenceRepository`), `recordPayment` (auto-status PAYEE_PARTIELLE/TOTALE), `issueCreditNote` (AYYYY-NNNNNN number, original ANNULEE).
+- `ma.careplus.billing.infrastructure.web.BillingController` — 8 REST endpoints (GET list, GET by id, GET by consultation, PUT update draft, PUT adjust total, POST issue, POST payment, POST credit note).
+- `BillingIT` — 9 integration tests: sign → draft, PREMIUM discount, médecin adjusts total, issue (sequential number), second invoice (incremented), full payment → PAYEE_TOTALE, partial → PAYEE_PARTIELLE, credit note (negative amount + ANNULEE), re-issue 409. All pass.
+
+**State**: `mvn clean verify` → `BUILD SUCCESS`, 69 tests / 0 failures / 0 errors. All prior modules green.
+
+**Next action**: J8 — frontend screens (Vite bundle wired into Spring Boot, React/TypeScript port of design prototype screens 01–13 per SPRINT_MVP.md J8-J10 plan).
+
+**Blockers**: none.
+
+### 2026-04-24 — J8 backend wrap-up shipped
+
+**Shipped:**
+- `WorkflowIT.java` — end-to-end integration test covering WF1→WF6 as a single chained test using `@SpringBootTest(RANDOM_PORT)` + `TestRestTemplate` (real HTTP, no MockMvc). Covers: login SECRETAIRE → patient search → availability → book appointment → check-in → queue → record vitals (MEDECIN) → start/update/sign consultation → create drug prescription → PDF → draft invoice wait → issue invoice (YYYY-NNNNNN) → full payment → PAYEE_TOTALE.
+- `docs/API.md` — fully populated for all J2–J7 modules (identity + bootstrap + admin users, patient, scheduling, presence+clinical, catalog+prescriptions, billing). Every endpoint listed with method, path, role, request/response summary.
+- `docs/PROGRESS.md` — updated to reflect J8 backend complete.
+
+**State**: `mvn clean verify` → `BUILD SUCCESS`, 70 tests / 0 failures / 0 errors.
+
+**Next action**: J8 frontend — wire dossier patient (screen 03) and prise de RDV (screen 02) to live API. Start with patient search/display (hooks call `/api/patients`), then appointment booking form (availability → POST /api/appointments).
+
+**Blockers**: none.
+
+### 2026-04-24 — ADR-023 patient module patch
+
+**Shipped:**
+- `V006__patient_notes_antecedent_category.sql` — `ALTER TABLE patient_antecedent ADD COLUMN IF NOT EXISTS category VARCHAR(60)` + `CREATE TABLE patient_note (id, patient_id, content, created_by, created_at, updated_at)` with index and `touch_updated_at` trigger.
+- `AntecedentCategory` enum — 17 fine-grained taxonomy values (PERSONNEL_MALADIES_CHRONIQUES, PERSONNEL_CHIRURGIES, FAMILIAL, MEDICAMENTEUX_*, SOCIAL_*, GYNECO_OBSTETRICAL, PSYCHIATRIQUE).
+- `Antecedent` entity updated with `@Enumerated(EnumType.STRING) AntecedentCategory category` field.
+- `PatientNote` JPA entity (patient_note table).
+- `PatientNoteRepository` — `findByPatientIdOrderByCreatedAtDesc`.
+- New DTOs: `CreatePatientNoteRequest` (`@NotBlank content`), `PatientNoteResponse` (id, patientId, content, createdByName, createdAt), `UpdateTierRequest` (`@Pattern NORMAL|PREMIUM`), `UpdateMutuelleRequest` (insuranceId, policyNumber).
+- `CreateAntecedentRequest` updated with optional `category` field.
+- `AntecedentView` updated with `category` field.
+- `PatientView` extended with `tier`, `mutuelleInsuranceId`, `mutuellePoliceNumber`.
+- `PatientMapper.toView()` and `toAntecedentView()` updated accordingly.
+- `PatientService` extended: `addAntecedent` sets category; `deleteAllergy`/`deleteAntecedent`; `createNote`/`getNotes` (user name lookup via UserRepository); `updateTier`/`updateMutuelle`.
+- `PatientController` extended: `DELETE /{id}/allergies/{allergyId}`, `DELETE /{id}/antecedents/{antecedentId}`, `POST /{id}/notes` (MEDECIN), `GET /{id}/notes` (MEDECIN/ADMIN), `PUT /{id}/tier` (MEDECIN/ADMIN), `PUT /{id}/mutuelle` (all roles).
+- `PatientIT` extended from 9 to 15 tests: antecedent with category, create note as MEDECIN, non-medecin note 403, tier update, mutuelle update.
+- Fixed regression: `CreatePatientRequest.phone` had `@NotBlank` re-added by linter; removed (phone is optional, per J6 fix).
+
+**State**: `mvn clean verify` → `BUILD SUCCESS`, 75 tests / 0 failures / 0 errors.
+
+**Next action**: J8 frontend — unchanged. Wire dossier patient (screen 03) and prise de RDV (screen 02) to live API.
+
+**Blockers**: none.
+
+**Convention exceptions**: `PatientService` imports `UserRepository` from identity module (cross-module) to resolve `createdByName` for note responses. Consistent with existing precedent in `BillingService` (imports `PatientRepository`) and `CatalogService` (imports `PatientService`). Logged here as an exception; post-MVP refactor target is a shared read-model or event-sourced user name cache.
+
+### 2026-04-24 — Patient UX hardening (out-of-flow fixes, live feedback)
+
+> These changes were driven by product feedback during live demo/testing, outside the J-day sequence. They patch the patient creation and modification flows that shipped in J3/J8.
+
+**Shipped (frontend):**
+
+- **Création patient — allergies par sévérité** : le panneau "Nouveau patient" dans `PatientsListPage` inclut maintenant une section Allergies (substance + pills Légère/Modérée/Sévère, ajouter/supprimer) et une section Antécédents (catégorie dropdown + description, ajouter/supprimer). `useCreatePatient` fait maintenant 3 appels séquentiels : POST /patients → POST /patients/{id}/allergies (× n) → POST /patients/{id}/antecedents (× n).
+- **Téléphone obligatoire à la création** : champ Téléphone * avec strip des non-chiffres à la frappe + regex `[\\d\\s+\\-().]{6,20}` à la soumission.
+- **Validation nom/prénom** : `sanitizeName()` retire les chiffres et caractères spéciaux à la frappe (lettres Latin/accentuées/arabe, espaces, tirets, apostrophes autorisés). `isValidName()` bloque à la soumission si < 2 chars ou contient un chiffre. Appliqué aux deux formulaires (création + modification).
+- **Modification patient — panneau complet** : le bouton "Modifier" dans `PatientHeader` ouvre un panneau slide-in (`EditPatientPanel` dans `DossierPage`) pré-rempli avec les données actuelles du patient. Toutes les sections :
+  - Identité (prénom, nom, sexe, DDN, CIN, téléphone, email, ville, groupe sanguin)
+  - Allergies existantes (affichées avec sévérité colorée + × pour supprimer) + ajout de nouvelles
+  - Antécédents existants (catégorie label + description + × pour supprimer) + ajout de nouveaux
+  - Notes libres
+- **`useUpdatePatient`** : mutation en 5 étapes — PUT info + DELETE allergies supprimées + POST nouvelles allergies + DELETE antécédents supprimés + POST nouveaux antécédents (toutes les DELETE/POST en `Promise.all`).
+- **`usePatient`** : expose maintenant `raw: PatientViewApi | null` en plus du `patient` adapté, pour pré-remplir le formulaire d'édition sans perte de données brutes.
+
+**Shipped (backend):**
+
+- `DELETE /patients/{id}/allergies/{allergyId}` — SECRETAIRE/MEDECIN/ADMIN. Vérifie l'ownership (patientId) avant suppression.
+- `DELETE /patients/{id}/antecedents/{antecedentId}` — SECRETAIRE/MEDECIN/ADMIN. Même guard.
+- `PatientService.deleteAllergy()` / `deleteAntecedent()` — vérification patient actif + ownership.
+- `CreatePatientRequest` : `@Pattern(regexp = "[\\p{L}\\s'\\-]+")` + `@Size(min = 2)` sur `firstName`/`lastName` ; `@Pattern([\\d\\s+\\-().]{6,32})` sur `phone`.
+- `UpdatePatientRequest` : mêmes contraintes sur `firstName`/`lastName`.
+
+**Backlog mis à jour:**
+- Ancien dossier patient (upload fichiers : prescriptions, radios) — spécifié dans `docs/BACKLOG.md` section "Documents & files" avec schéma DB, endpoints et comportement frontend.
+
+**State**: tsc clean, 75 backend tests green, pas de régression.
+
+**Next action**: reprendre le portage frontend prévu — Prise des constantes, Consultation SOAP, Prescription, Ordonnance, Facturation, Paramétrage.
 
 **Blockers**: none.
 
