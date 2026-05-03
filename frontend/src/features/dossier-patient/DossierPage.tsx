@@ -5,8 +5,11 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Close, Plus } from '@/components/icons';
+import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
+import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { toast } from 'sonner';
 import { usePatient } from './hooks/usePatient';
+import { usePatientPhoto } from './hooks/usePatientPhoto';
 import {
   useUpdatePatient,
   type UpdatePatientForm,
@@ -102,17 +105,37 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 function EditPatientPanel({
   patientId,
   initial,
+  initialPhotoDocumentId,
   onClose,
 }: {
   patientId: string;
   initial: UpdatePatientForm;
+  initialPhotoDocumentId: string | null;
   onClose: () => void;
 }) {
   const { update, isPending, error, reset } = useUpdatePatient(patientId);
+  const photo = usePatientPhoto(patientId);
   const [form, setForm] = useState<UpdatePatientForm>(initial);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'personnel' | 'medical'>('personnel');
+
+  async function handlePhotoFile(file: File) {
+    try {
+      await photo.upload(file);
+    } catch {
+      // surfaced via photo.uploadError
+    }
+  }
+
+  async function handlePhotoRemove() {
+    if (!confirm('Supprimer la photo du patient ?')) return;
+    try {
+      await photo.remove();
+    } catch {
+      // best-effort
+    }
+  }
 
   function setField<K extends keyof UpdatePatientForm>(key: K, value: UpdatePatientForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -250,6 +273,47 @@ function EditPatientPanel({
       >
         {/* ── Onglet Personnel ─────────────────────────────────────────────── */}
         <div hidden={activeTab !== 'personnel'} style={{ display: activeTab === 'personnel' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
+          {/* Photo patient (QA5-3) — upload immédiat (le patient existe déjà ici). */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <PatientAvatar
+              initials={`${(form.firstName || '?').charAt(0)}${(form.lastName || '?').charAt(0)}`}
+              documentId={initialPhotoDocumentId}
+              size="lg"
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+              <DocumentUploadButton
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                uploadLabel={photo.isUploading ? 'Envoi…' : 'Téléverser'}
+                cameraLabel="Photographier"
+                disabled={photo.isUploading || photo.isRemoving}
+                onFile={(f) => { void handlePhotoFile(f); }}
+              />
+              <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                JPEG, PNG, WebP, HEIC — max 2 Mo.
+              </div>
+              {initialPhotoDocumentId && (
+                <button
+                  type="button"
+                  onClick={() => { void handlePhotoRemove(); }}
+                  disabled={photo.isRemoving}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--ink-3)', fontSize: 11, padding: '2px 0',
+                    fontFamily: 'inherit', textDecoration: 'underline',
+                  }}
+                >
+                  {photo.isRemoving ? 'Suppression…' : 'Retirer la photo'}
+                </button>
+              )}
+              {photo.uploadError && (
+                <div style={{ fontSize: 12, color: 'var(--danger)' }}>{photo.uploadError}</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><Lbl>Prénom *</Lbl>
               <Input value={form.firstName} onChange={(e) => setField('firstName', sanitizeName(e.target.value))} autoFocus />
@@ -778,6 +842,7 @@ export default function DossierPage() {
           <EditPatientPanel
             patientId={raw.id}
             initial={editInitial}
+            initialPhotoDocumentId={raw.photoDocumentId ?? null}
             onClose={() => setShowEdit(false)}
           />
         )}

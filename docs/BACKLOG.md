@@ -164,6 +164,69 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 2. **QA3-2** — quick-win 3h, à inclure dans le bundle "documents patient" (QA2-2/4/6) car ce panneau sera de toute façon refactoré pour ajouter les zones d'upload photo + CIN.
 3. **QA3-3** — sprint dédié post-pilote. Pas de raison de retarder le pilote pour une refonte RBAC ; les 4 rôles actuels couvrent 95% des cas. Marquer pour v0.3.0.
 
+## QA wave 5 — 2026-05-01 (import auto + capture caméra)
+
+### QA5-1 — Import automatique de documents médicaux (prescriptions / analyses / imagerie) + permission "Administration de l'import" — **[CHANGE / BIG FEATURE]**
+- **Demande (Youssef Boutaleb, 2026-05-01)** : étendre QA2-2 (upload manuel) avec un canal d'**import automatique** : prescriptions, comptes-rendus radio, résultats d'analyses arrivent dans le dossier patient sans intervention manuelle. Ajouter aussi le **droit d'administration de l'import** dans la page des droits (matrice RBAC).
+- **État actuel** : seul l'upload manuel multipart (QA2-2) existe. Aucun connecteur entrant. La matrice de droits (`SettingsPage > Droits` + endpoint `PUT /settings/role-permissions/{roleCode}`) liste les permissions atomiques (`PATIENT_CREATE`, `INVOICE_READ`…) mais aucune ne couvre la couche import.
+- **Pourquoi c'est un CHANGE majeur** : transforme careplus d'un système à entrée 100% manuelle vers un hub d'agrégation documentaire. Implique :
+  - Un **modèle d'extension de connecteurs** (laboratoire X, RIS Y, futur PMI national) : interface Java `DocumentImportSource` + registration Spring + paramétrage par cabinet.
+  - Premier connecteur réaliste pour le marché marocain 2026 : **boîte mail dédiée** (`docs+cabinetX@careplus.ma`) que des labos partenaires mettent en CC sur leurs envois PDF. Un job poll IMAP → parse pièce jointe → match patient (CIN > nom+DDN > nom+téléphone) → création `patient_document` typé. Pas de standard HL7/FHIR national à adresser au Maroc en 2026.
+  - **File d'imports en attente de validation** : si le matching est ambigu, le document atterrit dans une corbeille "Imports à classer" — **jamais** attaché automatiquement au mauvais patient.
+- **Permission RBAC associée** : nouvelle permission `DOCUMENT_IMPORT_ADMIN` (configurer les sources entrantes, valider/rejeter les imports en attente, consulter les logs de routage). Distincte de `DOCUMENT_UPLOAD` (upload manuel, déjà accordé à la secrétaire). Défaut MEDECIN + ADMIN, éditable depuis la matrice de droits (cocher/décocher par rôle, comme le reste).
+- **Scope estimé** :
+  - Backend : entités `document_import_source` (type ENUM `EMAIL_INBOX` | `FOLDER_WATCH` | `HTTP_WEBHOOK`, config JSON, enabled, last_run_at) et `document_import_inbox` (raw_file_key, parsed_metadata JSON, matched_patient_id NULL, status `PENDING_REVIEW` | `MATCHED` | `REJECTED`, created_at, reviewed_by, reviewed_at). Service `DocumentImportService` (poll + match). Endpoints `GET /api/imports/inbox?status=`, `PUT /api/imports/inbox/{id}/assign?patientId=`, `DELETE /api/imports/inbox/{id}`, `GET/POST/PUT/DELETE /api/imports/sources` (admin-only). Permission `DOCUMENT_IMPORT_ADMIN` ajoutée à la table `identity_permission` + seedée dans `identity_role_permission` pour MEDECIN/ADMIN.
+  - Frontend : nouvel onglet "Sources d'import" dans Paramétrage (gérer les boîtes mail / dossiers surveillés), écran dédié `/imports` listant la corbeille à classer (matching ambigu → bouton "Assigner à patient X"), badge nombre d'imports en attente dans Topbar (refresh polling 30s ou SSE quand on l'aura). Case `DOCUMENT_IMPORT_ADMIN` dans la matrice de droits.
+  - Intégration : le 1er connecteur (mail IMAP) doit être **désactivable** ; pas obligatoire au déploiement d'un cabinet sans labo partenaire.
+- **Risques** :
+  - Qualité du matching : un mauvais routage attache un résultat d'analyses au mauvais patient → grave médicalement. **Toujours préférer la queue manuelle au matching auto incertain.** Seuil par défaut : matching auto seulement si CIN exact + (nom OU DDN) match.
+  - Volume : un laboratoire actif peut envoyer 50+ docs/jour. Pagination + cleanup `PENDING_REVIEW > 30j`.
+  - Sécurité : un mail entrant non authentifié peut être un phishing. Whitelister les expéditeurs par cabinet (champ `allowed_senders` sur `document_import_source`).
+- **Estimation** : 5-7 jours backend (sans connecteur HTTP webhook standardisé), 3-4 jours frontend, 1 jour permission + tests RBAC. Total ≈ 10 jours.
+- **Lien** : étend QA2-2 (réutilise `patient_document`), s'aligne sur QA3-3 (matrice RBAC granulaire) — si QA3-3 n'est pas encore livré, hardcoder la permission MEDECIN/ADMIN au 1er ship et la rendre éditable plus tard.
+
+### QA5-2 — Capture caméra à l'upload de tout document — **[CHANGE]**
+- **Demande (Youssef Boutaleb, 2026-05-01)** : sur tous les écrans qui acceptent un upload de document (panneau Modifier patient > Informations médicales, onglets Documents / Analyses / Imagerie du dossier, écran Imports à classer si livré, futur upload pièce jointe consultation, photo CIN de QA2-6), l'utilisateur doit avoir le choix entre :
+  1. **Téléchargement classique** (déjà en place : `<input type=file>`).
+  2. **Photographier le document** : ouvrir directement la caméra de l'appareil et envoyer la photo comme pièce jointe (PNG/JPEG).
+- **État actuel** : `usePatientDocuments` accepte n'importe quel fichier matchant le whitelist MIME (`PDF/JPEG/PNG/WebP/HEIC` — voir QA2-2). Le composant d'upload utilise `<input type=file>` simple, sans attribut `capture`. Sur mobile l'OS ouvre le sélecteur de fichier mais ne propose pas explicitement la caméra en option visible côté UI.
+- **Pourquoi c'est un CHANGE et pas un BUG** : techniquement on peut déjà uploader une photo (le mobile OS fournit la caméra dans son picker natif). Le manque est ergonomique : un bouton **explicite** "Photographier" rassure l'utilisateur — surtout les non-techies (assistant médical, secrétaire) qui ne creusent pas le picker système.
+- **Scope estimé** :
+  - Composant `DocumentUploadButton` central (réutilisé partout) avec deux CTAs côte à côte :
+    - "Téléverser un fichier" → `<input type=file accept="image/*,application/pdf">` (comportement actuel).
+    - "Photographier" → `<input type=file accept="image/*" capture="environment">` (caméra arrière par défaut, fallback front si indispo). Sur desktop sans caméra, masquer le bouton ou le désactiver avec tooltip "disponible sur mobile / tablette".
+  - Compression automatique côté client (HEIC → JPEG, JPEG > 5 Mo → quality 0.8) pour rester sous le plafond `multipart.max-file-size = 10 Mo` du backend.
+  - Optionnel post-MVP : aperçu live + recadrage (lib `react-easy-crop` à benchmarker) avant envoi pour des photos de doc plus propres. Pas obligatoire au 1er ship.
+- **Lien** : QA2-2 (module documents existant), QA2-6 (photo patient + CIN — bénéficie directement du même composant), futurs écrans d'upload consultation. Concrétise et élargit la ligne `Documents & files > Drag-drop from device camera (mobile PWA)` listée plus bas.
+- **Estimation** : 1 jour si on se limite aux 2 boutons + `capture` natif ; 2-3 jours additionnels avec recadrage live + compression client.
+
+### QA5-3 — Photo patient à la création + affichage dans liste & dossier — **[CHANGE]**
+- **Demande (Youssef Boutaleb, 2026-05-01)** : au moment de la création d'un patient, l'utilisateur doit pouvoir soit **photographier** le patient (caméra) soit **téléverser une photo**. Cette photo doit ensuite apparaître :
+  1. Dans le **tableau de la liste patients** (`PatientsListPage`) — cellule avatar.
+  2. Dans le **détail du patient** (`DossierPage`) — header / panneau Profil.
+- **État actuel** : aucune photo patient n'est stockée. Les "avatars" affichés en liste et dans le dossier sont générés en CSS à partir des initiales (prénom + nom). Aucune colonne `photo_storage_key` sur `patient`. Le panneau "Nouveau patient" n'a pas de zone d'upload photo.
+- **Pourquoi c'est un CHANGE et pas un BUG** : le prototype `design/prototype/` n'a jamais montré de photo patient ; le port a livré ce que le proto demandait. C'est un ajout de feature, pas une régression.
+- **Recouvrement avec QA2-6** : QA2-6 listait déjà "Upload photo patient + scan CIN à la création" (avatar + CIN recto/verso). Cet item le **précise et le rend prioritaire** sur la photo patient seule, et impose la **double source caméra ↔ fichier** (= QA5-2 appliqué au champ photo patient). Garder QA2-6 pour les CIN ; cet item se concentre sur l'avatar.
+- **Scope estimé** :
+  - Backend : ajouter colonne `photo_storage_key VARCHAR(255) NULL` sur `patient` (Flyway nouvelle migration — règle non-négociable n°7) **OU** réutiliser `patient_document` avec type `PHOTO` (un seul actif par patient, le plus récent fait foi). **Recommandé** : réutiliser `patient_document` pour cohérence avec QA2-2 et limiter la duplication de logique de stockage. Endpoint `PUT /api/patients/{id}/photo` (multipart) et `GET /api/patients/{id}/photo` (binary, 304 si pas changé). Le `PatientResponse` expose `hasPhoto: boolean` + `photoUrl: string | null` (URL relative pointant vers l'endpoint authentifié).
+  - Validation : carrée 1:1 idéalement, max 2 Mo, MIME `image/jpeg|png|webp|heic` (alignée sur whitelist QA2-2). Compression client (lib légère type `browser-image-compression`) si > 2 Mo.
+  - Frontend :
+    - Composant `PatientPhotoPicker` réutilisant le `DocumentUploadButton` de QA5-2 (deux CTAs : "Photographier" / "Téléverser") + preview circulaire.
+    - Intégré dans le panneau "Nouveau patient" (haut du formulaire, avant le bloc Personnel) ET dans le panneau "Modifier" (re-upload possible).
+    - Composant `PatientAvatar` mis à jour : si `photoUrl` présent → `<img>` (lazy-loaded, fallback initiales en cas de 404 / erreur de chargement), sinon initiales (comportement actuel). Réutilisé dans `PatientsListPage` (cellule avatar du tableau), `DossierPage` (header), `Sidebar` patient récents, `SalleAttentePage` (cartes file d'attente), `AppointmentDrawer` (en-tête).
+  - Sécurité : `GET /api/patients/{id}/photo` doit passer le même `assertResourceAccess` que le reste des données patient (tracé dans `AUDIT_TODO.md` BLOCKERS). Sur post-pilote uniquement, envisager URLs signées courtes pour permettre `<img src>` direct sans JWT en header (sinon il faut un blob fetch comme pour les documents).
+- **Limites & impact** :
+  - Volume disque : 2 Mo × 5000 patients = 10 Go par cabinet à 5 ans. Acceptable on-prem, à surveiller pour le backup OVH.
+  - **RGPD / loi 09-08** : photo = donnée biométrique potentielle. Consentement patient à capturer (QA wave 4 future ?). Tracé dans `Compliance > Patient consent capture at creation` (déjà au backlog).
+  - Retraitement : si recadrage in-app rejeté pour MVP, le médecin doit pouvoir refaire la photo (pas d'édition crop côté serveur).
+- **Estimation** : 1 jour backend (migration + endpoints + IT), 1,5 jour frontend (composant photo + propagation `PatientAvatar` aux 5 surfaces), 0,5 jour QA visuel. Total ≈ 3 jours.
+- **Lien** : étend QA2-6 (photo patient + CIN) en y appliquant la double source de QA5-2. Si livré avant QA2-6, la CIN reste en backlog ; si livrés ensemble, mutualiser le composant et le storage.
+
+### Priorisation QA5
+1. **QA5-2** (capture caméra) — quick-win 1 jour, gain UX immédiat sur tablette de consultation. À glisser dans le prochain sprint frontend, idéalement bundlé avec QA2-6 (photo CIN) puisqu'ils partagent le composant `DocumentUploadButton`.
+2. **QA5-3** (photo patient liste + dossier) — ~3 jours, à bundler avec QA5-2 et QA2-6 dans un seul sprint "média patient" (composant `DocumentUploadButton` mutualisé, gain x3).
+3. **QA5-1** (import auto + permission) — feature majeure (~10 jours). À planifier post-pilote, après que les premiers cabinets aient identifié leurs labos / centres d'imagerie partenaires (sans partenaire actif, le connecteur IMAP n'a personne à brancher).
+
 ## Clinical
 
 - Consultation amendment (v2, v3… chain) with full audit trace

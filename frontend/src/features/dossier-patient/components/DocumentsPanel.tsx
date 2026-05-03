@@ -12,9 +12,9 @@
  * La prop `compact` rend une variante allégée (pour l'EditPatientPanel
  * sous l'onglet "Informations médicales") : pas d'en-tête, pas de chips.
  */
-import { useRef, useState } from 'react';
-import { Button } from '@/components/ui/Button';
-import { File, Trash, Plus } from '@/components/icons';
+import { useState } from 'react';
+import { File, Trash } from '@/components/icons';
+import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import {
   usePatientDocuments,
   downloadDocument,
@@ -67,7 +67,6 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
   const canUpload = userPerms == null || userPerms.includes('PATIENT_CREATE');
   const canDelete = userPerms == null || userPerms.includes('PATIENT_CREATE');
 
-  const fileRef = useRef<HTMLInputElement | null>(null);
   const [pendingType, setPendingType] = useState<DocumentType>(filter ?? 'AUTRE');
   const [pendingNotes, setPendingNotes] = useState('');
   const [activeFilter, setActiveFilter] = useState<DocumentType | 'ALL'>(filter ?? 'ALL');
@@ -78,10 +77,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
     filter ? d.type === filter : (activeFilter === 'ALL' ? true : d.type === activeFilter),
   );
 
-  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    e.target.value = ''; // permet de re-sélectionner le même fichier
-    if (!f) return;
+  async function handleFile(f: File) {
     if (f.size > MAX_BYTES) {
       setLocalError('Fichier trop volumineux (max 10 Mo).');
       return;
@@ -170,26 +166,15 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
                 padding: '0 8px', fontFamily: 'inherit', background: 'var(--surface)',
               }}
             />
-            <input
-              ref={fileRef}
-              type="file"
+            <DocumentUploadButton
               accept={ACCEPT}
-              onChange={(e) => { void handlePick(e); }}
-              hidden
-            />
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
               disabled={isUploading}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Plus style={{ width: 12, height: 12 }} />
-              {isUploading ? 'Envoi…' : 'Téléverser'}
-            </Button>
+              uploadLabel={isUploading ? 'Envoi…' : 'Téléverser'}
+              onFile={(f) => { void handleFile(f); }}
+            />
           </div>
           <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            PDF, JPEG, PNG, WebP, HEIC — max 10 Mo.
+            PDF, JPEG, PNG, WebP, HEIC — max 10 Mo. « Photographier » ouvre directement la caméra.
           </div>
           {(uploadError ?? localError) && (
             <div style={{ fontSize: 12, color: 'var(--danger)' }}>{uploadError ?? localError}</div>

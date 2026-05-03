@@ -12,6 +12,8 @@ export interface PatientListItem {
   city: string | null;
   status: string;
   tier?: string | null;
+  /** Document patient_document type=PHOTO courant (QA5-3). */
+  photoDocumentId?: string | null;
 }
 
 interface Page<T> {

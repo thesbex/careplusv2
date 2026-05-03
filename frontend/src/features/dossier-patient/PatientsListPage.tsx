@@ -5,6 +5,8 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Search, Users, Plus, Close } from '@/components/icons';
+import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
+import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { usePatientList } from './hooks/usePatientList';
 import {
   useCreatePatient,
@@ -240,6 +242,10 @@ function NewPatientPanel({
   const [pendingDocType, setPendingDocType] = useState<DocumentType>('PRESCRIPTION_HISTORIQUE');
   const [docError, setDocError] = useState<string | null>(null);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  // QA5-3 — la photo est capturée avant la création du patient ;
+  // l'upload est différé jusqu'à ce qu'on ait l'id du nouveau dossier.
+  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const { insurances } = useInsurances();
 
   function set<K extends keyof CreatePatientForm>(key: K, value: CreatePatientForm[K]) {
@@ -314,9 +320,16 @@ function NewPatientPanel({
     const created = await create(form).catch(() => null);
     if (!created) return;
 
-    if (pendingDocs.length > 0) {
+    if (pendingDocs.length > 0 || pendingPhoto) {
       setIsUploadingDocs(true);
       try {
+        if (pendingPhoto) {
+          const fd = new FormData();
+          fd.append('file', pendingPhoto.file);
+          await api.put(`/patients/${created.id}/photo`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
         for (const d of pendingDocs) {
           const fd = new FormData();
           fd.append('file', d.file);
@@ -327,13 +340,37 @@ function NewPatientPanel({
           });
         }
       } catch {
-        setDocError('Patient créé, mais certains documents n\'ont pas pu être téléversés. Reprenez depuis son dossier.');
+        setDocError('Patient créé, mais certains éléments (photo / documents) n\'ont pas pu être téléversés. Reprenez depuis son dossier.');
       } finally {
         setIsUploadingDocs(false);
       }
     }
 
     onCreated(created.id);
+  }
+
+  function setPhotoFromFile(file: File) {
+    if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) {
+      setPhotoError('Format non supporté pour une photo (JPEG, PNG, WebP, HEIC).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoError('Photo trop volumineuse (max 2 Mo).');
+      return;
+    }
+    setPhotoError(null);
+    const previewUrl = URL.createObjectURL(file);
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl };
+    });
+  }
+
+  function clearPhoto() {
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
   }
 
   function addPendingDoc(file: File) {
@@ -411,6 +448,62 @@ function NewPatientPanel({
       >
         {/* ── Onglet Personnel ───────────────────────────────────────────── */}
         <div hidden={activeTab !== 'personnel'} style={{ display: activeTab === 'personnel' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
+          {/* Photo patient (QA5-3) — caméra OU upload. Téléversée après la
+              création, donc seulement preview locale ici. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div
+              aria-hidden="true"
+              style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: 'var(--bg-alt)',
+                border: '1px solid var(--border)',
+                overflow: 'hidden',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--ink-3)', fontSize: 11, flexShrink: 0,
+              }}
+            >
+              {pendingPhoto ? (
+                <img
+                  src={pendingPhoto.previewUrl}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                'Photo'
+              )}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+              <DocumentUploadButton
+                accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                uploadLabel="Téléverser"
+                cameraLabel="Photographier"
+                onFile={setPhotoFromFile}
+              />
+              <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                JPEG, PNG, WebP, HEIC — max 2 Mo. Téléversée après création.
+              </div>
+              {pendingPhoto && (
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  style={{
+                    alignSelf: 'flex-start',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--ink-3)', fontSize: 11, padding: '2px 0',
+                    fontFamily: 'inherit', textDecoration: 'underline',
+                  }}
+                >
+                  Retirer la photo
+                </button>
+              )}
+              {photoError && (
+                <div style={{ fontSize: 12, color: 'var(--danger)' }}>{photoError}</div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><Lbl>Prénom *</Lbl>
               <Input value={form.firstName} onChange={(e) => set('firstName', sanitizeName(e.target.value))} placeholder="Mohamed" autoFocus />
@@ -651,30 +744,14 @@ function NewPatientPanel({
                     <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
                   ))}
                 </select>
-                <label
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    height: 32, padding: '0 12px', borderRadius: 6,
-                    background: 'var(--primary)', color: '#fff',
-                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-                  }}
-                >
-                  <Plus style={{ width: 12, height: 12 }} />
-                  Ajouter un fichier
-                  <input
-                    type="file"
-                    accept={DOC_ACCEPT}
-                    hidden
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.target.value = '';
-                      if (f) addPendingDoc(f);
-                    }}
-                  />
-                </label>
+                <DocumentUploadButton
+                  accept={DOC_ACCEPT}
+                  uploadLabel="Ajouter un fichier"
+                  onFile={(f) => addPendingDoc(f)}
+                />
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                PDF, JPEG, PNG, WebP, HEIC — max 10 Mo par fichier.
+                PDF, JPEG, PNG, WebP, HEIC — max 10 Mo par fichier. « Photographier » ouvre la caméra directement.
               </div>
               {docError && (
                 <div style={{ fontSize: 12, color: 'var(--danger)' }}>{docError}</div>
@@ -829,13 +906,12 @@ export default function PatientsListPage() {
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-alt)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface)')}
                   >
-                    <div
-                      className="cp-avatar"
-                      style={{ width: 36, height: 36, fontSize: 13, flexShrink: 0, background: 'var(--primary)' }}
-                      aria-hidden="true"
-                    >
-                      {p.firstName.charAt(0)}{p.lastName.charAt(0)}
-                    </div>
+                    <PatientAvatar
+                      initials={`${p.firstName.charAt(0)}${p.lastName.charAt(0)}`}
+                      documentId={p.photoDocumentId ?? null}
+                      size="md"
+                      style={{ flexShrink: 0 }}
+                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>
                         {p.tier === 'PREMIUM' && (

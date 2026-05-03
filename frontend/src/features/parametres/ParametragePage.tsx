@@ -605,6 +605,9 @@ const PERMISSIONS: { code: string; label: string; category: string }[] = [
   { code: 'VITALS_RECORD',      label: 'Prendre les constantes (poids, tension…)', category: 'Salle d’attente' },
   { code: 'INVOICE_READ',       label: 'Accéder au module facturation',         category: 'Facturation' },
   { code: 'INVOICE_ISSUE',      label: 'Émettre / encaisser une facture',       category: 'Facturation' },
+  // QA5-1 — administre les sources d'import auto + valide / rejette les
+  // documents arrivés dans la corbeille. Distincte de l'upload manuel.
+  { code: 'DOCUMENT_IMPORT_ADMIN', label: "Administrer l'import auto de documents", category: 'Documents' },
 ];
 
 const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [

@@ -13,6 +13,23 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Session log
 
+### 2026-05-01 — QA wave 5 (camera capture + patient photo + import skeleton)
+
+**Shipped:**
+- **QA5-2 — Capture caméra à l'upload** : composant partagé `frontend/src/components/ui/DocumentUploadButton.tsx` exposant deux CTAs côte à côte (« Téléverser » + « Photographier »). Le second utilise `<input type=file accept="image/*" capture="environment">` (caméra arrière par défaut sur mobile, fallback OS sur desktop). Branché dans `DocumentsPanel` (toutes catégories de documents historiques) et dans le panneau « Nouveau patient » > Onglet Médical > zone documents historiques. Icônes `Camera` + `Upload` ajoutées au lot d'icônes.
+- **QA5-3 — Photo patient** : nouveau champ photo à la création (panneau « Nouveau patient » > Onglet Personnel — preview circulaire + DocumentUploadButton + bouton retirer). Téléversement différé jusqu'après la création du dossier (le patient n'a pas encore d'id sinon). Backend : V014 ajoute `patient_patient.photo_document_id` (FK denormalisée vers `patient_document` type=PHOTO), enum `DocumentType.PHOTO`, controller dédié `PatientPhotoController` exposant `PUT /api/patients/{id}/photo` (whitelist images-only, plafond 2 Mo) + `DELETE /api/patients/{id}/photo`. Frontend : composant partagé `PatientAvatar` qui charge le binaire via `/api/documents/{id}/preview` avec cache TanStack Query (déduplication par documentId, staleTime 5 min) ; fallback initiales si pas de photo / 410 / erreur de chargement. Intégré dans la **liste patients** (cellule avatar des cartes), le **header du dossier** (`PatientHeader`), et le panneau « Modifier » (upload immédiat via `usePatientPhoto`). `PatientView`/`PatientSummary`/`PatientMapper` exposent `photoDocumentId`.
+- **QA5-1 (squelette) — Import auto + permission** : V014 crée les tables `document_import_source` et `document_import_inbox` (PENDING_REVIEW / MATCHED / REJECTED). Nouvelle permission `DOCUMENT_IMPORT_ADMIN` seedée TRUE pour ADMIN/MEDECIN et FALSE pour SECRETAIRE/ASSISTANT. La permission apparaît automatiquement dans l'écran Paramétrage > Droits d'accès (catégorie « Documents ») grâce à l'union dynamique côté `UserController.permissionsForRoles`. Le **poller IMAP / connecteur webhook lui-même n'est pas livré** — c'est la partie ~10 jours de QA5-1, schéma prêt pour le brancher sans deuxième round de migration.
+
+**Files touched (résumé) :**
+- Backend : `src/main/resources/db/migration/V014__patient_photo_and_imports.sql` (NEW), `documents/domain/DocumentType.java`, `documents/application/DocumentService.java` (replacePhoto + removePhoto), `documents/infrastructure/persistence/PatientDocumentRepository.java` (findCurrentPhotos + filtre PHOTO sur findActiveByPatient), `documents/infrastructure/web/PatientPhotoController.java` (NEW), `patient/domain/Patient.java` (champ + accesseurs), `patient/infrastructure/web/dto/PatientView.java` + `PatientSummary.java` (champ photoDocumentId), `patient/infrastructure/web/mapper/PatientMapper.java`.
+- Frontend : `components/ui/DocumentUploadButton.tsx` (NEW), `components/ui/PatientAvatar.tsx` (NEW), `components/icons/index.tsx` (+ Camera, Upload), `features/dossier-patient/hooks/usePatientPhoto.ts` (NEW), `features/dossier-patient/components/DocumentsPanel.tsx`, `features/dossier-patient/components/PatientHeader.tsx`, `features/dossier-patient/PatientsListPage.tsx` (avatar + photo picker création), `features/dossier-patient/DossierPage.tsx` (photo dans EditPatientPanel), `features/dossier-patient/hooks/usePatient.ts` + `usePatientList.ts` + `types.ts` (photoDocumentId), `features/parametres/ParametragePage.tsx` (ligne DOCUMENT_IMPORT_ADMIN).
+
+**State** : Backend `mvn clean compile` → BUILD SUCCESS (173 fichiers compilés). Frontend `tsc --noEmit` → clean.
+**Tests** : Docker n'était pas lancé pendant cette session → Testcontainers ne peut pas spinner Postgres, donc les tests d'intégration n'ont pas pu être exécutés (`mvn verify` bloqué). À relancer dès Docker disponible. Compile-only validation OK.
+**Next action** : (1) `docker compose up -d && mvn verify` pour valider la migration V014 et la non-régression de PatientIT/PatientDocumentIT/ApplicationSmokeIT. (2) Ajouter un IT couvrant `PatientPhotoController` (PUT happy-path, replace soft-deletes precedent, GET via `/documents/{id}/content`, 415 sur PDF, 413 sur >2 Mo). (3) Pour QA5-1, ajouter le module backend `documents.imports` (entités + repos + service + admin endpoints CRUD sur `document_import_source` et `document_import_inbox`) + le connecteur IMAP — multi-jours, planifier post-pilote.
+
+**Blockers** : Docker arrêté → tests d'intégration en attente.
+
 ### 2026-04-23 — Project initialization
 
 **Shipped:**

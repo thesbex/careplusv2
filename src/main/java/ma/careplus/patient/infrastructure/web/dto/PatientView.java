@@ -28,6 +28,8 @@ public record PatientView(
         String tier,
         UUID mutuelleInsuranceId,
         String mutuellePoliceNumber,
+        /** ID du document patient_document type=PHOTO courant. NULL si aucune photo. QA5-3. */
+        UUID photoDocumentId,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         List<AllergyView> allergies,

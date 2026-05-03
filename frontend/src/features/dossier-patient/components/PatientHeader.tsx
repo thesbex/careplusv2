@@ -2,7 +2,7 @@
  * PatientHeader — avatar + name + age + CIN + allergy pills.
  * Ported from design/prototype/screens/dossier-patient.jsx lines 20–44.
  */
-import { Avatar } from '@/components/ui/Avatar';
+import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Print, Edit, Plus, Warn } from '@/components/icons';
@@ -32,10 +32,10 @@ export function PatientHeader({
         gap: 16,
       }}
     >
-      <Avatar
+      <PatientAvatar
         initials={patient.initials}
+        documentId={patient.photoDocumentId ?? null}
         size="lg"
-        style={{ background: 'var(--primary)' }}
       />
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>

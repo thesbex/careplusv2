@@ -41,6 +41,7 @@ public class PatientMapper {
                 p.getTier(),
                 p.getMutuelleInsuranceId(),
                 p.getMutuellePoliceNumber(),
+                p.getPhotoDocumentId(),
                 p.getCreatedAt(),
                 p.getUpdatedAt(),
                 allergies.stream().map(this::toAllergyView).toList(),
@@ -58,7 +59,8 @@ public class PatientMapper {
                 p.getPhone(),
                 p.getCity(),
                 p.getStatus().name(),
-                p.getTier());
+                p.getTier(),
+                p.getPhotoDocumentId());
     }
 
     public AllergyView toAllergyView(Allergy a) {

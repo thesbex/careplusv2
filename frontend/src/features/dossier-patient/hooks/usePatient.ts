@@ -15,6 +15,7 @@ interface PatientViewApi {
   tier?: string | null;
   mutuelleInsuranceId?: string | null;
   mutuellePoliceNumber?: string | null;
+  photoDocumentId?: string | null;
   allergies: { id: string; substance: string; severity: string; notes: string | null }[];
   antecedents: { id: string; type: string; description: string }[];
   createdAt: string;
@@ -75,6 +76,7 @@ function adapt(v: PatientViewApi): PatientSummary {
   if (v.tier === 'NORMAL' || v.tier === 'PREMIUM') summary.tier = v.tier;
   if (v.mutuelleInsuranceId) summary.mutuelleInsuranceId = v.mutuelleInsuranceId;
   if (v.mutuellePoliceNumber) summary.mutuellePolicyNumber = v.mutuellePoliceNumber;
+  if (v.photoDocumentId) summary.photoDocumentId = v.photoDocumentId;
   return summary;
 }
 

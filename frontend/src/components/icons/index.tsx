@@ -292,3 +292,18 @@ export const Signal = (p: IconProps) => (
     <rect x="10" y="4" width="2" height="10" />
   </Base>
 );
+
+export const Camera = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2.5 5.5h2l1-1.5h5l1 1.5h2a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1Z" />
+    <circle cx="8" cy="9" r="2.5" />
+  </Base>
+);
+
+export const Upload = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M8 11V3" />
+    <path d="M5 6l3-3 3 3" />
+    <path d="M2.5 11.5v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1" />
+  </Base>
+);

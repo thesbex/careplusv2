@@ -36,6 +36,18 @@ public class DocumentService {
             "image/heif"
     );
 
+    /** Photo patient (QA5-3) : image uniquement, pas de PDF. */
+    private static final Set<String> ALLOWED_PHOTO_MIME = Set.of(
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "image/heic",
+            "image/heif"
+    );
+
+    /** Plafond plus serré pour la photo patient (2 Mo, vs 10 Mo pour les docs). QA5-3. */
+    private static final long PHOTO_MAX_BYTES = 2L * 1024 * 1024;
+
     private final PatientDocumentRepository repository;
     private final DocumentStorage storage;
     private final JdbcTemplate jdbc;
@@ -105,8 +117,84 @@ public class DocumentService {
     }
 
     public PatientDocument getActive(UUID id) {
-        return repository.findActive(id).orElseThrow(() -> new BusinessException(
+        PatientDocument doc = repository.findActive(id).orElseThrow(() -> new BusinessException(
                 "DOCUMENT_NOT_FOUND", "Document introuvable.", HttpStatus.NOT_FOUND.value()));
+        // Refuse to surface a document whose parent patient was archived/soft-deleted.
+        // Without this guard, a /documents/{id}/content URL keeps streaming bytes
+        // even after the patient record was removed from the active dataset.
+        Integer patientActive = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM patient_patient WHERE id = ? AND deleted_at IS NULL",
+                Integer.class, doc.getPatientId());
+        if (patientActive == null || patientActive == 0) {
+            throw new BusinessException(
+                    "DOCUMENT_NOT_FOUND", "Document introuvable.", HttpStatus.NOT_FOUND.value());
+        }
+        return doc;
+    }
+
+    /**
+     * Remplace la photo courante d'un patient (QA5-3). Soft-delete l'ancienne
+     * photo si présente, stocke la nouvelle, met à jour la dénormalisation
+     * {@code patient_patient.photo_document_id} pour permettre un rendu
+     * rapide de la liste patients sans sous-requête.
+     */
+    @Transactional
+    public PatientDocument replacePhoto(UUID patientId, MultipartFile file, UUID uploadedBy) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("DOCUMENT_EMPTY",
+                    "Photo vide ou manquante.", HttpStatus.BAD_REQUEST.value());
+        }
+        String mime = file.getContentType();
+        if (mime == null || !ALLOWED_PHOTO_MIME.contains(mime.toLowerCase(Locale.ROOT))) {
+            throw new BusinessException("DOCUMENT_MIME_REJECTED",
+                    "Format non supporté pour une photo. Acceptés : JPEG, PNG, WebP, HEIC.",
+                    HttpStatus.UNSUPPORTED_MEDIA_TYPE.value());
+        }
+        if (file.getSize() > PHOTO_MAX_BYTES) {
+            throw new BusinessException("DOCUMENT_TOO_LARGE",
+                    "Photo trop volumineuse (max 2 Mo).",
+                    HttpStatus.PAYLOAD_TOO_LARGE.value());
+        }
+
+        // Soft-delete des anciennes photos avant d'uploader la nouvelle.
+        for (PatientDocument old : repository.findCurrentPhotos(patientId)) {
+            old.setDeletedAt(Instant.now());
+            repository.save(old);
+            try {
+                storage.delete(old.getStorageKey());
+            } catch (IOException e) {
+                // best effort
+            }
+        }
+
+        PatientDocument saved = upload(patientId, DocumentType.PHOTO, null, file, uploadedBy);
+
+        // Mise à jour de la dénormalisation côté patient_patient.
+        jdbc.update(
+                "UPDATE patient_patient SET photo_document_id = ?, updated_at = now() WHERE id = ?",
+                saved.getId(), patientId);
+
+        return saved;
+    }
+
+    /**
+     * Supprime la photo courante d'un patient (soft-delete + remet à NULL la
+     * dénormalisation). QA5-3.
+     */
+    @Transactional
+    public void removePhoto(UUID patientId) {
+        for (PatientDocument old : repository.findCurrentPhotos(patientId)) {
+            old.setDeletedAt(Instant.now());
+            repository.save(old);
+            try {
+                storage.delete(old.getStorageKey());
+            } catch (IOException e) {
+                // best effort
+            }
+        }
+        jdbc.update(
+                "UPDATE patient_patient SET photo_document_id = NULL, updated_at = now() WHERE id = ?",
+                patientId);
     }
 
     @Transactional

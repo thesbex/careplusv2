@@ -14,5 +14,7 @@ public record PatientSummary(
         String phone,
         String city,
         String status,
-        String tier
+        String tier,
+        /** ID du document patient_document type=PHOTO courant. QA5-3 — sert à afficher l'avatar dans la liste. */
+        UUID photoDocumentId
 ) {}

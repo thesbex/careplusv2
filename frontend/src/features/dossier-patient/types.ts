@@ -46,6 +46,8 @@ export interface PatientSummary {
   email: string;
   bloodGroup: string;
   insurance: string;
+  /** ID du document patient_document type=PHOTO courant (QA5-3). NULL si aucune photo. */
+  photoDocumentId?: string | null;
   tier?: 'NORMAL' | 'PREMIUM';
   mutuelleInsuranceId?: string | null;
   mutuellePolicyNumber?: string | null;

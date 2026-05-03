@@ -92,6 +92,10 @@ public class Patient {
     @Column(name = "mutuelle_policy_number", length = 100)
     private String mutuellePoliceNumber;
 
+    /** Photo patient courante (FK patient_document type=PHOTO). Added in V014 (QA5-3). */
+    @Column(name = "photo_document_id")
+    private UUID photoDocumentId;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -173,6 +177,8 @@ public class Patient {
     public void setMutuelleInsuranceId(UUID mutuelleInsuranceId) { this.mutuelleInsuranceId = mutuelleInsuranceId; }
     public String getMutuellePoliceNumber() { return mutuellePoliceNumber; }
     public void setMutuellePoliceNumber(String mutuellePoliceNumber) { this.mutuellePoliceNumber = mutuellePoliceNumber; }
+    public UUID getPhotoDocumentId() { return photoDocumentId; }
+    public void setPhotoDocumentId(UUID photoDocumentId) { this.photoDocumentId = photoDocumentId; }
     public long getVersion() { return version; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

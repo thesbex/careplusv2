@@ -11,5 +11,7 @@ public enum DocumentType {
     ANALYSE,
     IMAGERIE,
     COMPTE_RENDU,
-    AUTRE
+    AUTRE,
+    /** Photo patient (avatar) — gérée via PatientPhotoController. QA5-3. */
+    PHOTO
 }
