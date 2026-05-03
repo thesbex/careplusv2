@@ -3,7 +3,44 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import FacturationMobilePage from '../FacturationPage.mobile';
-import type { InvoiceApi } from '../types';
+import type { InvoiceApi, InvoiceListRow } from '../types';
+
+const ROWS: InvoiceListRow[] = [
+  {
+    id: 'inv-aaaaaaaa11111111',
+    number: 'FAC-2026-0001',
+    status: 'PAYEE_TOTALE',
+    patientId: 'pat-bbbbbbbb22222222',
+    patientFullName: 'Alami Hassan',
+    patientPhone: '0612345678',
+    mutuelleName: null,
+    totalAmount: 300,
+    discountAmount: 0,
+    netAmount: 300,
+    paidAmount: 300,
+    paymentModes: ['ESPECES'],
+    issuedAt: '2026-04-24T09:00:00Z',
+    lastPaymentAt: '2026-04-24T10:00:00Z',
+    createdAt: '2026-04-24T08:00:00Z',
+  },
+  {
+    id: 'inv-cccccccc33333333',
+    number: 'FAC-2026-0002',
+    status: 'EMISE',
+    patientId: 'pat-dddddddd44444444',
+    patientFullName: 'Bennani Yasmine',
+    patientPhone: null,
+    mutuelleName: null,
+    totalAmount: 200,
+    discountAmount: 0,
+    netAmount: 200,
+    paidAmount: 0,
+    paymentModes: [],
+    issuedAt: '2026-04-25T09:00:00Z',
+    lastPaymentAt: null,
+    createdAt: '2026-04-25T08:00:00Z',
+  },
+];
 
 const INVOICES: InvoiceApi[] = [
   {
@@ -53,14 +90,29 @@ vi.mock('../hooks/useInvoices', () => ({
     error: null,
     refetch: () => Promise.resolve(),
   }),
-  useInvoice: () => ({
-    invoice: null,
+  useInvoice: (id?: string) => ({
+    invoice: id ? INVOICES[0] : null,
     isLoading: false,
     error: null,
     refetch: () => Promise.resolve(),
   }),
   useInvoicesForPatient: () => ({ invoices: [], isLoading: false, error: null }),
   useInvoiceByConsultation: () => ({ invoice: null, isLoading: false }),
+}));
+
+vi.mock('../hooks/useInvoiceSearch', () => ({
+  useInvoiceSearch: () => ({
+    response: null,
+    items: ROWS,
+    totalCount: ROWS.length,
+    totalNet: 500,
+    totalPaid: 300,
+    totalRemaining: 200,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
+  filtersToParams: () => ({}),
 }));
 
 function renderPage() {

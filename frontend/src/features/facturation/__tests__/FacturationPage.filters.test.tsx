@@ -105,15 +105,23 @@ describe('<FacturationPage /> — advanced filters + export', () => {
     expect(screen.getByText('Modes de paiement')).toBeInTheDocument();
   });
 
-  it('preset "Ce mois" fills the date pickers', () => {
+  it('preset "Ce mois" fills the date pickers using LOCAL components (not UTC)', () => {
+    // Regression: toIso() previously used Date.toISOString() which emits UTC,
+    // shifting local midnight back one day in zones east of UTC
+    // (Africa/Casablanca is UTC+1). Compute expectedFrom from local components.
     renderWithRole('MEDECIN');
     fireEvent.click(screen.getByRole('button', { name: /Filtres avancés/i }));
     const today = new Date();
-    const expectedFrom = new Date(today.getFullYear(), today.getMonth(), 1)
-      .toISOString().slice(0, 10);
+    const first = new Date(today.getFullYear(), today.getMonth(), 1);
+    const expectedFrom =
+      `${first.getFullYear()}-` +
+      `${String(first.getMonth() + 1).padStart(2, '0')}-` +
+      `${String(first.getDate()).padStart(2, '0')}`;
     fireEvent.click(screen.getByRole('button', { name: 'Ce mois' }));
     const fromInput = screen.getByLabelText(/Du/i) as HTMLInputElement;
     expect(fromInput.value).toBe(expectedFrom);
+    // The first day of any month is "01" — guard against off-by-one.
+    expect(fromInput.value.endsWith('-01')).toBe(true);
   });
 
   it('Appliquer triggers a refetch with the selected filters', () => {
