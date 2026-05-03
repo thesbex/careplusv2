@@ -31,12 +31,17 @@ const FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
   { key: 'PAYEE_TOTALE', label: 'Payées' },
 ];
 
-const STATUS_CLASS: Record<InvoiceStatus, string> = {
-  BROUILLON: 'brouillon',
-  EMISE: 'emise',
-  PAYEE_PARTIELLE: 'partielle',
-  PAYEE_TOTALE: 'totale',
-  ANNULEE: 'annulee',
+/**
+ * Map invoice status to a mobile-pill variant from `mobile.css`. We avoid the
+ * desktop-only `fa-status-pill` class (hardcoded hex colors) because it bypasses
+ * the mobile token system.
+ */
+const STATUS_PILL: Record<InvoiceStatus, string> = {
+  BROUILLON: 'waiting',
+  EMISE: 'arrived',
+  PAYEE_PARTIELLE: 'vitals',
+  PAYEE_TOTALE: 'done',
+  ANNULEE: 'done',
 };
 
 function formatMad(n: number): string {
@@ -71,24 +76,17 @@ export default function FacturationMobilePage() {
           {invoices.length} facture{invoices.length > 1 ? 's' : ''}
         </div>
 
-        {/* KPI strip — 2x1 grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 8,
-            marginBottom: 14,
-          }}
-        >
+        {/* KPI strip */}
+        <div className="m-stat-grid">
           <div className="m-stat">
             <div className="m-stat-k">Encaissé</div>
-            <div className="m-stat-v" style={{ color: '#2E7D32', fontSize: 16 }}>
+            <div className="m-stat-v" style={{ color: 'var(--success)' }}>
               {formatMad(totalPaid)}
             </div>
           </div>
           <div className="m-stat">
             <div className="m-stat-k">À encaisser</div>
-            <div className="m-stat-v" style={{ color: 'var(--amber)', fontSize: 16 }}>
+            <div className="m-stat-v" style={{ color: 'var(--amber)' }}>
               {formatMad(Math.max(0, totalNet - totalPaid))}
             </div>
           </div>
@@ -120,7 +118,7 @@ export default function FacturationMobilePage() {
                   flexShrink: 0,
                   height: 32,
                   padding: '0 14px',
-                  borderRadius: 16,
+                  borderRadius: 'var(--r-lg)',
                   border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
                   background: on ? 'var(--primary-soft)' : 'var(--surface)',
                   color: on ? 'var(--primary)' : 'var(--ink-2)',
@@ -189,19 +187,16 @@ export default function FacturationMobilePage() {
                       <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>
                         {inv.number ?? `BR-${inv.id.slice(0, 8).toUpperCase()}`}
                       </span>
-                      <span className={`fa-status-pill ${STATUS_CLASS[inv.status]}`}>
+                      <span className={`m-pill ${STATUS_PILL[inv.status]}`}>
                         {STATUS_LABEL[inv.status]}
                       </span>
                     </div>
-                    <div
-                      style={{
-                        fontSize: 11.5,
-                        color: 'var(--ink-3)',
-                        marginTop: 2,
-                      }}
-                    >
+                    <div className="m-row-sub">
                       Patient {inv.patientId.slice(0, 8).toUpperCase()} ·{' '}
-                      {new Date(date).toLocaleDateString('fr-MA')}
+                      {new Date(date).toLocaleDateString('fr-MA', {
+                        day: '2-digit',
+                        month: '2-digit',
+                      })}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -211,7 +206,7 @@ export default function FacturationMobilePage() {
                     {paid > 0 && (
                       <div
                         className="tnum"
-                        style={{ fontSize: 11, color: '#2E7D32', marginTop: 2 }}
+                        style={{ fontSize: 11, color: 'var(--success)', marginTop: 2 }}
                       >
                         {formatMad(paid)} payé
                       </div>

@@ -40,31 +40,26 @@ export default function PatientsListMobilePage() {
       onTabChange={(t) => navigate(TAB_MAP[t])}
     >
       <div className="mb-pad">
-        {/* Search */}
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--ink-3)',
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-          >
-            <Search />
-          </span>
+        {/* Search — uses .m-search token for visual consistency. */}
+        <label className="m-search">
+          <Search aria-hidden="true" />
           <input
             type="search"
-            className="m-input"
             placeholder="Rechercher par nom, prénom ou CIN…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label="Rechercher un patient"
-            style={{ paddingLeft: 36 }}
+            style={{
+              flex: 1,
+              border: 0,
+              outline: 'none',
+              background: 'transparent',
+              fontFamily: 'inherit',
+              fontSize: 14,
+              color: 'var(--ink)',
+            }}
           />
-        </div>
+        </label>
 
         <div
           style={{
@@ -129,20 +124,24 @@ export default function PatientsListMobilePage() {
                 </div>
                 <div className="m-row-pri">
                   <div className="m-row-main">
+                    {p.firstName} {p.lastName}
                     {p.tier === 'PREMIUM' && (
-                      <span aria-label="Patient Premium" style={{ marginRight: 4 }}>
-                        🌟
+                      <span
+                        className="m-pill"
+                        aria-label="Patient Premium"
+                        style={{
+                          marginLeft: 6,
+                          fontSize: 10,
+                          padding: '2px 6px',
+                          background: 'var(--amber-soft)',
+                          color: 'var(--amber)',
+                        }}
+                      >
+                        Premium
                       </span>
                     )}
-                    {p.firstName} {p.lastName}
                   </div>
-                  <div
-                    style={{
-                      fontSize: 11.5,
-                      color: 'var(--ink-3)',
-                      marginTop: 2,
-                    }}
-                  >
+                  <div className="m-row-sub">
                     {p.gender === 'M' ? 'H' : p.gender === 'F' ? 'F' : p.gender}
                     {p.birthDate ? ` · ${toAge(p.birthDate)} ans` : ''}
                     {p.cin ? ` · ${p.cin}` : ''}
@@ -160,7 +159,7 @@ export default function PatientsListMobilePage() {
             marginTop: 16,
             padding: 12,
             background: 'var(--bg-alt)',
-            borderRadius: 8,
+            borderRadius: 'var(--r-lg)',
             fontSize: 12,
             color: 'var(--ink-3)',
             lineHeight: 1.5,

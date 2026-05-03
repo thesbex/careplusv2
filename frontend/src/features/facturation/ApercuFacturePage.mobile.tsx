@@ -37,8 +37,8 @@ export default function ApercuFactureMobilePage() {
       topbar={
         <MTopbar
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
-          title="Aperçu facture"
-          sub={invoice?.number ?? (id ? `BR-${id.slice(0, 8).toUpperCase()}` : '')}
+          title={invoice?.number ?? (id ? `BR-${id.slice(0, 8).toUpperCase()}` : 'Facture')}
+          sub="Aperçu"
         />
       }
     >
@@ -163,7 +163,7 @@ export default function ApercuFactureMobilePage() {
                           {p.reference ? ` · ${p.reference}` : ''}
                         </div>
                       </div>
-                      <span className="tnum" style={{ fontSize: 13, fontWeight: 600, color: '#2E7D32' }}>
+                      <span className="tnum" style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)' }}>
                         {formatMad(p.amount)}
                       </span>
                     </div>

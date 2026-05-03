@@ -73,30 +73,25 @@ export default function CatalogueMobilePage() {
     >
       <div className="mb-pad">
         {/* Search */}
-        <div style={{ position: 'relative', marginBottom: 10 }}>
-          <span
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--ink-3)',
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-          >
-            <Search />
-          </span>
+        <label className="m-search">
+          <Search aria-hidden="true" />
           <input
             type="search"
-            className="m-input"
             placeholder="Rechercher par nom commercial ou DCI…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             aria-label="Rechercher un médicament"
-            style={{ paddingLeft: 36 }}
+            style={{
+              flex: 1,
+              border: 0,
+              outline: 'none',
+              background: 'transparent',
+              fontFamily: 'inherit',
+              fontSize: 14,
+              color: 'var(--ink)',
+            }}
           />
-        </div>
+        </label>
 
         {/* Tag filter */}
         <select
@@ -139,29 +134,28 @@ export default function CatalogueMobilePage() {
               Aucun médicament ne correspond.
             </div>
           ) : (
-            items.map((m, i) => (
-              <div
-                key={m.id}
-                className="m-row"
-                style={{
-                  border: 0,
-                  borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
-                }}
-              >
+            items.map((m) => (
+              <div key={m.id} className="m-row">
                 <div className="m-row-pri">
                   <div
                     className="m-row-main"
                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                   >
+                    {m.commercialName}
                     {m.favorite && (
                       <span
-                        style={{ color: 'var(--amber)', fontSize: 13 }}
-                        aria-label="Favori"
+                        className="m-pill"
+                        aria-label="Médicament favori"
+                        style={{
+                          fontSize: 10,
+                          padding: '2px 6px',
+                          background: 'var(--amber-soft)',
+                          color: 'var(--amber)',
+                        }}
                       >
-                        ★
+                        Favori
                       </span>
                     )}
-                    {m.commercialName}
                   </div>
                   <div className="m-row-sub">
                     {m.dci} · {m.form} · <span className="tnum">{m.dosage}</span>
@@ -178,7 +172,7 @@ export default function CatalogueMobilePage() {
             marginTop: 16,
             padding: 12,
             background: 'var(--bg-alt)',
-            borderRadius: 8,
+            borderRadius: 'var(--r-lg)',
             fontSize: 12,
             color: 'var(--ink-3)',
             lineHeight: 1.5,

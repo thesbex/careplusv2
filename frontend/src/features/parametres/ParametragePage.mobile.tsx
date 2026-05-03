@@ -9,7 +9,8 @@ import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { ChevronRight, Logout } from '@/components/icons';
+import type { ComponentType, SVGProps } from 'react';
+import { ChevronRight, Logout, File as FileIcon, Pill as PillIcon } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
 
@@ -91,15 +92,12 @@ export default function ParametrageMobilePage() {
             </div>
             <div className="m-card" style={{ marginBottom: 18 }}>
               <MenuRow
+                Icon={FileIcon}
                 label="Paramétrage du cabinet"
                 hint="Identité, tarifs, utilisateurs, congés"
                 onClick={() => {
-                  // The desktop ParametragePage is feature-rich; on mobile we
-                  // surface it inside a scrollable panel by routing to it
-                  // (the Screen shell auto-adapts its layout on small screens
-                  // for read-only sections; create flows still work).
-                  // Reusing ?desktop=1 forces the desktop version on small
-                  // viewports for the few admin tasks that need it.
+                  // The desktop ParametragePage is feature-rich; force the
+                  // desktop variant for the few admin tasks that need it.
                   window.location.href = '/parametres?desktop=1';
                 }}
               />
@@ -110,7 +108,7 @@ export default function ParametrageMobilePage() {
             style={{
               padding: 12,
               background: 'var(--bg-alt)',
-              borderRadius: 8,
+              borderRadius: 'var(--r-lg)',
               fontSize: 12,
               color: 'var(--ink-3)',
               lineHeight: 1.5,
@@ -126,6 +124,7 @@ export default function ParametrageMobilePage() {
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
           <MenuRow
+            Icon={PillIcon}
             label="Catalogue médicaments"
             hint="Référentiel Maroc"
             onClick={() => navigate('/catalogue')}
@@ -147,6 +146,7 @@ export default function ParametrageMobilePage() {
               width: '100%',
               textAlign: 'left',
               background: 'transparent',
+              border: 0,
               fontFamily: 'inherit',
               font: 'inherit',
               cursor: 'pointer',
@@ -192,10 +192,12 @@ export default function ParametrageMobilePage() {
 }
 
 function MenuRow({
+  Icon,
   label,
   hint,
   onClick,
 }: {
+  Icon?: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
   hint?: string;
   onClick: () => void;
@@ -209,12 +211,30 @@ function MenuRow({
         width: '100%',
         textAlign: 'left',
         background: 'transparent',
+        border: 0,
         fontFamily: 'inherit',
         font: 'inherit',
         cursor: 'pointer',
         WebkitTapHighlightColor: 'transparent',
       }}
     >
+      {Icon && (
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: 'var(--primary-soft)',
+            color: 'var(--primary)',
+            display: 'grid',
+            placeItems: 'center',
+            flexShrink: 0,
+          }}
+          aria-hidden="true"
+        >
+          <Icon />
+        </div>
+      )}
       <div className="m-row-pri">
         <div className="m-row-main">{label}</div>
         {hint && <div className="m-row-sub">{hint}</div>}

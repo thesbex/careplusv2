@@ -53,6 +53,7 @@ export default function LoginMobilePage() {
 
   return (
     <div
+      className="cp-mobile cp-app"
       style={{
         minHeight: '100vh',
         background: 'var(--surface)',
@@ -226,7 +227,7 @@ export default function LoginMobilePage() {
             padding: 12,
             border: '1px solid var(--border)',
             borderRadius: 10,
-            background: 'var(--bg-alt)',
+            background: 'var(--surface-2)',
             fontSize: 12,
             display: 'flex',
             gap: 10,
