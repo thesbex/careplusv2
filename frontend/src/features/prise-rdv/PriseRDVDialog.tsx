@@ -58,7 +58,7 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
 
   useEffect(() => {
     if (reasons.length > 0 && selectedReasonId === null) {
-      setSelectedReasonId(reasons[0].id);
+      setSelectedReasonId(reasons[0]?.id ?? null);
     }
   }, [reasons, selectedReasonId]);
   const { createAppointment, isPending, error } = useCreateAppointment();
@@ -71,7 +71,7 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
       time: data.time,
       durationMin: data.durationMin,
       reasonId: selectedReasonId,
-      notes: data.notes,
+      ...(data.notes ? { notes: data.notes } : {}),
     }).catch(() => null);
     onOpenChange(false);
   }
