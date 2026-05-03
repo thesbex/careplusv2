@@ -55,37 +55,69 @@ export function WebcamCaptureModal({
       return;
     }
 
-    navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: 'environment', width: { ideal: maxWidth } }, audio: false })
-      .then((stream) => {
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+    // Sur PC il n'y a souvent qu'une seule webcam frontale. Si on demande
+    // facingMode strict 'environment', certains navigateurs (Chrome desktop,
+    // Edge) renvoient NotFoundError → l'utilisateur voyait "Aucune caméra
+    // détectée" alors qu'une caméra existe (rapport 2026-05-01).
+    // 1) `ideal` au lieu de strict laisse le navigateur retomber sur une
+    //    autre caméra si l'arrière n'existe pas.
+    // 2) En cas d'OverconstrainedError / NotFoundError on retry sans contrainte,
+    //    pour couvrir Firefox qui ne respecte pas toujours `ideal`.
+    const primary: MediaStreamConstraints = {
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: maxWidth } },
+      audio: false,
+    };
+    const fallback: MediaStreamConstraints = { video: true, audio: false };
+
+    function attach(stream: MediaStream) {
+      if (cancelled) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => setReady(true);
+      }
+    }
+
+    function reportError(err: unknown) {
+      if (cancelled) return;
+      const msg = err instanceof Error ? err.message : 'Caméra inaccessible.';
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+          setError("Permission caméra refusée. Autorisez l'accès dans le navigateur puis réessayez.");
           return;
         }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => setReady(true);
+        if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
+          setError('Aucune caméra détectée sur cet appareil.');
+          return;
         }
-      })
+        if (err.name === 'NotReadableError') {
+          setError("Caméra utilisée par une autre application. Fermez-la puis réessayez.");
+          return;
+        }
+      }
+      setError(msg);
+    }
+
+    navigator.mediaDevices
+      .getUserMedia(primary)
+      .then(attach)
       .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Caméra inaccessible.';
-        // Code DOMException usuels : NotAllowedError, NotFoundError, NotReadableError.
-        if (err instanceof DOMException) {
-          if (err.name === 'NotAllowedError') {
-            setError("Permission caméra refusée. Autorisez l'accès dans le navigateur puis réessayez.");
-            return;
-          }
-          if (err.name === 'NotFoundError') {
-            setError('Aucune caméra détectée sur cet appareil.');
-            return;
-          }
-          if (err.name === 'NotReadableError') {
-            setError("Caméra utilisée par une autre application. Fermez-la puis réessayez.");
-            return;
-          }
+        // Permission/security errors must NOT silently retry — the user has
+        // to act. Only fall back when the constraint itself was the problem.
+        const recoverable =
+          err instanceof DOMException &&
+          (err.name === 'OverconstrainedError' || err.name === 'NotFoundError');
+        if (!recoverable || cancelled) {
+          reportError(err);
+          return;
         }
-        setError(msg);
+        navigator.mediaDevices
+          .getUserMedia(fallback)
+          .then(attach)
+          .catch(reportError);
       });
 
     return () => {
