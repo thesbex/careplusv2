@@ -1,14 +1,18 @@
 /**
  * careplus — app shell.
- * Currently renders the Login screen only (no Router yet — J2 wires the real router + auth guards).
- * A dev-only screen picker in the top-right lets you navigate the ported screens as they ship.
+ * Currently renders the Login + Onboarding screens via a dev screen picker.
+ * J2 replaces this with React Router + real auth guards.
  */
 import { useState } from 'react';
 import LoginPage from '@/features/login/LoginPage';
+import OnboardingPage from '@/features/onboarding/OnboardingPage';
 
-type ScreenKey = 'login';
+type ScreenKey = 'login' | 'onboarding';
 
-const SCREENS: { key: ScreenKey; label: string }[] = [{ key: 'login', label: '12 · Login' }];
+const SCREENS: { key: ScreenKey; label: string }[] = [
+  { key: 'login', label: '12 · Login' },
+  { key: 'onboarding', label: '13 · Onboarding' },
+];
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenKey>('login');
@@ -16,6 +20,7 @@ export default function App() {
   return (
     <>
       {screen === 'login' && <LoginPage />}
+      {screen === 'onboarding' && <OnboardingPage />}
 
       {/* Dev screen picker (removed in J2 when Router replaces it) */}
       <div
