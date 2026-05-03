@@ -2,16 +2,18 @@
  * M04 — Salle d'attente mobile.
  * Ported from design/prototype/mobile/screens.jsx:MSalle (lines 283–362) verbatim.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Warn, Stetho, ChevronRight, Heart, Plus } from '@/components/icons';
+import { Warn, Stetho, ChevronRight, Heart, Plus, Close } from '@/components/icons';
 import { useQueue } from './hooks/useQueue';
 import { useStartConsultation } from './hooks/useStartConsultation';
 import { useCheckIn } from './hooks/useCheckIn';
 import { useUpcomingToday } from './hooks/useUpcomingToday';
+import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
 import type { QueueEntry, WaitingPatientStatus } from './types';
 import './salle-attente.css';
 
@@ -37,6 +39,7 @@ export default function SalleAttenteMobilePage() {
   const { upcoming } = useUpcomingToday();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
+  const [cancelTarget, setCancelTarget] = useState<QueueEntry | null>(null);
 
   async function handleDeclareArrival(appointmentId: string) {
     try {
@@ -168,10 +171,18 @@ export default function SalleAttenteMobilePage() {
               const isDone = p.status === 'done';
               const isArrived = p.status === 'arrived';
               const isVitals = p.status === 'vitals';
+              const isConsult = p.status === 'consult';
               const interactive = !isDone;
+              const canCancel = !!p.appointmentId && !isDone && !isConsult;
               return (
-                <button
+                <div
                   key={p.appointmentId ?? `${p.name}-${i}`}
+                  style={{
+                    position: 'relative',
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
+                  }}
+                >
+                <button
                   type="button"
                   className="m-row"
                   disabled={isDone || isStarting}
@@ -183,12 +194,12 @@ export default function SalleAttenteMobilePage() {
                     textAlign: 'left',
                     background: 'transparent',
                     border: 0,
-                    borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
                     fontFamily: 'inherit',
                     font: 'inherit',
                     cursor: isDone ? 'default' : 'pointer',
                     opacity: isDone ? 0.6 : 1,
                     WebkitTapHighlightColor: 'transparent',
+                    paddingRight: canCancel ? 44 : undefined,
                   }}
                 >
                   {/* Avatar */}
@@ -240,10 +251,44 @@ export default function SalleAttenteMobilePage() {
                     )}
                   </div>
                 </button>
+                {canCancel && (
+                  <button
+                    type="button"
+                    aria-label={`Retirer ${p.name} de la liste d'attente`}
+                    onClick={() => setCancelTarget(p)}
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: 14,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--danger, #b91c1c)',
+                      display: 'grid',
+                      placeItems: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    <Close />
+                  </button>
+                )}
+                </div>
               );
             })
           )}
         </div>
+
+        <CancelAppointmentDialog
+          open={cancelTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setCancelTarget(null);
+          }}
+          appointmentId={cancelTarget?.appointmentId ?? null}
+          patientName={cancelTarget?.name ?? null}
+        />
 
         {/* Upcoming today — not-yet-arrived appointments. Tap → check-in. */}
         {upcoming.length > 0 && (

@@ -2,6 +2,7 @@
  * Screen 04 — Salle d'attente (desktop).
  * Fully wired: queue polling, check-in via CTA, start consultation via CTA.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
@@ -11,6 +12,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Print, Plus } from '@/components/icons';
 import { KpiTile } from './components/KpiTile';
 import { QueueRow } from './components/QueueRow';
+import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
 import { useQueue } from './hooks/useQueue';
 import { useCheckIn } from './hooks/useCheckIn';
 import { useStartConsultation } from './hooks/useStartConsultation';
@@ -27,6 +29,8 @@ export default function SalleAttentePage() {
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canDeclareArrival = userPerms == null || userPerms.includes('ARRIVAL_DECLARE');
   const canRecordVitals = userPerms == null || userPerms.includes('VITALS_RECORD');
+
+  const [cancelTarget, setCancelTarget] = useState<QueueEntry | null>(null);
 
   function handleTakeVitals(appointmentId: string) {
     navigate(`/constantes/${appointmentId}`);
@@ -160,12 +164,22 @@ export default function SalleAttentePage() {
                   onOpenConsult={() => {
                     toast.info('Ouvrir la consultation en cours — à câbler (J5 follow-up).');
                   }}
+                  onCancel={(entry) => setCancelTarget(entry)}
                   busy={isCheckingIn || isStarting}
                 />
               ))}
             </tbody>
           </table>
         </Panel>
+
+        <CancelAppointmentDialog
+          open={cancelTarget !== null}
+          onOpenChange={(open) => {
+            if (!open) setCancelTarget(null);
+          }}
+          appointmentId={cancelTarget?.appointmentId ?? null}
+          patientName={cancelTarget?.name ?? null}
+        />
 
         {upcoming.length > 0 && (
           <>

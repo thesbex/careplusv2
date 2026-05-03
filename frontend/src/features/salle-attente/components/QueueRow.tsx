@@ -30,6 +30,7 @@ interface QueueRowProps {
   onTakeVitals?: (appointmentId: string) => void;
   onStartConsult?: (entry: QueueEntry) => void;
   onOpenConsult?: (entry: QueueEntry) => void;
+  onCancel?: (entry: QueueEntry) => void;
   busy?: boolean;
   /** When false, the "Prendre constantes" CTA is hidden (QA3-3 VITALS_RECORD). */
   canRecordVitals?: boolean;
@@ -40,6 +41,7 @@ export function QueueRow({
   onTakeVitals,
   onStartConsult,
   onOpenConsult,
+  onCancel,
   busy,
   canRecordVitals = true,
 }: QueueRowProps) {
@@ -127,6 +129,18 @@ export function QueueRow({
             </Button>
           )}
           {p.status === 'waiting' && <Button size="sm">Appeler</Button>}
+          {p.appointmentId && p.status !== 'consult' && p.status !== 'done' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => onCancel?.(p)}
+              aria-label={`Retirer ${p.name} de la liste d'attente`}
+              style={{ color: 'var(--danger, #b91c1c)' }}
+            >
+              Retirer
+            </Button>
+          )}
           <Button size="sm" variant="ghost" iconOnly aria-label="Plus d'options">
             <MoreH />
           </Button>
