@@ -13,11 +13,19 @@ import {
   useCreatePrescription,
   AllergyConflictError,
 } from './hooks/useCreatePrescription';
+import { PrescriptionTemplatePicker } from './components/PrescriptionTemplatePicker';
 import type {
   CatalogItem,
   PrescriptionLineDraft,
   PrescriptionType,
 } from './types';
+import type {
+  PrescriptionTemplate,
+  TemplateType,
+  DrugTemplateLine,
+  LabTemplateLine,
+  ImagingTemplateLine,
+} from '@/features/parametres/hooks/usePrescriptionTemplates';
 import './prescription.css';
 
 interface PrescriptionDrawerProps {
@@ -92,6 +100,20 @@ export function PrescriptionDrawer({
 
   function removeLine(i: number) {
     setLines((ls) => (ls.length === 1 ? [emptyLine()] : ls.filter((_, idx) => idx !== i)));
+  }
+
+  /** QA6-2 + QA6-3 — append des lignes du template au drawer. Si le drawer
+   *  est dans son état initial (1 ligne vide), on remplace pour ne pas
+   *  garder la ligne vide en haut. */
+  function handleTemplateLoad(template: PrescriptionTemplate) {
+    setLines((prev) => {
+      const trimmed =
+        prev.length === 1 && prev[0] && !prev[0].item && !prev[0].instructions.trim()
+          ? []
+          : prev;
+      const materialized = template.lines.map((l) => materializeTemplateLine(l, template.type));
+      return [...trimmed, ...materialized];
+    });
   }
 
   async function handleSave(allergyOverride = false) {
@@ -182,6 +204,12 @@ export function PrescriptionDrawer({
                   : 'Ordonnance'}
               </Dialog.Description>
             </div>
+            {(type === 'DRUG' || type === 'LAB' || type === 'IMAGING') && (
+              <PrescriptionTemplatePicker
+                type={type as TemplateType}
+                onLoad={handleTemplateLoad}
+              />
+            )}
             <Dialog.Close asChild>
               <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
                 <Close />
@@ -464,4 +492,47 @@ export function PrescriptionDrawer({
       </Dialog.Portal>
     </Dialog.Root>
   );
+}
+
+/** Convertit une ligne de template (forme JSONB côté backend) en
+ *  PrescriptionLineDraft pour le drawer. Le `medicationCode` (ou labTestCode /
+ *  imagingExamCode) du template est utilisé comme `name` du CatalogItem
+ *  matérialisé — le médecin reconnaîtra le médic via le code. Si l'item a
+ *  été supprimé du catalogue depuis la création du template, la ligne est
+ *  ajoutée quand même (pas de blocage). */
+function materializeTemplateLine(
+  line: DrugTemplateLine | LabTemplateLine | ImagingTemplateLine,
+  type: TemplateType,
+): PrescriptionLineDraft {
+  if (type === 'DRUG') {
+    const d = line as DrugTemplateLine;
+    return {
+      item: { id: d.medicationId, name: d.medicationCode, sub: null },
+      dosage: d.dosage ?? '',
+      frequency: d.frequency ?? '',
+      duration: d.duration ?? '',
+      quantity: d.quantity ?? null,
+      instructions: d.instructions ?? '',
+    };
+  }
+  if (type === 'LAB') {
+    const l = line as LabTemplateLine;
+    return {
+      item: { id: l.labTestId, name: l.labTestCode, sub: null },
+      dosage: '',
+      frequency: '',
+      duration: '',
+      quantity: null,
+      instructions: l.instructions ?? '',
+    };
+  }
+  const im = line as ImagingTemplateLine;
+  return {
+    item: { id: im.imagingExamId, name: im.imagingExamCode, sub: null },
+    dosage: '',
+    frequency: '',
+    duration: '',
+    quantity: null,
+    instructions: im.instructions ?? '',
+  };
 }
