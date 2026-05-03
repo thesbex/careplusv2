@@ -20,6 +20,9 @@ import { Panel } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
 import { Check, Doc, Clipboard, Print } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
+import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
+import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import type { PrescriptionType } from '@/features/prescription/types';
 import { PatientContextCard } from './components/PatientContextCard';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
 import { SignatureLock } from './components/SignatureLock';
@@ -62,6 +65,8 @@ export default function ConsultationPage() {
   const { patient } = usePatient(consultation?.patientId);
   const { vitals } = useLatestVitals(consultation?.patientId);
   const { sign, isSigning, signed } = useSignConsultation(id);
+  const { prescriptions } = usePrescriptions(id);
+  const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -248,31 +253,23 @@ export default function ConsultationPage() {
               icon="Pill"
               color="primary"
               label="Prescription médicaments"
-              sub={isSigned ? 'Consultation signée' : 'Ordonnance'}
+              sub={`Ordonnance${prescriptions.length > 0 ? ` · ${prescriptions.length} créée${prescriptions.length > 1 ? 's' : ''}` : ''}`}
               disabled={isSigned || !consultation}
-              onClick={() =>
-                toast.info('Prescription', {
-                  description: 'Drawer prescription — à porter en Étape 2.',
-                })
-              }
+              onClick={() => setRxOpen('DRUG')}
             />
             <ActionBtn
               icon="Flask"
               label="Bon d'analyses"
               sub="Biologie médicale"
               disabled={isSigned || !consultation}
-              onClick={() =>
-                toast.info('Bon analyses', { description: 'À porter en Étape 2.' })
-              }
+              onClick={() => setRxOpen('LAB')}
             />
             <ActionBtn
               icon="Scan"
               label="Bon d'imagerie"
               sub="Radio · écho · IRM"
               disabled={isSigned || !consultation}
-              onClick={() =>
-                toast.info('Bon imagerie', { description: 'À porter en Étape 2.' })
-              }
+              onClick={() => setRxOpen('IMAGING')}
             />
             <ActionBtn icon="Doc" label="Certificat médical" disabled />
             <ActionBtn icon="Calendar" label="Prochain RDV" disabled />
@@ -281,12 +278,26 @@ export default function ConsultationPage() {
           <div className="cs-section-h" style={{ marginTop: 18 }}>
             Documents générés
           </div>
-          <div className="cs-docs-list" style={{ color: 'var(--ink-3)', fontSize: 12 }}>
-            {isSigned ? (
-              <DocRow title="Consultation signée" meta="Document verrouillé" />
-            ) : (
-              <div>Aucun document généré.</div>
+          <div className="cs-docs-list" style={{ fontSize: 12 }}>
+            {prescriptions.length === 0 && (
+              <div style={{ color: 'var(--ink-3)' }}>Aucun document généré.</div>
             )}
+            {prescriptions.map((p) => (
+              <DocRow
+                key={p.id}
+                title={`Ordonnance · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`}
+                meta={
+                  p.type === 'DRUG'
+                    ? 'Médicaments'
+                    : p.type === 'LAB'
+                    ? 'Analyses'
+                    : p.type === 'IMAGING'
+                    ? 'Imagerie'
+                    : (p.type ?? '—')
+                }
+                onClick={() => navigate(`/prescriptions/${p.id}`)}
+              />
+            ))}
           </div>
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
@@ -307,6 +318,21 @@ export default function ConsultationPage() {
           </Panel>
         </div>
       </form>
+      {consultation && rxOpen && (
+        <PrescriptionDrawer
+          open={!!rxOpen}
+          onOpenChange={(o) => {
+            if (!o) setRxOpen(null);
+          }}
+          consultationId={consultation.id}
+          patientAllergies={patient?.allergies ?? []}
+          type={rxOpen}
+          onCreated={(prescriptionId) => {
+            setRxOpen(null);
+            void navigate(`/prescriptions/${prescriptionId}`);
+          }}
+        />
+      )}
     </Screen>
   );
 }

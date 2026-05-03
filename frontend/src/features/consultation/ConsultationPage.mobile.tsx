@@ -3,7 +3,7 @@
  * Fully wired version using RHF + autosave, mirroring the desktop flow but
  * with a vertically stacked form (no accordion — flat textareas for speed).
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -13,6 +13,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Warn, Lock } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
+import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
@@ -59,6 +60,7 @@ export default function ConsultationMobilePage() {
   const { patient } = usePatient(consultation?.patientId);
   const { vitals } = useLatestVitals(consultation?.patientId);
   const { sign, isSigning, signed } = useSignConsultation(id);
+  const [rxOpen, setRxOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -257,8 +259,8 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 44 }}
-            disabled={isSigned}
-            onClick={() => toast.info('Prescription — à porter en Étape 2.')}
+            disabled={isSigned || !consultation}
+            onClick={() => setRxOpen(true)}
           >
             Rx
           </button>
@@ -275,6 +277,19 @@ export default function ConsultationMobilePage() {
           </button>
         </div>
       </div>
+      {consultation && rxOpen && (
+        <PrescriptionDrawer
+          open={rxOpen}
+          onOpenChange={setRxOpen}
+          consultationId={consultation.id}
+          patientAllergies={patient?.allergies ?? []}
+          type="DRUG"
+          onCreated={(prescriptionId) => {
+            setRxOpen(false);
+            void navigate(`/prescriptions/${prescriptionId}`);
+          }}
+        />
+      )}
     </MScreen>
   );
 }
