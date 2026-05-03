@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Stock interne — Étape 2 livrée (mouvements + FIFO + lots inactivation)
+**Phase**: Stock interne — Étape 3 livrée (alertes stock faible + péremption + count badge)
 **Last update**: 2026-05-03
-**Build**: Backend — 350/350 mvn verify (12 nouveaux StockMovementIT + 338 existants). Frontend — 410/418 (inchangé).
-**Next action**: Stock Étape 3 — `StockAlertService.queryAlerts()` : articles below threshold + lots péremption < J30. Endpoints `/api/stock/alerts` + `/api/stock/alerts/count`. IT `StockAlertIT` (5 scénarios).
+**Build**: Backend — 355/355 mvn verify (5 nouveaux StockAlertIT + 350 existants). Frontend — 410/418 (inchangé).
+**Next action**: Stock Étape 4 — Frontend slice `features/stock/` : 11 hooks + types + schemas zod, `/stock` page liste (desktop + mobile 390px), `/stock/articles/{id}` page fiche (desktop + mobile), `MovementDrawer` (IN/OUT/ADJUSTMENT), badge sidebar `useStockAlertsCount()` polling 30s.
 
 ### 2026-05-03 — Vaccination Étapes 5 + 6 (worklist + Paramétrage + QA + docs)
 
@@ -39,6 +39,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
 ## Session log
+
+### 2026-05-03 — Stock interne Étape 3 (alertes stock faible + péremption + count badge)
+
+**Shipped:**
+- `StockAlertService` interface + `StockAlertServiceImpl` — `getAlertCount()` (native aggregate COUNT queries, avoids N+1) + `listAlerts()` (articles below threshold + lots expiring ≤30 days). Enrich pattern réutilisé de Étape 1/2 pour `StockArticleView`. N+1 modéré accepté sur `listAlerts()` (≤80 articles en cabinet GP).
+- `StockAlertCountView(int lowStock, int expiringSoon)` DTO record.
+- `StockLotWithArticleView(lotId, lotNumber, expiresOn, quantity, daysUntilExpiry, articleId, articleCode, articleLabel, articleCategory)` DTO record.
+- `StockAlertsView(List<StockArticleView> lowStock, List<StockLotWithArticleView> expiringSoon)` DTO record.
+- `StockAlertController` — `GET /api/stock/alerts/count` + `GET /api/stock/alerts` — `@PreAuthorize` tous rôles authentifiés.
+- `StockArticleRepository` étendu — `countLowStockArticles()` + `findLowStockArticles()` native queries (CASE WHEN tracks_lots pour sélection de la bonne méthode de calcul de quantité).
+- `StockLotRepository` étendu — `countExpiringSoonLots(horizonDays)` + `findExpiringSoonLots(horizonDays)` native queries (JOIN stock_article pour filtrer par article.active=TRUE).
+- `StockAlertIT` — 5 scénarios : S1 article qty<threshold présent dans lowStock+count, S2 lot expire dans 20j présent dans expiringSoon+count, S3 lot expire dans 60j absent, S4 lot INACTIVE exclu, S5 mix 2 low-stock + 3 lots expiring → agrégation correcte.
+
+**State**: `mvn verify` → BUILD SUCCESS, 355/355 (350 existants + 5 nouveaux).
+**Next action**: Stock Étape 4 — Frontend slice `features/stock/`.
+**Blockers**: none.
 
 ### 2026-05-03 — Stock interne Étape 2 (mouvements + FIFO + lots inactivation)
 

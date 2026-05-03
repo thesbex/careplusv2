@@ -55,4 +55,63 @@ public interface StockArticleRepository extends JpaRepository<StockArticle, UUID
      * All active articles for a given supplier.
      */
     List<StockArticle> findBySupplierId(UUID supplierId);
+
+    // ── Alert queries (Étape 3) ───────────────────────────────────────────────
+
+    /**
+     * Count of active articles whose current stock is below min_threshold.
+     * Uses native query to join movement aggregates efficiently.
+     * Articles with min_threshold = 0 are excluded (no alert threshold defined).
+     *
+     * For tracks_lots=false: currentQty = SUM from stock_movement
+     * For tracks_lots=true: currentQty = SUM of ACTIVE lot quantities
+     */
+    @Query(value = """
+            SELECT COUNT(*) FROM stock_article a
+            WHERE a.active = TRUE
+              AND a.min_threshold > 0
+              AND (
+                CASE
+                  WHEN a.tracks_lots = TRUE THEN
+                    COALESCE((SELECT SUM(l.quantity) FROM stock_lot l
+                              WHERE l.article_id = a.id AND l.status = 'ACTIVE'), 0)
+                  ELSE
+                    COALESCE((SELECT SUM(CASE
+                                WHEN m.type = 'IN' THEN m.quantity
+                                WHEN m.type = 'OUT' THEN -m.quantity
+                                WHEN m.type = 'ADJUSTMENT' THEN m.quantity
+                                ELSE 0 END)
+                              FROM stock_movement m WHERE m.article_id = a.id), 0)
+                END
+              ) < a.min_threshold
+            """,
+            nativeQuery = true)
+    int countLowStockArticles();
+
+    /**
+     * Active articles below threshold, with their current stock computed inline.
+     * min_threshold = 0 excluded. Returns full article rows.
+     */
+    @Query(value = """
+            SELECT * FROM stock_article a
+            WHERE a.active = TRUE
+              AND a.min_threshold > 0
+              AND (
+                CASE
+                  WHEN a.tracks_lots = TRUE THEN
+                    COALESCE((SELECT SUM(l.quantity) FROM stock_lot l
+                              WHERE l.article_id = a.id AND l.status = 'ACTIVE'), 0)
+                  ELSE
+                    COALESCE((SELECT SUM(CASE
+                                WHEN m.type = 'IN' THEN m.quantity
+                                WHEN m.type = 'OUT' THEN -m.quantity
+                                WHEN m.type = 'ADJUSTMENT' THEN m.quantity
+                                ELSE 0 END)
+                              FROM stock_movement m WHERE m.article_id = a.id), 0)
+                END
+              ) < a.min_threshold
+            ORDER BY a.code ASC
+            """,
+            nativeQuery = true)
+    List<StockArticle> findLowStockArticles();
 }

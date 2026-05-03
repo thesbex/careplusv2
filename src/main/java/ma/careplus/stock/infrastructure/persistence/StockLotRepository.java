@@ -49,4 +49,36 @@ public interface StockLotRepository extends JpaRepository<StockLot, UUID> {
     @Query("SELECT MIN(l.expiresOn) FROM StockLot l "
             + "WHERE l.articleId = :articleId AND l.status = 'ACTIVE'")
     java.time.LocalDate findNearestExpiry(@Param("articleId") UUID articleId);
+
+    // ── Alert queries (Étape 3) ───────────────────────────────────────────────
+
+    /**
+     * Count of ACTIVE lots expiring within the given horizon (days), whose article is active.
+     */
+    @Query(value = """
+            SELECT COUNT(*) FROM stock_lot l
+            JOIN stock_article a ON a.id = l.article_id
+            WHERE l.status = 'ACTIVE'
+              AND a.active = TRUE
+              AND l.expires_on IS NOT NULL
+              AND l.expires_on <= CURRENT_DATE + CAST(:horizonDays AS INTEGER)
+            """,
+            nativeQuery = true)
+    int countExpiringSoonLots(@Param("horizonDays") int horizonDays);
+
+    /**
+     * ACTIVE lots expiring within the given horizon (days), whose article is active.
+     * Ordered by expires_on ASC.
+     */
+    @Query(value = """
+            SELECT l.* FROM stock_lot l
+            JOIN stock_article a ON a.id = l.article_id
+            WHERE l.status = 'ACTIVE'
+              AND a.active = TRUE
+              AND l.expires_on IS NOT NULL
+              AND l.expires_on <= CURRENT_DATE + CAST(:horizonDays AS INTEGER)
+            ORDER BY l.expires_on ASC
+            """,
+            nativeQuery = true)
+    List<StockLot> findExpiringSoonLots(@Param("horizonDays") int horizonDays);
 }

@@ -205,6 +205,15 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 **Migration V025** : Suppression de la contrainte `CHECK (quantity > 0)` sur `stock_movement` pour permettre les deltas négatifs des ajustements sur articles sans tracking de lots.
 
+## stock — Étape 3 alertes stock faible + péremption (2026-05-03) ✅
+
+### Alertes — `/api/stock/alerts`
+
+- `GET /api/stock/alerts/count` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — returns `{lowStock: int, expiringSoon: int}`. Fast native COUNT queries designed for sidebar badge polling every 30s. `lowStock` = articles `active=true` avec `currentQuantity < minThreshold` (threshold=0 exclus). `expiringSoon` = lots `status=ACTIVE` dont `expires_on - today ≤ 30` ET article `active=true`.
+- `GET /api/stock/alerts` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — returns `{lowStock: List<StockArticleView>, expiringSoon: List<StockLotWithArticleView>}`. `lowStock`: articles avec `currentQuantity` calculé + `minThreshold` + nom fournisseur. `expiringSoon`: lots avec article (code/label/category) + lot info (numéro, expiresOn, quantity, daysUntilExpiry).
+
+`StockLotWithArticleView` : `{lotId, lotNumber, expiresOn, quantity, daysUntilExpiry, articleId, articleCode, articleLabel, articleCategory}`.
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)
