@@ -1,0 +1,383 @@
+/*
+ * Agenda semaine styles.
+ * Ported from the <style> block in design/prototype/screens/agenda.jsx:106–159
+ * on 2026-04-24. ROW_PX (72) is hoisted to a CSS variable so we only have one
+ * source of truth for the hour-row scale.
+ */
+
+.ag-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.ag-week-nav {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ag-week-nav button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  border: none;
+  cursor: pointer;
+  color: var(--ink-2);
+  font-family: inherit;
+}
+.ag-week-nav button:hover {
+  background: var(--bg);
+}
+.ag-week-nav .vdv {
+  width: 1px;
+  background: var(--border);
+  align-self: stretch;
+}
+
+.ag-view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 2px;
+  gap: 2px;
+  background: var(--bg);
+}
+.ag-view-toggle button {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-size: 11.5px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--ink-3);
+  font-weight: 500;
+  font-family: inherit;
+}
+.ag-view-toggle button.on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.ag-legend {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+  align-items: center;
+}
+.ag-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ag-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.ag-grid-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface);
+  --ag-row: 72px;
+}
+
+.ag-header {
+  display: grid;
+  grid-template-columns: 56px repeat(6, 1fr);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.ag-header-cell {
+  padding: 10px 12px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+  border-left: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.ag-header-cell:first-child {
+  border-left: 0;
+}
+.ag-header-cell .d-lbl {
+  font-weight: 500;
+  color: var(--ink-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ag-header-cell .d-num {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+.ag-header-cell.today {
+  background: linear-gradient(180deg, var(--primary-soft), transparent 70%);
+}
+.ag-header-cell.today .d-num {
+  color: var(--primary);
+}
+
+.ag-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface);
+}
+.ag-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(6, 1fr);
+  position: relative;
+  min-height: 100%;
+}
+.ag-hourcol {
+  border-right: 1px solid var(--border);
+}
+.ag-hour-label {
+  height: var(--ag-row);
+  text-align: right;
+  padding: 4px 8px 0 0;
+  font-size: 10.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+.ag-daycol {
+  border-left: 1px solid var(--border);
+  position: relative;
+}
+.ag-hour-cell {
+  height: var(--ag-row);
+  border-bottom: 1px solid var(--border);
+}
+.ag-hour-cell.half {
+  border-bottom: 1px dashed #e2dcd0;
+}
+.ag-daycol.today {
+  background: linear-gradient(180deg, rgba(30, 90, 168, 0.03), transparent 200px);
+}
+
+.ag-now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 1.5px solid var(--primary);
+  z-index: 2;
+  pointer-events: none;
+}
+.ag-now::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+.ag-now-lbl {
+  position: absolute;
+  left: -48px;
+  top: -8px;
+  font-size: 10px;
+  color: var(--primary);
+  background: var(--surface);
+  padding: 0 4px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ag-block {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  border-radius: 5px;
+  padding: 5px 7px;
+  font-size: 11px;
+  cursor: pointer;
+  border-left: 3px solid;
+  overflow: hidden;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  text-align: left;
+  width: calc(100% - 8px);
+}
+.ag-block.ag-compact {
+  padding: 4px 7px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ag-block.ag-compact .ag-time {
+  flex: 0 0 auto;
+}
+.ag-block.ag-compact .ag-name {
+  flex: 1 1 auto;
+  margin-top: 0;
+  font-size: 11px;
+}
+.ag-block.ag-compact .ag-allergy-dot {
+  flex: 0 0 auto;
+  color: var(--amber);
+  display: inline-flex;
+}
+.ag-block.ag-compact .ag-allergy-dot svg {
+  width: 12px;
+  height: 12px;
+}
+.ag-block:hover {
+  filter: brightness(0.98);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.ag-block:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.ag-block .ag-time {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+}
+.ag-consult .ag-time,
+.ag-arrived .ag-time {
+  color: var(--primary-hover);
+}
+.ag-vitals .ag-time {
+  color: var(--amber);
+}
+.ag-block .ag-name {
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.25;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-block .ag-reason {
+  color: var(--ink-3);
+  line-height: 1.25;
+  margin-top: 1px;
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-block .ag-allergy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 9.5px;
+  margin-top: 3px;
+  font-weight: 600;
+}
+.ag-block .ag-allergy svg {
+  width: 10px;
+  height: 10px;
+}
+.ag-confirmed {
+  border-left-color: var(--primary);
+  background: #f4f7fc;
+}
+.ag-arrived {
+  border-left-color: #174585;
+  background: #e4edf8;
+}
+.ag-vitals {
+  border-left-color: var(--amber);
+  background: #fbefe3;
+}
+.ag-consult {
+  border-left-color: var(--primary);
+  background: var(--primary-soft);
+}
+.ag-done {
+  border-left-color: #9b9b9b;
+  background: #f2f1ec;
+  color: var(--ink-3);
+}
+.ag-done .ag-name {
+  color: var(--ink-2);
+}
+
+/* ── Right panel (today arrivals) ───────────────────────── */
+.ag-arrivals-h {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.ag-arrivals-h-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.ag-arrivals-list {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+.ag-arrival-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.ag-arrival-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ag-arrival-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.ag-arrivals-more {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-md);
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+.ag-arrivals-f {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}

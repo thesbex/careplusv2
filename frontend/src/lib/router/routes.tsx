@@ -1,0 +1,77 @@
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import LoginPage from '@/features/login/LoginPage';
+import OnboardingPage from '@/features/onboarding/OnboardingPage';
+import AgendaRoute from '@/features/agenda';
+import { Placeholder } from '@/features/_placeholders/Placeholder';
+
+/**
+ * careplus route tree.
+ * Navigation mapping (mirrors DESIGN_SYSTEM.md §9):
+ *   /login         → screen 12
+ *   /onboarding    → screen 13
+ *   /agenda        → screen 01 (placeholder until J4)
+ *   /patients      → screen 03 (placeholder until J3)
+ *   /salle         → screen 04 (placeholder until J5)
+ *   /consultations → screen 06 (placeholder until J5)
+ *   /facturation   → screen 09 (placeholder until J7)
+ *   /parametres    → screen 11 (placeholder until J8)
+ *
+ * Lazy-load is deferred until screens are substantial enough to matter
+ * (after J5); for now, all pages are small and splitting them would add
+ * more request overhead than it saves.
+ */
+/** v7 future flags opt-in — keeps console clean and eases the eventual v7 upgrade. */
+const future = {
+  v7_relativeSplatPath: true,
+  v7_startTransition: true,
+  v7_fetcherPersist: true,
+  v7_normalizeFormMethod: true,
+  v7_partialHydration: true,
+  v7_skipActionErrorRevalidation: true,
+} as const;
+
+export const router = createBrowserRouter(
+  [
+  { path: '/', element: <Navigate to="/login" replace /> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/onboarding', element: <OnboardingPage /> },
+  { path: '/agenda', element: <AgendaRoute /> },
+  {
+    path: '/patients',
+    element: (
+      <Placeholder active="patients" mobileTab="patients" title="Patients" sprintDay="J3" />
+    ),
+  },
+  {
+    path: '/salle',
+    element: (
+      <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />
+    ),
+  },
+  {
+    path: '/consultations',
+    element: (
+      <Placeholder
+        active="consult"
+        mobileTab="patients"
+        title="Consultations"
+        sprintDay="J5"
+      />
+    ),
+  },
+  {
+    path: '/facturation',
+    element: (
+      <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />
+    ),
+  },
+  {
+    path: '/parametres',
+    element: (
+      <Placeholder active="params" mobileTab="menu" title="Paramètres" sprintDay="J8" />
+    ),
+  },
+    { path: '*', element: <Navigate to="/login" replace /> },
+  ],
+  { future },
+);

@@ -4,6 +4,7 @@
  * J2 will wire onSubmit to POST /api/auth/login; for now the form is static.
  */
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +14,7 @@ import './login.css';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="login-root">
@@ -66,7 +68,8 @@ export default function LoginPage() {
           className="login-form"
           onSubmit={(e) => {
             e.preventDefault();
-            // J2: wire to POST /api/auth/login
+            // J2: wire to POST /api/auth/login; for now just navigate to agenda.
+            navigate('/agenda');
           }}
         >
           <div className="login-form-eyebrow">Connexion professionnelle</div>
