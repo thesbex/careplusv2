@@ -14,6 +14,8 @@ import ApercuFacturePage from '@/features/facturation/ApercuFactureRoute';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import ParametragePage from '@/features/parametres/ParametrageRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
+import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
+import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -175,6 +177,22 @@ export const router = createBrowserRouter(
       element: (
         <RequireAuth>
           <CataloguePage />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/catalogue/analyses',
+      element: (
+        <RequireAuth>
+          <LabCatalogueRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/catalogue/radio',
+      element: (
+        <RequireAuth>
+          <ImagingCatalogueRoute />
         </RequireAuth>
       ),
     },

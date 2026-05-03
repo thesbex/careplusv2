@@ -7,9 +7,11 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Warn, Stetho, ChevronRight, Heart } from '@/components/icons';
+import { Warn, Stetho, ChevronRight, Heart, Plus } from '@/components/icons';
 import { useQueue } from './hooks/useQueue';
 import { useStartConsultation } from './hooks/useStartConsultation';
+import { useCheckIn } from './hooks/useCheckIn';
+import { useUpcomingToday } from './hooks/useUpcomingToday';
 import type { QueueEntry, WaitingPatientStatus } from './types';
 import './salle-attente.css';
 
@@ -32,7 +34,18 @@ function initials(name: string): string {
 export default function SalleAttenteMobilePage() {
   const navigate = useNavigate();
   const { queue, kpis } = useQueue();
+  const { upcoming } = useUpcomingToday();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
+  const { checkIn, isPending: isCheckingIn } = useCheckIn();
+
+  async function handleDeclareArrival(appointmentId: string) {
+    try {
+      await checkIn(appointmentId);
+      toast.success('Patient marqué comme arrivé.');
+    } catch {
+      toast.error("Échec de la déclaration d'arrivée.");
+    }
+  }
 
   async function handleRowTap(entry: QueueEntry) {
     if (entry.status === 'done') return;
@@ -231,6 +244,63 @@ export default function SalleAttenteMobilePage() {
             })
           )}
         </div>
+
+        {/* Upcoming today — not-yet-arrived appointments. Tap → check-in. */}
+        {upcoming.length > 0 && (
+          <>
+            <div className="m-section-h" style={{ marginTop: 18 }}>
+              <h3>À venir aujourd’hui</h3>
+              <span className="more">{upcoming.length}</span>
+            </div>
+            <div className="m-card">
+              {upcoming.map((u, i) => (
+                <button
+                  key={u.appointmentId}
+                  type="button"
+                  className="m-row"
+                  disabled={isCheckingIn}
+                  onClick={() => {
+                    void handleDeclareArrival(u.appointmentId);
+                  }}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    background: 'transparent',
+                    border: 0,
+                    borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
+                    fontFamily: 'inherit',
+                    font: 'inherit',
+                    cursor: 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  aria-label={`Déclarer l’arrivée de ${u.patientName}`}
+                >
+                  <div className="sa-m-avatar" aria-hidden="true">
+                    {initials(u.patientName)}
+                  </div>
+                  <div className="m-row-pri">
+                    <div className="m-row-main">{u.patientName}</div>
+                    <div className="m-row-sub">
+                      {u.time} · {u.eta}
+                      {u.reason ? ` · ${u.reason}` : ''}
+                    </div>
+                  </div>
+                  <span
+                    className="m-pill"
+                    aria-hidden="true"
+                    style={{
+                      background: 'var(--primary-soft)',
+                      color: 'var(--primary)',
+                      gap: 4,
+                    }}
+                  >
+                    <Plus /> Arrivée
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </MScreen>
   );

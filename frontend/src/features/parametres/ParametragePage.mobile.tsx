@@ -10,7 +10,14 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import type { ComponentType, SVGProps } from 'react';
-import { ChevronRight, Logout, File as FileIcon, Pill as PillIcon } from '@/components/icons';
+import {
+  ChevronRight,
+  Logout,
+  File as FileIcon,
+  Pill as PillIcon,
+  Flask as FlaskIcon,
+  Doc as DocIcon,
+} from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
 
@@ -120,14 +127,26 @@ export default function ParametrageMobilePage() {
         )}
 
         <div className="m-section-h">
-          <h3>Catalogue</h3>
+          <h3>Catalogues</h3>
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
           <MenuRow
             Icon={PillIcon}
-            label="Catalogue médicaments"
+            label="Médicaments"
             hint="Référentiel Maroc"
             onClick={() => navigate('/catalogue')}
+          />
+          <MenuRow
+            Icon={FlaskIcon}
+            label="Analyses biologiques"
+            hint="Tests de laboratoire"
+            onClick={() => navigate('/catalogue/analyses')}
+          />
+          <MenuRow
+            Icon={DocIcon}
+            label="Radio / Imagerie"
+            hint="Examens d’imagerie médicale"
+            onClick={() => navigate('/catalogue/radio')}
           />
         </div>
 

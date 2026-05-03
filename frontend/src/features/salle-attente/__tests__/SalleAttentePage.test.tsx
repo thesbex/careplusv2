@@ -31,6 +31,20 @@ vi.mock('../hooks/useStartConsultation', () => ({
   }),
 }));
 
+vi.mock('@/features/agenda/hooks/useAppointments', () => ({
+  useWeekAppointments: () => ({
+    days: [],
+    appointments: [],
+    rawAppointments: [],
+    arrivals: [],
+    weekLabel: '',
+    todayKey: null,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
+}));
+
 // ── Helpers ──────────────────────────────────────────────
 
 function renderDesktop() {

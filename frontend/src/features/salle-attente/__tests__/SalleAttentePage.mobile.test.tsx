@@ -68,6 +68,28 @@ vi.mock('../hooks/useStartConsultation', () => ({
   }),
 }));
 
+vi.mock('../hooks/useCheckIn', () => ({
+  useCheckIn: () => ({
+    checkIn: vi.fn().mockResolvedValue(undefined),
+    isPending: false,
+    error: null,
+  }),
+}));
+
+vi.mock('@/features/agenda/hooks/useAppointments', () => ({
+  useWeekAppointments: () => ({
+    days: [],
+    appointments: [],
+    rawAppointments: [],
+    arrivals: [],
+    weekLabel: '',
+    todayKey: null,
+    isLoading: false,
+    error: null,
+    refetch: () => Promise.resolve(),
+  }),
+}));
+
 function renderPage() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

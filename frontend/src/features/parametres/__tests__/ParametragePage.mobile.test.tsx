@@ -48,12 +48,16 @@ describe('<ParametrageMobilePage /> — NRG', () => {
     expect(container.querySelector('.m-phead-meta')).toHaveTextContent('Médecin');
   });
 
-  it('shows the Cabinet section + Catalogue + Compte for ADMIN/MEDECIN', () => {
+  it('shows the Cabinet section + Catalogues + Compte for ADMIN/MEDECIN', () => {
     setUser(['ADMIN']);
     renderPage();
     expect(screen.getByText('Cabinet')).toBeInTheDocument();
     expect(screen.getByText('Paramétrage du cabinet')).toBeInTheDocument();
-    expect(screen.getByText('Catalogue')).toBeInTheDocument();
+    expect(screen.getByText('Catalogues')).toBeInTheDocument();
+    // Three catalogue rows now: medications, lab, imaging.
+    expect(screen.getByText('Médicaments')).toBeInTheDocument();
+    expect(screen.getByText('Analyses biologiques')).toBeInTheDocument();
+    expect(screen.getByText('Radio / Imagerie')).toBeInTheDocument();
     expect(screen.getByText('Compte')).toBeInTheDocument();
   });
 

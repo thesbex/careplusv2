@@ -19,6 +19,8 @@ import { Panel } from '@/components/ui/Panel';
 import { Plus, Search, Trash, Pill as PillIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { CatalogueTabs } from './LabCataloguePage';
+import './catalogue-tabs.css';
 
 interface Medication {
   id: string;
@@ -190,7 +192,8 @@ export default function CataloguePage() {
       }
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
-      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+      <CatalogueTabs active="medicaments" />
+      <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0 }}>
         {/* Filtres */}
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
