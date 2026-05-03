@@ -45,27 +45,28 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
     let createdUrl: string | null = null;
     setIsLoading(true);
     setError(null);
+    // /preview returns a JSON envelope { mimeType, base64, ... } — chosen on
+    // purpose so browser download-manager extensions (FDM/IDM) don't grab
+    // the binary body before our XHR can read it.
     api
-      .get<ArrayBuffer>(`/documents/${doc.id}/content`, {
-        responseType: 'arraybuffer',
-        // Override the axios default Accept: 'application/json' so the server
-        // never tries to negotiate JSON for a binary endpoint.
-        headers: { Accept: '*/*' },
-      })
+      .get<{ mimeType: string; base64: string; sizeBytes: number; filename: string }>(
+        `/documents/${doc.id}/preview`,
+      )
       .then((res) => {
         if (cancelled) return;
-        const bytes = new Uint8Array(res.data);
+        const bin = atob(res.data.base64);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
         if (doc.mimeType === 'application/pdf') {
           const head = String.fromCharCode(...bytes.slice(0, 5));
           if (head !== '%PDF-') {
-            const ct = (res.headers as Record<string, string>)['content-type'] ?? '?';
             setError(
-              `Le serveur n'a pas renvoyé un PDF (Content-Type: ${ct}, ${bytes.byteLength} octets, en-tête « ${head} »).`,
+              `Le serveur n'a pas renvoyé un PDF (${bytes.byteLength} octets, en-tête « ${head} »).`,
             );
             return;
           }
         }
-        const blob = new Blob([res.data], { type: doc.mimeType });
+        const blob = new Blob([bytes], { type: res.data.mimeType });
         createdUrl = URL.createObjectURL(blob);
         setUrl(createdUrl);
       })

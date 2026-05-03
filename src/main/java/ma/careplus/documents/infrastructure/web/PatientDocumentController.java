@@ -1,7 +1,11 @@
 package ma.careplus.documents.infrastructure.web;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import ma.careplus.documents.application.DocumentService;
 import ma.careplus.documents.application.DocumentStorage;
@@ -99,6 +103,44 @@ public class PatientDocumentController {
                         "inline; filename=\"" + sanitizeForHeader(doc.getOriginalFilename()) + "\"")
                 .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(actualLength))
                 .body(res);
+    }
+
+    /**
+     * Renvoie le document encodé en base64 dans une réponse JSON. Pourquoi :
+     * certains gestionnaires de téléchargement (FDM, IDM…) interceptent les
+     * réponses binaires (Content-Type application/pdf, image/*) et vident
+     * le body vu côté XHR. Une réponse JSON passe sous leur radar et nous
+     * permet de reconstruire le blob côté client en toute sécurité.
+     */
+    @GetMapping("/api/documents/{id}/preview")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<Map<String, Object>> preview(@PathVariable UUID id) {
+        PatientDocument doc = service.getActive(id);
+        Resource res = storage.loadAsResource(doc.getStorageKey());
+        long actualLength;
+        try {
+            actualLength = res.exists() ? res.contentLength() : -1L;
+        } catch (IOException e) {
+            actualLength = -1L;
+        }
+        if (actualLength <= 0) {
+            throw new BusinessException("DOCUMENT_FILE_MISSING",
+                    "Fichier physique introuvable ou vide. Supprimez puis réimportez le document.",
+                    HttpStatus.GONE.value());
+        }
+        try (InputStream in = res.getInputStream()) {
+            byte[] bytes = in.readAllBytes();
+            return ResponseEntity.ok(Map.of(
+                    "mimeType", doc.getMimeType(),
+                    "filename", doc.getOriginalFilename(),
+                    "sizeBytes", bytes.length,
+                    "base64", Base64.getEncoder().encodeToString(bytes)
+            ));
+        } catch (IOException e) {
+            throw new BusinessException("DOCUMENT_READ_FAILED",
+                    "Impossible de lire le fichier sur disque.",
+                    HttpStatus.INTERNAL_SERVER_ERROR.value());
+        }
     }
 
     @DeleteMapping("/api/documents/{id}")
