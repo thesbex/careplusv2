@@ -1,0 +1,225 @@
+/*
+ * Salle d'attente styles (screen 04).
+ * Extracted from inline styles in design/prototype/screens/salle-attente.jsx
+ * and the MSalle block in design/prototype/mobile/screens.jsx.
+ * Uses only CSS custom properties from tokens.css — no hardcoded hex values.
+ */
+
+/* ── Screen scroll wrapper ─────────────────────────────── */
+.sa-scroll {
+  padding: 20px;
+  overflow: auto;
+}
+
+/* ── KPI grid ──────────────────────────────────────────── */
+.sa-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.sa-kpi-tile {
+  padding: 12px 14px;
+}
+
+.sa-kpi-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 550;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sa-kpi-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sa-kpi-value {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.sa-kpi-unit {
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-left: 4px;
+}
+
+.sa-kpi-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+/* ── Queue table ───────────────────────────────────────── */
+.sa-queue-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.sa-queue-thead tr {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.sa-queue-thead th {
+  text-align: left;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.sa-queue-row {
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.sa-td {
+  padding: 12px 14px;
+  color: var(--ink-2);
+}
+
+.sa-td-motif {
+  color: var(--ink-3);
+}
+
+.sa-td-box {
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+
+.sa-td-actions {
+  text-align: right;
+}
+
+/* ── Patient cell ──────────────────────────────────────── */
+.sa-patient-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sa-patient-name {
+  font-weight: 600;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sa-allergy-chip {
+  font-size: 9.5px;
+}
+
+.sa-patient-meta {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* ── Actions group ─────────────────────────────────────── */
+.sa-actions-group {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ── Queue panel header sort label ────────────────────── */
+.sa-panel-sort {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+
+/* ── Upcoming section ─────────────────────────────────── */
+.sa-upcoming-h {
+  margin-top: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.sa-upcoming-panel {
+  padding: 4px 0;
+}
+
+.sa-upcoming-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+}
+
+.sa-upcoming-row + .sa-upcoming-row {
+  border-top: 1px dashed var(--border);
+}
+
+.sa-upcoming-name {
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.sa-upcoming-time {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.sa-upcoming-eta {
+  color: var(--ink-4);
+}
+
+/* ── Mobile: stat grid ─────────────────────────────────── */
+/* (uses global .m-stat-grid + .m-stat classes from mobile.css) */
+
+/* ── Mobile: patient card rows ─────────────────────────── */
+.sa-m-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sa-m-pills-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.sa-m-room {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 550;
+}
+
+.sa-m-time-col {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.sa-m-since {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
