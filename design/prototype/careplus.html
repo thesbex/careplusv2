@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>careplus — Suite logicielle pour cabinets médicaux</title>
+<link rel="stylesheet" href="styles.css?v=blue3" />
+<link rel="stylesheet" href="mobile-styles.css?v=1" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f0eee9; font-family: system-ui; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="icons.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="screens/agenda.jsx"></script>
+<script type="text/babel" src="screens/prise-rdv.jsx"></script>
+<script type="text/babel" src="screens/dossier-patient.jsx"></script>
+<script type="text/babel" src="screens/salle-attente.jsx"></script>
+<script type="text/babel" src="screens/prise-constantes.jsx"></script>
+<script type="text/babel" src="screens/consultation.jsx"></script>
+<script type="text/babel" src="screens/prescription.jsx"></script>
+<script type="text/babel" src="screens/apercu-ordonnance.jsx"></script>
+<script type="text/babel" src="screens/facturation.jsx"></script>
+<script type="text/babel" src="screens/apercu-facture.jsx"></script>
+<script type="text/babel" src="screens/parametrage.jsx"></script>
+<script type="text/babel" src="screens/login.jsx"></script>
+<script type="text/babel" src="screens/onboarding.jsx"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="mobile/shell.jsx"></script>
+<script type="text/babel" src="mobile/screens.jsx"></script>
+
+<script type="text/babel">
+const APP_W = 1440, APP_H = 900;
+const PHONE_W = 390, PHONE_H = 844;
+
+// iPhone bezel wrapping a 390×844 MScreen
+function Phone({ children, title }) {
+  return (
+    <div style={{
+      width: PHONE_W + 24, height: PHONE_H + 24,
+      padding: 12,
+      background: 'linear-gradient(180deg, #1a1a1a, #0a0a0a)',
+      borderRadius: 54,
+      boxShadow: '0 30px 60px rgba(0,0,0,0.25), inset 0 0 0 2px #2a2a2a',
+      position: 'relative',
+    }}>
+      <div style={{
+        width: PHONE_W, height: PHONE_H,
+        borderRadius: 44, overflow: 'hidden',
+        position: 'relative',
+        background: 'var(--bg)',
+      }}>
+        {/* iOS status bar */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, height: 47,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0 30px', fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em',
+          zIndex: 100, pointerEvents: 'none',
+          background: 'linear-gradient(180deg, var(--bg), transparent)',
+        }}>
+          <span style={{fontFamily: '-apple-system, "SF Pro Text", system-ui', fontVariantNumeric: 'tabular-nums'}}>9:41</span>
+          {/* Dynamic island */}
+          <div style={{
+            position: 'absolute', top: 11, left: '50%', transform: 'translateX(-50%)',
+            width: 120, height: 34, background: '#000', borderRadius: 20,
+          }}/>
+          <div style={{display:'flex', gap: 5, alignItems: 'center'}}>
+            {/* Signal */}
+            <svg width="18" height="11" viewBox="0 0 19 12"><rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7" fill="#000"/><rect x="4.8" y="5" width="3.2" height="7" rx="0.7" fill="#000"/><rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7" fill="#000"/><rect x="14.4" y="0" width="3.2" height="12" rx="0.7" fill="#000"/></svg>
+            {/* Wifi */}
+            <svg width="16" height="11" viewBox="0 0 17 12"><path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z" fill="#000"/><path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z" fill="#000"/><circle cx="8.5" cy="10.5" r="1.5" fill="#000"/></svg>
+            {/* Battery */}
+            <svg width="25" height="12" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="#000" strokeOpacity="0.35" fill="none"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#000"/><path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill="#000" fillOpacity="0.4"/></svg>
+          </div>
+        </div>
+        {/* Push content below status bar */}
+        <div style={{paddingTop: 47, height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column'}}>
+          <div style={{flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column'}}>
+            {children}
+          </div>
+        </div>
+        {/* Home indicator */}
+        <div style={{
+          position: 'absolute', bottom: 8, left: '50%', transform: 'translateX(-50%)',
+          width: 134, height: 5, background: '#000', borderRadius: 3, zIndex: 100,
+        }}/>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="auth" title="Accès et mise en route" subtitle="Connexion et configuration initiale du cabinet">
+        <DCArtboard id="login"      label="12 · Login"                width={APP_W} height={APP_H}><Login /></DCArtboard>
+        <DCArtboard id="onboarding" label="13 · Onboarding wizard"    width={APP_W} height={APP_H}><Onboarding /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="secretary" title="Flux secrétaire" subtitle="Prise de RDV, accueil, recherche">
+        <DCArtboard id="agenda"     label="01 · Agenda semaine"       width={APP_W} height={APP_H}><AgendaSemaine /></DCArtboard>
+        <DCArtboard id="rdv"        label="02 · Prise de RDV"         width={APP_W} height={APP_H}><PriseRDV /></DCArtboard>
+        <DCArtboard id="dossier"    label="03 · Dossier patient"      width={APP_W} height={APP_H}><DossierPatient /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="assistant" title="Flux assistante médicale" subtitle="Salle d'attente et prise des constantes">
+        <DCArtboard id="salle"      label="04 · Salle d'attente"      width={APP_W} height={APP_H}><SalleAttente /></DCArtboard>
+        <DCArtboard id="constantes" label="05 · Prise des constantes" width={APP_W} height={APP_H}><PriseConstantes /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="doctor" title="Flux médecin" subtitle="Consultation, prescription, document imprimé">
+        <DCArtboard id="consult"    label="06 · Écran consultation"   width={APP_W} height={APP_H}><EcranConsultation /></DCArtboard>
+        <DCArtboard id="prescr"     label="07 · Prescription"         width={APP_W} height={APP_H}><PrescriptionDrawer /></DCArtboard>
+        <DCArtboard id="ordo-pdf"   label="08 · Aperçu PDF ordonnance" width={APP_W} height={APP_H}><ApercuOrdonnance /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="billing" title="Facturation et administration" subtitle="Factures conformes et paramétrage du cabinet">
+        <DCArtboard id="factu"      label="09 · Facturation"          width={APP_W} height={APP_H}><Facturation /></DCArtboard>
+        <DCArtboard id="fac-pdf"    label="10 · Aperçu PDF facture"   width={APP_W} height={APP_H}><ApercuFacture /></DCArtboard>
+        <DCArtboard id="params"     label="11 · Paramétrage cabinet"  width={APP_W} height={APP_H}><Parametrage /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="mobile" title="Version mobile — iPhone" subtitle="Les 13 écrans reflétés pour médecin en déplacement et secrétaire en mobilité. 390×844 (iPhone 14).">
+        <DCArtboard id="m-login"       label="M12 · Login"              width={PHONE_W+24} height={PHONE_H+24}><Phone><MLogin /></Phone></DCArtboard>
+        <DCArtboard id="m-onboarding"  label="M13 · Onboarding"         width={PHONE_W+24} height={PHONE_H+24}><Phone><MOnboarding /></Phone></DCArtboard>
+        <DCArtboard id="m-agenda"      label="M01 · Agenda (jour)"      width={PHONE_W+24} height={PHONE_H+24}><Phone><MAgenda /></Phone></DCArtboard>
+        <DCArtboard id="m-rdv"         label="M02 · Prise de RDV"       width={PHONE_W+24} height={PHONE_H+24}><Phone><MPriseRDV /></Phone></DCArtboard>
+        <DCArtboard id="m-dossier"     label="M03 · Dossier patient"    width={PHONE_W+24} height={PHONE_H+24}><Phone><MDossier /></Phone></DCArtboard>
+        <DCArtboard id="m-salle"       label="M04 · Salle d'attente"    width={PHONE_W+24} height={PHONE_H+24}><Phone><MSalle /></Phone></DCArtboard>
+        <DCArtboard id="m-constantes"  label="M05 · Constantes"         width={PHONE_W+24} height={PHONE_H+24}><Phone><MConstantes /></Phone></DCArtboard>
+        <DCArtboard id="m-consult"     label="M06 · Consultation"       width={PHONE_W+24} height={PHONE_H+24}><Phone><MConsultation /></Phone></DCArtboard>
+        <DCArtboard id="m-prescr"      label="M07 · Prescription"       width={PHONE_W+24} height={PHONE_H+24}><Phone><MPrescription /></Phone></DCArtboard>
+        <DCArtboard id="m-ordo-pdf"    label="M08 · Aperçu ordonnance"  width={PHONE_W+24} height={PHONE_H+24}><Phone><MApercuOrdo /></Phone></DCArtboard>
+        <DCArtboard id="m-factu"       label="M09 · Facturation"        width={PHONE_W+24} height={PHONE_H+24}><Phone><MFacturation /></Phone></DCArtboard>
+        <DCArtboard id="m-fac-pdf"     label="M10 · Aperçu facture"     width={PHONE_W+24} height={PHONE_H+24}><Phone><MApercuFacture /></Phone></DCArtboard>
+        <DCArtboard id="m-params"      label="M11 · Paramètres"         width={PHONE_W+24} height={PHONE_H+24}><Phone><MParametrage /></Phone></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+// Small delay to ensure all babel scripts have registered window globals
+setTimeout(() => {
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+}, 50);
+</script>
+</body>
+</html>

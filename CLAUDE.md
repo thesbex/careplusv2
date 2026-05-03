@@ -11,22 +11,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Authoritative documents (read these BEFORE editing code)
 
 - [docs/WORKFLOWS.md](docs/WORKFLOWS.md) — business workflows, state machines, role × action matrix. The product spec.
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — module structure, stack, conventions, data model principles.
-- [docs/SPRINT_MVP.md](docs/SPRINT_MVP.md) — 7-day MVP plan with day-by-day scope and status.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — backend module structure, stack, conventions, data model principles.
+- [docs/FRONTEND.md](docs/FRONTEND.md) — frontend stack, directory layout, defended library choices, port order. **Read this before any frontend work.**
+- [docs/SPRINT_MVP.md](docs/SPRINT_MVP.md) — 10-day MVP plan (backend J1–J7 + frontend J8–J10) with day-by-day scope and status.
 - [docs/DECISIONS.md](docs/DECISIONS.md) — ADRs for every significant technical choice.
 - [docs/PROGRESS.md](docs/PROGRESS.md) — running log of what's done, updated at end of every session.
 - [docs/API.md](docs/API.md) — endpoint inventory, filled as modules ship.
 - [docs/REGRESSION_CHECKLIST.md](docs/REGRESSION_CHECKLIST.md) — the checklist that must pass before marking any iteration done.
+- [design/HANDOFF.md](design/HANDOFF.md) + [design/prototype/DESIGN_SYSTEM.md](design/prototype/DESIGN_SYSTEM.md) — hi-fi design source of truth; `design/prototype/careplus.html` is a runnable JSX prototype of all 13 screens.
 
 ## Non-negotiable rules for every session
 
 1. **Read `docs/PROGRESS.md` first.** It tells you where we stopped and what's next.
-2. **Never mark work done without `mvn verify` green.** Use the `regression-guard` subagent to verify. If Docker is down, Testcontainers fails → that's a blocker, not "will fix later".
-3. **No regressions between iterations.** Every new module ships with integration tests. Every commit runs the full suite in CI.
-4. **Update `docs/PROGRESS.md` at the end of each session.** What shipped, what's blocked, what's next. This is the session handoff.
-5. **Update `docs/DECISIONS.md` when you choose A over B.** One-paragraph ADR, no ceremony.
-6. **Never modify an applied Flyway migration.** Add a new one.
-7. **Stay in scope.** MVP scope is defined in `SPRINT_MVP.md`. Anything out of scope goes to `docs/BACKLOG.md` (create if needed), not into code.
+2. **Backend: never mark work done without `mvn verify` green.** Use the `regression-guard` subagent. If Docker is down, Testcontainers fails → that's a blocker.
+3. **Frontend: regression runs at day boundaries and pre-commit, NOT after every screen port.** Per-screen, run only that screen's local test + `design-parity-auditor`. Full suite (`npm run lint && npm test && npm run build`) only at end of J8 / J9 / J10 or before commits that touch `frontend/**`. (ADR-018)
+4. **No regressions between iterations on the backend.** Every new module ships with integration tests. Every commit runs the full suite in CI.
+5. **Update `docs/PROGRESS.md` at the end of each session.** What shipped, what's blocked, what's next. This is the session handoff.
+6. **Update `docs/DECISIONS.md` when you choose A over B.** One-paragraph ADR, no ceremony.
+7. **Never modify an applied Flyway migration.** Add a new one.
+8. **Stay in scope.** MVP scope is defined in `SPRINT_MVP.md`. Anything out of scope goes to `docs/BACKLOG.md`, not into code.
+9. **Frontend: do not add a library without defending it in `DECISIONS.md`.** Alternatives considered + why the pick wins for careplus's on-prem + custom-design constraints. (ADR-015/016/017 precedent.)
+10. **Frontend: the `design/prototype/` is the source of truth.** Port verbatim. Do not "improve" during port. Log differences in `docs/FRONTEND_DESIGN_GAPS.md`.
+11. **Parallel-synchronized delivery (ADR-021).** Each J-day owns a backend feature AND the matching frontend screen(s). Frontend pauses if it catches up — never race ahead of backend. Mobile + desktop ship in the same pass per screen, not as separate phases.
+12. **Auth tokens: refresh in HttpOnly cookie, access in memory only (ADR-019).** Never `localStorage`. Never `sessionStorage`.
+13. **Packaging: one process (ADR-020).** Maven builds the Vite bundle and Spring Boot serves it from `src/main/resources/static/`. No Nginx in the cabinet deployment.
 
 ## Tech stack (frozen for MVP)
 
@@ -76,10 +84,12 @@ mvn -q spring-boot:run -Dspring-boot.run.profiles=dev
 
 ## Custom subagents available
 
-- `regression-guard` — runs `mvn verify`, reports baseline. Invoke before commit / end of day / start of session.
-- `backend-module-scaffolder` — scaffolds a new bounded context with all layers + tests. Invoke when starting a new module.
+- `regression-guard` — runs `mvn verify` (and `npm` suite once frontend exists), reports baseline. Invoke before commit / end of day / start of session.
+- `backend-module-scaffolder` — scaffolds a new backend bounded context with all layers + tests. Invoke when starting a new module.
+- `frontend-module-scaffolder` — scaffolds a frontend feature slice (route, page, desktop + mobile variants, hooks, zod schemas, test). Invoke when starting a screen port. Mirrors a prototype file verbatim.
+- `design-parity-auditor` — textual diff of a ported screen against `design/prototype/`. Invoke after each screen port to catch design drift before it compounds.
 
-Both live in `.claude/agents/`.
+All live in `.claude/agents/`. Corresponding slash commands: `/newmodule` (backend), `/newscreen` (frontend), `/regress`, `/commit`, `/ship-day`, `/progress`.
 
 ## Session handoff protocol
 

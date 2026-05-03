@@ -69,13 +69,15 @@ Anything explicitly out of the 7-day MVP goes here. Append-only list of ideas/fe
 - Full-text search patient cross-field (tsvector-powered)
 - Dashboard: activity KPIs, medical KPIs, financial KPIs, waiting time
 
-## Frontend (after backend MVP + design phase)
+## Frontend — moved into MVP scope 2026-04-24
 
-- Angular 17 + PrimeNG implementation of all 6 MVP workflows
-- Generated TypeScript client from OpenAPI spec
-- NgRx Signals state management
+Was "Angular 17 + PrimeNG after backend MVP". Superseded by the hi-fi React prototype delivered from Claude Design (see `design/prototype/` + `design/HANDOFF.md`). Frontend stack changed to **React 18 + Vite + TypeScript** to port the prototype pixel-perfectly. Scope added to `SPRINT_MVP.md` as J8–J10. Remaining post-MVP FE items:
+
+- Generated TypeScript client from OpenAPI spec (nice-to-have; MVP ports screens against hand-rolled fetch hooks first)
+- NgRx Signals / Zustand state management audit (after pilot feedback)
 - PWA offline-light mode (read-only historical data if backend unreachable)
-- Responsive tablet + mobile layouts
+- i18n layer (Arabic RTL)
+- Storybook + Chromatic visual regression (after primitive library stabilises)
 
 ## Packaging & distribution
 
