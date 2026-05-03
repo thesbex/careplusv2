@@ -164,6 +164,26 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 - `GET /api/patients/{patientId}/vaccinations/booklet` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — generates vaccination booklet PDF (Thymeleaf + openhtmltopdf). Header: cabinet info + doctor name. Patient identity block (name, DOB, age, gender). Table: Vaccin | Dose | Date | Lot | Voie / Site | Administré par | Signature (manual). Only ADMINISTERED doses sorted by `administeredAt` ASC. Empty table if no doses. Response: `application/pdf`, `Content-Disposition: inline; filename=carnet-vaccination-<lastName>-<firstName>.pdf`. 404 `PATIENT_NOT_FOUND` if patient unknown.
 
+## stock — Étape 1 schéma + référentiel articles + fournisseurs (2026-05-03) ✅
+
+### Articles — `/api/stock/articles`
+
+- `GET /api/stock/articles` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — paginated list. Query: `category` (MEDICAMENT_INTERNE|DOSSIER_PHYSIQUE|CONSOMMABLE), `supplierId` (UUID), `q` (search label/code), `includeInactive` (default false), `page` (default 0), `size` (default 20). Returns `PageView<StockArticleView>` with `currentQuantity=0` placeholder (computed in Étape 2), `tracksLots` (GENERATED column), `supplierName` (resolved).
+- `GET /api/stock/articles/{id}` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — article detail.
+- `POST /api/stock/articles` — MEDECIN/ADMIN — create article. 409 `CODE_DUPLICATE` if active article with same code exists.
+- `PUT /api/stock/articles/{id}` — MEDECIN/ADMIN — update article. 422 `CATEGORY_LOCKED` if category changes after movements exist.
+- `DELETE /api/stock/articles/{id}` — MEDECIN/ADMIN — soft-delete (active=false).
+
+### Suppliers — `/api/stock/suppliers`
+
+- `GET /api/stock/suppliers` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — list active suppliers (default). `includeInactive=true` to show all.
+- `GET /api/stock/suppliers/{id}` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — supplier detail.
+- `POST /api/stock/suppliers` — MEDECIN/ADMIN — create supplier `{name, phone?}`.
+- `PUT /api/stock/suppliers/{id}` — MEDECIN/ADMIN — update supplier.
+- `DELETE /api/stock/suppliers/{id}` — MEDECIN/ADMIN — soft-delete (active=false).
+
+**Note Étape 1**: movements/lots/alerts endpoints are not yet exposed (Étapes 2/3). `currentQuantity` on `StockArticleView` is always 0 until Étape 2.
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)

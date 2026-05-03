@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Vaccination enfant — module shipped (Étapes 1-6 complets)
+**Phase**: Stock interne — Étape 1 livrée (schéma + référentiel articles + fournisseurs)
 **Last update**: 2026-05-03
-**Build**: Backend — 328/328 mvn verify (43 vaccination ITs : VaccinationCatalogIT 9 + PatientVaccinationIT 12 + VaccinationQueueIT 10 + VaccinationBookletPdfIT 7 + VaccinationQueueDtoContractIT 5). Frontend — 410/418 (8 pré-existants hors scope : 7 SalleAttentePage mobile, 1 DossierPage 8→9 tabs).
-**Next action**: Suivi de grossesse — design dédié post-pilote (séquentiel par décision Q2). Item au backlog `Pregnancy vertical`.
+**Build**: Backend — 338/338 mvn verify (10 nouveaux StockCatalogIT + 328 existants). Frontend — 410/418 (inchangé).
+**Next action**: Stock Étape 2 — `StockMovementService` (recordIn, recordOut, recordAdjustment, FIFO), endpoints `/articles/{id}/movements` POST/GET + `/articles/{id}/lots` GET + `/lots/{id}/inactivate` PUT, IT `StockMovementIT` (12 scénarios).
 
 ### 2026-05-03 — Vaccination Étapes 5 + 6 (worklist + Paramétrage + QA + docs)
 
@@ -39,6 +39,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
 ## Session log
+
+### 2026-05-03 — Stock interne Étape 1 (schéma + référentiel articles + fournisseurs)
+
+**Shipped:**
+- `V024__stock_module.sql` — 4 tables (stock_supplier, stock_article avec GENERATED column tracks_lots, stock_lot, stock_movement) + indexes + triggers touch_updated_at.
+- Domain: `StockSupplier`, `StockArticle`, `StockLot`, `StockMovement` entities; `StockArticleCategory`, `StockLotStatus`, `StockMovementType` enums.
+- Persistence: `StockSupplierRepository`, `StockArticleRepository` (native query avec filtres category/supplierId/q/includeInactive), `StockLotRepository`, `StockMovementRepository`.
+- Application: `StockCatalogService` interface + `StockCatalogServiceImpl` — CRUD articles + suppliers, garde 409 CODE_DUPLICATE, garde 422 CATEGORY_LOCKED, soft-delete via active=false, EntityManager refresh après saveAndFlush pour lire la colonne GENERATED (tracks_lots).
+- Web: `StockSupplierController` + `StockArticleController` (PageView<StockArticleView> paginé, currentQuantity placeholder 0), `StockMapper` (MapStruct), DTOs records.
+- `StockCatalogIT` — 10 scénarios : migration tables, CONSOMMABLE tracks_lots=false, MEDICAMENT_INTERNE tracks_lots=true, CRUD suppliers, RBAC mutations, CODE_DUPLICATE 409, CATEGORY_LOCKED 422, soft-delete filtré, filtre category, supplier deactivate includeInactive.
+
+**Convention exception**: `StockArticleController` injecte directement `StockSupplierRepository` pour résoudre `supplierName` dans `enrich()`. Acceptable en Étape 1 (même module stock) — à refactorer en Étape 2 via une méthode dédiée dans `StockCatalogService`.
+
+**State**: `mvn verify` → BUILD SUCCESS, 338/338 (328 existants + 10 nouveaux).
+**Next action**: Stock Étape 2 — `StockMovementService` + FIFO + endpoints movements/lots + `StockMovementIT` (12 scénarios).
+**Blockers**: none.
 
 ### 2026-05-02 — Vaccination Étape 4 (frontend dossier patient)
 
