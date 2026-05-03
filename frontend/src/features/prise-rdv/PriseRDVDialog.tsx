@@ -5,7 +5,7 @@
  * Radix Dialog wraps the form — provides keyboard navigation, focus trap,
  * Escape to close, and WAI-ARIA roles (ADR-015: Radix for a11y affordances).
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,17 +30,22 @@ export interface PriseRDVDialogProps {
 
 export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [selectedReasonId, setSelectedReasonId] = useState<string | null>('suivi');
+  const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
+
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2, '0');
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const yyyy = today.getFullYear();
 
   const { register, handleSubmit, watch, control } = useForm<RdvFormValues>({
     resolver: zodResolver(rdvFormSchema),
     defaultValues: {
       patientId: null,
-      patientQuery: 'Salma B',
-      date: '24/04/2026',
-      time: '10:30',
+      patientQuery: '',
+      date: `${dd}/${mm}/${yyyy}`,
+      time: '09:00',
       durationMin: 20,
-      reasonId: 'suivi',
+      reasonId: null,
       notes: '',
       sendSms: true,
     },
@@ -50,6 +55,12 @@ export function PriseRDVDialog({ open, onOpenChange }: PriseRDVDialogProps) {
   const { candidates } = usePatientSearch(patientQuery);
   const { reasons } = useReasons();
   const { hintText } = useAvailability(watch('date'));
+
+  useEffect(() => {
+    if (reasons.length > 0 && selectedReasonId === null) {
+      setSelectedReasonId(reasons[0].id);
+    }
+  }, [reasons, selectedReasonId]);
   const { createAppointment, isPending, error } = useCreateAppointment();
 
   async function onSubmit(data: RdvFormValues) {
