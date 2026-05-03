@@ -77,13 +77,24 @@ interface NormalizedPoint {
 
 const PADDING = { top: 10, right: 12, bottom: 22, left: 38 };
 
+/**
+ * Default Y-tick formatter — toFixed(1) puis on retire un ".0" final.
+ * Évite les "21.93333333" qui apparaissaient avec `String(v)` sur des
+ * graduations calculées par interpolation linéaire.
+ */
+function defaultFormatY(v: number): string {
+  if (!Number.isFinite(v)) return '';
+  const s = v.toFixed(1);
+  return s.endsWith('.0') ? s.slice(0, -2) : s;
+}
+
 export function EvolutionChart({
   series,
   unit = '',
   height = 140,
   normalRange,
   yDomain,
-  formatY = (v) => String(v),
+  formatY = defaultFormatY,
   ariaLabel,
 }: EvolutionChartProps) {
   const [hover, setHover] = useState<NormalizedPoint | null>(null);
@@ -232,7 +243,9 @@ export function EvolutionChart({
         preserveAspectRatio="none"
         role="img"
         aria-label={ariaLabel}
-        style={{ width: '100%', height, display: 'block', overflow: 'visible' }}
+        // overflow: hidden — clip les valeurs hors yDomain (ex. T° à 22°C dans
+        // une plage [35,41]) pour ne pas faire fuir la ligne sous la carte.
+        style={{ width: '100%', height, display: 'block', overflow: 'hidden' }}
       >
         {/* plage normale */}
         {normalBand && (
