@@ -215,11 +215,22 @@
   overflow: hidden;
 }
 
+/*
+ * min-height: 0 here is load-bearing for every screen that nests scrollable
+ * content. Flex items default to `min-height: auto` (= as tall as content)
+ * which defeats the parent's overflow: hidden — the inner content expands
+ * past the viewport and forces the user to scroll the Screen shell itself
+ * to reach the first heading. This rule restores the height constraint so
+ * inner panels scroll within their own bounds instead.
+ * Do NOT remove without a matching replacement per-screen.
+ */
 .cp-workspace {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  min-width: 0;
 }
 
 .cp-rightpanel {
