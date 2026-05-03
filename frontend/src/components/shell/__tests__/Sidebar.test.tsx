@@ -1,8 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { Sidebar } from '../Sidebar';
+import { useAuthStore } from '@/lib/auth/authStore';
+
+beforeEach(() => {
+  // Most cases assume a logged-in user with all rights so every nav item
+  // (incl. Paramètres) is visible. Role-based hiding is exercised explicitly
+  // in the dedicated test below.
+  useAuthStore.setState({
+    accessToken: 'test-token',
+    user: {
+      id: 'u-test',
+      email: 'med@careplus.ma',
+      firstName: 'Test',
+      lastName: 'Med',
+      roles: ['MEDECIN', 'ADMIN'],
+    },
+  });
+});
 
 describe('<Sidebar />', () => {
   it('renders all 6 nav items across the two sections', () => {
@@ -53,6 +70,22 @@ describe('<Sidebar />', () => {
     expect(screen.getByText('Cab. Benjelloun · Rabat')).toBeInTheDocument();
     expect(screen.getByText('Dr. K. El Amrani')).toBeInTheDocument();
     expect(screen.getByText('KE')).toBeInTheDocument();
+  });
+
+  it('hides the Paramètres item for SECRETAIRE / ASSISTANT roles', () => {
+    useAuthStore.setState({
+      accessToken: 'test-token',
+      user: {
+        id: 'u-sec',
+        email: 'sec@careplus.ma',
+        firstName: 'Sec',
+        lastName: 'User',
+        roles: ['SECRETAIRE'],
+      },
+    });
+    render(<Sidebar />);
+    expect(screen.queryByRole('button', { name: /Paramètres/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Agenda/ })).toBeInTheDocument();
   });
 
   it('has no a11y violations', async () => {

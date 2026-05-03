@@ -75,7 +75,7 @@ public class SettingsController {
     // ── Clinic settings ───────────────────────────────────────────────────────
 
     @GetMapping("/api/settings/clinic")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ResponseEntity<ClinicSettingsView> getClinic() {
         try {
             ClinicSettingsView v = jdbc.queryForObject(
@@ -138,7 +138,7 @@ public class SettingsController {
     // ── Tier discount ─────────────────────────────────────────────────────────
 
     @GetMapping("/api/settings/tiers")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public List<TierConfigView> listTiers() {
         return jdbc.query(
                 "SELECT id, tier, discount_percent FROM config_patient_tier ORDER BY tier",

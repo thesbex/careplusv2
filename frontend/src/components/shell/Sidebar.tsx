@@ -28,6 +28,8 @@ interface NavItem {
   label: string;
   Icon: IconComponent;
   section: 'flux' | 'config';
+  /** If set, the item is only rendered when the current user holds at least one of these role codes. */
+  requiresRoles?: string[];
 }
 
 const ITEMS: NavItem[] = [
@@ -36,7 +38,7 @@ const ITEMS: NavItem[] = [
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
   { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux' },
-  { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config' },
+  { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
 ];
 
 export interface SidebarProps {
@@ -62,10 +64,14 @@ export function Sidebar({
   user,
   onNavigate,
 }: SidebarProps) {
-  const flux = ITEMS.filter((i) => i.section === 'flux');
-  const config = ITEMS.filter((i) => i.section === 'config');
-
   const sessionUser = useAuthStore((s) => s.user);
+  const userRoles = sessionUser?.roles ?? [];
+
+  const visible = ITEMS.filter(
+    (i) => !i.requiresRoles || i.requiresRoles.some((r) => userRoles.includes(r)),
+  );
+  const flux = visible.filter((i) => i.section === 'flux');
+  const config = visible.filter((i) => i.section === 'config');
   const resolvedUser =
     user ??
     (sessionUser

@@ -105,6 +105,57 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 3. **QA2-1** (DDN obligatoire) — quick win 1h, gain qualité données.
 4. **QA2-2 + QA2-4 + QA2-6** (module documents) — bundle ~3 jours, à faire ensemble car ils partagent le backend `patient_document`.
 
+## QA wave 3 — 2026-04-26 (sécurité + ergonomie patient + RBAC granulaire)
+
+### QA3-1 — Secrétaire ne doit pas avoir accès à `/parametres` — **[BUG]**
+- **État au moment du report** : la route `/parametres` était wrappée par `RequireAuth` seulement (`lib/router/routes.tsx:158`) → toute session valide pouvait y accéder. Le bouton "Paramètres" du Sidebar était également visible pour tous les rôles. Côté backend, `GET /api/settings/clinic` + `GET /api/settings/tiers` autorisaient `SECRETAIRE` et `ASSISTANT` (héritage défensif "lecture pour tous").
+- **Pourquoi le bug existait** : étape 6 du sprint MVP a livré la page Paramétrage **sans** garde de rôle frontend, en supposant que les PUT-seulement protégés au backend (MEDECIN/ADMIN) suffiraient. Mais le QA juge à juste titre que **voir** les tarifs / la liste utilisateurs est déjà une fuite. Pas de privilège minimum sur la lecture.
+- **Fix livré** : (a) nouveau composant `RequireRole` (`lib/auth/RequireAuth.tsx`) qui bounce vers `/agenda` si l'utilisateur n'a pas l'un des rôles requis · (b) route `/parametres` wrappée en `RequireRole roles={['ADMIN','MEDECIN']}` · (c) Sidebar filtre l'item Paramètres si aucun rôle ne match · (d) backend `SettingsController` GET clinic + GET tiers durcis à `MEDECIN/ADMIN` seulement (les seuls consommateurs sont déjà la page Paramétrage).
+- **Leçon** : "lecture autorisée pour tous" n'est pas un défaut sûr. Pour chaque GET, se poser la question "ce rôle a-t-il un usage légitime de cette donnée ?" — sinon, on durcit. Privilege minimum côté backend, garde de route côté frontend, **les deux**.
+
+### QA3-2 — Formulaire patient : 2 onglets Personnel / Médical — **[CHANGE]**
+- **Demande** : dans `PatientsListPage` panneau "Nouveau patient" + dossier patient édition, séparer en 2 onglets :
+  - **Personnel** : prénom/nom, sexe, DDN, CIN, téléphone, email, ville, statut marital, profession, nb enfants, mutuelle, tier (Premium/Normal).
+  - **Médical** : groupe sanguin, allergies, antécédents, notes médicales générales.
+- **Pourquoi c'est un CHANGE et pas un BUG** : le formulaire actuel mélange tout dans un panneau scrollable de ~440px. C'est fonctionnel mais long. La séparation est une amélioration ergo, pas un défaut bloquant.
+- **Scope estimé** : Radix Tabs sur le panneau ; reuse Field/Input/Textarea ; les sections existantes deviennent des `Tabs.Content`. Aucun changement backend ni schéma. ~3h.
+- **Note implémentation** : profiter du refactor pour aligner avec `DossierPage` (lecture) qui a déjà des sections logiques équivalentes. Faire les 2 d'un coup.
+
+### QA3-3 — RBAC granulaire (matrice rôle × fonctionnalité éditable) — **[CHANGE / BIG FEATURE]**
+- **Demande** : l'admin/médecin doit pouvoir cocher/décocher pour chaque rôle (`SECRETAIRE`/`ASSISTANT`/etc.) l'accès à chaque fonctionnalité :
+  - Création/modification patient
+  - Consultation du planning (lecture agenda)
+  - Création de rendez-vous
+  - Démarrer une consultation (prise de constantes)
+  - Déclarer arrivée patient
+  - Consulter détails patient (lecture dossier)
+  - Accéder au module facturation
+  - … et toute autre fonctionnalité futurement ajoutée.
+- **État actuel** : RBAC **codé en dur** au niveau Spring `@PreAuthorize("hasRole(...)")` × ~50 endpoints. Toute customisation = recompilation.
+- **Pourquoi c'est un CHANGE majeur** : transforme careplus d'un système à 4 rôles fixes vers un système à **permissions atomiques** (~30+ permissions) + **rôles = ensembles de permissions modifiables**. C'est une refonte du modèle d'autorisation, pas un fix.
+- **Scope estimé (≥1 sprint complet)** :
+  - **Backend** :
+    - Nouvelle table `identity_permission` (`code`, `label_fr`, `category`) seedée avec ~30 codes (`PATIENT_CREATE`, `PATIENT_READ`, `APPOINTMENT_CREATE`, `VITALS_RECORD`, `INVOICE_READ`, `INVOICE_ISSUE`, `SETTINGS_READ`, etc.).
+    - Nouvelle table `identity_role_permission` (n-n) — initialement seedée avec les défauts qui reproduisent l'autorisation actuelle.
+    - Nouvel endpoint `GET/PUT /api/admin/roles/:code/permissions` (ADMIN-only).
+    - Réécriture du `@PreAuthorize` : remplacer `hasRole('MEDECIN')` par `hasAuthority('PERM_INVOICE_READ')`, et alimenter `Authentication.getAuthorities()` depuis la table de jointure au login (au lieu des codes de rôle).
+    - Migration : à chaque endpoint, mapper `hasRole(X)` → `hasAuthority(PERM_Y)`. Audit checklist sur les ~50 endpoints.
+  - **Frontend** :
+    - Nouvelle table de matrice dans `ParametragePage` (5e onglet "Droits d'accès") : lignes = permissions groupées par catégorie, colonnes = rôles, cases à cocher.
+    - `useAuthStore` étend `AuthUser` avec `permissions: string[]` (vient du `/users/me`).
+    - Composant `RequirePermission` (en plus de `RequireRole`) pour cacher des CTAs ("Nouveau RDV", "Encaisser facture", etc.) si la permission manque.
+- **Risques** :
+  - Régression sécurité au moment de la migration "rôles → permissions" (il suffit qu'un mapping soit oublié et un endpoint devient ouvert).
+  - **Tester chaque endpoint** avec une matrice complète SECRETAIRE/ASSISTANT/MEDECIN/ADMIN avant et après — comparer les 200/403 expected.
+  - Chargement perf : penser au cache des permissions par rôle (Redis ou cache local Spring).
+- **Compromis MVP-bis possible** : avant la refonte complète, un **switch global "ASSISTANT lit dossier ?"** + 3-4 toggles fréquemment demandés peuvent faire patience. Mais la demande QA est explicite "ensemble des fonctionnalités" → refonte complète à terme.
+- **Estimation** : 6-8 jours dev + 2 jours tests régression de sécurité.
+
+### Priorisation QA3
+1. **QA3-1** — déjà livré ce sprint (ligne au-dessus).
+2. **QA3-2** — quick-win 3h, à inclure dans le bundle "documents patient" (QA2-2/4/6) car ce panneau sera de toute façon refactoré pour ajouter les zones d'upload photo + CIN.
+3. **QA3-3** — sprint dédié post-pilote. Pas de raison de retarder le pilote pour une refonte RBAC ; les 4 rôles actuels couvrent 95% des cas. Marquer pour v0.3.0.
+
 ## Clinical
 
 - Consultation amendment (v2, v3… chain) with full audit trace

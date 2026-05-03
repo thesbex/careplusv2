@@ -13,7 +13,7 @@ import FacturationPage from '@/features/facturation/FacturationPage';
 import ApercuFacturePage from '@/features/facturation/ApercuFacturePage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import ParametragePage from '@/features/parametres/ParametragePage';
-import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
+import { RequireAuth, RequireRole, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
  * careplus route tree.
@@ -157,9 +157,9 @@ export const router = createBrowserRouter(
     {
       path: '/parametres',
       element: (
-        <RequireAuth>
+        <RequireRole roles={['ADMIN', 'MEDECIN']}>
           <ParametragePage />
-        </RequireAuth>
+        </RequireRole>
       ),
     },
     { path: '*', element: <Navigate to="/login" replace /> },
