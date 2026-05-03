@@ -58,8 +58,9 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
+  vaccinations: '/vaccinations',
   catalogue: '/catalogue',
-          params: '/parametres',
+  params: '/parametres',
 } as const;
 
 export default function CataloguePage() {

@@ -230,8 +230,9 @@ export default function AgendaPage() {
             salle: '/salle',
             consult: '/consultations',
             factu: '/facturation',
+            vaccinations: '/vaccinations',
             catalogue: '/catalogue',
-          params: '/parametres',
+            params: '/parametres',
           } as const;
           navigate(map[id]);
         }}

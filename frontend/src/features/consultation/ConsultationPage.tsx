@@ -179,8 +179,9 @@ export default function ConsultationPage() {
     salle: '/salle',
     consult: '/consultations',
     factu: '/facturation',
+    vaccinations: '/vaccinations',
     catalogue: '/catalogue',
-          params: '/parametres',
+    params: '/parametres',
   } as const);
 
   const startedLabel = consultation
