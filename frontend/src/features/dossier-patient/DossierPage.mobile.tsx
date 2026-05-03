@@ -19,6 +19,7 @@ import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/typ
 import { usePatient } from './hooks/usePatient';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { EditPatientMobileSheet } from './components/EditPatientMobileSheet';
+import { VaccinationCalendarTabMobile } from '@/features/vaccination/components/VaccinationCalendarTab.mobile';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
@@ -252,7 +253,7 @@ export default function DossierMobilePage() {
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {(['historique', 'consults', 'vitals', 'rx', 'factu', 'admin'] as MobileDossierTab[]).map(
+          {(['historique', 'consults', 'vitals', 'rx', 'vaccination', 'factu', 'admin'] as MobileDossierTab[]).map(
             (t) => {
               const label =
                 t === 'historique'
@@ -263,6 +264,8 @@ export default function DossierMobilePage() {
                   ? 'Constantes'
                   : t === 'rx'
                   ? `Ordo. (${patientPrescriptions.length})`
+                  : t === 'vaccination'
+                  ? 'Vaccination'
                   : t === 'factu'
                   ? `Factures (${patientInvoices.length})`
                   : 'Admin.';
@@ -540,6 +543,10 @@ export default function DossierMobilePage() {
               </div>
             )}
           </>
+        )}
+
+        {tab === 'vaccination' && raw && (
+          <VaccinationCalendarTabMobile patientId={raw.id} />
         )}
 
         {tab === 'admin' && (

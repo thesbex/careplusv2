@@ -18,6 +18,7 @@ const TABS: Tab[] = [
   { id: 'consults', label: 'Consultations', count: 14 },
   { id: 'vitals', label: 'Constantes' },
   { id: 'prescr', label: 'Prescriptions', count: 22 },
+  { id: 'vaccination', label: 'Vaccination' },
   { id: 'analyses', label: 'Analyses', count: 9 },
   { id: 'imagerie', label: 'Imagerie', count: 3 },
   { id: 'docs', label: 'Documents', count: 7 },
