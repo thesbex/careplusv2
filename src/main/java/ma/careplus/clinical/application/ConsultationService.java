@@ -6,6 +6,7 @@ import ma.careplus.clinical.domain.Consultation;
 import ma.careplus.clinical.domain.ConsultationSigneeEvent;
 import ma.careplus.clinical.domain.ConsultationStatus;
 import ma.careplus.clinical.infrastructure.persistence.ConsultationRepository;
+import ma.careplus.clinical.infrastructure.persistence.VitalSignsRepository;
 import ma.careplus.clinical.infrastructure.web.dto.CreateConsultationRequest;
 import ma.careplus.clinical.infrastructure.web.dto.FollowUpRequest;
 import ma.careplus.clinical.infrastructure.web.dto.UpdateConsultationRequest;
@@ -37,15 +38,18 @@ public class ConsultationService {
 
     private final ConsultationRepository consultationRepository;
     private final AppointmentRepository appointmentRepository;
+    private final VitalSignsRepository vitalSignsRepository;
     private final SchedulingService schedulingService;
     private final ApplicationEventPublisher events;
 
     public ConsultationService(ConsultationRepository consultationRepository,
                                AppointmentRepository appointmentRepository,
+                               VitalSignsRepository vitalSignsRepository,
                                SchedulingService schedulingService,
                                ApplicationEventPublisher events) {
         this.consultationRepository = consultationRepository;
         this.appointmentRepository = appointmentRepository;
+        this.vitalSignsRepository = vitalSignsRepository;
         this.schedulingService = schedulingService;
         this.events = events;
     }
@@ -68,7 +72,16 @@ public class ConsultationService {
                 }
             });
         }
-        return consultationRepository.save(c);
+        Consultation saved = consultationRepository.save(c);
+
+        // Bug 2026-05-02 : les constantes prises en salle d'attente sont
+        // enregistrées avec appointmentId mais consultationId NULL ; l'écran
+        // consultation filtre par consultationId et ne les voit pas. On les
+        // rattache rétroactivement à la consultation qui vient de naître.
+        if (req.appointmentId() != null) {
+            vitalSignsRepository.linkUnlinkedToConsultation(req.appointmentId(), saved.getId());
+        }
+        return saved;
     }
 
     @Transactional(readOnly = true)

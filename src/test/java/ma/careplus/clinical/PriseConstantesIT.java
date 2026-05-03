@@ -484,4 +484,116 @@ class PriseConstantesIT {
 
         assertThat(dbStatus()).isEqualTo("CONSTANTES_PRISES");
     }
+
+    /**
+     * Scénario 13 — Bug 2026-05-02 : constantes saisies en salle d'attente
+     * invisibles depuis l'écran consultation.
+     *
+     * Reproduction exacte : la secrétaire enregistre les constantes pour le RDV
+     * (POST /vitals → vital_signs.appointment_id rempli, consultation_id NULL).
+     * Le médecin clique « Envoyer en consultation » (POST /consultations avec
+     * appointmentId). Avant le fix, le hook frontend useLatestVitals filtrait
+     * par consultation_id === currentConsultationId → 0 match → écran vide.
+     *
+     * REGRESSION GUARD : après POST /consultations, la ligne vital_signs doit
+     * porter consultation_id = id de la nouvelle consultation, ET le GET
+     * /patients/{id}/vitals doit la sérialiser correctement (le hook s'appuie
+     * sur ce champ pour décider si la consultation a déjà des constantes).
+     */
+    @Test
+    @DisplayName("Constantes en salle d'attente liées à la nouvelle consultation : "
+            + "POST /consultations rattache les vitals existants par appointmentId")
+    void startConsultation_linksExistingVitalsByAppointment() throws Exception {
+        // Étape 1 — secrétaire prend les constantes en salle d'attente
+        checkIn(); // PLANIFIE → ARRIVE
+        mockMvc.perform(post("/api/appointments/" + appointmentId + "/vitals")
+                        .header("Authorization", secBearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightKg\":72,\"temperatureC\":37.1,\"heightCm\":172}"))
+                .andExpect(status().isCreated());
+
+        // Avant le démarrage de la consultation, consultation_id doit être NULL
+        Integer unlinkedBefore = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_vital_signs "
+                + "WHERE appointment_id = ? AND consultation_id IS NULL",
+                Integer.class, appointmentId);
+        assertThat(unlinkedBefore)
+                .as("Avant POST /consultations les vitals sont orphelines (consultation_id NULL)")
+                .isEqualTo(1);
+
+        // Étape 2 — médecin démarre la consultation depuis la salle d'attente
+        MvcResult started = mockMvc.perform(post("/api/consultations")
+                        .header("Authorization", medBearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "patientId": "%s",
+                                  "appointmentId": "%s",
+                                  "motif": "Contrôle"
+                                }
+                                """.formatted(patientId, appointmentId)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        UUID consultationId = UUID.fromString(objectMapper
+                .readTree(started.getResponse().getContentAsString())
+                .get("id").asText());
+
+        // Étape 3 — DB : la ligne vital_signs porte maintenant la consultation_id
+        UUID linkedConsultationId = jdbc.queryForObject(
+                "SELECT consultation_id FROM clinical_vital_signs WHERE appointment_id = ?",
+                UUID.class, appointmentId);
+        assertThat(linkedConsultationId)
+                .as("Les vitals doivent être rétroactivement liées à la nouvelle consultation")
+                .isEqualTo(consultationId);
+
+        // Étape 4 — API : GET /patients/{id}/vitals expose le consultationId,
+        // que le hook frontend utilise pour filtrer la mesure de la consultation.
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/patients/" + patientId + "/vitals")
+                        .header("Authorization", medBearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].consultationId").value(consultationId.toString()))
+                .andExpect(jsonPath("$[0].appointmentId").value(appointmentId.toString()))
+                .andExpect(jsonPath("$[0].weightKg").value(72));
+    }
+
+    /**
+     * Scénario 14 — Garde de la liaison : si une consultation est démarrée
+     * sans appointment (consultation ad-hoc depuis le dossier), aucune ligne
+     * vital_signs ne doit être rattachée par erreur (rien à rattacher). Le
+     * fix ne doit pas créer d'effet de bord sur des consultations sans RDV.
+     */
+    @Test
+    @DisplayName("Consultation sans appointmentId : aucun rattachement de vitals (no-op)")
+    void startConsultationWithoutAppointment_isNoOp() throws Exception {
+        // On crée une vital orpheline sur un autre RDV, qui ne doit pas être touchée
+        checkIn();
+        mockMvc.perform(post("/api/appointments/" + appointmentId + "/vitals")
+                        .header("Authorization", asstBearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightKg\":68}"))
+                .andExpect(status().isCreated());
+
+        // Consultation ad-hoc sans appointmentId
+        mockMvc.perform(post("/api/consultations")
+                        .header("Authorization", medBearer())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "patientId": "%s",
+                                  "motif": "Consultation ad-hoc"
+                                }
+                                """.formatted(patientId)))
+                .andExpect(status().isCreated());
+
+        // La ligne vital_signs du RDV en salle d'attente ne doit PAS avoir été
+        // accidentellement rattachée à la consultation ad-hoc.
+        Integer stillUnlinked = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_vital_signs "
+                + "WHERE appointment_id = ? AND consultation_id IS NULL",
+                Integer.class, appointmentId);
+        assertThat(stillUnlinked)
+                .as("Une consultation ad-hoc sans appointmentId ne doit pas rattacher les vitals d'un autre RDV")
+                .isEqualTo(1);
+    }
 }
