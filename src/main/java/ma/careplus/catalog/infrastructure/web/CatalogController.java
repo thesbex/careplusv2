@@ -145,7 +145,7 @@ public class CatalogController {
     @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ResponseEntity<LabTestView> createLabTest(@Valid @RequestBody LabTestWriteRequest req) {
         Integer existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ?",
+                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ? AND active = TRUE",
                 Integer.class, req.code());
         if (existing != null && existing > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -167,7 +167,7 @@ public class CatalogController {
         // Le code est la clé naturelle UNIQUE — un PUT qui le change vers
         // un code déjà pris doit retourner 409, pas 500.
         Integer conflict = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ? AND id <> ?",
+                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ? AND id <> ? AND active = TRUE",
                 Integer.class, req.code(), id);
         if (conflict != null && conflict > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -198,7 +198,7 @@ public class CatalogController {
     public ResponseEntity<ImagingExamView> createImagingExam(
             @Valid @RequestBody ImagingExamWriteRequest req) {
         Integer existing = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ?",
+                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ? AND active = TRUE",
                 Integer.class, req.code());
         if (existing != null && existing > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -218,7 +218,7 @@ public class CatalogController {
             @PathVariable UUID id,
             @Valid @RequestBody ImagingExamWriteRequest req) {
         Integer conflict = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ? AND id <> ?",
+                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ? AND id <> ? AND active = TRUE",
                 Integer.class, req.code(), id);
         if (conflict != null && conflict > 0) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
