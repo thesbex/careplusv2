@@ -16,6 +16,8 @@ import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import type { PrescriptionType } from '@/features/prescription/types';
+import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
+import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
@@ -51,7 +53,7 @@ function apiFromForm(v: ConsultationFormValues) {
 const SECTIONS: { key: keyof ConsultationFormValues; letter: string; title: string }[] = [
   { key: 'subjectif', letter: 'S', title: 'Subjectif' },
   { key: 'objectif', letter: 'O', title: 'Objectif' },
-  { key: 'analyse', letter: 'A', title: 'Analyse' },
+  { key: 'analyse', letter: 'A', title: 'Appréciation' },
   { key: 'plan', letter: 'P', title: 'Plan' },
 ];
 
@@ -64,6 +66,8 @@ export default function ConsultationMobilePage() {
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
+  const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
+  const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -122,8 +126,11 @@ export default function ConsultationMobilePage() {
     }
     const ok = await sign();
     if (ok) {
-      toast.success('Consultation signée.');
-      void navigate('/salle');
+      toast.success('Consultation signée. Détail de la facturation ouvert.');
+      // Parité desktop : ouvrir le drawer facture (édition lignes / remise /
+      // émission) au lieu de rediriger directement. Le brouillon est créé en
+      // AFTER_COMMIT — useInvoiceByConsultation poll jusqu'à apparition.
+      setPostSignDialogOpen(true);
     }
   }
 
@@ -384,6 +391,41 @@ export default function ConsultationMobilePage() {
             toast.success('Ordonnance créée.');
           }}
         />
+      )}
+      <InvoiceDrawer
+        invoice={invoice}
+        open={postSignDialogOpen && !!invoice}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPostSignDialogOpen(false);
+            void navigate('/facturation');
+          }
+        }}
+      />
+      {postSignDialogOpen && !invoice && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 'var(--r-md)',
+              padding: 20,
+              fontSize: 13,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}
+          >
+            Génération du brouillon de facture en cours…
+          </div>
+        </div>
       )}
     </MScreen>
   );

@@ -12,6 +12,7 @@ import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronRight } from '@/components/icons';
 import { useInvoices } from './hooks/useInvoices';
 import { InvoiceDrawer } from './InvoiceDrawer';
+import { CaisseTodayPanel } from '../caisse/CaisseTodayPanel';
 import { STATUS_LABEL, type InvoiceApi, type InvoiceStatus } from './types';
 import './facturation.css';
 
@@ -72,6 +73,7 @@ export default function FacturationMobilePage() {
       onTabChange={(t) => navigate(TAB_MAP[t])}
     >
       <div className="mb-pad">
+        <CaisseTodayPanel />
         <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 12 }}>
           {invoices.length} facture{invoices.length > 1 ? 's' : ''}
         </div>
