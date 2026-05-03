@@ -53,11 +53,18 @@ export default function SalleAttentePage() {
     }
   }
 
+  const todayLabel = new Date().toLocaleDateString('fr-MA', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
   return (
     <Screen
       active="salle"
       title="Salle d'attente"
-      sub={`${queue.length} patient${queue.length > 1 ? 's' : ''} présent${queue.length > 1 ? 's' : ''}`}
+      sub={`${todayLabel} · ${queue.length} patient${queue.length > 1 ? 's' : ''} présent${queue.length > 1 ? 's' : ''}`}
       topbarRight={
         <>
           <Button onClick={() => window.print()}>
