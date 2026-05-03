@@ -12,7 +12,9 @@ import ma.careplus.clinical.infrastructure.web.dto.UpdateConsultationRequest;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentStatus;
 import ma.careplus.scheduling.domain.AppointmentType;
+import ma.careplus.scheduling.application.SchedulingService;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
+import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
 import java.time.ZoneId;
@@ -35,13 +37,16 @@ public class ConsultationService {
 
     private final ConsultationRepository consultationRepository;
     private final AppointmentRepository appointmentRepository;
+    private final SchedulingService schedulingService;
     private final ApplicationEventPublisher events;
 
     public ConsultationService(ConsultationRepository consultationRepository,
                                AppointmentRepository appointmentRepository,
+                               SchedulingService schedulingService,
                                ApplicationEventPublisher events) {
         this.consultationRepository = consultationRepository;
         this.appointmentRepository = appointmentRepository;
+        this.schedulingService = schedulingService;
         this.events = events;
     }
 
@@ -173,35 +178,33 @@ public class ConsultationService {
     /**
      * Schedules a follow-up (CONTROLE) appointment linked to a signed consultation.
      * MEDECIN only — enforcement is at the controller layer via @PreAuthorize.
-     * TODO(post-MVP:events): replace direct AppointmentRepository write with a
-     *   ScheduleFollowUpRequestedEvent consumed by the scheduling module.
+     *
+     * Délègue à {@link SchedulingService#create} pour bénéficier des trois guards
+     * (jour férié, congé du praticien, conflit de créneau) + résolution de durée
+     * via reasonId. Ne JAMAIS court-circuiter par un appointmentRepository.save()
+     * direct — voir QA wave 6 (BUG #2/3/4 du 2026-05-02).
      */
     public Appointment scheduleFollowUp(UUID consultationId, FollowUpRequest req, UUID practitionerId) {
         Consultation c = get(consultationId);
 
-        // Resolve practitionerId from the linked appointment if not passed
-        UUID docId = practitionerId;
-        if (c.getAppointmentId() != null) {
-            appointmentRepository.findById(c.getAppointmentId()).ifPresent(a -> {
-                // intentionally not overriding docId — it comes from the authenticated user
-            });
-        }
-
         OffsetDateTime startAt = req.date().atTime(req.time())
                 .atZone(ZoneId.of("Africa/Casablanca"))
                 .toOffsetDateTime();
-        OffsetDateTime endAt = startAt.plusMinutes(30); // default 30-min follow-up
 
-        Appointment followUp = new Appointment();
-        followUp.setPatientId(c.getPatientId());
-        followUp.setPractitionerId(docId);
-        followUp.setReasonId(req.reasonId());
-        followUp.setStartAt(startAt);
-        followUp.setEndAt(endAt);
-        followUp.setStatus(AppointmentStatus.PLANIFIE);
+        CreateAppointmentRequest createReq = new CreateAppointmentRequest(
+                c.getPatientId(),
+                practitionerId,
+                req.reasonId(),
+                startAt,
+                null,    // durationMinutes — laisser SchedulingService résoudre via reasonId
+                false,   // walkIn
+                false,   // urgency
+                null);   // notes
+
+        Appointment followUp = schedulingService.create(createReq);
         followUp.setType(AppointmentType.CONTROLE);
         followUp.setOriginConsultationId(consultationId);
-
-        return appointmentRepository.save(followUp);
+        // JPA dirty tracking flushe au commit du @Transactional ambiant
+        return followUp;
     }
 }

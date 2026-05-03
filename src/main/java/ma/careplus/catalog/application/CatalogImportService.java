@@ -129,10 +129,12 @@ public class CatalogImportService {
                 name, cat, active, code);
         if (updated > 0) return UPDATED;
 
+        // ON CONFLICT cible désormais le partial unique index (V021) — predicate
+        // explicite sinon Postgres ne peut pas inférer l'index sur lequel arbitrer.
         jdbc.update(
                 "INSERT INTO catalog_lab_test (id, code, name, category, active) "
                 + "VALUES (?, ?, ?, ?, ?) "
-                + "ON CONFLICT (code) DO UPDATE SET "
+                + "ON CONFLICT (code) WHERE active = TRUE DO UPDATE SET "
                 + "  name = EXCLUDED.name, category = EXCLUDED.category, "
                 + "  active = EXCLUDED.active, updated_at = now()",
                 UUID.randomUUID(), code, name, cat, active);
@@ -154,7 +156,7 @@ public class CatalogImportService {
         jdbc.update(
                 "INSERT INTO catalog_imaging_exam (id, code, name, modality, active) "
                 + "VALUES (?, ?, ?, ?, ?) "
-                + "ON CONFLICT (code) DO UPDATE SET "
+                + "ON CONFLICT (code) WHERE active = TRUE DO UPDATE SET "
                 + "  name = EXCLUDED.name, modality = EXCLUDED.modality, "
                 + "  active = EXCLUDED.active, updated_at = now()",
                 UUID.randomUUID(), code, name, mod, active);
