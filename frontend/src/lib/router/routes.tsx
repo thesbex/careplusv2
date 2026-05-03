@@ -3,6 +3,7 @@ import LoginPage from '@/features/login/LoginPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
+import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
  * careplus route tree.
@@ -32,45 +33,69 @@ const future = {
 
 export const router = createBrowserRouter(
   [
-  { path: '/', element: <Navigate to="/login" replace /> },
-  { path: '/login', element: <LoginPage /> },
-  { path: '/onboarding', element: <OnboardingPage /> },
-  { path: '/agenda', element: <AgendaRoute /> },
-  {
-    path: '/patients',
-    element: (
-      <Placeholder active="patients" mobileTab="patients" title="Patients" sprintDay="J3" />
-    ),
-  },
-  {
-    path: '/salle',
-    element: (
-      <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />
-    ),
-  },
-  {
-    path: '/consultations',
-    element: (
-      <Placeholder
-        active="consult"
-        mobileTab="patients"
-        title="Consultations"
-        sprintDay="J5"
-      />
-    ),
-  },
-  {
-    path: '/facturation',
-    element: (
-      <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />
-    ),
-  },
-  {
-    path: '/parametres',
-    element: (
-      <Placeholder active="params" mobileTab="menu" title="Paramètres" sprintDay="J8" />
-    ),
-  },
+    { path: '/', element: <Navigate to="/login" replace /> },
+    {
+      path: '/login',
+      element: (
+        <GuestOnly>
+          <LoginPage />
+        </GuestOnly>
+      ),
+    },
+    { path: '/onboarding', element: <OnboardingPage /> },
+    {
+      path: '/agenda',
+      element: (
+        <RequireAuth>
+          <AgendaRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/patients',
+      element: (
+        <RequireAuth>
+          <Placeholder active="patients" mobileTab="patients" title="Patients" sprintDay="J3" />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/salle',
+      element: (
+        <RequireAuth>
+          <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/consultations',
+      element: (
+        <RequireAuth>
+          <Placeholder
+            active="consult"
+            mobileTab="patients"
+            title="Consultations"
+            sprintDay="J5"
+          />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/facturation',
+      element: (
+        <RequireAuth>
+          <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/parametres',
+      element: (
+        <RequireAuth>
+          <Placeholder active="params" mobileTab="menu" title="Paramètres" sprintDay="J8" />
+        </RequireAuth>
+      ),
+    },
     { path: '*', element: <Navigate to="/login" replace /> },
   ],
   { future },
