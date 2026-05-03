@@ -412,6 +412,7 @@ export default function ConsultationPage() {
           consultationId={consultation.id}
           appointmentId={consultation.appointmentId}
           patientId={consultation.patientId}
+          current={vitals}
         />
       )}
       {consultation && rxOpen && (

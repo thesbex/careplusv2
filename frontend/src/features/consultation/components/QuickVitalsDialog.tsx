@@ -5,7 +5,7 @@
  *
  * POST /appointments/{id}/vitals — même endpoint que l'écran complet.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -20,6 +20,14 @@ interface QuickVitalsDialogProps {
   consultationId: string;
   appointmentId: string | null;
   patientId: string | undefined;
+  /**
+   * Dernières constantes connues (lues depuis la consultation parent).
+   * Si fourni, le formulaire est pré-rempli à l'ouverture avec ces valeurs :
+   * "Mettre à jour" en ne touchant qu'un seul champ ne doit pas effacer les
+   * autres. La saisie strictement vidée d'un champ par l'utilisateur sera,
+   * elle, transmise comme `null` au backend.
+   */
+  current?: VitalsApi | null;
 }
 
 interface FormState {
@@ -48,12 +56,37 @@ function toNumOrNull(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Affiche les nombres en notation française (virgule décimale). */
+function fromNum(v: number | null | undefined): string {
+  if (v == null) return '';
+  return String(v).replace('.', ',');
+}
+
+function fromCurrent(c: VitalsApi | null | undefined): FormState {
+  if (!c) return EMPTY;
+  return {
+    systolicMmhg: fromNum(c.systolicMmhg),
+    diastolicMmhg: fromNum(c.diastolicMmhg),
+    heartRateBpm: fromNum(c.heartRateBpm),
+    spo2Percent: fromNum(c.spo2Percent),
+    temperatureC: fromNum(c.temperatureC),
+    weightKg: fromNum(c.weightKg),
+    heightCm: fromNum(c.heightCm),
+  };
+}
+
 export function QuickVitalsDialog({
-  open, onOpenChange, consultationId, appointmentId, patientId,
+  open, onOpenChange, consultationId, appointmentId, patientId, current,
 }: QuickVitalsDialogProps) {
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const [form, setForm] = useState<FormState>(() => fromCurrent(current));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+
+  // Re-hydrate à chaque ouverture : si le médecin ferme puis rouvre, il doit
+  // retrouver les valeurs courantes (potentiellement mises à jour entre-temps).
+  useEffect(() => {
+    if (open) setForm(fromCurrent(current));
+  }, [open, current]);
 
   function field<K extends keyof FormState>(k: K) {
     return {
