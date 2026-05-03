@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Sidebar, type SidebarScreen, type SidebarProps } from './Sidebar';
 import { Topbar, type TopbarProps } from './Topbar';
 import { PatientSearchSpotlight } from './PatientSearchSpotlight';
+import { useSalleBadgeCount } from './useSalleBadgeCount';
 import '@/styles/shell.css';
 
 export interface ScreenProps {
@@ -47,9 +48,16 @@ export function Screen({
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Salle d'attente badge — souscrit à /api/queue (cache partagé avec
+  // useQueue, refetch 15 s). On ne tape pas le réseau si l'appelant a
+  // déjà passé un `counts` explicite (override total).
+  const liveSalle = useSalleBadgeCount(counts === undefined);
+  const resolvedCounts: SidebarProps['counts'] =
+    counts ?? (liveSalle !== undefined ? { salle: liveSalle } : undefined);
+
   const sidebarProps: SidebarProps = {
     active,
-    ...(counts !== undefined ? { counts } : {}),
+    ...(resolvedCounts !== undefined ? { counts: resolvedCounts } : {}),
     ...(onNavigate !== undefined ? { onNavigate } : {}),
   };
   return (

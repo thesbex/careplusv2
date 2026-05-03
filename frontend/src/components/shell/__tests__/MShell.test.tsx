@@ -2,9 +2,18 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { MTopbar, MIconBtn } from '../MTopbar';
 import { MTabs } from '../MTabs';
 import { MScreen } from '../MScreen';
+
+// MScreen souscrit à useQueue() pour alimenter le badge live de la Salle
+// quand l'appelant n'override pas `badges`. Wrap les renders concernés.
+function withClient(ui: ReactNode) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>;
+}
 
 describe('<MTopbar />', () => {
   it('renders brand when brand prop is true', () => {
@@ -59,9 +68,11 @@ describe('<MTabs />', () => {
 describe('<MScreen />', () => {
   it('renders topbar + body + tabs by default', () => {
     const { container } = render(
-      <MScreen topbar={<MTopbar brand />}>
-        <div data-testid="content">Hello</div>
-      </MScreen>,
+      withClient(
+        <MScreen topbar={<MTopbar brand />}>
+          <div data-testid="content">Hello</div>
+        </MScreen>,
+      ),
     );
     expect(container.querySelector('.mt-brand-name')).toHaveTextContent('careplus');
     expect(screen.getByTestId('content')).toBeInTheDocument();
@@ -70,28 +81,48 @@ describe('<MScreen />', () => {
 
   it('omits the bottom tabs when noTabs is passed', () => {
     render(
-      <MScreen noTabs topbar={<MTopbar title="x" />}>
-        <div>content</div>
-      </MScreen>,
+      withClient(
+        <MScreen noTabs topbar={<MTopbar title="x" />}>
+          <div>content</div>
+        </MScreen>,
+      ),
     );
     expect(screen.queryByRole('navigation', { name: 'Navigation mobile' })).not.toBeInTheDocument();
   });
 
   it('renders the FAB when provided', () => {
     render(
-      <MScreen topbar={<MTopbar title="x" />} fab={<button data-testid="fab">+</button>}>
-        <div>content</div>
-      </MScreen>,
+      withClient(
+        <MScreen topbar={<MTopbar title="x" />} fab={<button data-testid="fab">+</button>}>
+          <div>content</div>
+        </MScreen>,
+      ),
     );
     expect(screen.getByTestId('fab')).toBeInTheDocument();
   });
 
   it('has no a11y violations', async () => {
     const { container } = render(
-      <MScreen topbar={<MTopbar brand title="careplus" />}>
-        <div className="mb-pad">content</div>
-      </MScreen>,
+      withClient(
+        <MScreen topbar={<MTopbar brand title="careplus" />}>
+          <div className="mb-pad">content</div>
+        </MScreen>,
+      ),
     );
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('does not render the salle badge when the queue is empty', () => {
+    // Avant 2026-05-01, MScreen avait `badges = { salle: 3 }` par défaut, donc
+    // un faux "3" s'affichait sur l'onglet Salle de toutes les pages mobile.
+    // Avec la subscription live, sans /queue répondu c'est `undefined`.
+    render(
+      withClient(
+        <MScreen topbar={<MTopbar brand />}>
+          <div>content</div>
+        </MScreen>,
+      ),
+    );
+    expect(screen.queryByLabelText(/notification/)).not.toBeInTheDocument();
   });
 });

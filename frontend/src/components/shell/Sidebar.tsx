@@ -64,11 +64,16 @@ const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE'];
 
 export function Sidebar({
   active = 'agenda',
-  counts = { salle: 3 },
+  counts,
   cabinet = { name: 'careplus', city: 'Cab. El Amrani · Casablanca' },
   user,
   onNavigate,
 }: SidebarProps) {
+  // Sans `counts` explicite on n'affiche aucun badge — c'est <Screen> qui
+  // souscrit à useQueue() et nous passe la valeur live. Avant 2026-05-01,
+  // ce default était `{ salle: 3 }` (relique du portage prototype) et toutes
+  // les pages affichaient un faux badge "3" sur la Salle d'attente.
+  const safeCounts = counts ?? {};
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -113,7 +118,7 @@ export function Sidebar({
           key={it.id}
           item={it}
           active={active === it.id}
-          badge={it.id === 'salle' ? counts.salle : undefined}
+          badge={it.id === 'salle' ? safeCounts.salle : undefined}
           onClick={() => onNavigate?.(it.id)}
         />
       ))}
