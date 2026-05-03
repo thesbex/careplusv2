@@ -199,6 +199,54 @@ class CatalogImportIT {
                 .andExpect(jsonPath("$[0].code").value(code));
     }
 
+    /**
+     * Le médecin a tapé son CSV dans Bloc-notes après un export Excel FR :
+     * séparateur `;`, en-têtes en français majuscules avec accents.
+     * Avant 2026-05-01-fix : "Colonne obligatoire manquante : code".
+     */
+    @Test
+    void importLabTests_acceptsSemicolonAndFrenchHeaders() throws Exception {
+        String token = bearer(medEmail);
+        String code = "IT-LAB-FR-" + UUID.randomUUID().toString().substring(0, 6);
+
+        String body = """
+                CODE;NOM;CATÉGORIE;ACTIF
+                %s;Bilan FR;Hématologie;true
+                """.formatted(code);
+
+        mockMvc.perform(multipart("/api/catalog/lab-tests/import")
+                        .file(csv(body))
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.added").value(1));
+
+        mockMvc.perform(get("/api/catalog/lab-tests?q=" + code).header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].code").value(code))
+                .andExpect(jsonPath("$[0].name").value("Bilan FR"));
+    }
+
+    /**
+     * Si l'utilisateur tape réellement à côté ("NOMm" au lieu de "NOM"),
+     * on doit lui dire ce qu'on a lu — pas juste "colonne manquante".
+     */
+    @Test
+    void importLabTests_helpfulErrorWhenHeaderTypo() throws Exception {
+        String token = bearer(medEmail);
+        String body = "CODE;NOMm;CATEGORIE\naaa;bbb;ccc\n";
+
+        mockMvc.perform(multipart("/api/catalog/lab-tests/import")
+                        .file(csv(body))
+                        .header("Authorization", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value(
+                        org.hamcrest.Matchers.allOf(
+                                org.hamcrest.Matchers.containsString("Colonne obligatoire manquante : name"),
+                                org.hamcrest.Matchers.containsString("CODE"),
+                                org.hamcrest.Matchers.containsString("NOMm"),
+                                org.hamcrest.Matchers.containsString("séparateur"))));
+    }
+
     @Test
     void importImagingExams_addsByCode() throws Exception {
         String token = bearer(medEmail);

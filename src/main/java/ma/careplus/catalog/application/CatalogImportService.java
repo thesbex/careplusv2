@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.text.Normalizer;
 import ma.careplus.shared.error.BusinessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,8 +27,11 @@ import org.springframework.web.multipart.MultipartFile;
  * ----------
  *   - UTF-8 obligatoire (les noms commerciaux contiennent des caractères
  *     accentués). En-tête sur la 1re ligne.
- *   - Séparateur virgule. Champs entourés de guillemets doubles si la valeur
- *     contient une virgule ou un saut de ligne. `""` = guillemet littéral.
+ *   - Séparateur auto-détecté entre `,` et `;` (Excel FR sort `;` par défaut).
+ *     Champs entourés de guillemets doubles si la valeur contient le séparateur
+ *     ou un saut de ligne. `""` = guillemet littéral.
+ *   - Noms de colonnes insensibles à la casse + accents + alias FR :
+ *     `nom`/`name`, `categorie`/`category`, `modalite`/`modality`, etc.
  *
  * Stratégie d'upsert
  * ------------------
@@ -188,27 +192,42 @@ public class CatalogImportService {
         try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
              BufferedReader br = new BufferedReader(reader)) {
 
-            List<String> header = parseLine(br);
+            // Auto-détection du séparateur : on lit la 1re ligne brute, et on
+            // choisit le caractère le plus fréquent entre ',' et ';'. Excel FR
+            // sort `;` par défaut, Excel EN/Google Sheets sortent `,`.
+            br.mark(8192);
+            String firstLine = br.readLine();
+            if (firstLine == null) {
+                throw new BusinessException(
+                        "IMPORT_NO_HEADER", "Fichier CSV sans en-tête.",
+                        HttpStatus.BAD_REQUEST.value());
+            }
+            char sep = detectSeparator(firstLine);
+            br.reset();
+
+            List<String> header = parseLine(br, sep);
             if (header == null) {
                 throw new BusinessException(
                         "IMPORT_NO_HEADER", "Fichier CSV sans en-tête.",
                         HttpStatus.BAD_REQUEST.value());
             }
-            // Normalise header → lower-case for case-insensitive matching.
-            List<String> norm = header.stream().map(s -> s.trim().toLowerCase()).toList();
+            // Normalise header → lower-case + sans accents + alias FR canonisés.
+            List<String> norm = header.stream().map(CatalogImportService::normalizeHeader).toList();
 
             for (String col : requiredCols) {
                 if (!norm.contains(col)) {
                     throw new BusinessException(
                             "IMPORT_MISSING_COLUMN",
-                            "Colonne obligatoire manquante : " + col,
+                            "Colonne obligatoire manquante : " + col
+                                    + ". Colonnes lues : " + String.join(", ", header)
+                                    + " (séparateur détecté : '" + sep + "').",
                             HttpStatus.BAD_REQUEST.value());
                 }
             }
 
             int line = 1; // header already consumed
             List<String> values;
-            while ((values = parseLine(br)) != null) {
+            while ((values = parseLine(br, sep)) != null) {
                 line++;
                 if (values.isEmpty() || (values.size() == 1 && values.get(0).isBlank())) {
                     continue; // blank line — silently skip
@@ -240,7 +259,7 @@ public class CatalogImportService {
     }
 
     /** Tiny RFC4180-lite parser. Returns null at EOF. */
-    private static List<String> parseLine(BufferedReader br) throws IOException {
+    private static List<String> parseLine(BufferedReader br, char sep) throws IOException {
         StringBuilder field = new StringBuilder();
         List<String> out = new ArrayList<>();
         boolean inQuotes = false;
@@ -257,7 +276,7 @@ public class CatalogImportService {
                     } else {
                         inQuotes = false;
                         if (next == -1) break;
-                        if (next == ',') { out.add(field.toString()); field.setLength(0); }
+                        if (next == sep) { out.add(field.toString()); field.setLength(0); }
                         else if (next == '\n') { out.add(field.toString()); return out; }
                         else if (next == '\r') {
                             out.add(field.toString()); field.setLength(0);
@@ -278,7 +297,7 @@ public class CatalogImportService {
             }
             if (ch == '"' && field.length() == 0) {
                 inQuotes = true;
-            } else if (ch == ',') {
+            } else if (ch == sep) {
                 out.add(field.toString()); field.setLength(0);
             } else if (ch == '\n') {
                 out.add(field.toString()); return out;
@@ -298,6 +317,48 @@ public class CatalogImportService {
         if (!sawAnything) return null;
         out.add(field.toString());
         return out;
+    }
+
+    /**
+     * Choisit `;` si la 1re ligne en contient au moins un ET plus que de `,`.
+     * Sinon `,` (défaut RFC4180). Les `;` à l'intérieur de guillemets sont
+     * rares en pratique sur la 1re ligne d'entête, on accepte le bruit.
+     */
+    static char detectSeparator(String firstLine) {
+        int commas = 0;
+        int semis  = 0;
+        boolean inQuotes = false;
+        for (int i = 0; i < firstLine.length(); i++) {
+            char ch = firstLine.charAt(i);
+            if (ch == '"') { inQuotes = !inQuotes; continue; }
+            if (inQuotes) continue;
+            if (ch == ',') commas++;
+            else if (ch == ';') semis++;
+        }
+        return (semis > 0 && semis >= commas) ? ';' : ',';
+    }
+
+    /**
+     * Strip accents, lower-case, trim — puis applique des alias FR pour les
+     * colonnes que les utilisateurs marocains tapent naturellement en
+     * français ("nom" pour "name", "categorie" pour "category", etc.).
+     * Idempotent : un nom déjà canonique reste tel quel.
+     */
+    static String normalizeHeader(String raw) {
+        if (raw == null) return "";
+        String s = Normalizer.normalize(raw.trim(), Normalizer.Form.NFD)
+                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                .toLowerCase();
+        return switch (s) {
+            case "nom"               -> "name";
+            case "categorie"         -> "category";
+            case "modalite"          -> "modality";
+            case "actif"             -> "active";
+            case "nom commercial"    -> "commercial_name";
+            case "forme"             -> "form";
+            case "atc"               -> "atc_code";
+            default -> s;
+        };
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
