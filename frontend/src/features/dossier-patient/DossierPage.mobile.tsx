@@ -20,6 +20,7 @@ import { usePatient } from './hooks/usePatient';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { EditPatientMobileSheet } from './components/EditPatientMobileSheet';
 import { VaccinationCalendarTabMobile } from '@/features/vaccination/components/VaccinationCalendarTab.mobile';
+import { PregnancyTabMobile } from '@/features/grossesse/components/PregnancyTab.mobile';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
@@ -253,7 +254,18 @@ export default function DossierMobilePage() {
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {(['historique', 'consults', 'vitals', 'rx', 'vaccination', 'factu', 'admin'] as MobileDossierTab[]).map(
+          {(
+            [
+              'historique',
+              'consults',
+              'vitals',
+              'rx',
+              'vaccination',
+              ...(patient.sex === 'F' ? (['grossesse'] as MobileDossierTab[]) : []),
+              'factu',
+              'admin',
+            ] as MobileDossierTab[]
+          ).map(
             (t) => {
               const label =
                 t === 'historique'
@@ -266,6 +278,8 @@ export default function DossierMobilePage() {
                   ? `Ordo. (${patientPrescriptions.length})`
                   : t === 'vaccination'
                   ? 'Vaccination'
+                  : t === 'grossesse'
+                  ? 'Grossesse'
                   : t === 'factu'
                   ? `Factures (${patientInvoices.length})`
                   : 'Admin.';
@@ -547,6 +561,10 @@ export default function DossierMobilePage() {
 
         {tab === 'vaccination' && raw && (
           <VaccinationCalendarTabMobile patientId={raw.id} />
+        )}
+
+        {tab === 'grossesse' && raw && patient.sex === 'F' && (
+          <PregnancyTabMobile patientId={raw.id} />
         )}
 
         {tab === 'admin' && (

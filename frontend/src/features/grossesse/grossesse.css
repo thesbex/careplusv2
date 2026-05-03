@@ -1,0 +1,376 @@
+/*
+ * Grossesse module styles. Tokens come from styles/tokens.css. Visually aligned
+ * on Vaccination — same chip / pill conventions, same surface palette, same r-md.
+ * Étape 4 frontend (2026-05-03) — slice features/grossesse/.
+ */
+
+/* ── Layout shells ─────────────────────────────────────────────────────── */
+.gr-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 24px;
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.gr-tab.mobile {
+  padding: 12px 14px;
+  gap: 14px;
+}
+
+.gr-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+}
+
+.gr-section-title {
+  font-size: 12.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+}
+
+/* ── Pregnancy header — SA / DPA / G/P ─────────────────────────────────── */
+.gr-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.gr-header-stats {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.gr-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gr-stat-label {
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.gr-stat-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gr-stat-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.gr-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── Plan timeline chips ───────────────────────────────────────────────── */
+.gr-plan {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.gr-plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.gr-plan-chip.honoree {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.gr-plan-chip.planifiee {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.gr-plan-chip.manquee {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.gr-plan-chip.annulee {
+  background: var(--bg-alt);
+  border-color: var(--border-strong);
+  color: var(--ink-4);
+  text-decoration: line-through;
+}
+
+/* ── Alerts banner ─────────────────────────────────────────────────────── */
+.gr-alerts {
+  border-radius: var(--r-md);
+  border: 1px solid var(--amber);
+  background: var(--amber-soft);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gr-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--amber);
+}
+
+.gr-alert.severity-CRITICAL {
+  color: var(--danger);
+}
+
+.gr-alert.severity-INFO {
+  color: var(--primary);
+}
+
+.gr-alert-since {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+/* ── Tables ────────────────────────────────────────────────────────────── */
+.gr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.gr-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gr-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.gr-table tr:last-child td {
+  border-bottom: none;
+}
+
+.gr-empty {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* ── History list (antécédents) ────────────────────────────────────────── */
+.gr-history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  margin-bottom: 6px;
+}
+
+.gr-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gr-status-pill.EN_COURS {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.gr-status-pill.TERMINEE {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.gr-status-pill.INTERROMPUE {
+  background: var(--bg-alt);
+  color: var(--ink-3);
+}
+
+/* ── Drawer / dialog content ───────────────────────────────────────────── */
+.gr-drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 460px;
+  max-width: 100vw;
+  background: var(--surface);
+  border-left: 1px solid var(--primary);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+
+.gr-drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.gr-drawer-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.gr-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gr-drawer-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+}
+
+.gr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 25;
+}
+
+.gr-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 460px;
+  max-width: 90vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  z-index: 30;
+}
+
+/* ── Field grouping inside drawers ─────────────────────────────────────── */
+.gr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gr-label {
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+.gr-error {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.gr-help {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.gr-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.gr-checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.gr-checkbox-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+/* ── Mobile bottom-sheet ──────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .gr-drawer {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--primary);
+    top: auto;
+    height: 100vh;
+  }
+
+  .gr-dialog {
+    width: 100%;
+    max-width: 100vw;
+    border-radius: var(--r-md) var(--r-md) 0 0;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: none;
+  }
+
+  .gr-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

@@ -71,6 +71,7 @@ export type DossierTab =
   | 'vitals'
   | 'prescr'
   | 'vaccination'
+  | 'grossesse'
   | 'analyses'
   | 'imagerie'
   | 'docs'
@@ -82,5 +83,6 @@ export type MobileDossierTab =
   | 'vitals'
   | 'rx'
   | 'vaccination'
+  | 'grossesse'
   | 'factu'
   | 'admin';

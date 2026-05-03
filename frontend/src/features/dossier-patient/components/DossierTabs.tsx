@@ -13,7 +13,7 @@ interface Tab {
   count?: number;
 }
 
-const TABS: Tab[] = [
+const BASE_TABS: Tab[] = [
   { id: 'timeline', label: 'Chronologie' },
   { id: 'consults', label: 'Consultations', count: 14 },
   { id: 'vitals', label: 'Constantes' },
@@ -29,9 +29,17 @@ interface DossierTabsProps {
   value: DossierTab;
   onValueChange: (v: DossierTab) => void;
   children: React.ReactNode;
+  /** When true, inserts the "Grossesse" tab right after Vaccination. */
+  showGrossesse?: boolean;
 }
 
-export function DossierTabs({ value, onValueChange, children }: DossierTabsProps) {
+export function DossierTabs({ value, onValueChange, children, showGrossesse }: DossierTabsProps) {
+  const TABS: Tab[] = [...BASE_TABS];
+  if (showGrossesse) {
+    const idx = TABS.findIndex((t) => t.id === 'vaccination');
+    TABS.splice(idx + 1, 0, { id: 'grossesse', label: 'Grossesse' });
+  }
+
   return (
     <RadixTabs.Root
       value={value}

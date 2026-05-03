@@ -28,6 +28,7 @@ import { SummaryPanel } from './components/SummaryPanel';
 import { DocumentsPanel } from './components/DocumentsPanel';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { VaccinationCalendarTab } from '@/features/vaccination/components/VaccinationCalendarTab';
+import { PregnancyTab } from '@/features/grossesse/components/PregnancyTab';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import './dossier-patient.css';
@@ -619,7 +620,7 @@ export default function DossierPage() {
         />
         <AllergyStrip patient={patient} />
 
-        <DossierTabs value={tab} onValueChange={setTab}>
+        <DossierTabs value={tab} onValueChange={setTab} showGrossesse={patient.sex === 'F'}>
           <DossierTabPanel value="timeline">
             <div className="dp-content">
               <TimelinePanel events={patient.timeline} />
@@ -759,6 +760,11 @@ export default function DossierPage() {
           <DossierTabPanel value="vaccination">
             <VaccinationCalendarTab patientId={raw.id} />
           </DossierTabPanel>
+          {patient.sex === 'F' && (
+            <DossierTabPanel value="grossesse">
+              <PregnancyTab patientId={raw.id} />
+            </DossierTabPanel>
+          )}
           <DossierTabPanel value="analyses">
             <div style={{ padding: '20px 24px' }}>
               <DocumentsPanel patientId={raw.id} filter="ANALYSE" />
