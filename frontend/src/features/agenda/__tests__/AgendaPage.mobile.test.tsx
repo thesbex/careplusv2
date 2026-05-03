@@ -11,6 +11,8 @@ vi.mock('../hooks/useAppointments', () => ({
     days: WEEK_DAYS,
     appointments: APPOINTMENTS,
     arrivals: ARRIVALS,
+    weekLabel: '21 – 26 avr. 2026',
+    todayKey: 'jeu',
     isLoading: false,
     error: null,
   }),
