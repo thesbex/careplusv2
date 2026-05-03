@@ -376,9 +376,12 @@ export default function ConsultationMobilePage() {
           consultationId={consultation.id}
           patientAllergies={patient?.allergies ?? []}
           type={rxOpen}
-          onCreated={(prescriptionId) => {
+          onCreated={() => {
+            // Stay on the consultation — the doctor can chain prescriptions
+            // (DRUG + LAB + IMAGING). The new entry appears immediately in
+            // "Documents générés" via the consultation query invalidation.
             setRxOpen(null);
-            void navigate(`/prescriptions/${prescriptionId}`);
+            toast.success('Ordonnance créée.');
           }}
         />
       )}

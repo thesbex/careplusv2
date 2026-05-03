@@ -423,9 +423,14 @@ export default function ConsultationPage() {
           consultationId={consultation.id}
           patientAllergies={patient?.allergies ?? []}
           type={rxOpen}
-          onCreated={(prescriptionId) => {
+          onCreated={() => {
+            // Stay on the consultation so the doctor can chain prescriptions
+            // (one consultation often issues a DRUG + a LAB + an IMAGING).
+            // The new prescription appears immediately in "Documents générés"
+            // because useCreatePrescription invalidates the consultation query.
+            // The doctor opens / prints the bons from that list when ready.
             setRxOpen(null);
-            void navigate(`/prescriptions/${prescriptionId}`);
+            toast.success('Ordonnance créée.');
           }}
         />
       )}

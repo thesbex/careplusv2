@@ -19,17 +19,23 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
         glycemiaGPerL: values.glycemia ?? null,
         notes: values.notes ?? null,
       }),
-    onSuccess: () => {
-      // Invalidate every cache that surfaces vitals so the new measurement is
-      // visible without a manual refresh: salle d'attente queue, agenda
-      // appointments (status flips to CONSTANTES_PRISES), the dossier patient
-      // header that shows "Dernières constantes", and the consultation page
-      // that pulls them via useLatestVitals.
-      void queryClient.invalidateQueries({ queryKey: ['queue'] });
-      void queryClient.invalidateQueries({ queryKey: ['appointments'] });
-      void queryClient.invalidateQueries({ queryKey: ['patient-vitals'] });
-      void queryClient.invalidateQueries({ queryKey: ['patient'] });
-      void queryClient.invalidateQueries({ queryKey: ['appointment'] });
+    // Awaiting the invalidation chain inside onSuccess defers the mutation's
+    // mutateAsync resolution until the refetches are in-flight, so the page
+    // we navigate to after submit (typically /salle) lands with fresh data
+    // instead of a "stale flash + late refetch" cycle.
+    onSuccess: async () => {
+      await Promise.all([
+        // Salle d'attente queue (status pill flips to CONSTANTES_PRISES).
+        queryClient.invalidateQueries({ queryKey: ['queue'] }),
+        // Agenda — status pill on the timeline.
+        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
+        // Consultation page TA banner (useLatestVitals).
+        queryClient.invalidateQueries({ queryKey: ['patient-vitals'] }),
+        // Dossier patient header "Dernières constantes".
+        queryClient.invalidateQueries({ queryKey: ['patient'] }),
+        // PriseConstantes page itself (useAppointment).
+        queryClient.invalidateQueries({ queryKey: ['appointment'] }),
+      ]);
     },
   });
 
