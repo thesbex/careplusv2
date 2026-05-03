@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<!--
+  Template PDF — Certificat médical / Arrêt de travail.
+  Variables (mêmes que ordonnance.html sauf que `lines[0].freeText` porte
+  le corps du certificat) :
+    cabinet.{name,address,city,phone,inpe,cnom}
+    doctor.fullName
+    patient.{fullName,birthDate,cin}
+    prescription.{date,type}
+    lines[0].freeText  — corps du certificat
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+               font-size: 11pt; margin: 0; padding: 0; color: #1a1a1a; }
+        .page { padding: 22mm 22mm 28mm 22mm; }
+        .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px;
+                  margin-bottom: 18px; display: table; width: 100%; }
+        .header-left { display: table-cell; width: 60%; }
+        .header-right { display: table-cell; width: 40%; text-align: right; vertical-align: top; }
+        .cabinet-name { font-size: 16pt; font-weight: bold; color: #2563eb; }
+        .cabinet-meta { font-size: 9pt; color: #555; line-height: 1.5; }
+        .doc-title { font-size: 14pt; font-weight: bold; text-transform: uppercase;
+                     color: #2563eb; text-align: center; letter-spacing: 0.08em;
+                     margin: 28px 0 18px 0; }
+        .issue-line { text-align: right; font-size: 10pt; color: #333; margin-bottom: 24px; }
+        .je-soussigne { font-size: 11pt; line-height: 1.7; margin-bottom: 18px; }
+        .je-soussigne strong { font-weight: bold; }
+        .body-text { font-size: 11pt; line-height: 1.8; text-align: justify;
+                     margin: 12px 0 24px 0; white-space: pre-wrap; }
+        .closing { font-size: 11pt; line-height: 1.7; margin-top: 28px;
+                   text-align: justify; }
+        .signature-block { margin-top: 60px; text-align: right; }
+        .signature-area { display: inline-block; border: 1px dashed #aaa;
+                          height: 70px; width: 220px; padding: 6px 8px;
+                          font-size: 9pt; color: #888; vertical-align: top; }
+        .signature-line { font-size: 10pt; margin-top: 4px; }
+        .footer { border-top: 1px solid #c7d2fe; padding-top: 10px;
+                  margin-top: 40px; font-size: 9pt; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="cabinet-name" th:text="${cabinet.name}">Cabinet Médical</div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                Tél : <span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TITRE -->
+    <div class="doc-title" th:text="${prescription.type}">CERTIFICAT MÉDICAL</div>
+
+    <!-- DATE -->
+    <div class="issue-line">
+        <span th:text="${cabinet.city}">Casablanca</span>, le
+        <span th:text="${prescription.date}">01/01/2026</span>
+    </div>
+
+    <!-- PRÉAMBULE -->
+    <div class="je-soussigne">
+        Je soussigné(e), <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong>,
+        certifie avoir examiné ce jour
+        <strong th:text="${patient.fullName}">Prénom NOM</strong><span
+            th:if="${patient.birthDate != null and !patient.birthDate.isEmpty()}">,
+            né(e) le <span th:text="${patient.birthDate}">01/01/1980</span></span><span
+            th:if="${patient.cin != null and !patient.cin.isEmpty()}">,
+            titulaire de la CIN n° <span th:text="${patient.cin}">XXXXXX</span></span>.
+    </div>
+
+    <!-- CORPS — texte libre saisi par le médecin -->
+    <div class="body-text" th:if="${lines != null and !lines.isEmpty()}"
+         th:text="${lines[0].freeText}">Le patient présente …</div>
+    <div class="body-text" th:if="${lines == null or lines.isEmpty()}"
+         style="color:#888;font-style:italic;">Aucun corps saisi.</div>
+
+    <!-- CLOTURE -->
+    <div class="closing">
+        Certificat délivré à la demande de l'intéressé(e) pour servir et valoir ce que de droit.
+    </div>
+
+    <!-- SIGNATURE -->
+    <div class="signature-block">
+        <div class="signature-line">Cachet et signature du médecin</div>
+        <div class="signature-area">&#160;</div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        Document généré par CarePlus &mdash; confidentiel médical
+    </div>
+
+</div>
+</body>
+</html>

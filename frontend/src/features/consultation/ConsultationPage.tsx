@@ -28,6 +28,8 @@ import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
+import { FollowUpDialog } from './components/FollowUpDialog';
+import { CertificatDialog } from './components/CertificatDialog';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
@@ -81,6 +83,8 @@ export default function ConsultationPage() {
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
   const [adjustingDiscount, setAdjustingDiscount] = useState<number | null>(null);
   const [vitalsOpen, setVitalsOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [certificatOpen, setCertificatOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -306,8 +310,20 @@ export default function ConsultationPage() {
               disabled={isSigned || !consultation}
               onClick={() => setRxOpen('IMAGING')}
             />
-            <ActionBtn icon="Doc" label="Certificat médical" disabled />
-            <ActionBtn icon="Calendar" label="Prochain RDV" disabled />
+            <ActionBtn
+              icon="Doc"
+              label="Certificat médical"
+              sub="Aptitude · présence · repos"
+              disabled={!consultation || isSigned}
+              onClick={() => setCertificatOpen(true)}
+            />
+            <ActionBtn
+              icon="Calendar"
+              label="Prochain RDV"
+              sub="Contrôle / suivi"
+              disabled={!consultation}
+              onClick={() => setFollowUpOpen(true)}
+            />
           </div>
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
@@ -435,6 +451,20 @@ export default function ConsultationPage() {
           patientId={consultation.patientId}
           current={vitals}
         />
+      )}
+      {id && (
+        <>
+          <FollowUpDialog
+            open={followUpOpen}
+            onOpenChange={setFollowUpOpen}
+            consultationId={id}
+          />
+          <CertificatDialog
+            open={certificatOpen}
+            onOpenChange={setCertificatOpen}
+            consultationId={id}
+          />
+        </>
       )}
       <InvoiceDrawer
         invoice={invoice}

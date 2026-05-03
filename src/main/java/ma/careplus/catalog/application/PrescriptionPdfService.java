@@ -121,7 +121,14 @@ public class PrescriptionPdfService {
         ctx.setVariable("lines", lineModels);
         ctx.setVariable("allergyOverride", prescription.isAllergyOverride());
 
-        String html = templateEngine.process("ordonnance", ctx);
+        // Pour les types CERT et SICK_LEAVE, on rend un template "certificat"
+        // (mise en page formelle "Je soussigné…"). Les autres types (DRUG /
+        // LAB / IMAGING) gardent le template ordonnance avec lignes numérotées.
+        String templateName = switch (prescription.getType()) {
+            case CERT, SICK_LEAVE -> "certificat";
+            default -> "ordonnance";
+        };
+        String html = templateEngine.process(templateName, ctx);
 
         // Silence openhtmltopdf verbose warnings
         XRLog.setLoggingEnabled(false);

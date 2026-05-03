@@ -18,6 +18,8 @@ import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
+import { FollowUpDialog } from './components/FollowUpDialog';
+import { CertificatDialog } from './components/CertificatDialog';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
@@ -67,6 +69,8 @@ export default function ConsultationMobilePage() {
   const { prescriptions } = usePrescriptions(id);
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [certificatOpen, setCertificatOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
@@ -299,6 +303,24 @@ export default function ConsultationMobilePage() {
           >
             Imagerie
           </button>
+          <button
+            type="button"
+            className="m-btn"
+            style={{ height: 40, fontSize: 12 }}
+            disabled={isSigned || !consultation}
+            onClick={() => setCertificatOpen(true)}
+          >
+            Certificat
+          </button>
+          <button
+            type="button"
+            className="m-btn"
+            style={{ height: 40, fontSize: 12 }}
+            disabled={!consultation}
+            onClick={() => setFollowUpOpen(true)}
+          >
+            Prochain RDV
+          </button>
         </div>
 
         {/* Documents générés — list of prescriptions for this consultation. */}
@@ -391,6 +413,20 @@ export default function ConsultationMobilePage() {
             toast.success('Ordonnance créée.');
           }}
         />
+      )}
+      {id && (
+        <>
+          <FollowUpDialog
+            open={followUpOpen}
+            onOpenChange={setFollowUpOpen}
+            consultationId={id}
+          />
+          <CertificatDialog
+            open={certificatOpen}
+            onOpenChange={setCertificatOpen}
+            consultationId={id}
+          />
+        </>
       )}
       <InvoiceDrawer
         invoice={invoice}
