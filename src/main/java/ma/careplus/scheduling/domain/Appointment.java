@@ -46,6 +46,13 @@ public class Appointment {
     @Column(name = "status", nullable = false, length = 32)
     private AppointmentStatus status = AppointmentStatus.PLANIFIE;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 20)
+    private AppointmentType type = AppointmentType.CONSULTATION;
+
+    @Column(name = "origin_consultation_id")
+    private UUID originConsultationId;
+
     @Column(name = "cancel_reason", length = 255)
     private String cancelReason;
 
@@ -118,6 +125,10 @@ public class Appointment {
     public void setEndAt(OffsetDateTime v) { this.endAt = v; }
     public AppointmentStatus getStatus() { return status; }
     public void setStatus(AppointmentStatus v) { this.status = v; }
+    public AppointmentType getType() { return type; }
+    public void setType(AppointmentType v) { this.type = v; }
+    public UUID getOriginConsultationId() { return originConsultationId; }
+    public void setOriginConsultationId(UUID v) { this.originConsultationId = v; }
     public String getCancelReason() { return cancelReason; }
     public void setCancelReason(String v) { this.cancelReason = v; }
     public boolean isWalkIn() { return walkIn; }
@@ -125,6 +136,7 @@ public class Appointment {
     public boolean isUrgency() { return urgency; }
     public void setUrgency(boolean v) { this.urgency = v; }
     public OffsetDateTime getArrivedAt() { return arrivedAt; }
+    public void setArrivedAt(OffsetDateTime v) { this.arrivedAt = v; }
     public OffsetDateTime getVitalsStartedAt() { return vitalsStartedAt; }
     public OffsetDateTime getConsultationStartedAt() { return consultationStartedAt; }
     public long getVersion() { return version; }

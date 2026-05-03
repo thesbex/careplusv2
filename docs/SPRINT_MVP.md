@@ -123,9 +123,11 @@ Goal: a working **full-stack** application — backend exercisable via Swagger +
 - [ ] `GET /api/queue?role=ASSISTANT` returns current queue (polling endpoint)
 - [ ] `POST /api/appointments/{id}/vitals` records `VitalSigns`
 - [ ] `GET /api/patients/{id}/vitals` returns history
+- [ ] `Appointment.type` enum: `CONSULTATION | CONTROLE | URGENCE` (Flyway V003 — add column with default `CONSULTATION`)
 - [ ] `POST /api/consultations` starts consultation (state `Brouillon`) — allowed for MEDECIN always, and for SECRETAIRE/ASSISTANT iff `user.canStartConsultation = true` (ADR-023). Clinical content (diagnosis/prescription/sign) MEDECIN-only regardless.
 - [ ] `PUT /api/consultations/{id}` updates draft
 - [ ] `POST /api/consultations/{id}/sign` transitions to `Signée` (locks) — MEDECIN only
+- [ ] `POST /api/consultations/{id}/follow-up` — planifie un RDV de type `CONTROLE` lié à la consultation (`origin_consultation_id`), utilise le même moteur de disponibilité. MEDECIN only.
 - [ ] Signing emits `ConsultationSigneeEvent` (listeners added J6/J7)
 - [ ] Integration test: (a) full flow check-in → vitals → consultation → sign; (b) habilitated S starts consultation but is 403 on sign/prescribe; (c) non-habilitated S is 403 on start
 - [ ] Backend regression checkpoint

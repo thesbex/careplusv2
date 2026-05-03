@@ -60,9 +60,7 @@ public class PresenceService {
             return a;
         }
         a.setStatus(AppointmentStatus.ARRIVE);
-        // Reflection-free: use native update for arrived_at since the entity
-        // doesn't expose a setter (field is read-only by design).
-        jdbc.update("UPDATE scheduling_appointment SET arrived_at = now() WHERE id = ?", a.getId());
+        a.setArrivedAt(OffsetDateTime.now());
         return a;
     }
 
