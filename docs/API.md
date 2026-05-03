@@ -47,15 +47,15 @@ _Not yet implemented._
 
 Expected:
 - `POST /api/appointments/{id}/check-in` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN
-- `GET /api/queue` — ASSISTANT/MEDECIN — current queue for polling
+- `GET /api/queue` — SECRETAIRE/ASSISTANT/MEDECIN — current queue for polling
 
 ## clinical (J5+J6)
 
 _Not yet implemented._
 
 Expected (J5):
-- `POST /api/appointments/{id}/vitals` — ASSISTANT/MEDECIN
-- `GET /api/patients/{id}/vitals` — ASSISTANT/MEDECIN
+- `POST /api/appointments/{id}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN
+- `GET /api/patients/{id}/vitals` — SECRETAIRE/ASSISTANT/MEDECIN
 - `POST /api/consultations` — MEDECIN — starts draft
 - `PUT /api/consultations/{id}` — MEDECIN — update draft
 - `POST /api/consultations/{id}/sign` — MEDECIN — lock
