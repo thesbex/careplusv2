@@ -14,6 +14,7 @@ import {
   type AllergySeverity,
   type AntecedentType,
 } from './hooks/useCreatePatient';
+import { useInsurances } from './hooks/useInsurances';
 
 function Lbl({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', marginBottom: 4 }}>{children}</div>;
@@ -93,6 +94,10 @@ const EMPTY_FORM: CreatePatientForm = {
   city: '',
   bloodGroup: '',
   notes: '',
+  tier: 'NORMAL',
+  hasMutuelle: false,
+  mutuelleInsuranceId: '',
+  mutuellePolicyNumber: '',
   allergies: [],
   antecedents: [],
 };
@@ -210,6 +215,7 @@ function NewPatientPanel({
   const { create, isPending, error, reset } = useCreatePatient();
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const { insurances } = useInsurances();
 
   function set<K extends keyof CreatePatientForm>(key: K, value: CreatePatientForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -359,6 +365,97 @@ function NewPatientPanel({
         {/* Divider */}
         <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
+        {/* Tier + Mutuelle */}
+        <div>
+          <Lbl>Type de patient</Lbl>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {(['NORMAL', 'PREMIUM'] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => set('tier', t)}
+                style={{
+                  flex: 1,
+                  height: 36,
+                  borderRadius: 6,
+                  border: `1px solid ${form.tier === t ? 'var(--primary)' : 'var(--border)'}`,
+                  background: form.tier === t ? 'var(--primary-soft)' : 'var(--surface)',
+                  color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
+                  fontWeight: 600,
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+              </button>
+            ))}
+          </div>
+          {form.tier === 'PREMIUM' && (
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+              Une remise automatique sera appliquée à la facturation (configurée dans Paramétrage).
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Lbl>A une mutuelle ?</Lbl>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {[
+              { v: false, l: 'Non' },
+              { v: true, l: 'Oui' },
+            ].map((opt) => (
+              <button
+                key={String(opt.v)}
+                type="button"
+                onClick={() => set('hasMutuelle', opt.v)}
+                style={{
+                  flex: 1,
+                  height: 36,
+                  borderRadius: 6,
+                  border: `1px solid ${form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--border)'}`,
+                  background: form.hasMutuelle === opt.v ? 'var(--primary-soft)' : 'var(--surface)',
+                  color: form.hasMutuelle === opt.v ? 'var(--primary)' : 'var(--ink-2)',
+                  fontFamily: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                {opt.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {form.hasMutuelle && (
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+            <div>
+              <Lbl>Compagnie</Lbl>
+              <select
+                value={form.mutuelleInsuranceId}
+                onChange={(e) => set('mutuelleInsuranceId', e.target.value)}
+                style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+              >
+                <option value="">— Sélectionner —</option>
+                {insurances.map((ins) => (
+                  <option key={ins.id} value={ins.id}>
+                    {ins.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Lbl>N° de police</Lbl>
+              <Input
+                value={form.mutuellePolicyNumber}
+                onChange={(e) => set('mutuellePolicyNumber', e.target.value)}
+                placeholder="—"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
         {/* Allergies */}
         <div>
           <SectionHeader label="Allergies" onAdd={addAllergy} />
@@ -493,6 +590,11 @@ export default function PatientsListPage() {
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>
+                        {p.tier === 'PREMIUM' && (
+                          <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
+                            🌟
+                          </span>
+                        )}
                         {p.firstName} {p.lastName}
                       </div>
                       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 1 }}>

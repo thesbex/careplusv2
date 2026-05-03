@@ -11,6 +11,7 @@ export interface PatientListItem {
   phone: string | null;
   city: string | null;
   status: string;
+  tier?: string | null;
 }
 
 interface Page<T> {

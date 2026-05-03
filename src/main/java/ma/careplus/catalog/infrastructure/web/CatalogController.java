@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Catalog HTTP endpoints (J6):
@@ -43,9 +44,26 @@ import org.springframework.web.bind.annotation.RestController;
 public class CatalogController {
 
     private final CatalogService catalogService;
+    private final JdbcTemplate jdbc;
 
-    public CatalogController(CatalogService catalogService) {
+    public CatalogController(CatalogService catalogService, JdbcTemplate jdbc) {
         this.catalogService = catalogService;
+        this.jdbc = jdbc;
+    }
+
+    public record InsuranceView(UUID id, String code, String name, String kind) {}
+
+    @GetMapping("/insurances")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<InsuranceView> listInsurances() {
+        return jdbc.query(
+                "SELECT id, code, name, kind FROM catalog_insurance "
+                        + "WHERE active = TRUE ORDER BY kind, name",
+                (rs, i) -> new InsuranceView(
+                        (UUID) rs.getObject("id"),
+                        rs.getString("code"),
+                        rs.getString("name"),
+                        rs.getString("kind")));
     }
 
     // ── Acts ──────────────────────────────────────────────────────────────────
