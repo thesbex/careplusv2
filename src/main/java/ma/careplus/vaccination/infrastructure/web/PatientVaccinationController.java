@@ -5,11 +5,16 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import ma.careplus.patient.infrastructure.persistence.PatientRepository;
+import ma.careplus.vaccination.application.VaccinationBookletPdfService;
 import ma.careplus.vaccination.application.VaccinationService;
 import ma.careplus.vaccination.infrastructure.web.dto.DeferDoseRequest;
 import ma.careplus.vaccination.infrastructure.web.dto.RecordDoseRequest;
 import ma.careplus.vaccination.infrastructure.web.dto.UpdateDoseRequest;
 import ma.careplus.vaccination.infrastructure.web.dto.VaccinationCalendarEntry;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -39,9 +44,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class PatientVaccinationController {
 
     private final VaccinationService vaccinationService;
+    private final VaccinationBookletPdfService bookletPdfService;
+    private final PatientRepository patientRepository;
 
-    public PatientVaccinationController(VaccinationService vaccinationService) {
+    public PatientVaccinationController(VaccinationService vaccinationService,
+                                         VaccinationBookletPdfService bookletPdfService,
+                                         PatientRepository patientRepository) {
         this.vaccinationService = vaccinationService;
+        this.bookletPdfService = bookletPdfService;
+        this.patientRepository = patientRepository;
     }
 
     @GetMapping
@@ -95,5 +106,45 @@ public class PatientVaccinationController {
             @PathVariable UUID doseId) {
         vaccinationService.softDelete(patientId, doseId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * GET /api/patients/{patientId}/vaccinations/booklet
+     * Returns a PDF carnet de vaccination for the patient.
+     * If no doses ADMINISTERED → empty booklet (200, not 404).
+     * 404 if patient unknown.
+     */
+    @GetMapping("/booklet")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<byte[]> booklet(@PathVariable UUID patientId) {
+        byte[] pdfBytes = bookletPdfService.generate(patientId);
+
+        // Resolve patient name for Content-Disposition filename
+        // (best-effort: service already validated the patient exists)
+        String filename = resolveFilename(patientId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(
+                ContentDisposition.inline().filename(filename).build());
+        headers.setContentLength(pdfBytes.length);
+
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
+    private String resolveFilename(UUID patientId) {
+        return patientRepository.findById(patientId)
+                .map(p -> "carnet-vaccination-"
+                        + sanitize(p.getLastName()) + "-"
+                        + sanitize(p.getFirstName()) + ".pdf")
+                .orElse("carnet-vaccination-" + patientId + ".pdf");
+    }
+
+    private static String sanitize(String name) {
+        if (name == null) return "";
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9]", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
     }
 }

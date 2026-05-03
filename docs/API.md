@@ -154,6 +154,16 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 `VaccinationDueEvent(eventId, occurredAt, patientId, doseId, dueAt)` — record class in place; published by cron job in Étape 3 (Notifications module).
 
+## vaccination — Étape 3 worklist + carnet PDF (2026-05-03) ✅
+
+### Worklist transversale
+
+- `GET /api/vaccinations/queue` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — paginated, urgency-sorted list of doses due for all pediatric patients (age < 18 years, not soft-deleted). Query params: `status` (OVERDUE|DUE_SOON|UPCOMING; default null → OVERDUE + DUE_SOON), `vaccineCode`, `practitionerId` (accepted but TODO post-MVP), `ageGroupMinMonths`, `ageGroupMaxMonths`, `upcomingHorizonDays` (default 30), `page` (default 0), `size` (default 50, max 200). Returns `PageView<VaccinationQueueEntry>` with `{content, totalElements, pageNumber, pageSize}`. Each `VaccinationQueueEntry`: `{patientId, patientFullName, patientPhotoDocumentId?, birthDate, ageMonths, vaccineCode, vaccineName, doseNumber, doseLabel, targetDate, daysOverdue, status}`. Sort: OVERDUE (most days overdue first) → DUE_SOON (nearest targetDate) → UPCOMING.
+
+### Carnet PDF patient
+
+- `GET /api/patients/{patientId}/vaccinations/booklet` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — generates vaccination booklet PDF (Thymeleaf + openhtmltopdf). Header: cabinet info + doctor name. Patient identity block (name, DOB, age, gender). Table: Vaccin | Dose | Date | Lot | Voie / Site | Administré par | Signature (manual). Only ADMINISTERED doses sorted by `administeredAt` ASC. Empty table if no doses. Response: `application/pdf`, `Content-Disposition: inline; filename=carnet-vaccination-<lastName>-<firstName>.pdf`. 404 `PATIENT_NOT_FOUND` if patient unknown.
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)

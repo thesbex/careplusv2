@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<!--
+  Carnet de vaccination PDF template.
+  Variables:
+    cabinet.name         — Nom du cabinet (configuration_clinic_settings ou fallback dev)
+    cabinet.address      — Adresse
+    cabinet.city         — Ville
+    cabinet.phone        — Téléphone
+    cabinet.inpe         — INPE (optionnel)
+    cabinet.cnom         — CNOM (optionnel)
+    doctor.fullName      — Nom complet du médecin
+    patient.fullName     — Prénom NOM de l'enfant
+    patient.birthDate    — Date de naissance (formatée dd/MM/yyyy)
+    patient.age          — Âge calculé (ex. "14 mois", "3 ans")
+    patient.gender       — Libellé sexe (Masculin / Féminin)
+    patient.photoDocumentId — UUID photo (non utilisé dans ce template PDF tabulaire)
+    doses                — List<Map> avec champs :
+                            vaccineName, vaccineCode, doseNumber,
+                            administeredAt, lotNumber, route, site,
+                            administeredByName
+    generatedDate        — Date de génération (dd/MM/yyyy)
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+        }
+        .page {
+            padding: 18mm 18mm 22mm 18mm;
+        }
+        /* ── Header ──────────────────────────────────────────────────────────── */
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+            display: table;
+            width: 100%;
+        }
+        .header-left {
+            display: table-cell;
+            width: 60%;
+            vertical-align: top;
+        }
+        .header-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .cabinet-name {
+            font-size: 15pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .cabinet-meta {
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.5;
+        }
+        /* ── Doc title ───────────────────────────────────────────────────────── */
+        .doc-title {
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #2563eb;
+            border: 1px solid #2563eb;
+            padding: 4px 10px;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        /* ── Patient identity block ──────────────────────────────────────────── */
+        .patient-box {
+            background: #f0f4ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 14px;
+            font-size: 10pt;
+        }
+        .patient-box strong {
+            font-size: 11pt;
+        }
+        /* ── Doses table ─────────────────────────────────────────────────────── */
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2563eb;
+            border-bottom: 1px solid #c7d2fe;
+            margin-bottom: 8px;
+            padding-bottom: 3px;
+        }
+        table.doses {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+        table.doses th {
+            background: #2563eb;
+            color: #fff;
+            padding: 5px 6px;
+            text-align: left;
+            font-weight: bold;
+        }
+        table.doses td {
+            padding: 5px 6px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+        table.doses tr:nth-child(even) td {
+            background: #f8faff;
+        }
+        .empty-notice {
+            font-style: italic;
+            color: #888;
+            padding: 10px 0;
+            font-size: 9pt;
+        }
+        /* ── Footer ──────────────────────────────────────────────────────────── */
+        .footer {
+            border-top: 1px solid #c7d2fe;
+            padding-top: 10px;
+            margin-top: 24px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left {
+            display: table-cell;
+            width: 65%;
+            font-size: 8pt;
+            color: #777;
+            vertical-align: bottom;
+        }
+        .footer-right {
+            display: table-cell;
+            width: 35%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .signature-area {
+            border: 1px dashed #aaa;
+            height: 45px;
+            width: 150px;
+            margin-left: auto;
+            display: table-cell;
+            vertical-align: bottom;
+            text-align: center;
+            padding-bottom: 4px;
+            font-size: 8pt;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="cabinet-name" th:text="${cabinet.name}">Cabinet Médical</div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                Tél : <span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOC TITLE -->
+    <div class="doc-title">CARNET DE VACCINATION</div>
+
+    <!-- PATIENT IDENTITY BLOCK -->
+    <div class="patient-box">
+        <strong>Enfant : </strong>
+        <span th:text="${patient.fullName}">Prénom NOM</span>
+        <span th:if="${patient.birthDate != null and !patient.birthDate.isEmpty()}">
+            &#160;|&#160; Né(e) le : <span th:text="${patient.birthDate}">01/01/2024</span>
+        </span>
+        <span th:if="${patient.age != null and !patient.age.isEmpty()}">
+            &#160;|&#160; Âge : <span th:text="${patient.age}">6 mois</span>
+        </span>
+        <span th:if="${patient.gender != null and !patient.gender.isEmpty()}">
+            &#160;|&#160; Sexe : <span th:text="${patient.gender}">Masculin</span>
+        </span>
+    </div>
+
+    <!-- DOSES TABLE -->
+    <div class="section-title">Récapitulatif des vaccinations</div>
+
+    <table class="doses" th:if="${doses != null and !doses.isEmpty()}">
+        <thead>
+            <tr>
+                <th>Vaccin</th>
+                <th>Dose</th>
+                <th>Date</th>
+                <th>Lot</th>
+                <th>Voie / Site</th>
+                <th>Administré par</th>
+                <th>Signature</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="dose : ${doses}">
+                <td>
+                    <span th:text="${dose.vaccineName}">BCG</span>
+                    <span th:if="${dose.vaccineCode != null}"
+                          style="color:#888;font-size:8pt;">
+                        (<span th:text="${dose.vaccineCode}">BCG</span>)
+                    </span>
+                </td>
+                <td th:text="${dose.doseNumber}">1</td>
+                <td th:text="${dose.administeredAt}">01/01/2024</td>
+                <td th:text="${dose.lotNumber}">ABC123</td>
+                <td>
+                    <span th:if="${dose.route != null and !dose.route.isEmpty()}"
+                          th:text="${dose.route}">IM</span>
+                    <span th:if="${dose.site != null and !dose.site.isEmpty()}">
+                        / <span th:text="${dose.site}">Deltoïde G</span>
+                    </span>
+                </td>
+                <td th:text="${dose.administeredByName}">Dr. Nom</td>
+                <td style="min-width:60px;">&#160;</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="empty-notice"
+         th:if="${doses == null or doses.isEmpty()}">
+        Aucune dose enregistrée.
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            Récapitulatif vaccinal — agrafer au carnet de santé officiel<br/>
+            Document généré par CarePlus le <span th:text="${generatedDate}">01/01/2026</span>
+            &#160;—&#160; confidentiel médical
+        </div>
+        <div class="footer-right">
+            <table style="margin-left:auto;">
+                <tr>
+                    <td class="signature-area">Cachet du médecin</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

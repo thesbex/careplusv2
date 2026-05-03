@@ -185,6 +185,39 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 **Choice**: Recharts 3.x. L'API `<LineChart><Line/><Tooltip/><ReferenceArea/>` mappe 1:1 sur le besoin (séries multiples, plages normales ombrées, tooltip date+valeur). On garde `EvolutionChart` comme façade interne avec la même API publique (`series`, `unit`, `normalRange`, `yDomain`, `formatY`) — Recharts est un détail d'implémentation.
 **Consequence**: Bundle frontend passe de ~216 KB gzippés à ~325 KB gzippés (acceptable : on est encore très loin du seuil de chargement perçu sur fibre marocaine ; pour la livraison on-prem l'impact est nul). Tests adaptés (mock `ResponsiveContainer` qui exige des dimensions DOM réelles que jsdom ne fournit pas). Si le bundle devient un problème, code-splitter le dossier patient via `React.lazy` est la marche suivante (réservée pour quand la lazy-loading est structurellement justifiée, pas pour ça seul).
 
+## ADR-025 — fastexcel pour l'export xlsx des factures (vs Apache POI)
+**Date**: 2026-05-02
+**Status**: accepted
+**Context**: La feature "filtres + export détaillé sur les factures" exige un export CSV **et** xlsx pour les comptables / déclarations fiscales. L'export ligne-par-ligne de l'entête facture nécessite : montants typés Number, dates typées Date, en-têtes en gras, freeze pane sur ligne 1, ligne SUM en pied de tableau. CSV seul ne suffit pas (Excel-Windows mal configuré ouvre les chiffres comme texte → comptable doit reformater).
+**Alternatives considérées**:
+- **Apache POI 5.x** : standard de l'industrie pour Excel en Java, riche (formules, charts, styles complexes), mais **~15 Mo de jars** ajoutés au fat-jar (poi-ooxml + dépendances Commons / xmlbeans / log4j-api). Pour une app on-prem packagée en un seul jar (ADR-020), c'est lourd.
+- **JExcelApi** : abandonné depuis 2014, ne supporte que xls (pas xlsx). Hors course.
+- **fastexcel 0.18** : lib légère focalisée xlsx (~200 Ko de jar), API streaming, supporte exactement ce dont on a besoin (cellules typées, styles basiques, formules SUM, freeze pane). Pas de support des charts ni des styles avancés — non requis pour l'export tabulaire.
+- **CSV uniquement** : impose au comptable un re-formatage Excel à chaque export. Refusé en Q5 du brainstorming.
+**Choice**: fastexcel. Le footprint est ~70× plus léger qu'Apache POI pour 100 % de couverture du besoin actuel (table plate + ligne de totaux). On accepte de re-router vers POI plus tard si un cabinet pilote demande des formules avancées, des charts ou des feuilles multiples — coût de migration faible (l'interface `InvoiceExporter` isole l'implémentation, swap = 1 classe).
+**Consequence**: 1 nouvelle dépendance Maven (`org.dhatim:fastexcel:0.18.4` runtime + `fastexcel-reader` test-scope pour les IT). Build prod jar inchangé en taille perceptible (~+200 Ko). Si un cabinet veut un export xlsx-pivot ou un graphique embarqué, on rouvrira l'ADR.
+
+## ADR-026 — Vaccination worklist: bulk repository load vs. per-patient materializeCalendar calls
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: `VaccinationQueueService` needs to materialise the calendar for all pediatric patients to build the worklist. Two options: (A) call `VaccinationServiceImpl.materializeCalendar(patientId)` in a loop — clean, reuses existing logic; (B) pre-load schedule + catalog once, then compute per-patient in bulk — avoids N×findActiveById and N×full-entity-load overhead.
+**Choice**: Option B (bulk load). For a cabinet with 500 pediatric patients, option A would issue 500 `findActiveById` + 500 `findAll` on vaccine_catalog — a notable n+1 problem. Option B loads them once. The shared private logic (doseKey, computeStatus) is duplicated between `VaccinationServiceImpl` and `VaccinationQueueServiceImpl` — acceptable for MVP; post-MVP extract to a package-private `VaccinationCalendarComputer` utility class.
+**Consequence**: Mild code duplication (computeStatus, doseKey). Performance significantly better at queue-scale. Documented in both service class Javadocs.
+
+## ADR-027 — Vaccination worklist: practitionerId filter deferred (cross-module join)
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: Design Q8 asks for a `practitionerId` filter on the worklist (only show children followed by a given practitioner). Implementing this requires joining `scheduling_appointment` to find the most-frequent practitioner per patient — this crosses the vaccination → scheduling module boundary, violating the no-cross-module-repository rule.
+**Choice**: Accept the filter parameter (included in `QueueFilters`) but do not apply it in MVP. Log a DEBUG-level warning when the param is provided. Post-MVP solution: a shared read-model or a JDBC projection that joins across modules with an explicit cross-module exception like BillingService already does.
+**Consequence**: Filter is silently ignored in MVP. Documented in `VaccinationQueueServiceImpl` Javadoc and `QueueFilters.practitionerId()` field comment.
+
+## ADR-028 — Vaccination worklist: PageView record over Spring Data Page<T>
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: Spring Data `Page<T>` serialises to JSON with extra HATEOAS fields (`pageable`, `sort`, `first`, `last`, `numberOfElements`, `empty`) that the React client does not use and that introduce brittle coupling to Spring Data internals (the serialisation format may change between Spring Boot minor versions, and PageImpl serialisation logs a WARN in Spring Boot 3.3+).
+**Choice**: Custom `PageView<T>` record with `{content, totalElements, pageNumber, pageSize}` — exactly what the frontend needs, nothing more.
+**Consequence**: One tiny shared record in the vaccination web DTO package. If other modules need pagination wrappers, promote it to `shared/web/dto/`. Not done now (YAGNI).
+
 ---
 
 ## How to add an entry

@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Sprint MVP — J8 backend done, frontend in progress (screens remaining: constantes, consultation, prescription, ordonnance, facturation, paramétrage)
-**Last update**: 2026-04-24
-**Build**: `BUILD SUCCESS` — 75 integration tests green. Frontend: `tsc --noEmit` clean.
-**Next action**: Resume J8 frontend porting — Prise des constantes → Consultation SOAP → Prescription drawer → Aperçu ordonnance → Facturation → Paramétrage → Playwright E2E → tag v0.1.0-mvp.
+**Phase**: Vaccination module — Étape 3 shipped, Étape 4 (frontend) next
+**Last update**: 2026-05-03
+**Build**: `BUILD SUCCESS` — 318 tests, 0 failures, 0 errors.
+**Next action**: Vaccination Étape 4 — frontend slice `features/vaccination/` (hooks + drawer + onglet DossierPage desktop + mobile). Then Étape 5 — page `/vaccinations` worklist + ParametragePage tabs.
 
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
@@ -240,6 +240,26 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 **State**: `mvn verify` → BUILD SUCCESS, 258 tests (was 247 + 9 new + 2 from SalleAttente module in between = 258), 0 failures.
 **Next action**: Vaccination Étape 2 — `VaccinationService.materializeCalendar(patientId)`, `recordDose`, `deferDose`, `skipDose`, `PatientVaccinationController`, `VaccinationDueEvent`.
+
+**Blockers**: none.
+
+### 2026-05-03 — Vaccination module Étape 3 shipped
+
+**Shipped:**
+- `VaccinationQueueService` interface + `VaccinationQueueServiceImpl` — cross-patient worklist computed on the fly; bulk repository load (schedule + catalog loaded once, not N×per-patient); filters: status (OVERDUE/DUE_SOON/UPCOMING), vaccineCode, ageGroupMinMonths, ageGroupMaxMonths, upcomingHorizonDays; pagination via `PageView<T>` (ADR-028); sort: urgency DESC (OVERDUE daysOverdue↓ → DUE_SOON targetDate↑ → UPCOMING targetDate↑); practitionerId filter accepted but deferred TODO (ADR-027).
+- `VaccinationQueueController` — `GET /api/vaccinations/queue` (all authenticated roles per Q5+Q8).
+- DTOs: `QueueFilters`, `VaccinationQueueEntry`, `PageView<T>`.
+- `VaccinationBookletPdfService` — Thymeleaf + openhtmltopdf + jsoup pattern strictly aligned on `PrescriptionPdfService`; generates vaccination carnet PDF (patient identity + ADMINISTERED doses table sorted by administeredAt ASC); empty carnet on 0 doses (never 404).
+- `vaccination-booklet.html` Thymeleaf template — header cabinet, identity block (name/DOB/age/gender), doses table (Vaccin|Dose|Date|Lot|Voie-Site|Administré par|Signature), footer "Récapitulatif vaccinal — agrafer au carnet officiel".
+- `PatientVaccinationController` extended — `GET /api/patients/{patientId}/vaccinations/booklet` (all roles); `Content-Disposition: inline; filename=carnet-vaccination-<lastName>-<firstName>.pdf`; PatientRepository injected for filename resolution (accepted cross-module exception).
+- Bug fix in ADMINISTERED exclusion: `VaccinationQueueServiceImpl` now excludes off-schedule administered doses (scheduleDoseId == null) from queue — was only excluding schedule-linked ones.
+- `VaccinationQueueIT` — 10 integration tests (all scenarios from design doc).
+- `VaccinationBookletPdfIT` — 7 integration tests (non-vide, contenu via PDFBox text extraction, carnet vide, adulte, 404, RBAC, Content-Disposition).
+- ADR-026, ADR-027, ADR-028 added to `docs/DECISIONS.md`.
+- `docs/API.md` updated with new endpoints.
+
+**State**: `mvn verify` → BUILD SUCCESS, 318 tests (was 287 + 17 new), 0 failures.
+**Next action**: Vaccination Étape 4 — frontend slice `features/vaccination/`. Use `frontend-module-scaffolder` subagent for: `useVaccinationCalendar`, `useRecordDose`, `useDeferDose`, `useSkipDose`, hooks; `RecordDoseDrawer`; onglet "Vaccination" in `DossierPage` (desktop + mobile); design-parity-auditor after port.
 
 **Blockers**: none.
 
