@@ -19,6 +19,7 @@ import {
   type ClinicSettingsForm,
 } from './hooks/useSettings';
 import { useUsers, useCreateUser, useDeactivateUser } from './hooks/useUsers';
+import { toProblemDetail } from '@/lib/api/problemJson';
 import { useLeaves } from './hooks/useLeaves';
 import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
@@ -279,6 +280,10 @@ function UtilisateursTab() {
       toast.error('Email, mot de passe, prénom et nom requis.');
       return;
     }
+    if (draft.password.length < 12) {
+      toast.error('Le mot de passe initial doit faire au moins 12 caractères.');
+      return;
+    }
     try {
       await createUser({
         email: draft.email,
@@ -298,8 +303,15 @@ function UtilisateursTab() {
         phone: '',
         role: 'SECRETAIRE',
       });
-    } catch {
-      toast.error('Création refusée.');
+    } catch (err) {
+      const problem = toProblemDetail(err);
+      if (problem.status === 403) {
+        toast.error("Vous n'avez pas les droits administrateur pour créer un utilisateur.");
+      } else if (problem.violations?.length) {
+        toast.error(problem.violations.map((v) => `${v.field} : ${v.message}`).join(' · '));
+      } else {
+        toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
+      }
     }
   }
 
@@ -341,6 +353,9 @@ function UtilisateursTab() {
                 value={draft.password}
                 onChange={(e) => setDraft({ ...draft, password: e.target.value })}
               />
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+                12 caractères minimum.
+              </div>
             </Field>
             <Field>
               <FieldLabel>Rôle</FieldLabel>

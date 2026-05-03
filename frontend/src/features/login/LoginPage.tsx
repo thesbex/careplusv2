@@ -33,7 +33,7 @@ export default function LoginPage() {
   } = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'f.benjelloun@cab-elamrani.ma',
+      email: '',
       password: '',
     },
   });
@@ -121,6 +121,7 @@ export default function LoginPage() {
               id="login-email"
               type="email"
               autoComplete="email"
+              placeholder="vous@cabinet.ma"
               aria-invalid={!!errors.email}
               aria-describedby={errors.email ? 'login-email-err' : undefined}
               style={{ height: 40 }}

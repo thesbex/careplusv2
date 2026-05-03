@@ -50,7 +50,8 @@ describe('<LoginPage />', () => {
     expect(screen.getByText(/Conforme loi 09-08/)).toBeInTheDocument();
     expect(screen.getByText('Connexion professionnelle')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Bon retour, docteur.' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Adresse email')).toHaveValue('f.benjelloun@cab-elamrani.ma');
+    expect(screen.getByLabelText('Adresse email')).toHaveValue('');
+    expect(screen.getByLabelText('Adresse email')).toHaveAttribute('placeholder', 'vous@cabinet.ma');
     expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Se connecter/ })).toBeInTheDocument();
   });
@@ -89,6 +90,7 @@ describe('<LoginPage />', () => {
     });
     renderLogin();
 
+    await user.type(screen.getByLabelText('Adresse email'), 'f.benjelloun@cab-elamrani.ma');
     await user.type(screen.getByLabelText('Mot de passe'), 'ChangeMe123!');
     await user.click(screen.getByRole('button', { name: /Se connecter/ }));
 
@@ -111,6 +113,7 @@ describe('<LoginPage />', () => {
       response: { status: 401, data: { title: 'Identifiants incorrects', status: 401 } },
     });
     renderLogin();
+    await user.type(screen.getByLabelText('Adresse email'), 'f.benjelloun@cab-elamrani.ma');
     await user.type(screen.getByLabelText('Mot de passe'), 'wrongpwd123');
     await user.click(screen.getByRole('button', { name: /Se connecter/ }));
     expect(await screen.findByText('Identifiants incorrects')).toBeInTheDocument();
