@@ -14,6 +14,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { api } from '@/lib/api/client';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -87,10 +88,12 @@ export default function ConsultationPage() {
   const [certificatOpen, setCertificatOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
+  // Le footer "Certificat" rouvre le PDF du dernier certificat généré pour
+  // la consultation. Désactivé tant qu'aucun cert n'existe.
+  const latestCert = [...prescriptions].reverse().find((p) => p.type === 'CERT');
 
   const {
     register,
-    handleSubmit,
     reset,
     watch,
     formState: { errors },
@@ -268,10 +271,23 @@ export default function ConsultationPage() {
                 : `Enregistré automatiquement · ${savedLabel}`}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <Button type="button" onClick={() => handleSubmit(() => undefined)()}>
+              <Button type="button" onClick={() => navigate('/salle')}>
                 Suspendre
               </Button>
-              <Button type="button" disabled>
+              <Button
+                type="button"
+                disabled={!latestCert}
+                onClick={() => {
+                  if (!latestCert) return;
+                  void api
+                    .get(`/prescriptions/${latestCert.id}/pdf`, { responseType: 'blob' })
+                    .then((r) => {
+                      const url = URL.createObjectURL(r.data as Blob);
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                    })
+                    .catch(() => toast.error('Aperçu PDF impossible.'));
+                }}
+              >
                 <Print /> Certificat
               </Button>
               <SignatureLock
