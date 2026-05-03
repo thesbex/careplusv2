@@ -26,12 +26,23 @@ function fakeStream() {
 
 describe('<WebcamCaptureModal />', () => {
   let getUserMedia: ReturnType<typeof vi.fn>;
+  let enumerateDevices: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    // jsdom defaults `window.isSecureContext` to false. The component refuses
+    // to call getUserMedia outside a secure context, so we must claim secure
+    // for these tests (production runs on HTTPS or localhost — both secure).
+    Object.defineProperty(window, 'isSecureContext', { configurable: true, value: true });
+
     getUserMedia = vi.fn();
+    // Default probe : OS exposes at least one videoinput. Tests that need
+    // "OS hides the camera" override this mock per-test.
+    enumerateDevices = vi.fn().mockResolvedValue([
+      { kind: 'videoinput', label: '', deviceId: '' },
+    ]);
     Object.defineProperty(navigator, 'mediaDevices', {
       configurable: true,
-      value: { getUserMedia },
+      value: { getUserMedia, enumerateDevices },
     });
   });
 
@@ -99,11 +110,12 @@ describe('<WebcamCaptureModal />', () => {
     render(<WebcamCaptureModal open onCapture={() => {}} onClose={() => {}} />);
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
-    expect(screen.getByRole('alert')).toHaveTextContent(/utilisée par une autre application/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Caméra occupée/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Zoom \/ Teams/);
     expect(getUserMedia).toHaveBeenCalledTimes(1);
   });
 
-  it('6. shows final error message when even the fallback fails', async () => {
+  it('6. shows final error with hints when even the fallback fails', async () => {
     const overconstrained = new DOMException('overconstrained', 'OverconstrainedError');
     const stillNotFound = new DOMException('really none', 'NotFoundError');
     getUserMedia.mockRejectedValueOnce(overconstrained);
@@ -112,6 +124,36 @@ describe('<WebcamCaptureModal />', () => {
     render(<WebcamCaptureModal open onCapture={() => {}} onClose={() => {}} />);
 
     await waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(2));
-    expect(screen.getByRole('alert')).toHaveTextContent(/Aucune caméra détectée/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Aucune caméra accessible/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Paramètres → Confidentialité/);
+  });
+
+  // ── New tests for the "OS hides the camera" diagnosis path ─────────────
+
+  it('7. when enumerateDevices reveals NO videoinput, skips getUserMedia and shows actionable hints', async () => {
+    enumerateDevices.mockResolvedValueOnce([
+      { kind: 'audiooutput', label: '', deviceId: '' },
+    ]);
+
+    render(<WebcamCaptureModal open onCapture={() => {}} onClose={() => {}} />);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toHaveTextContent(/Aucune caméra accessible/);
+    // Actionable hints — Windows privacy settings, hardware switch, replug.
+    expect(screen.getByRole('alert')).toHaveTextContent(/Paramètres → Confidentialité/);
+    expect(screen.getByRole('alert')).toHaveTextContent(/commutateur physique/);
+    // We must NOT call getUserMedia — the OS already says no camera, asking
+    // would only spam the user with a useless permission prompt.
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+
+  it('8. surfaces underlying DOMException name as "code: …" for debug', async () => {
+    const denied = new DOMException('denied', 'NotAllowedError');
+    getUserMedia.mockRejectedValueOnce(denied);
+
+    render(<WebcamCaptureModal open onCapture={() => {}} onClose={() => {}} />);
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toHaveTextContent(/code\s*:\s*NotAllowedError/);
   });
 });

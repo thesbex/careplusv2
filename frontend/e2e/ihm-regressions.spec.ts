@@ -14,6 +14,9 @@
  *   6. Une consultation SIGNEE permet TOUJOURS de téléverser un résultat
  *      LAB / IMAGING (le patient ramène ses analyses des jours après —
  *      rapport Y. Boutaleb 2026-05-01)
+ *   7. Quand l'OS n'expose AUCUNE caméra (Windows Privacy = OFF, kill-switch),
+ *      la modale « Photographier » affiche un titre + des consignes
+ *      actionnables, pas seulement « Aucune caméra détectée » sans suite
  *
  * Pré-requis : Spring Boot + Vite up, dev profile (cf. playwright.config.ts).
  */
@@ -236,6 +239,43 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
 
     await page.reload();
     await expect(page.getByText(/Voir résultat/i).first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('7. Webcam modal surfaces actionable hints when OS hides every camera', async ({ page }) => {
+    // Pin the new diagnostic UX (vs. the dead-end "Aucune caméra détectée"
+    // pré-2026-05-01). We force the test to behave like a PC where the OS
+    // refuses to expose any video device — same situation Chrome reports
+    // on Windows when Privacy → Caméra is OFF.
+    await uiLogin(page, USERS.medecin.email, USERS.medecin.password);
+    await page.goto('/patients');
+
+    // Patch the browser BEFORE the user action so the dialog mounts with
+    // navigator.mediaDevices already returning "no videoinput".
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const md = navigator.mediaDevices as any;
+      md.enumerateDevices = () => Promise.resolve([
+        { kind: 'audiooutput', label: '', deviceId: '' },
+      ]);
+      md.getUserMedia = () =>
+        Promise.reject(new DOMException('Requested device not found', 'NotFoundError'));
+    });
+    await page.reload();
+
+    await page.getByRole('button', { name: /Nouveau patient/ }).click();
+    await page.getByRole('button', { name: /^Photographier$/ }).click();
+
+    // Title + detail + first hint must be visible.
+    const alert = page.getByRole('alert').first();
+    await expect(alert).toBeVisible({ timeout: 5_000 });
+    await expect(alert).toContainText(/Aucune caméra accessible/);
+    await expect(alert).toContainText(/Paramètres → Confidentialité/);
+    await expect(alert).toContainText(/commutateur physique/);
+    // Underlying DOMException name surfaced for debug.
+    await expect(alert).toContainText(/code\s*:\s*NotFoundError/);
+
+    // « Capturer » must be disabled — no stream, no capture.
+    await expect(page.getByRole('button', { name: /^Capturer$/ })).toBeDisabled();
   });
 
   test.fixme(

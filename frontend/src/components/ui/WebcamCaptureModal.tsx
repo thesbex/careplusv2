@@ -29,6 +29,15 @@ export interface WebcamCaptureModalProps {
   onClose: () => void;
 }
 
+/** Structured error so we can render a title, an explanation AND actionable hints. */
+interface CameraError {
+  title: string;
+  detail: string;
+  hints: string[];
+  /** Underlying DOMException name for log/debug — surfaced in small text. */
+  cause?: string | undefined;
+}
+
 export function WebcamCaptureModal({
   open,
   mimeType = 'image/jpeg',
@@ -40,7 +49,7 @@ export function WebcamCaptureModal({
 }: WebcamCaptureModalProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<CameraError | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -50,8 +59,20 @@ export function WebcamCaptureModal({
     setError(null);
     setReady(false);
 
+    if (!window.isSecureContext) {
+      setError({
+        title: 'Contexte non sécurisé',
+        detail: "L'accès caméra n'est autorisé que sur HTTPS ou localhost.",
+        hints: ["Ouvrez l'application en HTTPS, ou testez en local sur http://localhost."],
+      });
+      return;
+    }
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError("Ce navigateur ne supporte pas la capture caméra.");
+      setError({
+        title: 'Capture non supportée',
+        detail: 'Ce navigateur ne supporte pas la capture caméra.',
+        hints: ['Mettez à jour Chrome / Edge / Firefox vers la dernière version.'],
+      });
       return;
     }
 
@@ -81,44 +102,106 @@ export function WebcamCaptureModal({
       }
     }
 
-    function reportError(err: unknown) {
+    function reportError(err: unknown, hasVideoDevice: boolean | null) {
       if (cancelled) return;
-      const msg = err instanceof Error ? err.message : 'Caméra inaccessible.';
-      if (err instanceof DOMException) {
-        if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
-          setError("Permission caméra refusée. Autorisez l'accès dans le navigateur puis réessayez.");
-          return;
-        }
-        if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') {
-          setError('Aucune caméra détectée sur cet appareil.');
-          return;
-        }
-        if (err.name === 'NotReadableError') {
-          setError("Caméra utilisée par une autre application. Fermez-la puis réessayez.");
-          return;
-        }
+      const cause = err instanceof DOMException ? err.name : undefined;
+      const causeMsg = err instanceof Error ? err.message : '';
+
+      if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
+        setError({
+          title: 'Permission caméra refusée',
+          detail: "Le navigateur a bloqué l'accès à la caméra.",
+          hints: [
+            "Cliquez sur l'icône caméra dans la barre d'adresse et choisissez « Toujours autoriser ».",
+            'Puis cliquez sur « Réessayer ».',
+          ],
+          cause,
+        });
+        return;
       }
-      setError(msg);
+      if (err instanceof DOMException && err.name === 'NotReadableError') {
+        setError({
+          title: 'Caméra occupée',
+          detail: 'Une autre application utilise déjà la caméra.',
+          hints: [
+            'Fermez Zoom / Teams / Meet / OBS / Skype / l\'app Caméra Windows.',
+            'Puis cliquez sur « Réessayer ».',
+          ],
+          cause,
+        });
+        return;
+      }
+      // NotFoundError / OverconstrainedError → on distingue
+      // « pas de caméra du tout » de « contrainte trop stricte ».
+      if (hasVideoDevice === false) {
+        setError({
+          title: 'Aucune caméra accessible',
+          detail: 'Le système n\'expose aucun périphérique caméra à ce navigateur.',
+          hints: [
+            'Windows : Paramètres → Confidentialité et sécurité → Caméra → activez « Autoriser les applications à accéder à votre caméra » ET « Autoriser les applications de bureau à accéder à votre caméra ».',
+            'Vérifiez le commutateur physique de la webcam (touche F-x ou interrupteur sur l\'écran).',
+            'Branchez/débranchez la webcam externe et rechargez la page.',
+          ],
+          cause,
+        });
+        return;
+      }
+      setError({
+        title: 'Caméra inaccessible',
+        detail: causeMsg || 'Erreur inconnue.',
+        hints: ['Rechargez la page et réessayez.'],
+        cause,
+      });
     }
 
-    navigator.mediaDevices
-      .getUserMedia(primary)
-      .then(attach)
-      .catch((err: unknown) => {
-        // Permission/security errors must NOT silently retry — the user has
-        // to act. Only fall back when the constraint itself was the problem.
-        const recoverable =
-          err instanceof DOMException &&
-          (err.name === 'OverconstrainedError' || err.name === 'NotFoundError');
-        if (!recoverable || cancelled) {
-          reportError(err);
-          return;
-        }
-        navigator.mediaDevices
-          .getUserMedia(fallback)
-          .then(attach)
-          .catch(reportError);
-      });
+    // 1) Probe enumerateDevices() FIRST — révèle « pas de webcam au niveau
+    //    OS » avant d'aller chercher un message d'erreur générique.
+    //    Les `videoinput` apparaissent même sans permission (label vide).
+    const probe = navigator.mediaDevices.enumerateDevices
+      ? navigator.mediaDevices.enumerateDevices().then(
+          (devs) => devs.some((d) => d.kind === 'videoinput'),
+          () => null as boolean | null,
+        )
+      : Promise.resolve(null as boolean | null);
+
+    void probe.then((hasVideoDevice) => {
+      if (cancelled) return;
+      if (hasVideoDevice === false) {
+        reportError(
+          new DOMException('No videoinput device exposed by the OS', 'NotFoundError'),
+          false,
+        );
+        return;
+      }
+      navigator.mediaDevices
+        .getUserMedia(primary)
+        .then(attach)
+        .catch((err: unknown) => {
+          // Permission/security errors must NOT silently retry — the user has
+          // to act. Only fall back when the constraint itself was the problem.
+          const recoverable =
+            err instanceof DOMException &&
+            (err.name === 'OverconstrainedError' || err.name === 'NotFoundError');
+          if (!recoverable || cancelled) {
+            reportError(err, hasVideoDevice);
+            return;
+          }
+          navigator.mediaDevices
+            .getUserMedia(fallback)
+            .then(attach)
+            .catch((err2: unknown) => {
+              // The fallback asked for ANY video device. If it ALSO fails with
+              // NotFoundError/OverconstrainedError, the OS truly exposes no
+              // camera — surface that diagnosis even if enumerateDevices was
+              // optimistic (some browsers list a `videoinput` ghost when the
+              // user previously granted permission to a now-disconnected cam).
+              const exhausted =
+                err2 instanceof DOMException &&
+                (err2.name === 'NotFoundError' || err2.name === 'OverconstrainedError');
+              reportError(err2, exhausted ? false : hasVideoDevice);
+            });
+        });
+    });
 
     return () => {
       cancelled = true;
@@ -153,7 +236,11 @@ export function WebcamCaptureModal({
       const file = new File([blob], name, { type: mimeType });
       onCapture(file);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError({
+        title: 'Capture impossible',
+        detail: err instanceof Error ? err.message : String(err),
+        hints: ['Réessayez. Si le problème persiste, rechargez la page.'],
+      });
     } finally {
       setBusy(false);
     }
@@ -201,8 +288,34 @@ export function WebcamCaptureModal({
           </Button>
         </div>
         {error ? (
-          <div role="alert" style={{ color: 'var(--danger, #b91c1c)', fontSize: 14 }}>
-            {error}
+          <div
+            role="alert"
+            style={{
+              padding: 14,
+              borderRadius: 8,
+              background: 'var(--danger-soft, #FFEBEE)',
+              border: '1px solid #EF9A9A',
+              color: 'var(--ink, #2A2D33)',
+              fontSize: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <strong style={{ color: 'var(--danger, #b91c1c)' }}>{error.title}</strong>
+            <span>{error.detail}</span>
+            {error.hints.length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, color: 'var(--ink-2, #4B4F58)' }}>
+                {error.hints.map((h, i) => (
+                  <li key={i}>{h}</li>
+                ))}
+              </ul>
+            )}
+            {error.cause && (
+              <code style={{ fontSize: 11, color: 'var(--ink-3, #7A7F8A)' }}>
+                code : {error.cause}
+              </code>
+            )}
           </div>
         ) : (
           <video
