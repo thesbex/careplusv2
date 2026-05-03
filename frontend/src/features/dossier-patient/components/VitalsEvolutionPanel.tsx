@@ -81,21 +81,35 @@ function ChartCard({
   );
 }
 
+/**
+ * Coerce une valeur API (number ou number-like string) en number propre, sinon
+ * null. Tolère les BigDecimal sérialisés en string par Jackson.
+ */
+function asNum(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function pick<K extends keyof VitalsApi>(
   history: VitalsApi[],
   key: K,
-): { x: string; y: VitalsApi[K] }[] {
-  return history.map((v) => ({ x: v.recordedAt, y: v[key] }));
+): { x: string; y: number | null }[] {
+  return history.map((v) => ({ x: v.recordedAt, y: asNum(v[key]) }));
 }
 
-function lastValue<K extends keyof VitalsApi>(
+function lastValue(
   history: VitalsApi[],
-  key: K,
-  fmt: (v: NonNullable<VitalsApi[K]>) => string = (v) => String(v),
+  key: keyof VitalsApi,
+  fmt: (v: number) => string = (v) => String(v),
 ): string | null {
   for (let i = history.length - 1; i >= 0; i--) {
-    const v = history[i]![key];
-    if (v != null) return fmt(v as NonNullable<VitalsApi[K]>);
+    const n = asNum(history[i]![key]);
+    if (n != null) return fmt(n);
   }
   return null;
 }

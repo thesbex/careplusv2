@@ -42,6 +42,27 @@ function VitalRow({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
   );
 }
 
+/**
+ * Coerce vers un number — tolère les "number-like strings" (Jackson sérialise
+ * parfois BigDecimal en string), évite un TypeError sur `.toFixed` si le
+ * backend renvoie "36.8" au lieu de 36.8.
+ */
+function asNum(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function formatDecimal(v: unknown, digits: number): string | null {
+  const n = asNum(v);
+  if (n == null) return null;
+  return n.toFixed(digits).replace('.', ',');
+}
+
 export function PatientContextCard({
   patient, vitals, onRecordVitals, canRecordVitals = true,
 }: PatientContextCardProps) {
@@ -81,12 +102,17 @@ export function PatientContextCard({
       })()
     : null;
 
-  const ta =
-    vitals?.systolicMmhg != null && vitals.diastolicMmhg != null
-      ? `${vitals.systolicMmhg} / ${vitals.diastolicMmhg}`
-      : null;
-  const taWarn = vitals?.systolicMmhg != null && vitals.systolicMmhg >= 130;
-  const bmiWarn = vitals?.bmi != null && (vitals.bmi >= 25 || vitals.bmi < 18.5);
+  const sys = asNum(vitals?.systolicMmhg);
+  const dia = asNum(vitals?.diastolicMmhg);
+  const fc = asNum(vitals?.heartRateBpm);
+  const tempStr = formatDecimal(vitals?.temperatureC, 1);
+  const spo2 = asNum(vitals?.spo2Percent);
+  const bmiStr = formatDecimal(vitals?.bmi, 1);
+
+  const ta = sys != null && dia != null ? `${sys} / ${dia}` : null;
+  const taWarn = sys != null && sys >= 130;
+  const bmiNum = asNum(vitals?.bmi);
+  const bmiWarn = bmiNum != null && (bmiNum >= 25 || bmiNum < 18.5);
 
   return (
     <div
@@ -149,22 +175,10 @@ export function PatientContextCard({
             {vitals && (
               <>
                 {ta && <VitalRow k="TA" v={ta} warn={taWarn} />}
-                {vitals.heartRateBpm != null && (
-                  <VitalRow k="FC" v={String(vitals.heartRateBpm)} />
-                )}
-                {vitals.temperatureC != null && (
-                  <VitalRow k="T°" v={vitals.temperatureC.toFixed(1).replace('.', ',')} />
-                )}
-                {vitals.spo2Percent != null && (
-                  <VitalRow k="SpO₂" v={`${vitals.spo2Percent}%`} />
-                )}
-                {vitals.bmi != null && (
-                  <VitalRow
-                    k="IMC"
-                    v={vitals.bmi.toFixed(1).replace('.', ',')}
-                    warn={bmiWarn}
-                  />
-                )}
+                {fc != null && <VitalRow k="FC" v={String(fc)} />}
+                {tempStr && <VitalRow k="T°" v={tempStr} />}
+                {spo2 != null && <VitalRow k="SpO₂" v={`${spo2}%`} />}
+                {bmiStr && <VitalRow k="IMC" v={bmiStr} warn={bmiWarn} />}
               </>
             )}
           </div>

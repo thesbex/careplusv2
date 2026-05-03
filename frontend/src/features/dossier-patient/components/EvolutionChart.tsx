@@ -15,8 +15,19 @@ import { useMemo, useState } from 'react';
 export interface SeriesPoint {
   /** ISO timestamp ou Date — converti en `Date` côté composant. */
   x: string | Date;
-  /** Valeur numérique ; `null` saute le point (ne casse pas la ligne). */
-  y: number | null;
+  /**
+   * Valeur numérique ; `null` saute le point (ne casse pas la ligne). Les
+   * "number-like strings" (Jackson sérialise parfois BigDecimal en string)
+   * sont tolérées et coercées via `Number()`.
+   */
+  y: number | string | null;
+}
+
+function coerceY(v: number | string | null): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 export interface Series {
@@ -84,10 +95,11 @@ export function EvolutionChart({
 
   const allPoints = series.flatMap((s) =>
     s.points
-      .filter((p): p is { x: string | Date; y: number } => p.y != null)
-      .map((p) => ({
+      .map((p) => ({ p, n: coerceY(p.y) }))
+      .filter((entry): entry is { p: SeriesPoint; n: number } => entry.n != null)
+      .map(({ p, n }) => ({
         date: typeof p.x === 'string' ? new Date(p.x) : p.x,
-        y: p.y,
+        y: n,
         seriesId: s.id,
         seriesLabel: s.label,
         seriesColor: s.color,
@@ -157,13 +169,14 @@ export function EvolutionChart({
     let d = '';
     let penUp = true;
     for (const p of s.points) {
-      if (p.y == null) {
+      const n = coerceY(p.y);
+      if (n == null) {
         penUp = true;
         continue;
       }
       const date = typeof p.x === 'string' ? new Date(p.x) : p.x;
       const cmd = penUp ? 'M' : 'L';
-      d += `${cmd}${xPx(date.getTime()).toFixed(1)},${yPx(p.y).toFixed(1)} `;
+      d += `${cmd}${xPx(date.getTime()).toFixed(1)},${yPx(n).toFixed(1)} `;
       penUp = false;
     }
     return { id: s.id, label: s.label, color: s.color, d };
@@ -370,7 +383,8 @@ export function EvolutionChart({
                     const dt = typeof p.x === 'string' ? new Date(p.x) : p.x;
                     return dt.toISOString() === d;
                   });
-                  return <td key={s.id}>{pt?.y != null ? formatY(pt.y) : '—'}</td>;
+                  const n = pt ? coerceY(pt.y) : null;
+                  return <td key={s.id}>{n != null ? formatY(n) : '—'}</td>;
                 })}
               </tr>
             ));

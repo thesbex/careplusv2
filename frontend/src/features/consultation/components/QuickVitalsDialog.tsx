@@ -56,10 +56,23 @@ function toNumOrNull(v: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** Affiche les nombres en notation française (virgule décimale). */
-function fromNum(v: number | null | undefined): string {
+/**
+ * Affiche les nombres en notation française. Tolère les "number-like strings"
+ * (Jackson sérialise parfois BigDecimal en string pour préserver la précision)
+ * pour ne pas crasher si le backend renvoie "36.8" au lieu de 36.8.
+ */
+function fromNum(v: unknown): string {
   if (v == null) return '';
-  return String(v).replace('.', ',');
+  if (typeof v === 'number') {
+    if (!Number.isFinite(v)) return '';
+    return String(v).replace('.', ',');
+  }
+  if (typeof v === 'string') {
+    const trimmed = v.trim();
+    if (trimmed === '') return '';
+    return trimmed.replace('.', ',');
+  }
+  return '';
 }
 
 function fromCurrent(c: VitalsApi | null | undefined): FormState {

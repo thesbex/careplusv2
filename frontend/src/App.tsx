@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { router } from '@/lib/router/routes';
 import { queryClient } from '@/lib/api/queryClient';
 import { useBootstrapAuth } from '@/lib/auth/useAuth';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 function BootstrappedRouter() {
   const { ready } = useBootstrapAuth();
@@ -30,17 +31,19 @@ function BootstrappedRouter() {
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BootstrappedRouter />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            fontFamily: 'var(--font-sans)',
-            borderRadius: 'var(--r-md)',
-          },
-        }}
-      />
-    </QueryClientProvider>
+    <ErrorBoundary contextLabel="careplus — application principale">
+      <QueryClientProvider client={queryClient}>
+        <BootstrappedRouter />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              fontFamily: 'var(--font-sans)',
+              borderRadius: 'var(--r-md)',
+            },
+          }}
+        />
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
