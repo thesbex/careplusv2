@@ -92,10 +92,23 @@ export function QuickVitalsDialog({
       onOpenChange(false);
       setForm(EMPTY);
     } catch (err) {
-      const e = err as { response?: { data?: { detail?: string; message?: string } } };
-      toast.error('Enregistrement refusé', {
-        description: e?.response?.data?.detail ?? e?.response?.data?.message,
-      });
+      const e = err as {
+        response?: {
+          data?: {
+            detail?: string;
+            message?: string;
+            errors?: { field?: string; defaultMessage?: string; message?: string }[];
+          };
+        };
+      };
+      // Spring renvoie { errors: [{ field, defaultMessage }] } pour les
+      // validations @Min/@Max — on les regroupe pour aider le médecin à
+      // corriger la bonne case.
+      const errs = e?.response?.data?.errors ?? [];
+      const description = errs.length > 0
+        ? errs.map((x) => `${x.field ?? '?'} : ${x.defaultMessage ?? x.message ?? ''}`).join(' · ')
+        : (e?.response?.data?.detail ?? e?.response?.data?.message);
+      toast.error('Enregistrement refusé', { description });
     } finally {
       setIsSubmitting(false);
     }
@@ -146,13 +159,13 @@ export function QuickVitalsDialog({
             padding: 18,
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
           }}>
-            <Field label="Systolique (mmHg)" {...field('systolicMmhg')} placeholder="120" />
-            <Field label="Diastolique (mmHg)" {...field('diastolicMmhg')} placeholder="80" />
-            <Field label="FC (bpm)" {...field('heartRateBpm')} placeholder="72" />
-            <Field label="SpO₂ (%)" {...field('spo2Percent')} placeholder="98" />
-            <Field label="T° (°C)" {...field('temperatureC')} placeholder="36,8" />
-            <Field label="Poids (kg)" {...field('weightKg')} placeholder="72,5" />
-            <Field label="Taille (cm)" {...field('heightCm')} placeholder="178" />
+            <Field label="Systolique (mmHg)" hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
+            <Field label="Diastolique (mmHg)" hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
+            <Field label="FC (bpm)" hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
+            <Field label="SpO₂ (%)" hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
+            <Field label="T° (°C)" hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
+            <Field label="Poids (kg)" hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
+            <Field label="Taille (cm)" hint="20 – 260" {...field('heightCm')} placeholder="178" />
           </div>
 
           <div style={{
@@ -179,12 +192,13 @@ export function QuickVitalsDialog({
 }
 
 function Field({
-  label, value, onChange, placeholder,
+  label, value, onChange, placeholder, hint,
 }: {
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5 }}>
@@ -202,6 +216,11 @@ function Field({
           background: 'var(--surface)',
         }}
       />
+      {hint && (
+        <span style={{ fontSize: 10.5, color: 'var(--ink-3)', fontWeight: 500 }}>
+          Plage acceptée : {hint}
+        </span>
+      )}
     </label>
   );
 }

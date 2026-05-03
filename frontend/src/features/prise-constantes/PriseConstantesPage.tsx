@@ -179,7 +179,7 @@ export default function PriseConstantesPage() {
                   >
                     {errors.tensionSys?.message ??
                       errors.tensionDia?.message ??
-                      'Normale haute'}
+                      'Plage acceptée : 20 – 300 / 10 – 250 mmHg'}
                   </div>
                 </Panel>
 
@@ -188,7 +188,7 @@ export default function PriseConstantesPage() {
                   icon="Heart"
                   label="Fréquence cardiaque"
                   unit="bpm"
-                  norm="Normale"
+                  norm="Plage acceptée : 10 – 300"
                   type="number"
                   aria-label="Fréquence cardiaque"
                   errorMessage={errors.pulse?.message}
@@ -200,7 +200,7 @@ export default function PriseConstantesPage() {
                   icon="Thermo"
                   label="Température"
                   unit="°C"
-                  norm="Normale"
+                  norm="Plage acceptée : 20,0 – 46,0"
                   type="number"
                   step="0.1"
                   aria-label="Température"
@@ -213,7 +213,7 @@ export default function PriseConstantesPage() {
                   icon="Dot"
                   label="SpO₂"
                   unit="%"
-                  norm="Normale"
+                  norm="Plage acceptée : 0 – 100"
                   type="number"
                   aria-label="Saturation O₂"
                   errorMessage={errors.spo2?.message}
@@ -225,7 +225,7 @@ export default function PriseConstantesPage() {
                   icon="Dot"
                   label="Poids"
                   unit="kg"
-                  norm="—"
+                  norm="Plage acceptée : 0,2 – 500"
                   type="number"
                   step="0.1"
                   aria-label="Poids"
@@ -238,7 +238,7 @@ export default function PriseConstantesPage() {
                   icon="Dot"
                   label="Taille"
                   unit="cm"
-                  norm="—"
+                  norm="Plage acceptée : 20 – 260"
                   type="number"
                   aria-label="Taille"
                   errorMessage={errors.heightCm?.message}

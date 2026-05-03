@@ -9,51 +9,51 @@
 import { z } from 'zod';
 
 export const vitalsFormSchema = z.object({
-  /** Systolic blood pressure (mmHg). */
+  /** Systolic blood pressure (mmHg). Wide bounds — match backend DTO. */
   tensionSys: z
     .number({ invalid_type_error: 'Valeur requise' })
     .int()
-    .min(60, 'Valeur minimale : 60')
+    .min(20, 'Valeur minimale : 20')
     .max(300, 'Valeur maximale : 300'),
 
   /** Diastolic blood pressure (mmHg). */
   tensionDia: z
     .number({ invalid_type_error: 'Valeur requise' })
     .int()
-    .min(30, 'Valeur minimale : 30')
-    .max(200, 'Valeur maximale : 200'),
+    .min(10, 'Valeur minimale : 10')
+    .max(250, 'Valeur maximale : 250'),
 
   /** Heart rate in beats per minute. */
   pulse: z
     .number({ invalid_type_error: 'Valeur requise' })
     .int()
-    .min(20, 'Valeur minimale : 20')
+    .min(10, 'Valeur minimale : 10')
     .max(300, 'Valeur maximale : 300'),
 
   /** Oxygen saturation (%). */
   spo2: z
     .number({ invalid_type_error: 'Valeur requise' })
-    .min(50, 'Valeur minimale : 50')
+    .min(0, 'Valeur minimale : 0')
     .max(100, 'Valeur maximale : 100'),
 
   /** Body temperature in Celsius. */
   tempC: z
     .number({ invalid_type_error: 'Valeur requise' })
-    .min(30, 'Valeur minimale : 30')
-    .max(45, 'Valeur maximale : 45'),
+    .min(20, 'Valeur minimale : 20')
+    .max(46, 'Valeur maximale : 46'),
 
   /** Body weight in kilograms. */
   weightKg: z
     .number({ invalid_type_error: 'Valeur requise' })
-    .min(1, 'Valeur minimale : 1')
+    .min(0.2, 'Valeur minimale : 0,2')
     .max(500, 'Valeur maximale : 500'),
 
   /** Height in centimetres. */
   heightCm: z
     .number({ invalid_type_error: 'Valeur requise' })
     .int()
-    .min(30, 'Valeur minimale : 30')
-    .max(300, 'Valeur maximale : 300'),
+    .min(20, 'Valeur minimale : 20')
+    .max(260, 'Valeur maximale : 260'),
 
   // ── Étape 2 — optional measures ───────────────────────────────────
   /** Blood glucose in g/L. */
