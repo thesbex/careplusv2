@@ -57,3 +57,17 @@ node_modules/
 
 # Claude local overrides (settings.json is committed, settings.local.json is not)
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
+.claude/state/
+
+# Playwright / Chrome DevTools MCP runtime caches
+.playwright-mcp/
+
+# QA screenshots (manual-qa agent + browser MCP captures — kept locally only)
+qa-*.png
+qa[0-9]*-*.png
+constantes-fixed.png
+frontend/qa-*.png
+
+# Spring Boot runtime data dir (DocumentStorage at app boot)
+data/
