@@ -245,6 +245,10 @@ function NewPatientPanel({
       setValidationError('Le numéro de téléphone est obligatoire.');
       return;
     }
+    if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
+      setValidationError('Numéro de téléphone invalide.');
+      return;
+    }
     const created = await create(form).catch(() => null);
     if (created) onCreated(created.id);
   }
@@ -306,7 +310,16 @@ function NewPatientPanel({
         </div>
 
         <div><Lbl>Téléphone *</Lbl>
-          <Input type="tel" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="+212 6 61 12 34 56" />
+          <Input
+            type="tel"
+            value={form.phone}
+            onChange={(e) => {
+              const v = e.target.value.replace(/[^\d\s+\-().]/g, '');
+              set('phone', v);
+            }}
+            placeholder="+212 6 61 12 34 56"
+            inputMode="tel"
+          />
         </div>
 
         <div><Lbl>Email</Lbl>
