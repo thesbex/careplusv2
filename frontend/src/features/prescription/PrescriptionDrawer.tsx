@@ -307,57 +307,75 @@ export function PrescriptionDrawer({
                     <Trash />
                   </Button>
                 </div>
-                <div className="pr-line-grid">
-                  <div className="pr-field-sm">
-                    <label htmlFor={`pr-dos-${i}`}>Posologie</label>
-                    <input
-                      id={`pr-dos-${i}`}
-                      value={line.dosage}
-                      onChange={(e) => updateLine(i, { dosage: e.target.value })}
-                      placeholder="1 cp matin"
-                    />
+                {type === 'DRUG' && (
+                  <div className="pr-line-grid">
+                    <div className="pr-field-sm">
+                      <label htmlFor={`pr-dos-${i}`}>Posologie</label>
+                      <input
+                        id={`pr-dos-${i}`}
+                        value={line.dosage}
+                        onChange={(e) => updateLine(i, { dosage: e.target.value })}
+                        placeholder="1 cp matin"
+                      />
+                    </div>
+                    <div className="pr-field-sm">
+                      <label htmlFor={`pr-freq-${i}`}>Fréquence</label>
+                      <input
+                        id={`pr-freq-${i}`}
+                        value={line.frequency}
+                        onChange={(e) => updateLine(i, { frequency: e.target.value })}
+                        placeholder="Par jour"
+                      />
+                    </div>
+                    <div className="pr-field-sm">
+                      <label htmlFor={`pr-dur-${i}`}>Durée</label>
+                      <input
+                        id={`pr-dur-${i}`}
+                        value={line.duration}
+                        onChange={(e) => updateLine(i, { duration: e.target.value })}
+                        placeholder="30 jours"
+                      />
+                    </div>
+                    <div className="pr-field-sm">
+                      <label htmlFor={`pr-qty-${i}`}>Quantité</label>
+                      <input
+                        id={`pr-qty-${i}`}
+                        type="number"
+                        min={0}
+                        value={line.quantity ?? ''}
+                        onChange={(e) =>
+                          updateLine(i, {
+                            quantity: e.target.value === '' ? null : Number(e.target.value),
+                          })
+                        }
+                        placeholder="1"
+                      />
+                    </div>
                   </div>
-                  <div className="pr-field-sm">
-                    <label htmlFor={`pr-freq-${i}`}>Fréquence</label>
-                    <input
-                      id={`pr-freq-${i}`}
-                      value={line.frequency}
-                      onChange={(e) => updateLine(i, { frequency: e.target.value })}
-                      placeholder="Par jour"
-                    />
-                  </div>
-                  <div className="pr-field-sm">
-                    <label htmlFor={`pr-dur-${i}`}>Durée</label>
-                    <input
-                      id={`pr-dur-${i}`}
-                      value={line.duration}
-                      onChange={(e) => updateLine(i, { duration: e.target.value })}
-                      placeholder="30 jours"
-                    />
-                  </div>
-                  <div className="pr-field-sm">
-                    <label htmlFor={`pr-qty-${i}`}>Quantité</label>
-                    <input
-                      id={`pr-qty-${i}`}
-                      type="number"
-                      min={0}
-                      value={line.quantity ?? ''}
-                      onChange={(e) =>
-                        updateLine(i, {
-                          quantity: e.target.value === '' ? null : Number(e.target.value),
-                        })
-                      }
-                      placeholder="1"
-                    />
-                  </div>
-                </div>
+                )}
                 <div className="pr-field-sm" style={{ gridColumn: '1 / -1' }}>
-                  <label htmlFor={`pr-notes-${i}`}>Instructions (optionnel)</label>
+                  <label htmlFor={`pr-notes-${i}`}>
+                    {type === 'DRUG'
+                      ? 'Instructions (optionnel)'
+                      : type === 'LAB'
+                      ? 'Indication clinique / commentaire (optionnel)'
+                      : type === 'IMAGING'
+                      ? 'Renseignement clinique / région (optionnel)'
+                      : 'Instructions (optionnel)'}
+                  </label>
                   <input
                     id={`pr-notes-${i}`}
                     value={line.instructions}
                     onChange={(e) => updateLine(i, { instructions: e.target.value })}
-                    placeholder="Ex : à prendre avec un repas"
+                    placeholder={
+                      type === 'DRUG'
+                        ? 'Ex : à prendre avec un repas'
+                        : type === 'LAB'
+                        ? 'Ex : à jeun, suspicion diabète…'
+                        : type === 'IMAGING'
+                        ? 'Ex : douleur lombaire L4-L5…'
+                        : ''
+                    }
                   />
                 </div>
               </div>
