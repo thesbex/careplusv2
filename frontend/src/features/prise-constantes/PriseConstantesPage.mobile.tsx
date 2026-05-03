@@ -82,8 +82,21 @@ export default function PriseConstantesMobilePage() {
 
   const onSubmit = handleSubmit(
     async (values) => {
-      await submit(values);
-      navigate('/salle');
+      try {
+        await submit(values);
+        navigate('/salle');
+      } catch (err) {
+        // Same silent-failure fix as the desktop variant (2026-05-02).
+        const axiosMsg =
+          (err as { response?: { data?: { detail?: string; message?: string } } })
+            ?.response?.data?.detail ??
+          (err as { response?: { data?: { message?: string } } })
+            ?.response?.data?.message ??
+          null;
+        toast.error('Erreur lors de l\'enregistrement', {
+          description: axiosMsg ?? 'Vérifiez votre connexion et réessayez.',
+        });
+      }
     },
     (errs) => {
       const first = Object.values(errs)[0] as { message?: string } | undefined;

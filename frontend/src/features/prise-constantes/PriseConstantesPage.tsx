@@ -93,8 +93,24 @@ export default function PriseConstantesPage() {
 
   const onSubmit = handleSubmit(
     async (values) => {
-      await submit(values);
-      navigate('/salle');
+      try {
+        await submit(values);
+        navigate('/salle');
+      } catch (err) {
+        // Surface API errors as a toast so the user knows why nothing happened.
+        // mutateAsync throws an AxiosError when the backend returns 4xx/5xx;
+        // without this catch the exception escapes silently and navigate() is
+        // never called — the "rien ne se passe" bug (2026-05-02).
+        const axiosMsg =
+          (err as { response?: { data?: { detail?: string; message?: string } } })
+            ?.response?.data?.detail ??
+          (err as { response?: { data?: { message?: string } } })
+            ?.response?.data?.message ??
+          null;
+        toast.error('Erreur lors de l\'enregistrement', {
+          description: axiosMsg ?? 'Vérifiez votre connexion et réessayez.',
+        });
+      }
     },
     (errs) => {
       const first = Object.values(errs)[0] as { message?: string } | undefined;
@@ -335,7 +351,7 @@ export default function PriseConstantesPage() {
                     step="0.1"
                     placeholder="—"
                     {...register('glycemia', {
-                      setValueAs: (v) => (v === '' ? null : Number(v)),
+                      setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
                     })}
                   />
                 </Field>
@@ -346,7 +362,7 @@ export default function PriseConstantesPage() {
                     type="number"
                     placeholder="—"
                     {...register('abdominalCm', {
-                      setValueAs: (v) => (v === '' ? null : Number(v)),
+                      setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
                     })}
                   />
                 </Field>
@@ -357,7 +373,7 @@ export default function PriseConstantesPage() {
                     type="number"
                     placeholder="—"
                     {...register('respRate', {
-                      setValueAs: (v) => (v === '' ? null : Number(v)),
+                      setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
                     })}
                   />
                 </Field>
