@@ -9,6 +9,7 @@ import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
 import ConsultationRoute from '@/features/consultation';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
+import CongesPage from '@/features/parametres/CongesPage';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -138,7 +139,7 @@ export const router = createBrowserRouter(
       path: '/parametres',
       element: (
         <RequireAuth>
-          <Placeholder active="params" mobileTab="menu" title="Paramètres" sprintDay="J8" />
+          <CongesPage />
         </RequireAuth>
       ),
     },

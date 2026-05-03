@@ -34,6 +34,11 @@ public class Antecedent {
     @Column(name = "occurred_on")
     private LocalDate occurredOn;
 
+    /** Fine-grained category (ADR-023, V006). Optional; null means legacy data. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "category", length = 60)
+    private AntecedentCategory category;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -73,4 +78,6 @@ public class Antecedent {
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
     public UUID getUpdatedBy() { return updatedBy; }
     public void setUpdatedBy(UUID updatedBy) { this.updatedBy = updatedBy; }
+    public AntecedentCategory getCategory() { return category; }
+    public void setCategory(AntecedentCategory category) { this.category = category; }
 }

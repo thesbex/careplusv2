@@ -80,6 +80,18 @@ public class Patient {
     @Column(name = "status", nullable = false, length = 16)
     private PatientStatus status = PatientStatus.ACTIF;
 
+    /** Patient tier: NORMAL (default) or PREMIUM. Added in V005. */
+    @Column(name = "tier", nullable = false, length = 20)
+    private String tier = "NORMAL";
+
+    /** Mutuelle insurance FK — snapshot at invoice creation. Added in V005. */
+    @Column(name = "mutuelle_insurance_id")
+    private UUID mutuelleInsuranceId;
+
+    /** Mutuelle policy number. Added in V005. */
+    @Column(name = "mutuelle_policy_number", length = 100)
+    private String mutuellePoliceNumber;
+
     @Version
     @Column(name = "version", nullable = false)
     private long version;
@@ -155,6 +167,12 @@ public class Patient {
     public void setNotes(String notes) { this.notes = notes; }
     public PatientStatus getStatus() { return status; }
     public void setStatus(PatientStatus status) { this.status = status; }
+    public String getTier() { return tier; }
+    public void setTier(String tier) { this.tier = tier; }
+    public UUID getMutuelleInsuranceId() { return mutuelleInsuranceId; }
+    public void setMutuelleInsuranceId(UUID mutuelleInsuranceId) { this.mutuelleInsuranceId = mutuelleInsuranceId; }
+    public String getMutuellePoliceNumber() { return mutuellePoliceNumber; }
+    public void setMutuellePoliceNumber(String mutuellePoliceNumber) { this.mutuellePoliceNumber = mutuellePoliceNumber; }
     public long getVersion() { return version; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }

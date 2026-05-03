@@ -10,18 +10,117 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/Button';
-import { Field, FieldLabel, FieldHelp } from '@/components/ui/Field';
-import { Input, Select, Textarea } from '@/components/ui/Input';
+import { Field, FieldLabel } from '@/components/ui/Field';
+import { Select, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
-import { Close, Search, Plus, Clock } from '@/components/icons';
+import { Close, Search, Plus } from '@/components/icons';
 import { usePatientSearch } from './hooks/usePatientSearch';
 import { useReasons } from './hooks/useReasons';
 import { useAvailability } from './hooks/useAvailability';
+import { useMonthAvailability } from './hooks/useMonthAvailability';
 import { useCreateAppointment } from './hooks/useCreateAppointment';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
 import './prise-rdv.css';
+
+// ── Mini calendar ─────────────────────────────────────────────────────────────
+
+const WEEKDAYS_SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+const MONTHS_FR = [
+  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+];
+
+interface MiniCalProps {
+  year: number;
+  month: number;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+  value: string; // JJ/MM/AAAA
+  onChange: (v: string) => void;
+  availableDates: Set<string>;
+  isLoading: boolean;
+}
+
+function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, availableDates, isLoading }: MiniCalProps) {
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const startDow = (new Date(year, month, 1).getDay() + 6) % 7;
+  const canGoPrev = year > todayDate.getFullYear() || (year === todayDate.getFullYear() && month > todayDate.getMonth());
+
+  const selectedIso = /^\d{2}\/\d{2}\/\d{4}$/.test(value)
+    ? `${value.slice(6)}-${value.slice(3, 5)}-${value.slice(0, 2)}`
+    : null;
+
+  const cells: (number | null)[] = [
+    ...Array<null>(startDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+
+  return (
+    <div className="prise-rdv-cal">
+      <div className="prise-rdv-cal-header">
+        <button
+          type="button"
+          className="prise-rdv-cal-nav"
+          onClick={onPrevMonth}
+          disabled={!canGoPrev}
+          aria-label="Mois précédent"
+        >
+          ‹
+        </button>
+        <span className="prise-rdv-cal-title">{MONTHS_FR[month]} {year}</span>
+        <button type="button" className="prise-rdv-cal-nav" onClick={onNextMonth} aria-label="Mois suivant">
+          ›
+        </button>
+      </div>
+      <div className="prise-rdv-cal-grid" role="grid" aria-label="Calendrier">
+        {WEEKDAYS_SHORT.map((d, i) => (
+          <div key={i} className="prise-rdv-cal-weekday" role="columnheader">{d}</div>
+        ))}
+        {cells.map((day, i) => {
+          if (day === null) return <div key={`e${i}`} className="prise-rdv-cal-empty" role="gridcell" />;
+          const isoDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const cellDate = new Date(year, month, day);
+          const isPast = cellDate < todayDate;
+          const hasSlots = availableDates.has(isoDate);
+          const isSelected = isoDate === selectedIso;
+          const isToday = cellDate.getTime() === todayDate.getTime();
+          const disabled = isPast || (!isLoading && !hasSlots);
+          return (
+            <div key={day} role="gridcell">
+              <button
+                type="button"
+                disabled={disabled}
+                aria-label={`${day} ${MONTHS_FR[month] ?? ''} ${year}`}
+                aria-pressed={isSelected}
+                className={[
+                  'prise-rdv-cal-day',
+                  isSelected ? 'selected' : '',
+                  isToday && !isSelected ? 'today' : '',
+                  disabled ? 'disabled' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => {
+                  const dd = String(day).padStart(2, '0');
+                  const mm = String(month + 1).padStart(2, '0');
+                  onChange(`${dd}/${mm}/${year}`);
+                }}
+              >
+                {day}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+      {isLoading && <div className="prise-rdv-cal-loading">Chargement…</div>}
+    </div>
+  );
+}
+
+// ── Dialog ────────────────────────────────────────────────────────────────────
 
 export interface PriseRDVDialogProps {
   open: boolean;
@@ -31,6 +130,7 @@ export interface PriseRDVDialogProps {
 
 export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialogProps) {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
   const [patientError, setPatientError] = useState<string | null>(null);
 
@@ -39,13 +139,16 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const yyyy = today.getFullYear();
 
-  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<RdvFormValues>({
+  const [calYear, setCalYear] = useState(yyyy);
+  const [calMonth, setCalMonth] = useState(today.getMonth());
+
+  const { register, handleSubmit, watch, control, setValue, formState: { errors } } = useForm<RdvFormValues>({
     resolver: zodResolver(rdvFormSchema),
     defaultValues: {
       patientId: null,
       patientQuery: '',
       date: `${dd}/${mm}/${yyyy}`,
-      time: '09:00',
+      time: '',
       durationMin: 20,
       reasonId: null,
       notes: '',
@@ -54,16 +157,31 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
   });
 
   const patientQuery = watch('patientQuery');
+  const durationMin = watch('durationMin');
+  const dateValue = watch('date');
+
   const { candidates } = usePatientSearch(patientQuery);
   const { reasons } = useReasons();
-  const { hintText } = useAvailability(watch('date'));
+  const { availableDates, isLoading: isLoadingDates } = useMonthAvailability(calYear, calMonth, durationMin);
+  const { slots, isLoading: isLoadingSlots } = useAvailability(dateValue, durationMin);
 
   useEffect(() => {
     if (reasons.length > 0 && selectedReasonId === null) {
       setSelectedReasonId(reasons[0]?.id ?? null);
     }
   }, [reasons, selectedReasonId]);
+
   const { createAppointment, isPending, error } = useCreateAppointment();
+
+  function handlePrevMonth() {
+    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
+    else setCalMonth((m) => m - 1);
+  }
+
+  function handleNextMonth() {
+    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
+    else setCalMonth((m) => m + 1);
+  }
 
   async function onSubmit(data: RdvFormValues) {
     if (!selectedPatientId) {
@@ -113,93 +231,142 @@ export function PriseRDVDialog({ open, onOpenChange, onCreated }: PriseRDVDialog
               {/* Step 1: Patient */}
               <div style={{ marginBottom: 18 }}>
                 <div className="prise-rdv-step-label">Étape 1 · Patient</div>
-                <div className="prise-rdv-search">
-                  <Search />
-                  <input
-                    {...register('patientQuery')}
-                    className="prise-rdv-search-input"
-                    placeholder="Nom, téléphone ou CIN…"
-                    aria-label="Rechercher un patient"
-                  />
-                  <Button size="sm" type="button">
-                    <Plus /> Nouveau
-                  </Button>
-                </div>
 
-                {patientError && (
-                  <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{patientError}</div>
-                )}
-                {candidates.length > 0 && (
-                  <div className="prise-rdv-candidates" role="listbox" aria-label="Résultats patients">
-                    {candidates.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="option"
-                        aria-selected={selectedPatientId === s.id}
-                        className={`prise-rdv-candidate-row${selectedPatientId === s.id ? ' selected' : ''}`}
-                        onClick={() => { setSelectedPatientId(s.id); setPatientError(null); }}
-                      >
-                        <Avatar initials={s.name.split(' ').map((x) => x[0]).slice(0, 2).join('')} size="sm" />
-                        <div style={{ flex: 1 }}>
-                          <div className="prise-rdv-candidate-name">{s.name}</div>
-                          <div className="prise-rdv-candidate-meta">
-                            {s.phone} · Dernière visite : {s.lastVisit}
-                          </div>
-                        </div>
-                        {s.tags.map((t) => (
-                          <span key={t} className="pill">{t}</span>
-                        ))}
-                      </button>
-                    ))}
+                {selectedPatientId && selectedPatientName ? (
+                  /* ── Selected patient card ── */
+                  <div className="prise-rdv-selected-patient">
+                    <Avatar
+                      initials={selectedPatientName.split(' ').map((x) => x[0]).slice(0, 2).join('')}
+                      size="sm"
+                    />
+                    <span className="prise-rdv-selected-name">{selectedPatientName}</span>
+                    <button
+                      type="button"
+                      className="prise-rdv-change-btn"
+                      onClick={() => {
+                        setSelectedPatientId(null);
+                        setSelectedPatientName(null);
+                        setValue('patientQuery', '');
+                      }}
+                    >
+                      Changer
+                    </button>
                   </div>
+                ) : (
+                  /* ── Search + candidates ── */
+                  <>
+                    <div className="prise-rdv-search">
+                      <Search />
+                      <input
+                        {...register('patientQuery')}
+                        className="prise-rdv-search-input"
+                        placeholder="Nom, téléphone ou CIN…"
+                        aria-label="Rechercher un patient"
+                        autoFocus
+                      />
+                      <Button size="sm" type="button">
+                        <Plus /> Nouveau
+                      </Button>
+                    </div>
+
+                    {patientError && (
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{patientError}</div>
+                    )}
+                    {candidates.length > 0 && (
+                      <div className="prise-rdv-candidates" role="listbox" aria-label="Résultats patients">
+                        {candidates.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            role="option"
+                            aria-selected={selectedPatientId === s.id}
+                            className="prise-rdv-candidate-row"
+                            onClick={() => {
+                              setSelectedPatientId(s.id);
+                              setSelectedPatientName(s.name);
+                              setPatientError(null);
+                            }}
+                          >
+                            <Avatar initials={s.name.split(' ').map((x) => x[0]).slice(0, 2).join('')} size="sm" />
+                            <div style={{ flex: 1 }}>
+                              <div className="prise-rdv-candidate-name">{s.name}</div>
+                              <div className="prise-rdv-candidate-meta">
+                                {s.phone} · Dernière visite : {s.lastVisit}
+                              </div>
+                            </div>
+                            {s.tags.map((t) => (
+                              <span key={t} className="pill">{t}</span>
+                            ))}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
               {/* Step 2: Créneau */}
               <div style={{ marginBottom: 18 }}>
                 <div className="prise-rdv-step-label">Étape 2 · Créneau</div>
-                <div className="prise-rdv-creneau-grid">
-                  <Field>
-                    <FieldLabel htmlFor="rdv-date">Date</FieldLabel>
-                    <Input id="rdv-date" className="tnum" {...register('date')} style={errors.date ? { borderColor: 'var(--danger)' } : undefined} />
-                    {errors.date ? <FieldHelp style={{ color: 'var(--danger)' }}>{errors.date.message}</FieldHelp> : <FieldHelp>Format JJ/MM/AAAA</FieldHelp>}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="rdv-time">Heure</FieldLabel>
-                    <Input id="rdv-time" className="tnum" {...register('time')} style={errors.time ? { borderColor: 'var(--danger)' } : undefined} />
-                    {errors.time ? <FieldHelp style={{ color: 'var(--danger)' }}>{errors.time.message}</FieldHelp> : <FieldHelp>Créneau disponible</FieldHelp>}
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="rdv-dur">Durée</FieldLabel>
-                    <Controller
-                      name="durationMin"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          id="rdv-dur"
-                          value={field.value}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        >
-                          {DURATION_OPTIONS.map((d) => (
-                            <option key={d.value} value={d.value}>{d.label}</option>
-                          ))}
-                        </Select>
-                      )}
-                    />
-                  </Field>
-                </div>
-
-                <div className="prise-rdv-slot-hint" aria-live="polite">
-                  <Clock />
-                  <span>
-                    Créneaux libres vendredi :{' '}
-                    <strong style={{ color: 'var(--ink)' }}>
-                      {hintText.split(' · ')[0]}
-                    </strong>
-                    {' · '}
-                    {hintText.split(' · ').slice(1).join(' · ')}
-                  </span>
+                <div className="prise-rdv-creneau-layout">
+                  <MiniCal
+                    year={calYear}
+                    month={calMonth}
+                    onPrevMonth={handlePrevMonth}
+                    onNextMonth={handleNextMonth}
+                    value={dateValue}
+                    onChange={(v) => { setValue('date', v); setValue('time', ''); }}
+                    availableDates={availableDates}
+                    isLoading={isLoadingDates}
+                  />
+                  <div className="prise-rdv-creneau-right">
+                    <Field style={{ marginBottom: 12 }}>
+                      <FieldLabel htmlFor="rdv-dur">Durée</FieldLabel>
+                      <Controller
+                        name="durationMin"
+                        control={control}
+                        render={({ field }) => (
+                          <Select
+                            id="rdv-dur"
+                            value={field.value}
+                            onChange={(e) => { field.onChange(Number(e.target.value)); setValue('time', ''); }}
+                          >
+                            {DURATION_OPTIONS.map((d) => (
+                              <option key={d.value} value={d.value}>{d.label}</option>
+                            ))}
+                          </Select>
+                        )}
+                      />
+                    </Field>
+                    <div className="prise-rdv-slots-label">Créneaux disponibles</div>
+                    {isLoadingSlots ? (
+                      <div className="prise-rdv-slots-empty">Chargement…</div>
+                    ) : slots.length === 0 ? (
+                      <div className="prise-rdv-slots-empty">
+                        {dateValue ? 'Aucun créneau disponible ce jour' : 'Sélectionnez une date'}
+                      </div>
+                    ) : (
+                      <div className="prise-rdv-slots" role="group" aria-label="Créneaux disponibles">
+                        {slots.map((s) => (
+                          <button
+                            key={s.time}
+                            type="button"
+                            aria-pressed={watch('time') === s.time}
+                            className={`prise-rdv-slot-btn${watch('time') === s.time ? ' selected' : ''}`}
+                            onClick={() => setValue('time', s.time)}
+                          >
+                            {s.time}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {errors.date && (
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{errors.date.message}</div>
+                    )}
+                    {errors.time && (
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{errors.time.message}</div>
+                    )}
+                  </div>
                 </div>
               </div>
 

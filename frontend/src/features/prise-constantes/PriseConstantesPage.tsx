@@ -22,6 +22,8 @@ import { Heart, Clock } from '@/components/icons';
 import { VitalFieldLarge } from './components/VitalFieldLarge';
 import { PreviousVitalsCard } from './components/PreviousVitalsCard';
 import { useRecordVitals } from './hooks/useRecordVitals';
+import { useAppointment } from './hooks/useAppointment';
+import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { vitalsFormSchema, type VitalsFormValues } from './schema';
 import { DEFAULT_VITALS } from './fixtures';
 import './prise-constantes.css';
@@ -30,6 +32,18 @@ export default function PriseConstantesPage() {
   const navigate = useNavigate();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
+  const { appointment } = useAppointment(appointmentId);
+  const { patient } = usePatient(appointment?.patientId);
+
+  const aptTime = appointment
+    ? new Date(appointment.startAt).toLocaleTimeString('fr-MA', {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
+  const patientSub = patient
+    ? `${patient.fullName} · ${patient.age} ans · RDV ${aptTime}`
+    : 'Chargement…';
 
   const {
     register,
@@ -68,7 +82,7 @@ export default function PriseConstantesPage() {
     <Screen
       active="salle"
       title="Prise des constantes"
-      sub="Youssef Ziani · 38 ans · RDV 10:00"
+      sub={patientSub}
       onNavigate={(id) => {
         const map = {
           agenda:   '/agenda',

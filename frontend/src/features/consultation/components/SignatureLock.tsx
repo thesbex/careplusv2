@@ -1,39 +1,39 @@
 /**
  * "Signer et verrouiller" button + confirmation dialog.
- * Uses @radix-ui/react-dialog (already in package.json per ADR-015).
- * The dialog provides: focus trap, Escape to close, WAI-ARIA roles.
- *
- * Copy is verbatim from the prototype footer bar (consultation.jsx line 93–102).
- * Sign action is handled by useSignConsultation (mock until backend J5).
+ * On confirm, validates the SOAP form via handleSign (which runs the stricter
+ * schema check in the parent), then calls POST /api/consultations/{id}/sign.
  */
+import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/Button';
 import { Lock, Close } from '@/components/icons';
-import { useSignConsultation } from '../hooks/useSignConsultation';
 
 interface SignatureLockProps {
-  consultationId?: string;
+  onConfirm: () => Promise<boolean>;
+  isSigning: boolean;
+  signed: boolean;
+  disabled?: boolean;
 }
 
-export function SignatureLock({ consultationId }: SignatureLockProps) {
-  const { sign, isSigning, signed } = useSignConsultation();
+export function SignatureLock({ onConfirm, isSigning, signed, disabled }: SignatureLockProps) {
+  const [open, setOpen] = useState(false);
+
+  async function handleConfirm() {
+    const ok = await onConfirm();
+    if (ok) setOpen(false);
+  }
 
   return (
-    <Dialog.Root>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
-        <Button variant="primary" disabled={signed}>
+        <Button variant="primary" disabled={signed || disabled}>
           <Lock /> {signed ? 'Consultation signée' : 'Clôturer et facturer →'}
         </Button>
       </Dialog.Trigger>
 
       <Dialog.Portal>
         <Dialog.Overlay
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            zIndex: 100,
-          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100 }}
         />
         <Dialog.Content
           style={{
@@ -58,9 +58,7 @@ export function SignatureLock({ consultationId }: SignatureLockProps) {
               marginBottom: 16,
             }}
           >
-            <Dialog.Title
-              style={{ fontSize: 15, fontWeight: 600, margin: 0 }}
-            >
+            <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
               Signer et verrouiller la consultation
             </Dialog.Title>
             <Dialog.Close asChild>
@@ -74,22 +72,22 @@ export function SignatureLock({ consultationId }: SignatureLockProps) {
             style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6, marginBottom: 20 }}
           >
             Cette action va verrouiller la consultation. Les notes SOAP ne pourront plus être
-            modifiées. Une facture de <strong>250,00 MAD</strong> sera générée.
+            modifiées et une facture brouillon sera générée automatiquement.
           </Dialog.Description>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Dialog.Close asChild>
               <Button>Annuler</Button>
             </Dialog.Close>
-            <Dialog.Close asChild>
-              <Button
-                variant="primary"
-                disabled={isSigning}
-                onClick={() => sign(consultationId)}
-              >
-                <Lock /> Confirmer et clôturer
-              </Button>
-            </Dialog.Close>
+            <Button
+              variant="primary"
+              disabled={isSigning}
+              onClick={() => {
+                void handleConfirm();
+              }}
+            >
+              <Lock /> {isSigning ? 'Signature…' : 'Confirmer et clôturer'}
+            </Button>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

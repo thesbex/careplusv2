@@ -38,6 +38,9 @@ public class PatientMapper {
                 p.getNumberChildren(),
                 p.getNotes(),
                 p.getStatus().name(),
+                p.getTier(),
+                p.getMutuelleInsuranceId(),
+                p.getMutuellePoliceNumber(),
                 p.getCreatedAt(),
                 p.getUpdatedAt(),
                 allergies.stream().map(this::toAllergyView).toList(),
@@ -71,6 +74,7 @@ public class PatientMapper {
                 a.getId(),
                 a.getType().name(),
                 a.getDescription(),
-                a.getOccurredOn());
+                a.getOccurredOn(),
+                a.getCategory() != null ? a.getCategory().name() : null);
     }
 }

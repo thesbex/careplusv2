@@ -7,5 +7,6 @@ public record AntecedentView(
         UUID id,
         String type,
         String description,
-        LocalDate occurredOn
+        LocalDate occurredOn,
+        String category
 ) {}

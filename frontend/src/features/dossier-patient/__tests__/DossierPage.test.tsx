@@ -8,7 +8,25 @@ import DossierPage from '../DossierPage';
 import { PATIENT_MOHAMED_ALAMI } from '../fixtures';
 
 vi.mock('../hooks/usePatient', () => ({
-  usePatient: () => ({ patient: PATIENT_MOHAMED_ALAMI, isLoading: false, error: null }),
+  usePatient: () => ({
+    patient: PATIENT_MOHAMED_ALAMI,
+    raw: {
+      id: PATIENT_MOHAMED_ALAMI.id,
+      firstName: 'Mohamed',
+      lastName: 'Alami',
+      gender: 'M',
+      birthDate: '1974-01-01',
+      cin: PATIENT_MOHAMED_ALAMI.cin,
+      phone: PATIENT_MOHAMED_ALAMI.phone,
+      email: PATIENT_MOHAMED_ALAMI.email,
+      bloodGroup: PATIENT_MOHAMED_ALAMI.bloodGroup,
+      allergies: [],
+      antecedents: [],
+      createdAt: '2024-01-01T00:00:00Z',
+    },
+    isLoading: false,
+    error: null,
+  }),
 }));
 
 function renderDossier(path = '/patients/PT-00482') {

@@ -38,7 +38,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *   PUT  /api/patients/{id}
  *   DELETE /api/patients/{id}  (soft delete)
  *   POST /api/patients/{id}/allergies
- *   POST /api/patients/{id}/antecedents
+ *   POST /api/patients/{id}/antecedents  (with category)
+ *   POST /api/patients/{id}/notes        (MEDECIN only)
+ *   GET  /api/patients/{id}/notes
+ *   PUT  /api/patients/{id}/tier
+ *   PUT  /api/patients/{id}/mutuelle
  *
  * Seeds a MEDECIN and a SECRETAIRE to exercise the role matrix, plus an
  * ASSISTANT to verify read-only access.
@@ -79,6 +83,7 @@ class PatientIT {
         tokenCache.clear();
         rateLimitFilter.clearBucketsForTests();
         // wipe patient data
+        jdbc.update("DELETE FROM patient_note");
         jdbc.update("DELETE FROM patient_allergy");
         jdbc.update("DELETE FROM patient_antecedent");
         jdbc.update("DELETE FROM patient_patient");
@@ -124,7 +129,7 @@ class PatientIT {
         return "Bearer " + tokenFor(email);
     }
 
-    // ── Tests ──────────────────────────────────────────────────────
+    // ── Existing tests (unchanged) ─────────────────────────────────
 
     @Test
     void secretaire_canCreateAndFetchPatient() throws Exception {
@@ -175,7 +180,7 @@ class PatientIT {
         mockMvc.perform(post("/api/patients")
                 .header("Authorization", bearer(asstEmail))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"firstName\":\"X\",\"lastName\":\"Y\"}"))
+                .content("{\"firstName\":\"Xavier\",\"lastName\":\"Yassine\"}"))
                 .andExpect(status().isForbidden());
 
         // Seed one patient via secretaire, then read as assistant
@@ -336,5 +341,136 @@ class PatientIT {
                 .header("Authorization", bearer(medEmail)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PATIENT_NOT_FOUND"));
+    }
+
+    // ── New tests (ADR-023) ────────────────────────────────────────
+
+    @Test
+    void addAntecedent_withCategory_categoryReturnedInResponse() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Khalid\",\"lastName\":\"Benali\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
+
+        mockMvc.perform(post("/api/patients/" + id + "/antecedents")
+                .header("Authorization", bearer(medEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"type":"MEDICAL",
+                         "description":"Diabète type 2",
+                         "category":"PERSONNEL_MALADIES_CHRONIQUES"}
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.category").value("PERSONNEL_MALADIES_CHRONIQUES"));
+
+        mockMvc.perform(get("/api/patients/" + id).header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.antecedents[0].category").value("PERSONNEL_MALADIES_CHRONIQUES"));
+    }
+
+    @Test
+    void createNote_asMedecin_thenListedInGetNotes() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Sara\",\"lastName\":\"Haddad\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
+
+        mockMvc.perform(post("/api/patients/" + id + "/notes")
+                .header("Authorization", bearer(medEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"Patient à surveiller — tension élevée\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.content").value("Patient à surveiller — tension élevée"))
+                .andExpect(jsonPath("$.createdByName").isNotEmpty());
+
+        mockMvc.perform(get("/api/patients/" + id + "/notes")
+                .header("Authorization", bearer(medEmail)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].content").value("Patient à surveiller — tension élevée"));
+    }
+
+    @Test
+    void createNote_asNonMedecin_returns403() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Nadia\",\"lastName\":\"Tazi\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
+
+        // SECRETAIRE cannot create notes
+        mockMvc.perform(post("/api/patients/" + id + "/notes")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"Tentative non autorisée\"}"))
+                .andExpect(status().isForbidden());
+
+        // ASSISTANT cannot create notes
+        mockMvc.perform(post("/api/patients/" + id + "/notes")
+                .header("Authorization", bearer(asstEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"content\":\"Tentative non autorisée\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void updateTier_toPremium_confirmedViaGet() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Amine\",\"lastName\":\"Berrada\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
+
+        // Default tier is NORMAL
+        mockMvc.perform(get("/api/patients/" + id).header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.tier").value("NORMAL"));
+
+        // Update to PREMIUM
+        mockMvc.perform(put("/api/patients/" + id + "/tier")
+                .header("Authorization", bearer(medEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tier\":\"PREMIUM\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tier").value("PREMIUM"));
+
+        // Confirm via GET
+        mockMvc.perform(get("/api/patients/" + id).header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.tier").value("PREMIUM"));
+    }
+
+    @Test
+    void updateMutuelle_reflectsInPatientView() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"firstName\":\"Youssef\",\"lastName\":\"Ouali\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
+
+        // Fetch a known insurance from the seed data
+        UUID insuranceId = jdbc.queryForObject(
+                "SELECT id FROM catalog_insurance LIMIT 1",
+                UUID.class);
+        assertThat(insuranceId).isNotNull();
+
+        String body = String.format(
+                "{\"insuranceId\":\"%s\",\"policyNumber\":\"POLICY-2026-001\"}", insuranceId);
+
+        mockMvc.perform(put("/api/patients/" + id + "/mutuelle")
+                .header("Authorization", bearer(secEmail))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mutuelleInsuranceId").value(insuranceId.toString()))
+                .andExpect(jsonPath("$.mutuellePoliceNumber").value("POLICY-2026-001"));
+
+        // Confirm via GET
+        mockMvc.perform(get("/api/patients/" + id).header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.mutuelleInsuranceId").value(insuranceId.toString()))
+                .andExpect(jsonPath("$.mutuellePoliceNumber").value("POLICY-2026-001"));
     }
 }

@@ -1,0 +1,102 @@
+/* ── Paramètres page ─────────────────────────────────────────────────────── */
+
+.params-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 640px;
+}
+
+.params-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.params-section-header {
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.params-section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.params-section-sub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.params-section-body {
+  padding: 16px 18px;
+}
+
+/* ── Leave form ──────────────────────────────────────────────────────────── */
+
+.params-leave-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+/* ── Leave list ──────────────────────────────────────────────────────────── */
+
+.params-leave-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.params-leave-empty {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  padding: 8px 0;
+}
+
+.params-leave-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+
+.params-leave-period {
+  font-size: 12.5px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  flex: 0 0 auto;
+}
+
+.params-leave-reason {
+  font-size: 12px;
+  color: var(--ink-3);
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.params-leave-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--amber-soft, rgba(217, 119, 6, 0.1));
+  color: var(--amber, #d97706);
+  flex: 0 0 auto;
+}
+
+.params-leave-badge.past {
+  background: var(--bg);
+  color: var(--ink-3);
+}
