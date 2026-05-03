@@ -110,10 +110,10 @@ export function AllergyStrip({ patient }: AllergyStripProps) {
         <Warn aria-hidden="true" /> Allergie
       </div>
       <span style={{ fontSize: 12.5, color: 'var(--ink)' }}>
-        {patient.allergyNotes.split('(')[0].trim()}{' '}
+        {(patient.allergyNotes.split('(')[0] ?? '').trim()}{' '}
         {patient.allergyNotes.includes('(') && (
           <span style={{ color: 'var(--ink-3)' }}>
-            ({patient.allergyNotes.split('(')[1]}
+            ({patient.allergyNotes.split('(')[1] ?? ''}
           </span>
         )}
       </span>
