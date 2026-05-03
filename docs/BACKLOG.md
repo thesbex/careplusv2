@@ -51,7 +51,59 @@ Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé
 - **Filtres queue** : aujourd'hui liste plate. Filtres par praticien, motif, statut une fois multi-praticien.
 - **SSE real-time** (déjà listé Scheduling) : remplacerait le polling 15s actuel.
 
+---
 
+## QA wave 2 — 2026-04-26 (post-MVP retours terrain)
+
+Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + post-mortem) · **[CHANGE]** = évolution de spec / nouvelle feature.
+
+### QA2-1 — Date de naissance obligatoire à la création patient — **[BUG]**
+- **État actuel** : `useCreatePatient` envoie `birthDate: form.birthDate || null` (`hooks/useCreatePatient.ts:58`). Le formulaire n'a pas de validation. Côté backend, `CreatePatientRequest.birthDate` est nullable.
+- **Pourquoi le bug existait** : la spec WORKFLOWS.md ne marquait pas DDN comme requis explicitement, j'ai porté le prototype tel quel. Or la DDN est cliniquement essentielle (calcul d'âge → posologies pédiatriques/gériatriques, dépistage par âge). On ne peut **pas** soigner sans.
+- **Fix prévu** : (a) zod `birthDate: z.string().min(1)` côté frontend + asterisk visible · (b) `@NotNull` côté backend `CreatePatientRequest.birthDate` + Flyway migration `ALTER TABLE patient ALTER COLUMN birth_date SET NOT NULL` (vérifier qu'aucun existant n'est null avant — `UPDATE` requis sinon).
+- **Leçon** : pour chaque champ "optionnel", se demander "est-ce qu'un médecin peut prescrire sans ?". Si non, c'est obligatoire.
+
+### QA2-2 — Upload historique patient (anciens docs : prescriptions, analyses, radios) — **[CHANGE / NEW FEATURE]**
+- **Demande** : à la création d'un patient, pouvoir uploader des PDFs/images d'anciens documents fournis par d'autres médecins, classés par type (prescription / analyse / imagerie / autre).
+- **Hors scope MVP** : aucun module fichier/upload n'existe (pas de S3/MinIO, pas de table `patient_document`).
+- **Scope estimé** :
+  - Backend : nouveau module `documents` — table `patient_document (id, patient_id, type {PRESCRIPTION_HISTORIQUE, ANALYSE_HISTORIQUE, IMAGERIE_HISTORIQUE, AUTRE}, original_filename, mime_type, size_bytes, storage_key, uploaded_at, uploaded_by, notes)`. Endpoints `POST /api/patients/{id}/documents` (multipart), `GET /api/patients/{id}/documents`, `GET /api/documents/{id}/content` (stream), `DELETE`. Limites : 10MB / fichier, types autorisés PDF/JPEG/PNG/HEIC.
+  - Stockage : on-premise → disque local sous `/var/careplus/documents/<patient_id>/<doc_id>`. Backup auto OVH inclut ce dossier.
+  - Frontend : zone drag-drop dans le panneau "Nouveau patient" (sous Antécédents) + tab Historique (cf QA2-4).
+- **Lié à** : QA2-4 (l'onglet de visualisation est l'autre moitié de cette feature).
+
+### QA2-3 — Clic sur plage horaire vide dans l'agenda → ouvre la dialog RDV pré-remplie — **[BUG]**
+- **État actuel** : `AgendaGrid` rend des cellules `.ag-daycol` mais sans `onClick` sur les cellules vides (`components/AgendaGrid.tsx`). Seuls les blocs RDV existants sont cliquables → ouvrent `AppointmentDrawer`. Pour créer un RDV il faut cliquer "Nouveau RDV" en haut.
+- **Pourquoi le bug existait** : le prototype avait l'interaction "click slot vide → dialog" implicite mais pas explicitement câblée dans le port JSX → React. Étape 5 a câblé "click sur RDV existant" mais n'a pas couvert le cas inverse.
+- **Fix prévu** : ajouter `onSlotClick(day, hour, minute)` au `AgendaGrid` (calcul de la position via `clientY` − topOffset → minutes). Ouvrir `PriseRDVDialog` avec props `prefilledDate` + `prefilledTime`. Idem `MonthGrid` (clic sur jour vide → dialog avec date pré-sélectionnée). `PriseRDVDialog` doit accepter ces props et hydrater le formulaire.
+- **Leçon** : "click on appointment block" est différent de "click on empty slot". Tester chaque interaction du prototype, pas juste "tester que ça compile".
+
+### QA2-4 — Onglet "Historique" dans le dossier patient — **[CHANGE / NEW FEATURE]**
+- **Demande** : nouvel onglet à côté des autres (Profil / Chronologie / Consultations / Prescriptions / Factures) listant tous les documents historiques uploadés à QA2-2, groupés par type, viewer inline (PDF / image).
+- **Dépend de** : QA2-2 (le backend `patient_document` doit exister).
+- **Scope estimé** : ajout d'un tab dans `DossierPage.tsx` (déjà 5 tabs). Hook `usePatientDocuments(patientId)`. Composants : groupement par type, thumbnail PDF (via `pdfjs-dist` déjà installé pour ordonnance), modal viewer plein écran, bouton télécharger, bouton supprimer (si l'utilisateur l'a uploadé).
+- **À ne pas confondre** avec l'onglet Consultations qui montre les consultations **internes** au cabinet. "Historique" = ce qui vient d'**ailleurs**.
+
+### QA2-5 — Barre de recherche du Topbar non fonctionnelle — **[BUG]**
+- **État actuel** : `Topbar.tsx:31-42` rend le button `.cp-search` avec un callback `onSearchOpen` mais aucun `<Screen>` ne le passe. Aujourd'hui le clic ne fait **rien**, et `⌘K` non plus.
+- **Pourquoi le bug existait** : J'ai porté Topbar avec la prop `onSearchOpen` en placeholder. La spotlight-search était notée "post-MVP" mais le bouton est resté visible → impression de feature cassée. C'est pire qu'absent.
+- **Fix prévu** : (a) immédiat → court-circuiter en redirigeant vers `/patients?q=` (la liste patients sait déjà filtrer). (b) propre → composant `PatientSearchSpotlight` (Radix Dialog modale top-anchored), debounce 200ms sur `GET /api/patients?q=&size=8`, résultats en liste cliquable (clic → `/patients/:id`), raccourci `⌘K` global. Câbler dans `Screen` via `onSearchOpen={() => setSpotlightOpen(true)}`.
+- **Leçon** : ne jamais shipper un bouton/CTA visible sans handler. Soit on le câble, soit on le cache derrière un feature flag. "Disabled with tooltip 'bientôt'" reste mieux que "rien ne se passe".
+
+### QA2-6 — Upload photo patient + scan CIN à la création — **[CHANGE / NEW FEATURE]**
+- **Demande** : champs upload photo patient (avatar) + photo CIN (recto + verso) dans le formulaire "Nouveau patient".
+- **Lien légal** : copie CIN exigée par certaines mutuelles + assurances. Photo patient utile pour identification visuelle en salle d'attente.
+- **Scope estimé** :
+  - Backend : étendre table `patient` avec `photo_storage_key` + `cin_recto_storage_key` + `cin_verso_storage_key` (ou réutiliser `patient_document` de QA2-2 avec types `PHOTO`, `CIN_RECTO`, `CIN_VERSO`). Recommandé : réutiliser pour cohérence.
+  - Validation : photo carrée 1:1 max 2MB, CIN PDF/JPEG max 5MB.
+  - Frontend : 3 zones drag-drop dans le panneau "Nouveau patient", preview thumbnail. Avatar lit la photo au lieu d'initiales si présente.
+  - **Sécurité** : la CIN est une donnée d'identité forte ; vérifier que `GET /documents/{id}/content` exige le bon `patient.id` dans l'auth context.
+
+### Priorisation suggérée
+1. **QA2-5** (Topbar search) — quick win 4h, impacte tous les écrans.
+2. **QA2-3** (clic agenda → dialog) — quick win 4h, gros gain UX.
+3. **QA2-1** (DDN obligatoire) — quick win 1h, gain qualité données.
+4. **QA2-2 + QA2-4 + QA2-6** (module documents) — bundle ~3 jours, à faire ensemble car ils partagent le backend `patient_document`.
 
 ## Clinical
 
