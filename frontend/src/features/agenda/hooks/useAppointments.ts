@@ -6,6 +6,7 @@ import type { Appointment, Arrival, WeekDay, DayKey, AppointmentStatus } from '.
 
 interface AppointmentApi {
   id: string;
+  patientId: string;
   patientFullName: string | null;
   reasonLabel: string | null;
   startAt: string;
@@ -74,12 +75,17 @@ function adapt(a: AppointmentApi, days: WeekDay[]): Appointment {
   void days; // days array used for WeekDay shape above
 
   return {
+    id: a.id,
+    patientId: a.patientId,
+    startAt: a.startAt,
+    durationMinutes: dur,
     day: key,
     start: `${hh}:${mm}`,
     dur,
     patient: a.patientFullName ?? '—',
     reason: a.reasonLabel ?? '—',
     status: STATUS_MAP[a.status] ?? 'confirmed',
+    rawStatus: a.status,
   };
 }
 

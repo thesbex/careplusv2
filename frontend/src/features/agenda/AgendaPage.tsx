@@ -13,6 +13,7 @@ import { AgendaGrid } from './components/AgendaGrid';
 import { TodayArrivals } from './components/TodayArrivals';
 import { useWeekAppointments } from './hooks/useAppointments';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
+import { AppointmentDrawer } from './components/AppointmentDrawer';
 import type { Appointment, DayKey } from './types';
 import './agenda.css';
 
@@ -29,7 +30,7 @@ export default function AgendaPage() {
   const [view, setView] = useState<AgendaView>('semaine');
   const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
   const { days, appointments, arrivals, weekLabel, todayKey, refetch } = useWeekAppointments(weekOffset);
-  const [, setSelected] = useState<Appointment | null>(null);
+  const [selected, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
 
   const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
@@ -83,6 +84,12 @@ export default function AgendaPage() {
         onCreated={() => { setWeekOffset(0); void refetch(); }}
       />
     )}
+    <AppointmentDrawer
+      open={!!selected}
+      appointment={selected}
+      onOpenChange={(o) => { if (!o) setSelected(null); }}
+      onChanged={() => { void refetch(); }}
+    />
     </>
   );
 }
