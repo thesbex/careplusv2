@@ -227,6 +227,68 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 2. **QA5-3** (photo patient liste + dossier) — ~3 jours, à bundler avec QA5-2 et QA2-6 dans un seul sprint "média patient" (composant `DocumentUploadButton` mutualisé, gain x3).
 3. **QA5-1** (import auto + permission) — feature majeure (~10 jours). À planifier post-pilote, après que les premiers cabinets aient identifié leurs labos / centres d'imagerie partenaires (sans partenaire actif, le connecteur IMAP n'a personne à brancher).
 
+## QA wave 6 — 2026-05-02 (retour Youssef Boutaleb)
+
+Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CHANGE]** = évolution de spec / nouvelle feature.
+
+### QA6-1 — Boutons "Suspendre" et "Imprimer Certificat" sur la page consultation — **[BUG]** ✅ LIVRÉ 2026-05-02
+- **Demande initiale** : "Les boutons suspendre et imprimer certificat existant dans la page de consultation ne sont pas fonctionnels."
+- **Diagnostic IHM (Playwright desktop + mobile 390px)** :
+  - Bouton "Suspendre" du footer (`ConsultationPage.tsx:271`) : `onClick={() => handleSubmit(() => undefined)()}` — handler vide, aucune navigation, aucun appel API. URL inchangée après click.
+  - Bouton "Certificat" du footer (`ConsultationPage.tsx:274`) : `<Button disabled>` hardcodé même quand un certificat existe en BDD. Le backend `GET /prescriptions/{id}/pdf` (type=CERT) répond bien — c'est seulement la prop `disabled` figée côté UI.
+- **Fix livré (commit à venir)** : (a) Suspendre → `navigate('/salle')` (le BROUILLON reste persisté côté serveur, navigation suffit) · (b) Footer Certificat conditionnel sur `latestCert = [...prescriptions].reverse().find(p => p.type === 'CERT')`, onClick `api.get('/prescriptions/{id}/pdf', { responseType: 'blob' }).then → window.open(URL.createObjectURL(blob))` (même pattern que `CertificatDialog.tsx`).
+- **Mobile 390px** : pas de bouton Suspendre dans `ConsultationPage.mobile.tsx` (back-arrow MTopbar joue le rôle). Bouton "Certificat" mobile = ouverture du dialog création (pas de raccourci dédié à la réimpression d'un cert existant — clic sur l'item "Documents générés" navigue vers `/prescriptions/{id}`, ce qui est suffisant pour le mobile).
+- **IT bottlée** : sibling test `ConsultationPageIT.java` ajouté par le sous-agent QA (8 scénarios verts) avec regression-lock spécifique sur la réimpression PDF.
+- **Leçon** : ne plus shipper de bouton avec un onClick "noop" ou un `disabled` hardcodé sans condition. Si une feature attend du backend, on désactive avec une raison calculée (pas de cert → tooltip "aucun certificat à imprimer").
+
+### QA6-2 — Modèles de prescription médicaments réutilisables en consultation — **[CHANGE / NEW FEATURE]**
+- **Demande (Youssef Boutaleb, 2026-05-02)** : "Il faut permettre au médecin de confectionner des prescriptions de médicament et pouvoir les utiliser automatiquement au moment de la consultation, avec possibilité de modification au moment de consultation."
+- **État actuel** : `PrescriptionDrawer` (`features/prescription/PrescriptionDrawer.tsx`) permet de saisir ligne par ligne (autocomplete sur `catalog_medication`). Aucun système de modèle réutilisable. Chaque consultation reconstruit l'ordonnance depuis zéro même pour des protocoles fréquents (ex : "HTA stable", "renouvellement diabète", "angine virale").
+- **Pourquoi c'est un CHANGE** : ligne déjà listée dans `Prescription par type (issu de 5.5d)` plus haut au backlog ("Modèles d'ordonnance pré-remplis : 'HTA de base', 'Renouvellement diabète', etc."). QA6-2 confirme la demande terrain et la rend prioritaire — à promouvoir vers la prochaine itération frontend.
+- **Scope estimé** :
+  - Backend : table `clinical_prescription_template` (`id` UUID, `practitioner_id` FK identity_user, `name` VARCHAR, `type` ENUM DRUG|LAB|IMAGING, `lines` JSONB array de `{medicationCode, dose, frequency, duration, freeText}`, `created_at`, `updated_at`, `deleted_at` soft-delete, `version` optimistic locking). Endpoints CRUD `GET/POST/PUT/DELETE /api/prescription-templates` (filtre par practitioner_id implicite via JWT, MEDECIN+ADMIN seulement). Migration Flyway nouvelle (règle non-négociable n°7).
+  - Frontend : (a) onglet "Modèles d'ordonnance" dans Paramétrage (CRUD complet — créer/renommer/dupliquer/supprimer modèle, lignes éditables avec mêmes autocompletes que `PrescriptionDrawer`) · (b) dans `PrescriptionDrawer` (panel actions consultation), un bouton "Charger un modèle" qui ouvre un picker (liste déroulante des modèles du médecin, filtrée par type DRUG/LAB/IMAGING) · au choix → préfill des lignes de l'ordonnance, **éditables ligne par ligne** avant validation (le médecin ajuste poso, supprime une ligne, ajoute un médic). Pas d'auto-soumission.
+  - Pré-condition QA6-3 : si on bloque sur le catalogue analyses/radio incomplet (CRUD KO), le modèle LAB/IMAGING ne pourra référencer que des items déjà en base. Faire QA6-3 avant ou en parallèle pour ne pas livrer un modèle stérile.
+- **Risques / décisions** :
+  - Stockage `lines` en JSONB plutôt qu'en table fille `prescription_template_line` : préféré pour le MVP de cette feature parce que les lignes ne sont jamais requêtées indépendamment et l'ordre est intrinsèque. Si on veut faire des stats "quel médicament est le plus prescrit" plus tard, on extrait. Tracé en ADR à écrire au moment de l'implémentation.
+  - Permission : modèle privé au médecin, pas partagé entre praticiens d'un même cabinet en v1 (chaque médecin a sa façon de prescrire). Permission `PRESCRIPTION_TEMPLATE_MANAGE` à ajouter à la matrice RBAC (post QA3-3).
+- **Estimation** : 2 jours backend (entité + endpoints + IT), 2 jours frontend (CRUD Paramétrage + picker dans PrescriptionDrawer + tests + design parity), 0,5 jour QA. Total ≈ 5 jours.
+
+### QA6-3 — Modèles de bons d'analyses (et imagerie) réutilisables — **[CHANGE / NEW FEATURE]**
+- **Demande (Youssef Boutaleb, 2026-05-02)** : "Même chose pour les bons d'analyses." (par extension : les bons d'imagerie aussi, même structure).
+- **État actuel** : même drawer `PrescriptionDrawer` que pour les médicaments, paramétré par `type` LAB ou IMAGING. Pas de modèles. Un médecin qui prescrit systématiquement le même bilan (NFS + CRP + ionogramme + créatinine + glycémie) le ressaisit à chaque consultation.
+- **Pourquoi c'est un CHANGE** : strictement parallèle à QA6-2. Idéalement livré dans la même PR/sprint que QA6-2 puisque l'entité backend `clinical_prescription_template` couvre déjà LAB et IMAGING via la colonne `type`.
+- **Scope additionnel par rapport à QA6-2** : aucun côté backend (table déjà polymorphe). Côté frontend, le picker s'affiche dans le drawer LAB et le drawer IMAGING (déjà 3 instances du même drawer), filtrage par `type` côté GET pour ne montrer que les modèles pertinents.
+- **Estimation** : +0,5 jour si bundlé avec QA6-2 (les filtres + les 2 boutons supplémentaires). Total ≈ 5,5 jours combiné QA6-2 + QA6-3.
+- **Lien** : à bundler avec QA6-2.
+
+### QA6-4 — Catalogue : ajout/suppression unitaire pour analyses et imagerie — **[BUG]**
+- **Demande (Youssef Boutaleb, 2026-05-02)** : "Dans le catalogue le rajout et suppression de médicament de manière unitaire est possible mais pour les analyses et radio ce n'est pas possible."
+- **État actuel à investiguer** : la page Catalogue (`/catalogue`) gère 4 onglets (médicaments, analyses, imagerie, actes). Le tester confirme que l'onglet médicaments a bien des actions unitaires "ajouter" / "supprimer", mais pas les onglets analyses + imagerie.
+- **Pourquoi le bug existait probablement** : la page `CataloguePage` a sans doute été portée onglet par onglet avec `MedicationsTab` complet et `LabTestsTab` / `ImagingTab` à l'état placeholder (lecture seule). À vérifier dans `frontend/src/features/catalogue/`. Côté backend, voir si `CatalogController` expose POST/DELETE pour `/api/catalog/lab-tests` et `/api/catalog/imaging-exams` — ligne 23 du backlog `CRUD UI référentiels` indique que ces endpoints n'existent peut-être pas du tout (`Endpoints à créer : POST/PUT/DELETE /api/catalog/medications, idem labs/imaging`). Si c'est le cas, c'est bien un manque structurel et non juste un bouton oublié au frontend.
+- **Diagnostic à faire avant fix** :
+  - Côté backend : `GET /api/catalog/medications`, `GET /api/catalog/lab-tests`, `GET /api/catalog/imaging-exams` existent ? Lesquels ont leurs POST/PUT/DELETE compagnons ? `@PreAuthorize` ?
+  - Côté frontend : `CataloguePage` rend-il un `<button>` "Ajouter" sur les onglets analyses + imagerie, ou rien du tout ? Si oui, le `onClick` est-il câblé ?
+- **Fix prévu (selon résultat du diagnostic)** :
+  - Cas A : endpoints absents → créer `LabTestController` + `ImagingExamController` avec POST/PUT/DELETE (alignés sur le pattern `MedicationController`) + IT couvrant happy + 403 secrétaire + 404 doublon code.
+  - Cas B : endpoints présents mais frontend non câblé → wire les boutons "Ajouter" et "Supprimer" comme sur l'onglet médicaments (mêmes hooks `useCreateLabTest` / `useDeleteLabTest`).
+- **Lien** : ligne `CRUD UI référentiels` du backlog QA wave 1 (« endpoints à créer : POST/PUT/DELETE /api/catalog/medications, idem labs/imaging »). QA6-4 confirme et priorise.
+- **Estimation** : à confirmer après diagnostic. Si cas A : 1 jour backend + 0,5 jour frontend par référentiel × 2 = 3 jours. Si cas B : 0,5 jour total.
+
+### Priorisation QA6
+1. **QA6-1** ✅ livré (commit du jour).
+2. **QA6-4** (catalogue analyses/radio) — d'abord, parce que (a) c'est un bug (le médecin perçoit un manque, pas une amélioration), (b) c'est un pré-requis fonctionnel pour QA6-3 (les modèles LAB/IMAGING ont besoin d'un référentiel rempli).
+3. **QA6-2 + QA6-3** bundlés — modèles d'ordonnance/analyses/imagerie. Sprint dédié post-pilote ou intercalé selon retour terrain.
+
+### QA6-5 — `MedicationWriteRequest.active` silencieusement ignoré par les SQL INSERT/UPDATE — **[BUG pré-existant]**
+- **Détecté par** ultrareview 2026-05-02 (rgbf0wcek).
+- **Symptôme** : un client envoyant `{"active": false}` sur `POST /api/catalog/medications` ou `PUT /api/catalog/medications/{id}` reçoit un 201/204 succès, mais la valeur n'est jamais persistée. L'INSERT hardcode `VALUES (..., TRUE)` (CatalogController.java:265) et l'UPDATE omet la colonne `active` du SET (lignes 282-284). La réponse 201 retourne aussi `active=true` en dur, donc impossible de détecter le no-op côté client.
+- **Pourquoi pas dans QA6-1** : pré-existant — l'ultrareview l'a remonté parce que le PR du jour ajoute `@Valid` au DTO et attire l'attention sur un champ qui *paraît* settable. Hors scope du fix Suspendre/Certificat.
+- **Asymétrie avec `favorite`** : le champ `favorite` *est* honoré via `COALESCE(?, favorite)` dans l'UPDATE — `active` ne l'est pas. Soit on aligne, soit on supprime le champ du DTO.
+- **Décision recommandée** : **drop `active` du DTO** (`MedicationWriteRequest`). La désactivation passe déjà par `DELETE /medications/{id}` (soft-delete `SET active = FALSE`). Aucun chemin produit ne demande la réactivation côté API → un DTO honnête vaut mieux qu'un champ no-op. Si un cabinet pilote demande la réactivation plus tard, on rouvre la porte avec `COALESCE(?, active)` dans les 2 SQL.
+- **Estimation** : 30 min (drop le champ + ajuster IT existant qui pourrait s'appuyer dessus).
+- **Lien** : à grouper avec QA6-4 (CRUD catalogue) si tackled ensemble — même fichier `CatalogController.java`.
+
 ## Clinical
 
 - Consultation amendment (v2, v3… chain) with full audit trace
