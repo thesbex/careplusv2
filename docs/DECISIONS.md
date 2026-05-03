@@ -172,6 +172,19 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 - `Act` and `Tariff` management exposed under `MANAGE_TARIFFS` capability granted to MEDECIN + ADMIN (not ADMIN-only). Tariffs historicized via `effective_from` / `effective_to` — never overwritten, so past invoices stay reproducible.
 **Consequence**: Flyway migration needed for J5/J6/J7: `patient.tier`, `patient.has_mutuelle`, `patient.insurance_id`, `patient.insurance_policy_number`, `user.can_start_consultation`, `patient_note`, `antecedent.category` enum, `config_patient_tier`, `tariff.effective_from` / `tariff.effective_to`. Permission matrix updated in WORKFLOWS.md. Frontend dossier patient screen gains a tier/mutuelle section + a patient notes thread. Ordonnance & facture PDFs carry mutuelle info when present.
 
+## ADR-024 — Recharts pour les courbes d'évolution des constantes
+**Date**: 2026-04-30
+**Status**: accepted, supersedes the custom-SVG approach prototyped in `EvolutionChart.tsx` (commits a3dcfcd → 29ea27f)
+**Context**: J9 a livré un onglet "Constantes" dans le dossier patient avec 7 graphes d'évolution (TA, FC, T°, SpO₂, poids, IMC, glycémie). Première itération : SVG fait main pour économiser ~85 KB gzippés par rapport à une lib. Retour utilisateur immédiat en prod : labels Y "999999999994" (floats IEEE non formatés), lignes qui fuient hors des cartes (overflow visible + outliers), tooltip rudimentaire. Polish insuffisant pour un dashboard médical client-facing.
+**Alternatives considérées**:
+- **Recharts 3.x** (~110 KB gzippés en build prod, +50 % du bundle) : API React déclarative, axes / ticks / responsive bien défaults, accessibilité, gestion native des nulls.
+- **Chart.js + react-chartjs-2** (~50 KB) : impératif (pas idiomatique React), thématisation moins propre, canvas-only (pas de DOM testable, moins accessible).
+- **Visx** (Airbnb) : primitives bas niveau D3 — faible bundle mais on réécrirait la moitié de Recharts à la main pour atteindre le même rendu, pas la peine.
+- **uPlot** (~40 KB) : très rapide mais dashboard look austère, doc minimaliste, pas idiomatique React.
+- **Continuer le SVG fait-main** : abandonné après l'itération — chaque polish (axes propres, tooltip, responsive bien fait) est lui-même une petite lib à écrire.
+**Choice**: Recharts 3.x. L'API `<LineChart><Line/><Tooltip/><ReferenceArea/>` mappe 1:1 sur le besoin (séries multiples, plages normales ombrées, tooltip date+valeur). On garde `EvolutionChart` comme façade interne avec la même API publique (`series`, `unit`, `normalRange`, `yDomain`, `formatY`) — Recharts est un détail d'implémentation.
+**Consequence**: Bundle frontend passe de ~216 KB gzippés à ~325 KB gzippés (acceptable : on est encore très loin du seuil de chargement perçu sur fibre marocaine ; pour la livraison on-prem l'impact est nul). Tests adaptés (mock `ResponsiveContainer` qui exige des dimensions DOM réelles que jsdom ne fournit pas). Si le bundle devient un problème, code-splitter le dossier patient via `React.lazy` est la marche suivante (réservée pour quand la lazy-loading est structurellement justifiée, pas pour ça seul).
+
 ---
 
 ## How to add an entry
