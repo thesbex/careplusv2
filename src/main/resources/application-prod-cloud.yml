@@ -1,11 +1,25 @@
 # Production profile for cloud deployment (VPS OVH Casablanca or similar).
 spring:
+  # Lazy-init divise par 2-3 le temps de boot — critique sur Render free tier
+  # qui timeout à 90s sur le port scan. Premier appel à un bean non-initialisé
+  # paie un coût de quelques ms, acceptable.
+  main:
+    lazy-initialization: true
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USER}
     password: ${DATABASE_PASSWORD}
     hikari:
-      maximum-pool-size: 20
+      # Réduit la pool en cloud — Neon free tier a un connection cap bas et
+      # ouvrir 20 connexions au boot ralentit le démarrage à froid.
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-init-sql: SET TIME ZONE 'Africa/Casablanca'
+  jpa:
+    # En prod, Flyway gère le schéma. Skipper la validation Hibernate au boot
+    # économise quelques secondes (validate inspecte chaque entité).
+    hibernate:
+      ddl-auto: none
   flyway:
     locations: classpath:db/migration
 
