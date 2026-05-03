@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import ma.careplus.catalog.domain.PrescriptionLine;
+import ma.careplus.catalog.infrastructure.persistence.PrescriptionLineRepository;
 import ma.careplus.documents.domain.DocumentType;
 import ma.careplus.documents.domain.PatientDocument;
 import ma.careplus.documents.infrastructure.persistence.PatientDocumentRepository;
@@ -51,13 +53,16 @@ public class DocumentService {
     private final PatientDocumentRepository repository;
     private final DocumentStorage storage;
     private final JdbcTemplate jdbc;
+    private final PrescriptionLineRepository prescriptionLineRepository;
 
     public DocumentService(PatientDocumentRepository repository,
                            DocumentStorage storage,
-                           JdbcTemplate jdbc) {
+                           JdbcTemplate jdbc,
+                           PrescriptionLineRepository prescriptionLineRepository) {
         this.repository = repository;
         this.storage = storage;
         this.jdbc = jdbc;
+        this.prescriptionLineRepository = prescriptionLineRepository;
     }
 
     @Transactional
@@ -181,6 +186,73 @@ public class DocumentService {
                 saved.getId(), patientId);
 
         return saved;
+    }
+
+    /**
+     * Attache un résultat (PDF / image) à une ligne de prescription LAB ou
+     * IMAGING (V015). La ligne doit exister, doit pointer sur un lab_test_id
+     * ou imaging_exam_id (jamais sur une ligne médicament), et le patient
+     * de la prescription doit être actif.
+     *
+     * Idempotent côté binaire : si la ligne avait déjà un résultat, l'ancien
+     * est soft-deleté avant d'attacher le nouveau (même pattern que la photo
+     * patient — voir replacePhoto).
+     */
+    @Transactional
+    public PatientDocument attachResult(UUID lineId, MultipartFile file, UUID uploadedBy) {
+        PrescriptionLine line = prescriptionLineRepository.findById(lineId)
+                .orElseThrow(() -> new BusinessException("PRESCRIPTION_LINE_NOT_FOUND",
+                        "Ligne de prescription introuvable.", HttpStatus.NOT_FOUND.value()));
+
+        if (line.getLabTestId() == null && line.getImagingExamId() == null) {
+            throw new BusinessException("RESULT_NOT_APPLICABLE",
+                    "Un résultat ne peut être attaché qu'à une ligne d'analyse ou d'imagerie.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+
+        UUID patientId = jdbc.queryForObject(
+                "SELECT patient_id FROM clinical_prescription WHERE id = ?",
+                UUID.class, line.getPrescriptionId());
+
+        // Soft-delete de l'ancien résultat si présent.
+        if (line.getResultDocumentId() != null) {
+            repository.findActiveResult(line.getResultDocumentId()).ifPresent(old -> {
+                old.setDeletedAt(Instant.now());
+                repository.save(old);
+                try { storage.delete(old.getStorageKey()); }
+                catch (IOException e) { /* best effort */ }
+            });
+        }
+
+        PatientDocument saved = upload(patientId, DocumentType.RESULTAT, null, file, uploadedBy);
+
+        // Même piège que QA5-3 : flush JPA AVANT le UPDATE JDBC, sinon le FK
+        // result_document_id échoue (la nouvelle PHOTO/RESULTAT n'est pas
+        // encore visible côté DB).
+        repository.flush();
+
+        jdbc.update(
+                "UPDATE clinical_prescription_line SET result_document_id = ?, updated_at = now() WHERE id = ?",
+                saved.getId(), lineId);
+
+        return saved;
+    }
+
+    @Transactional
+    public void detachResult(UUID lineId) {
+        PrescriptionLine line = prescriptionLineRepository.findById(lineId)
+                .orElseThrow(() -> new BusinessException("PRESCRIPTION_LINE_NOT_FOUND",
+                        "Ligne de prescription introuvable.", HttpStatus.NOT_FOUND.value()));
+        if (line.getResultDocumentId() == null) return;
+        repository.findActiveResult(line.getResultDocumentId()).ifPresent(old -> {
+            old.setDeletedAt(Instant.now());
+            repository.save(old);
+            try { storage.delete(old.getStorageKey()); }
+            catch (IOException e) { /* best effort */ }
+        });
+        jdbc.update(
+                "UPDATE clinical_prescription_line SET result_document_id = NULL, updated_at = now() WHERE id = ?",
+                lineId);
     }
 
     /**

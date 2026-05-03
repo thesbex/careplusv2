@@ -76,6 +76,14 @@ public class PrescriptionLine {
     @Column(name = "position", nullable = false)
     private int position = 0;
 
+    /**
+     * Résultat attaché à la ligne (V015). Pointe vers patient_document
+     * (type = RESULTAT). NULL pour les lignes médicament — n'a de sens
+     * que pour LAB / IMAGING. ON DELETE SET NULL côté DB.
+     */
+    @Column(name = "result_document_id")
+    private UUID resultDocumentId;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -129,6 +137,8 @@ public class PrescriptionLine {
     public void setSortOrder(int sortOrder) { this.sortOrder = sortOrder; }
     public int getPosition() { return position; }
     public void setPosition(int position) { this.position = position; }
+    public UUID getResultDocumentId() { return resultDocumentId; }
+    public void setResultDocumentId(UUID resultDocumentId) { this.resultDocumentId = resultDocumentId; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

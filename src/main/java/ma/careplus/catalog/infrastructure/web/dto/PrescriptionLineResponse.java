@@ -15,5 +15,7 @@ public record PrescriptionLineResponse(
         String timing,
         Integer quantity,
         String instructions,
-        int sortOrder
+        int sortOrder,
+        /** Document résultat attaché à cette ligne (V015). NULL si pas encore reçu. */
+        UUID resultDocumentId
 ) {}

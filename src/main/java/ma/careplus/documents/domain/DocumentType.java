@@ -13,5 +13,7 @@ public enum DocumentType {
     COMPTE_RENDU,
     AUTRE,
     /** Photo patient (avatar) — gérée via PatientPhotoController. QA5-3. */
-    PHOTO
+    PHOTO,
+    /** Résultat (PDF analyse, image radio) attaché à une ligne de prescription. V015. */
+    RESULTAT
 }
