@@ -169,6 +169,12 @@ public class DocumentService {
 
         PatientDocument saved = upload(patientId, DocumentType.PHOTO, null, file, uploadedBy);
 
+        // Force le flush JPA AVANT la mise à jour JDBC — sinon le FK
+        // patient_patient.photo_document_id → patient_document.id échoue,
+        // l'INSERT de la nouvelle photo n'étant encore qu'en persistence
+        // context. Reproduit en QA5 le 2026-05-01 (PUT /photo → 500).
+        repository.flush();
+
         // Mise à jour de la dénormalisation côté patient_patient.
         jdbc.update(
                 "UPDATE patient_patient SET photo_document_id = ?, updated_at = now() WHERE id = ?",
