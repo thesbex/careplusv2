@@ -30,7 +30,7 @@ spring:
       max-request-size: 12MB
 
 server:
-  port: 8080
+  port: ${PORT:8080}
   error:
     include-message: always
     include-stacktrace: never
@@ -54,6 +54,10 @@ careplus:
     login:
       rate-limit-attempts: 5
       rate-limit-window-minutes: 15
+    cors:
+      # Comma-separated list of allowed origins. Empty = same-origin only
+      # (production deployment serves the SPA from this same Spring Boot process).
+      allowed-origins: ${CAREPLUS_CORS_ALLOWED_ORIGINS:}
   modules:
     pregnancy:
       enabled: false
