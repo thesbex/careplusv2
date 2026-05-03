@@ -1,0 +1,27 @@
+# Production profile for on-premise deployment (Windows service at cabinet).
+# Values come from environment variables or an external application-secrets.yml
+# deployed alongside the JAR. Never commit real secrets.
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/careplus}
+    username: ${DATABASE_USER:careplus}
+    password: ${DATABASE_PASSWORD:}
+  flyway:
+    locations: classpath:db/migration
+
+careplus:
+  deployment-mode: ON_PREMISE
+  modules:
+    backup:
+      enabled: false
+
+server:
+  error:
+    include-stacktrace: never
+
+logging:
+  level:
+    root: INFO
+    ma.careplus: INFO
+  file:
+    name: logs/careplus.log

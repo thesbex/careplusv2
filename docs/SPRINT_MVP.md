@@ -22,17 +22,20 @@ Goal: a working backend exercisable end-to-end via Swagger + Postman for the 6 c
 
 ## Day plan
 
-### J1 — Foundation
-- [ ] Maven project skeleton, `pom.xml` (Java 21, Spring Boot 3.3)
-- [ ] `docker-compose.yml` for Postgres 16
-- [ ] `application.yml` with profiles `dev` / `test` / `prod-onprem` / `prod-cloud`
-- [ ] Flyway `V001__baseline.sql` — ALL tables for MVP modules (identity, patient, scheduling, presence, clinical, billing, catalog, configuration)
-- [ ] `R__seed_dev.sql` — cabinet + 4 users + catalog seed
-- [ ] Spring Security base config + JWT issue/validate
-- [ ] springdoc-openapi integration
-- [ ] GitHub Actions CI (checkout, JDK 21, docker, mvn verify)
-- [ ] First smoke test: `GET /actuator/health` returns 200
-- [ ] Regression checkpoint
+### J1 — Foundation ✅ (shipped 2026-04-23)
+- [x] Maven project skeleton, `pom.xml` (Java 21, Spring Boot 3.3)
+- [x] `docker-compose.yml` for Postgres 16 + init script extensions
+- [x] `application.yml` with profiles `dev` / `test` / `prod-onprem` / `prod-cloud`
+- [x] Flyway `V001__baseline.sql` — 25 tables, all MVP modules
+- [x] Flyway `V002__reference_data.sql` — roles, holidays 2026, insurances, acts, reasons, working hours, templates
+- [x] `R__seed_dev.sql` — 5 patients, 2 allergies, 20 meds, 10 labs, 8 imaging (dev only)
+- [x] Spring Security base config (JWT wiring deferred to J2)
+- [x] springdoc-openapi integration with JWT scheme
+- [x] GitHub Actions CI (JDK 21 Temurin, cache Maven, verify, report upload on fail)
+- [x] Smoke test `ApplicationSmokeIT` — 8 assertions via Testcontainers
+- [x] Regression checkpoint — BUILD SUCCESS, 8/8 tests green
+- [x] `.mvn/settings.xml` + `.mvn/maven.config` (bypass corp Nexus)
+- [x] 5 slash commands in `.claude/commands/`
 
 ### J2 — identity module
 - [ ] Entities: `User`, `Role`, `AuditLogEntry`

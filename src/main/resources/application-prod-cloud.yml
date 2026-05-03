@@ -1,0 +1,32 @@
+# Production profile for cloud deployment (VPS OVH Casablanca or similar).
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USER}
+    password: ${DATABASE_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+  flyway:
+    locations: classpath:db/migration
+
+careplus:
+  deployment-mode: CLOUD
+  modules:
+    backup:
+      enabled: true
+
+server:
+  forward-headers-strategy: native
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+
+logging:
+  level:
+    root: INFO
+    ma.careplus: INFO

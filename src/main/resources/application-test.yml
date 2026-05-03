@@ -1,0 +1,12 @@
+# Test profile — used by @SpringBootTest with Testcontainers.
+# Datasource URL/user/password are injected by @ServiceConnection.
+# Flyway runs only the baseline migrations (no dev seed).
+spring:
+  flyway:
+    locations: classpath:db/migration
+  jpa:
+    show-sql: false
+careplus:
+  security:
+    jwt:
+      secret: test-secret-test-secret-test-secret-test-secret
