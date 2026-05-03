@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LoginPage from '@/features/login/LoginPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
+import DossierRoute from '@/features/dossier-patient';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
@@ -55,7 +56,15 @@ export const router = createBrowserRouter(
       path: '/patients',
       element: (
         <RequireAuth>
-          <Placeholder active="patients" mobileTab="patients" title="Patients" sprintDay="J3" />
+          <DossierRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/patients/:id',
+      element: (
+        <RequireAuth>
+          <DossierRoute />
         </RequireAuth>
       ),
     },
