@@ -116,7 +116,7 @@ function Row({ prestation }: RowProps) {
       </td>
       <td style={{ padding: '6px 8px', display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
         {dirty && (
-          <Button type="button" variant="primary" size="sm" disabled={saving} onClick={onSave}>
+          <Button type="button" variant="primary" size="sm" disabled={saving} onClick={() => void onSave()}>
             Enregistrer
           </Button>
         )}
@@ -135,7 +135,7 @@ function Row({ prestation }: RowProps) {
           variant="ghost"
           size="sm"
           disabled={deleting || !prestation.active}
-          onClick={onDeactivate}
+          onClick={() => void onDeactivate()}
           aria-label={`Supprimer ${prestation.label}`}
         >
           <Trash style={{ width: 12, height: 12 }} />

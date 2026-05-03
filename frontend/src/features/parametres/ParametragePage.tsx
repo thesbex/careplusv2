@@ -24,7 +24,6 @@ import {
   useUpdateRolePermissions,
   type PermissionFlag,
   type RoleCode,
-  type RolePermissionRow,
 } from './hooks/useRolePermissions';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { useLeaves } from './hooks/useLeaves';
@@ -261,7 +260,7 @@ function TarifsTab() {
               size="sm"
               variant="primary"
               disabled={isPending}
-              onClick={() => void handleSave(t.tier as 'NORMAL' | 'PREMIUM')}
+              onClick={() => void handleSave(t.tier)}
             >
               Enregistrer
             </Button>
@@ -632,7 +631,7 @@ function DroitsTab() {
   // Build a quick lookup: roleCode -> { permission -> granted }
   const matrix = new Map<string, Map<string, boolean>>();
   for (const r of ROLES) matrix.set(r.code, new Map());
-  for (const row of rows as RolePermissionRow[]) {
+  for (const row of rows) {
     matrix.get(row.roleCode)?.set(row.permission, row.granted);
   }
 

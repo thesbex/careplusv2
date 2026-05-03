@@ -91,7 +91,7 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
         variant="ghost"
         size="sm"
         onClick={() => setOpen((v) => !v)}
-        disabled={disabled || isLoading}
+        disabled={disabled === true || isLoading}
         aria-label="Charger un modèle"
       >
         <Doc /> Charger un modèle
@@ -253,7 +253,7 @@ function PickerBody({
                   Aucun modèle {type === 'DRUG' ? 'médicament' : type === 'LAB' ? 'analyse' : "d'imagerie"} créé.
                   <br />
                   <a href="/parametres" style={{ color: 'var(--primary)' }}>
-                    Créer depuis Paramétrage → Modèles d'ordonnance
+                    Créer depuis Paramétrage → Modèles d&apos;ordonnance
                   </a>
                 </>
               )}
