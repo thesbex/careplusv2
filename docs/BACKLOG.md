@@ -387,10 +387,18 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 
 ## Pregnancy vertical
 
-- Full pregnancy module (declaration, plan, visits, biometrics, alerts, closure)
-- Ultrasound result capture
-- Bio panel tracking per trimester
-- Auto-create child record on delivery
+> **Module Grossesse v1 — livré 2026-05-03** (6 commits : design `8e4407b`, BE Étape 1 `33ae1be`, BE Étape 2 `ac7d525`, BE Étape 3 `eb569bb`, FE Étape 4 `3d781f6`, FE Étape 5 `cb805cc`). Voir `docs/plans/2026-05-03-grossesse-design.md` + ADR-031. Items v1 livrés : déclaration + plan visites OMS auto + biométrie + 3 échographies (avec correction DPA T1) + alertes hardcodées (HTA / GAJ / HGPO / terme / BCF / BU / no-visit T3) + bio panel template T1-T2-T3 + worklist `/grossesses` + sidebar badge polling 30 s + clôture avec création fiche enfant + calendrier vaccination PNI auto.
+
+Items v2 restants à priorisation post-pilote :
+- Multi-fœtus structuré (jumeaux / triplés) — biométrie séparée par fœtus, alertes différentielles. v1 = JSONB `fetuses` minimal avec un fœtus par défaut.
+- Carnet maternité PDF imprimable bilingue FR/AR (équivalent du carnet vaccination).
+- Courbes percentiles fœtales (Hadlock, OMS 2017) sur la biométrie écho.
+- Score de risque obstétrical (Coopland modifié) + score pré-éclampsie FMF / NICE.
+- Monitoring fœtal numérique (RCF non-stress test).
+- Seuils d'alerte paramétrables par cabinet (Paramétrage > Grossesse).
+- Bio panel intelligent : ne pas re-prescrire la rubéole déjà immunisée (consulte historique sérologies).
+- Vaccination dTcaP mère pendant la grossesse (recommandation OMS chaque grossesse) — module Vaccination v1 cible enfant uniquement.
+- Promotion Option D BioPanel → Option C : endpoint `POST /patients/{id}/prescriptions/standalone` pour transformer le preview en vraie ordonnance signée hors contexte consultation.
 
 ## Documents & files
 

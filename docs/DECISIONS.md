@@ -240,6 +240,37 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 - Question 2 → **A (FIFO automatique)**. En consultation, le médecin n'a pas le temps de sélectionner un lot. Risque mitigé : si un lot est rappelé (alerte fournisseur), on le marque INACTIVE en bloc dans le référentiel et le FIFO l'ignore. Override (C) ajoute 30 min d'UI rarement utiles ; sélection manuelle (B) casse le quick-action drawer.
 **Consequence**: Pas de colonne `current_quantity` sur `stock_article`. Calcul exposé via méthode `StockMovementService.getCurrentQuantity()` réutilisée par `StockArticleView` enrich + `StockAlertService.lowStock`. FIFO implémenté en `recordOut` qui peut créer plusieurs `stock_movement` rows (un par lot consommé) avec un même `performed_at` — l'historique reste lisible (filtre par mouvement parent absent en MVP, possible v2 via `parent_movement_id`).
 
+## ADR-031 — Module Grossesse : modèle 1-N + plan visites OMS auto + alertes hardcodées + normes Min Santé Maroc PSGA
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: Le module Suivi prénatal doit représenter l'état "enceinte" d'une patiente, planifier les 8 visites OMS, alerter sur les pathologies fréquentes (HTA gravidique, diabète gestationnel, terme dépassé, BCF absent, BU positive, no-visit T3) et déclencher la création de la fiche enfant à l'accouchement avec calendrier vaccination PNI auto. Trois décisions structurantes prises au brainstorming Q1-Q8 (2026-05-03).
+
+**Alternatives considérées (Q2 — modèle de données)**:
+- **A — Tag `is_pregnant` boolean sur `patient_patient`** : ne supporte pas N grossesses dans la vie d'une patiente (la 2ᵉ écrase la 1ʳᵉ). Refusé.
+- **C — Étendre `patient_patient` avec colonnes obstétricales** : casse la normalisation, pollue les patients hommes/pédiatriques avec des `IS NULL`, mélange dossier patient général et obstétrical. Refusé.
+- **B — Table `pregnancy` 1-N par patiente** : préserve l'historique G/P/A/V (gravidité = `COUNT(*)`, parité = `COUNT(* WHERE outcome IN ('ACCOUCHEMENT_VIVANT','MORT_NEE'))`), badge dossier en jointure simple, alignement Vaccination (table dédiée + service interface cross-module). **Retenu**.
+
+**Alternatives considérées (Q5 — normes de référence)**:
+- **OMS 2016** (8 visites prénatales SA 12/20/26/30/34/36/38/40) — supersede l'ancien standard 4 visites OMS 2002 (mortalité augmentée).
+- **HAS française** : non applicable légalement au Maroc.
+- **Min Santé Maroc PSGA** (Programme de Surveillance de la Grossesse et de l'Accouchement) : aligné OMS + sérologies obligatoires T1 (groupage+Rh, RAI, TPHA-VDRL, HIV, rubéole, toxo, AgHBs, GAJ, BU) + bilan T2 (NFS, toxo si négative, HGPO 75g) + T3 (NFS, RAI si Rh-, prélèvement vaginal strepto B). **OMS + PSGA en cumul retenus** : OMS pour le calendrier de visites, PSGA pour les bilans biologiques par trimestre.
+
+**Alternatives considérées (Q7 — alertes)**:
+- **Paramétrables par cabinet** : flexibilité max, complexifie l'UI Paramétrage. Seuils OMS stables ; out of MVP.
+- **Hardcodées v1** — 7 règles fixes (HTA TA ≥ 140/90, GAJ glucose urinaire, HGPO post-charge, terme dépassé +7 j, BCF absent SA ≥ 12, BU positive, no-visit T3 > 6 sem). Calculées à la volée (pas de table `pregnancy_alert`), aligné ADR-026 lazy materialisation. **Retenu**.
+
+**Choice**:
+1. **Modèle B** — table `pregnancy` 1-N + 3 tables filles (`pregnancy_visit_plan`, `pregnancy_visit`, `pregnancy_ultrasound`). Aucune colonne sur `patient_patient`. Guard service `422 PATIENT_NOT_FEMALE` à la création. JSONB `fetuses` minimal pour un fœtus par défaut (jumeaux/triplés hors MVP).
+2. **Plan visites auto-généré à la déclaration** — 8 lignes `pregnancy_visit_plan` créées en transaction (`status = PLANIFIEE` ou `MANQUEE` si déclaration tardive > SA cible). Recompute si `lmp_date` change OU si écho T1_DATATION corrige la DPA (`correctsDueDate=true`).
+3. **Alertes calculées à la volée** — pas de table d'alertes, query par grossesse jointe à la dernière `pregnancy_visit` + agrégat 6 dernières semaines. `countActiveAlerts()` = nombre de **grossesses avec ≥ 1 alerte** (pas la somme, sémantique badge "X gestantes à surveiller"). Per-pregnancy loop accepté (10-50 grossesses actives max par cabinet GP).
+4. **Bio panel via bouton dossier** — `GET /api/pregnancies/{id}/bio-panel-template?trimester=T1|T2|T3` retourne un template (mapping name → `catalog_lab_test.code` via JdbcTemplate). Côté frontend, **Option D** (preview dialog + clipboard copy) car aucun endpoint prescription standalone n'existe ; promotion vers Option C (`POST /patients/{id}/prescriptions/standalone`) tracée BACKLOG post-pilote.
+5. **Clôture → fiche enfant Vaccination** — bouton manuel "Créer fiche enfant" sur grossesse `TERMINEE` + `outcome = ACCOUCHEMENT_VIVANT` → `PatientService.create` cross-module DI, `child_patient_id` lié, calendrier vaccination PNI matérialisé lazy au 1ᵉʳ GET (aligné ADR-026/029).
+
+**Consequence**:
+- 4 nouvelles tables (V026), 6 enums domain, 3 services écriture + 3 services lecture, 17 endpoints, 45 IT scénarios. Frontend : onglet `Grossesse` conditionnel `patient.sex === 'F'`, page `/grossesses` worklist, sidebar badge polling 30 s, drawer biométrique contextuel SA.
+- Hors scope v1 (tracé BACKLOG `Pregnancy vertical`) : multi-fœtus structuré, carnet maternité PDF bilingue, courbes percentiles Hadlock, score risque Coopland/FMF, monitoring fœtal RCF, seuils paramétrables, sérologies déjà-immunisées, dTcaP mère par grossesse.
+- Pattern "endpoint standalone manquant" (BioPanel Option D) = 1ᵉʳ signal qu'une **prescription hors consultation** sera demandée — à promouvoir Option C au signal terrain.
+
 ---
 
 ## How to add an entry

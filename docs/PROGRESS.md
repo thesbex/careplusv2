@@ -4,10 +4,33 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Grossesse — Étape 3 livrée (alertes + worklist + bio-panel template)
+**Phase**: Grossesse — Étapes 1→5 livrées en 6 commits. Étape 6 (manual QA Playwright + ADR-031 + BACKLOG cleanup) en cours.
 **Last update**: 2026-05-03
-**Build**: Backend — 45/45 Pregnancy*IT verts (15 Declare + 10 Visit + 6 Ultrasound + 5 Alert + 4 Queue + 5 BioPanel). Pas de régression sur Étapes 1-2.
-**Next action**: Étape 4 — Frontend slice `features/grossesse/` (14 hooks + types + schemas zod + onglet Dossier desktop + mobile 390 px + `PregnancyVisitDrawer` + `PregnancyUltrasoundDrawer` + dialogs).
+**Build**: Backend `mvn -q clean verify` — 400/400 (370 baseline + 35 Pregnancy*IT). Frontend `npx vitest run features/grossesse` — 23/23 (13 Étape 4 + 10 Étape 5). `npm run build` — succès 4.36 s. Lint grossesse 0 erreurs (139 pré-existants ailleurs).
+**Next action**: rapport manual QA agent (en background). Si vert → docs commit ADR-031 + BACKLOG retrait `Pregnancy vertical`. Si bugs → commits fix dédiés.
+
+### 2026-05-03 — Grossesse Étape 5 (frontend worklist /grossesses + sidebar badge + bio panel preview)
+
+**Shipped** (commit `cb805cc`, 30 fichiers, 1861 ins) :
+- Hooks : `usePregnancyQueue` (PageView paginé), `useGrossesseAlertsCount` (polling 30 s).
+- Pages : `PregnancesQueuePage.tsx` desktop + `.mobile.tsx` (cards + sheet filtres) + `PregnancesQueueRoute.tsx` (responsive split). Route `/grossesses` guard `RequireRole={SECRETAIRE,ASSISTANT,MEDECIN,ADMIN}`. Filtres : 3 chips trimestre + withAlerts + recherche q debounced 200 ms. Tri SA décroissante. Empty state.
+- Sidebar : item Grossesses (icône Heart — Baby/HeartPulse absent du set maison). Badge polling 30 s. SidebarScreen + NAV_MAP étendus dans 19 pages (effet typage strict).
+- BioPanel — Option D : `BioPanelPreviewDialog` read-only + clipboard copy. Backend PrescriptionController consultation-scoped uniquement ; Option C (endpoint standalone) tracée BACKLOG. `BioPanelButton` : callback path Étape 4 préservé, sinon ouvre preview.
+- Tests : 10 vitest étape 5 → 23/23 grossesse + 100/100 régression vaccination/shell.
+
+### 2026-05-03 — Grossesse Étape 4 (frontend onglet dossier + drawers)
+
+**Shipped** (commit `3d781f6`, 32 fichiers, 3710 ins) :
+- Slice `features/grossesse/` complet : 14 hooks TanStack Query + 9 components + schemas zod + grossesse.css.
+- Onglet `Grossesse` conditionnel `patient.sex === 'F'` dans `DossierPage` desktop + mobile (DossierTabs.showGrossesse prop).
+- `PregnancyVisitDrawer` form contextuel selon SA (BCF ≥ 12, HU ≥ 20, MAF ≥ 24, présentation ≥ 32). `PregnancyUltrasoundDrawer` avec correctsDueDate visible si T1.
+- Dialogs : Declare / Close / CreateChild. AlertsBanner avec severity. BioPanelButton (callback path).
+- RBAC inline pattern Vaccination (useAuthStore + useRoles). 13 tests vitest + 116/116 régression FE + tsc clean.
+
+### 2026-05-03 — Grossesse Étape 3 (alertes + worklist + bio-panel template)
+
+**Shipped (no new migration — Étape 3 is pure query)**:
+- Application : `PregnancyAlertService` (interface + `PregnancyAlertServiceImpl`) — 7 règles hardcodées : HTA_GRAVIDIQUE (TA ≥ 140/90), GAJ_GLUCOSE_URINAIRE (glycosurie BU), TERME_DEPASSE (today > dueDate + 7 j), NO_VISIT_T3 (pas de visite depuis > 6 sem à SA ≥ 28), BCF_ABSENT (BCF null/0 à SA ≥ 12), BU_POSITIVE (protéines/leuco/nitrites). HGPO_POSITIVE = TODO v2. `countActiveAlerts()` + `countByPregnancy(ids)` batch pour worklist.
 
 ### 2026-05-03 — Grossesse Étape 3 (alertes + worklist + bio-panel template)
 
