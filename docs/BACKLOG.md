@@ -241,8 +241,10 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 - **IT bottlée** : sibling test `ConsultationPageIT.java` ajouté par le sous-agent QA (8 scénarios verts) avec regression-lock spécifique sur la réimpression PDF.
 - **Leçon** : ne plus shipper de bouton avec un onClick "noop" ou un `disabled` hardcodé sans condition. Si une feature attend du backend, on désactive avec une raison calculée (pas de cert → tooltip "aucun certificat à imprimer").
 
-### QA6-2 — Modèles de prescription médicaments réutilisables en consultation — **[CHANGE / NEW FEATURE]**
-- **Demande (Youssef Boutaleb, 2026-05-02)** : "Il faut permettre au médecin de confectionner des prescriptions de médicament et pouvoir les utiliser automatiquement au moment de la consultation, avec possibilité de modification au moment de consultation."
+### QA6-2 — Modèles de prescription médicaments réutilisables en consultation — ✅ **LIVRÉ 2026-05-02**
+- **Commits** : `7c3efe6` (design doc), `3117188` (backend + IT), `4a05226` (frontend Paramétrage + picker drawer).
+- **Validation IHM** : `qa6-2-template-loaded-in-drawer.png` — modèle « QA6 HTA stable » créé dans Paramétrage → Modèles d'ordonnance, chargé via picker dans la consultation, ligne hydratée avec dosage/fréquence/durée/qté/instructions, éditable avant validation.
+- **Demande initiale (Youssef Boutaleb, 2026-05-02)** : "Il faut permettre au médecin de confectionner des prescriptions de médicament et pouvoir les utiliser automatiquement au moment de la consultation, avec possibilité de modification au moment de consultation."
 - **État actuel** : `PrescriptionDrawer` (`features/prescription/PrescriptionDrawer.tsx`) permet de saisir ligne par ligne (autocomplete sur `catalog_medication`). Aucun système de modèle réutilisable. Chaque consultation reconstruit l'ordonnance depuis zéro même pour des protocoles fréquents (ex : "HTA stable", "renouvellement diabète", "angine virale").
 - **Pourquoi c'est un CHANGE** : ligne déjà listée dans `Prescription par type (issu de 5.5d)` plus haut au backlog ("Modèles d'ordonnance pré-remplis : 'HTA de base', 'Renouvellement diabète', etc."). QA6-2 confirme la demande terrain et la rend prioritaire — à promouvoir vers la prochaine itération frontend.
 - **Scope estimé** :
@@ -254,8 +256,9 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
   - Permission : modèle privé au médecin, pas partagé entre praticiens d'un même cabinet en v1 (chaque médecin a sa façon de prescrire). Permission `PRESCRIPTION_TEMPLATE_MANAGE` à ajouter à la matrice RBAC (post QA3-3).
 - **Estimation** : 2 jours backend (entité + endpoints + IT), 2 jours frontend (CRUD Paramétrage + picker dans PrescriptionDrawer + tests + design parity), 0,5 jour QA. Total ≈ 5 jours.
 
-### QA6-3 — Modèles de bons d'analyses (et imagerie) réutilisables — **[CHANGE / NEW FEATURE]**
-- **Demande (Youssef Boutaleb, 2026-05-02)** : "Même chose pour les bons d'analyses." (par extension : les bons d'imagerie aussi, même structure).
+### QA6-3 — Modèles de bons d'analyses (et imagerie) réutilisables — ✅ **LIVRÉ 2026-05-02 (bundlé QA6-2)**
+- **Commits** : mêmes que QA6-2 — la table `clinical_prescription_template` est polymorphe via `type ∈ {DRUG,LAB,IMAGING}`, donc les 3 types ont été livrés ensemble (sub-tabs DRUG/LAB/IMAGING dans Paramétrage, picker filtré par type côté drawer).
+- **Demande initiale (Youssef Boutaleb, 2026-05-02)** : "Même chose pour les bons d'analyses." (par extension : les bons d'imagerie aussi, même structure).
 - **État actuel** : même drawer `PrescriptionDrawer` que pour les médicaments, paramétré par `type` LAB ou IMAGING. Pas de modèles. Un médecin qui prescrit systématiquement le même bilan (NFS + CRP + ionogramme + créatinine + glycémie) le ressaisit à chaque consultation.
 - **Pourquoi c'est un CHANGE** : strictement parallèle à QA6-2. Idéalement livré dans la même PR/sprint que QA6-2 puisque l'entité backend `clinical_prescription_template` couvre déjà LAB et IMAGING via la colonne `type`.
 - **Scope additionnel par rapport à QA6-2** : aucun côté backend (table déjà polymorphe). Côté frontend, le picker s'affiche dans le drawer LAB et le drawer IMAGING (déjà 3 instances du même drawer), filtrage par `type` côté GET pour ne montrer que les modèles pertinents.
@@ -277,8 +280,8 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 
 ### Priorisation QA6
 1. **QA6-1** ✅ livré (commit du jour).
-2. **QA6-4** (catalogue analyses/radio) — d'abord, parce que (a) c'est un bug (le médecin perçoit un manque, pas une amélioration), (b) c'est un pré-requis fonctionnel pour QA6-3 (les modèles LAB/IMAGING ont besoin d'un référentiel rempli).
-3. **QA6-2 + QA6-3** bundlés — modèles d'ordonnance/analyses/imagerie. Sprint dédié post-pilote ou intercalé selon retour terrain.
+2. **QA6-4** ✅ livré 2026-05-02 (catalogue analyses/radio CRUD).
+3. **QA6-2 + QA6-3** ✅ livrés 2026-05-02 — bundlés via la table polymorphe `clinical_prescription_template`. Brainstormés (4 décisions UX), backend (13 IT verts), frontend Paramétrage + picker drawer, validation IHM bout-en-bout.
 
 ### QA6-5 — `MedicationWriteRequest.active` silencieusement ignoré par les SQL INSERT/UPDATE — **[BUG pré-existant]**
 - **Détecté par** ultrareview 2026-05-02 (rgbf0wcek).
@@ -288,6 +291,56 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 - **Décision recommandée** : **drop `active` du DTO** (`MedicationWriteRequest`). La désactivation passe déjà par `DELETE /medications/{id}` (soft-delete `SET active = FALSE`). Aucun chemin produit ne demande la réactivation côté API → un DTO honnête vaut mieux qu'un champ no-op. Si un cabinet pilote demande la réactivation plus tard, on rouvre la porte avec `COALESCE(?, active)` dans les 2 SQL.
 - **Estimation** : 30 min (drop le champ + ajuster IT existant qui pourrait s'appuyer dessus).
 - **Lien** : à grouper avec QA6-4 (CRUD catalogue) si tackled ensemble — même fichier `CatalogController.java`.
+
+## QA wave 7 — 2026-05-02 (demandes Y. Boutaleb)
+
+### QA7-1 — Module gestion de stock interne (médicaments, dossiers physiques, consommables) — **[CHANGE / NEW MODULE]**
+- **Demande** : « Je veux mettre en place un module pour la gestion de stock interne (des médicaments, des dossiers physiques, des consommables) etc. » (Y. Boutaleb, 2026-05-02).
+- **Périmètre fonctionnel à cadrer** :
+  - Référentiel **articles de stock** (≠ catalogue prescription) avec catégories : `MEDICAMENT_INTERNE` (échantillons, doses cabinet), `DOSSIER_PHYSIQUE` (chemises, intercalaires), `CONSOMMABLE` (gants, seringues, désinfectant, papier ECG, etc.), libre extension.
+  - **Mouvements de stock** : entrée (achat / don / correction), sortie (consommation cabinet, périmé, perdu), inventaire (snapshot manuel).
+  - **Niveaux** : seuil min par article → alerte « stock faible » dans la salle/dashboard.
+  - **Lots & péremption** pour les médicaments internes (FIFO + alerte J-30).
+  - **Fournisseurs** : table simple (nom, contact, dernier prix d'achat) — pas de PO/facture fournisseur en v1.
+  - **Localisation** : armoire/tiroir libre texte (post-MVP : multi-emplacement).
+  - **Lien consommation → consultation** (optionnel) : un médicament interne dispensé peut être attaché à une consultation pour traçabilité (pas de facturation patient en v1, juste audit).
+- **Modèle backend (esquisse)** :
+  - `inventory_item (id, code, label, category, unit, min_threshold, location, active, …)`
+  - `inventory_movement (id, item_id, type IN/OUT/ADJUSTMENT, quantity, lot, expires_at, supplier_id, consultation_id, reason, performed_by, performed_at)`
+  - `inventory_supplier (id, name, contact, notes)`
+  - `inventory_stock_view` (matérialisée ou calculée à la volée : SUM mouvements par article + lot).
+- **UI** : nouvel onglet `Stock` dans `ParametragePage` (inventaire + alertes), + petit widget « Stock faible » sur le dashboard salle. Mobile : consultation rapide + ajout d'une sortie en 2 taps.
+- **RBAC** : MEDECIN + ADMIN écrivent ; SECRETAIRE/ASSISTANT peuvent enregistrer une sortie ; lecture pour tous.
+- **Hors scope v1** : commandes fournisseurs auto, codes-barres scan caméra, intégration comptable.
+- **Estimation** : module bounded-context complet → ~3-4 J-days backend + 2 J-days frontend (parité desktop/mobile selon ADR-021). À cadrer en sprint dédié post-pilote.
+- **Priorisation** : à confirmer terrain — fort si le cabinet gère beaucoup d'échantillons ou consomme énormément (vaccinations, pansements). Faible si stock minimal.
+
+### QA7-2 — Module téléconsultation — **[CHANGE / NEW MODULE]**
+- **Demande** : « Je veux mettre en place un module de téléconsultation. Inscris cette demande dans le backlog pour la traiter après. » (Y. Boutaleb, 2026-05-02).
+- **Périmètre fonctionnel à cadrer** :
+  - **Type RDV** : nouveau `AppointmentType.TELECONSULTATION` (en plus de CONSULTATION/CONTROLE/URGENCE) avec champ `meeting_url` généré.
+  - **Salle virtuelle** : choix techno à défendre (DECISIONS.md) — Jitsi self-hosted (cohérent avec ADR-020 on-prem), Daily.co, ou WebRTC custom. Jitsi gagne probablement sur on-premise + zéro tier-party PHI exposure.
+  - **Lien envoyé patient** : SMS/email avec URL signée + token court à expiration (cf. ADR-019 access en mémoire). Optionnel : QR code sur le bon de RDV.
+  - **Salle d'attente virtuelle** : le patient se connecte, voit « Le médecin va vous rejoindre », le médecin a un widget « Patient connecté · attendant depuis X min » dans la salle d'attente classique.
+  - **Pendant la consultation** : page consultation actuelle + iframe ou panneau vidéo à droite (remplace `PatientContextCard` ou en plus). SOAP autosave inchangé.
+  - **Constantes déclaratives** : le patient saisit lui-même TA/poids (ou les passe au médecin) → champ libre + flag « déclaratives ».
+  - **Ordonnance numérique** : envoi PDF par email/téléchargement direct + signature électronique simple (déjà signed_at en DB, ajouter QR code de vérification).
+  - **Facturation** : tarif spécifique téléconsultation (config Tarifs), paiement en ligne hors v1 (laisser « à régler en cabinet » ou virement). Statut FACTURE classique.
+  - **Conformité** : RGPD/loi marocaine 09-08 → consentement explicite avant connexion, journalisation enregistrement (pas d'enregistrement par défaut), données vidéo non stockées.
+- **Modèle backend (esquisse)** :
+  - `scheduling_appointment` étendu avec `is_teleconsultation BOOLEAN`, `meeting_url`, `meeting_token`, `patient_joined_at`, `practitioner_joined_at`, `ended_at`.
+  - `teleconsultation_consent (id, patient_id, appointment_id, accepted_at, ip, user_agent)`.
+  - Endpoint `POST /api/appointments/{id}/teleconsultation/start` génère le room/token, retourne URLs côté patient + côté médecin.
+- **UI** :
+  - Toggle « Téléconsultation » à la création RDV (agenda + dialog).
+  - Widget patient connecté dans la salle d'attente (remplace les colonnes Box).
+  - Page consultation avec panneau vidéo Jitsi embarqué (iframe).
+  - Page patient (lien externe public) : consentement → salle d'attente → consultation.
+- **RBAC** : MEDECIN seul démarre/termine la téléconsultation. SECRETAIRE crée le RDV téléconsultation et envoie le lien.
+- **Hors scope v1** : enregistrement audio/vidéo, transcription auto, e-prescription nationale (DMP marocain quand disponible).
+- **Estimation** : ~5-6 J-days backend (model + Jitsi integration + endpoints) + 3-4 J-days frontend (toggle + iframe + landing patient). Sprint dédié post-pilote.
+- **Dépendances** : choix techno vidéo en ADR avant tout code. Test pilote RGPD avec un cabinet volontaire.
+- **Priorisation** : forte demande générale post-COVID au Maroc, mais cabinet GP type carePlus = essentiellement présentiel. À confirmer terrain.
 
 ## Clinical
 
