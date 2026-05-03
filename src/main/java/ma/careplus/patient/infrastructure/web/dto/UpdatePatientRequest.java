@@ -8,8 +8,8 @@ import java.time.LocalDate;
 
 /** Partial update — all fields optional. Fields left null are preserved on the entity. */
 public record UpdatePatientRequest(
-        @Size(max = 64) String firstName,
-        @Size(max = 64) String lastName,
+        @Size(min = 2, max = 64) @Pattern(regexp = "[\\p{L}\\s'\\-]+", message = "Prénom invalide") String firstName,
+        @Size(min = 2, max = 64) @Pattern(regexp = "[\\p{L}\\s'\\-]+", message = "Nom invalide") String lastName,
         @Pattern(regexp = "M|F|O", message = "gender must be M, F or O")
         @Size(max = 8)
         String gender,
