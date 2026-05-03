@@ -225,6 +225,24 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 **Blockers**: none.
 
+### 2026-05-02 — Vaccination module Étape 1 shipped
+
+**Shipped:**
+- `V022__vaccination_module.sql` — 3 new tables (`vaccine_catalog`, `vaccine_schedule_dose`, `vaccination_dose`) + `patient_patient.vaccination_started_at TIMESTAMPTZ NULL`. Optimistic locking on `vaccine_catalog` and `vaccination_dose`. Soft-delete on `vaccination_dose`. Triggers + indexes per convention.
+- `R__seed_vaccine_catalog.sql` — Idempotent PNI seed: 12 vaccines (`is_pni=TRUE`), 2 non-PNI (HepA, Varicelle), 25 schedule dose rows covering the Moroccan PNI calendar (birth → 11 years).
+- Domain: `VaccineCatalog`, `VaccineScheduleDose`, `VaccinationDose` entities; `VaccinationStatus`, `VaccinationRoute` enums.
+- Persistence: `VaccineCatalogRepository`, `VaccineScheduleDoseRepository`, `VaccinationDoseRepository`.
+- Application: `VaccinationCatalogService` interface + `VaccinationCatalogServiceImpl` — CRUD for catalog + schedule; PNI_PROTECTED guard on deactivateCatalog; VAC_SCHEDULE_DUPLICATE 409 on duplicate (vaccine_id, dose_number).
+- Web: `VaccinationCatalogController` — GET/POST/PUT/DELETE `/api/vaccinations/catalog` and `/api/vaccinations/schedule`; `@PreAuthorize` per design Q8 (MEDECIN/ADMIN mutate, all roles read).
+- `VaccinationMapper` (MapStruct) — entity → DTO.
+- DTOs: `VaccineCatalogView`, `VaccineCatalogWriteRequest`, `VaccineScheduleDoseView`, `VaccineScheduleDoseWriteRequest`.
+- `VaccinationCatalogIT` — 9 tests covering: migration tables, seed counts, patient column, CRUD catalog, PNI guard, CRUD schedule, UNIQUE constraint, RBAC SECRETAIRE, RBAC ASSISTANT.
+
+**State**: `mvn verify` → BUILD SUCCESS, 258 tests (was 247 + 9 new + 2 from SalleAttente module in between = 258), 0 failures.
+**Next action**: Vaccination Étape 2 — `VaccinationService.materializeCalendar(patientId)`, `recordDose`, `deferDose`, `skipDose`, `PatientVaccinationController`, `VaccinationDueEvent`.
+
+**Blockers**: none.
+
 ## How to update this file
 
 At end of every session:

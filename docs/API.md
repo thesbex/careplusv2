@@ -123,6 +123,20 @@ Seeded defaults from V002:
 
 `GET /api/queue` now returns `{appointmentId, patientId, patientFullName, scheduledAt, status, arrivedAt, hasAllergies, age, reasonLabel, practitionerName, durationMinutes, isPremium}`.
 
+## vaccination — Étape 1 référentiel (2026-05-02) ✅
+
+### Vaccine catalog
+- `GET /api/vaccinations/catalog` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — list all vaccines (including inactive)
+- `POST /api/vaccinations/catalog` — MEDECIN/ADMIN — create vaccine `{code, nameFr, manufacturerDefault, routeDefault, isPni}` → 201; 409 if code duplicate
+- `PUT /api/vaccinations/catalog/{id}` — MEDECIN/ADMIN — update vaccine; 409 if code duplicate; 404 if not found
+- `DELETE /api/vaccinations/catalog/{id}` — MEDECIN/ADMIN — soft-deactivate (sets active=false); 422 PNI_PROTECTED if is_pni=true
+
+### Vaccine schedule
+- `GET /api/vaccinations/schedule` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — list all schedule doses ordered by target_age_days; optional `?vaccineId=` filter
+- `POST /api/vaccinations/schedule` — MEDECIN/ADMIN — create schedule dose `{vaccineId, doseNumber, targetAgeDays, toleranceDays, labelFr}` → 201; 409 if (vaccine_id, dose_number) duplicate
+- `PUT /api/vaccinations/schedule/{id}` — MEDECIN/ADMIN — update schedule dose; 409 if duplicate; 404 if not found
+- `DELETE /api/vaccinations/schedule/{id}` — MEDECIN/ADMIN — hard delete; 404 if not found
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)
