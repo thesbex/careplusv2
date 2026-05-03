@@ -11,6 +11,9 @@
  *      — laissé en xfail tant que le backend ne joint pas le nom
  *   5. La saisie d'une allergie de sévérité inconnue est rejetée par le
  *      backend (CHECK constraint V017) au lieu d'empoisonner le patient
+ *   6. Une consultation SIGNEE permet TOUJOURS de téléverser un résultat
+ *      LAB / IMAGING (le patient ramène ses analyses des jours après —
+ *      rapport Y. Boutaleb 2026-05-01)
  *
  * Pré-requis : Spring Boot + Vite up, dev profile (cf. playwright.config.ts).
  */
@@ -164,6 +167,75 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
     // Cleanup so reruns stay green.
     await api.delete(`/patients/${created.id}`);
     void user;
+  });
+
+  test('6. SIGNEE consultation still allows uploading LAB/IMAGING result (Y. Boutaleb 2026-05-01)', async ({ page, request }) => {
+    // Le médecin signe une consultation et le patient revient des jours plus
+    // tard avec ses analyses / radios. Avant le fix, le bouton « Téléverser
+    // résultat » était désactivé dès que la consultation passait à SIGNEE
+    // → impossible d'attacher quoi que ce soit après signature.
+    const { accessToken } = await apiLogin(request, USERS.medecin.email, USERS.medecin.password);
+    const api = await authedApi(accessToken);
+
+    // Pick any patient + a real lab test from the catalog.
+    const patients = await api.get('/patients').then((r) => r.json());
+    const patientId = patients[0].id;
+    const labTests = await api.get('/catalog/lab-tests?q=NFS').then((r) => r.json());
+    expect(labTests.length, 'at least one lab test seeded').toBeGreaterThan(0);
+    const labTestId = labTests[0].id;
+
+    // Build a SIGNEE consultation with a LAB prescription.
+    const consult = await api
+      .post('/consultations', { data: { patientId, motif: 'QA result post-sign' } })
+      .then((r) => r.json());
+    await api.put(`/consultations/${consult.id}`, {
+      data: { motif: 'Bilan', examination: 'OK', diagnosis: 'Inflammatoire', notes: '' },
+    });
+    const rx = await api
+      .post(`/consultations/${consult.id}/prescriptions`, {
+        data: {
+          type: 'LAB',
+          allergyOverride: false,
+          lines: [{ labTestId, instructions: 'a jeun le matin' }],
+        },
+      })
+      .then((r) => r.json());
+    expect(rx.id, 'LAB prescription created').toBeTruthy();
+    const lineId = rx.lines[0].id;
+
+    const signed = await api.post(`/consultations/${consult.id}/sign`);
+    expect(signed.status()).toBe(200);
+
+    // Open the signed consultation in the browser.
+    await uiLogin(page, USERS.medecin.email, USERS.medecin.password);
+    await page.goto(`/consultations/${consult.id}`);
+
+    // The « Téléverser résultat » button must be visible AND enabled even
+    // though the consultation is SIGNEE.
+    const upload = page
+      .getByRole('button', { name: /Téléverser résultat/i })
+      .first();
+    await expect(upload).toBeVisible({ timeout: 10_000 });
+    await expect(upload).toBeEnabled();
+
+    // End-to-end : upload through the API path the button hits, then refresh
+    // the page and assert that the « Voir résultat » link replaced the upload
+    // CTA on that line.
+    const png = Buffer.from([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53, 0xde, 0x00, 0x00, 0x00,
+      0x0c, 0x49, 0x44, 0x41, 0x54, 0x08, 0x99, 0x63, 0xf8, 0xff, 0xff, 0x3f,
+      0x00, 0x05, 0xfe, 0x02, 0xfe, 0xa3, 0x35, 0x81, 0x84, 0x00, 0x00, 0x00,
+      0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
+    ]);
+    const upRes = await api.put(`/prescriptions/lines/${lineId}/result`, {
+      multipart: { file: { name: 'qa.png', mimeType: 'image/png', buffer: png } },
+    });
+    expect(upRes.status(), 'PUT result returned 200').toBe(200);
+
+    await page.reload();
+    await expect(page.getByText(/Voir résultat/i).first()).toBeVisible({ timeout: 10_000 });
   });
 
   test.fixme(

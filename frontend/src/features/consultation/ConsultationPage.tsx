@@ -326,7 +326,13 @@ export default function ConsultationPage() {
                   }
                   onClick={() => navigate(`/prescriptions/${p.id}`)}
                 />
-                <PrescriptionResultsPanel prescription={p} readOnly={isSigned} />
+                {/* readOnly=false même quand la consultation est SIGNEE :
+                    le patient ramène ses résultats d'analyses / d'imagerie
+                    plusieurs jours après la consultation, le médecin doit
+                    pouvoir les attacher à tout moment (rapport Y. Boutaleb
+                    2026-05-01). Le verrou portait à tort sur la signature
+                    SOAP, alors que le résultat est un évènement post-visite. */}
+                <PrescriptionResultsPanel prescription={p} readOnly={false} />
               </div>
             ))}
           </div>
