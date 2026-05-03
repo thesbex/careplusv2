@@ -125,14 +125,25 @@ export function EvolutionChart({
     const ys = allPoints.map((p) => p.y);
     const xLow = Math.min(...xs);
     const xHigh = Math.max(...xs);
+    const dataLow = Math.min(...ys);
+    const dataHigh = Math.max(...ys);
     let yLow: number;
     let yHigh: number;
     if (yDomain) {
-      [yLow, yHigh] = yDomain;
+      // yDomain est une PRÉFÉRENCE, pas une borne dure : si une mesure est en
+      // dehors (ex. T° 33°C dans une plage suggérée [35,41], cas hypothermie
+      // OU saisie aberrante en test), on élargit pour ne pas clipper le point.
+      yLow = Math.min(yDomain[0], dataLow);
+      yHigh = Math.max(yDomain[1], dataHigh);
     } else {
-      yLow = Math.min(...ys);
-      yHigh = Math.max(...ys);
-      const span = Math.max(yHigh - yLow, 1);
+      yLow = dataLow;
+      yHigh = dataHigh;
+    }
+    const span = Math.max(yHigh - yLow, 1);
+    if (yDomain && (dataLow < yDomain[0] || dataHigh > yDomain[1])) {
+      yLow -= span * 0.05;
+      yHigh += span * 0.05;
+    } else if (!yDomain) {
       yLow -= span * 0.1;
       yHigh += span * 0.1;
     }

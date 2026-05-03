@@ -189,7 +189,10 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+          // 280px → 2 colonnes dès ~600px de large, 3 colonnes ~880px,
+          // 4 colonnes ~1180px. Évite la situation "1 carte par ligne"
+          // sur écrans moyens (DevTools ouvert, sidebars actives, etc.).
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: 16,
         }}
       >
