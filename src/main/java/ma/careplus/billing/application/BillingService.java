@@ -147,9 +147,21 @@ public class BillingService {
             invoice.setNetAmount(BigDecimal.ZERO);
             invoice = invoiceRepository.save(invoice);
 
-            // Step 2: Resolve lines from appointment reason's default act
+            // Step 2: Resolve the consultation line.
+            // Order de résolution :
+            //  1) Le motif RDV référence un default_act_id avec un tarif effectif
+            //     pour la tier du patient → on l'utilise (cas normal).
+            //  2) Sinon (ex. consultation hors agenda, motif sans default_act,
+            //     pas de tarif catalogué pour la tier) → on cherche le premier
+            //     acte de type CONSULTATION actif et on prend son tarif (ou
+            //     defaultPrice à défaut). On NE laisse JAMAIS la ligne
+            //     consultation absente — sinon le médecin se retrouve avec une
+            //     facture qui n'a que les prestations, ce qui surprend
+            //     (rapport Y. Boutaleb 2026-05-01).
             BigDecimal totalAmount = BigDecimal.ZERO;
             int position = 0;
+            UUID resolvedActId = null;
+            BigDecimal resolvedAmount = null;
             if (event.appointmentId() != null) {
                 Optional<Appointment> apptOpt = appointmentRepository.findById(event.appointmentId());
                 if (apptOpt.isPresent()) {
@@ -158,21 +170,40 @@ public class BillingService {
                         Optional<Tariff> tariff = catalogService.getEffectiveTariff(
                                 defaultActId, tier, event.signedAt().toLocalDate());
                         if (tariff.isPresent()) {
-                            BigDecimal amount = tariff.get().getAmount();
-                            Optional<Act> act = actRepository.findById(defaultActId);
-                            InvoiceLine line = new InvoiceLine();
-                            line.setInvoiceId(invoice.getId());
-                            line.setActId(defaultActId);
-                            line.setPosition(position++);
-                            line.setDescription(act.map(Act::getName).orElse("Consultation"));
-                            line.setUnitPrice(amount);
-                            line.setQuantity(BigDecimal.ONE);
-                            line.setLineTotal(amount);
-                            invoiceLineRepository.save(line);
-                            totalAmount = amount;
+                            resolvedActId = defaultActId;
+                            resolvedAmount = tariff.get().getAmount();
                         }
                     }
                 }
+            }
+
+            // Fallback : on prend le premier acte CONSULTATION actif du catalogue.
+            if (resolvedActId == null) {
+                Optional<Act> fallback = actRepository.findAllByActiveTrue().stream()
+                        .filter(a -> "CONSULTATION".equalsIgnoreCase(a.getType()))
+                        .findFirst();
+                if (fallback.isPresent()) {
+                    Act a = fallback.get();
+                    resolvedActId = a.getId();
+                    resolvedAmount = catalogService
+                            .getEffectiveTariff(a.getId(), tier, event.signedAt().toLocalDate())
+                            .map(Tariff::getAmount)
+                            .orElse(a.getDefaultPrice());
+                }
+            }
+
+            if (resolvedActId != null && resolvedAmount != null) {
+                Optional<Act> act = actRepository.findById(resolvedActId);
+                InvoiceLine line = new InvoiceLine();
+                line.setInvoiceId(invoice.getId());
+                line.setActId(resolvedActId);
+                line.setPosition(position++);
+                line.setDescription(act.map(Act::getName).orElse("Consultation"));
+                line.setUnitPrice(resolvedAmount);
+                line.setQuantity(BigDecimal.ONE);
+                line.setLineTotal(resolvedAmount);
+                invoiceLineRepository.save(line);
+                totalAmount = resolvedAmount;
             }
 
             // Step 2bis: Append prestations performed during the consultation (V016).
