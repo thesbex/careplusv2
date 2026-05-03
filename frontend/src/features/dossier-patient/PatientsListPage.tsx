@@ -772,6 +772,7 @@ export default function PatientsListPage() {
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          catalogue: '/catalogue',
           params: '/parametres',
         } as const;
         navigate(map[id]);

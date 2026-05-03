@@ -536,7 +536,8 @@ export default function DossierPage() {
       onNavigate={(navId) => {
         const map = {
           agenda: '/agenda', patients: '/patients', salle: '/salle',
-          consult: '/consultations', factu: '/facturation', params: '/parametres',
+          consult: '/consultations', factu: '/facturation', catalogue: '/catalogue',
+          params: '/parametres',
         } as const;
         navigate(map[navId]);
       }}

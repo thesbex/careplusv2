@@ -17,7 +17,8 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
-  params: '/parametres',
+  catalogue: '/catalogue',
+          params: '/parametres',
 } as const;
 
 const FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [

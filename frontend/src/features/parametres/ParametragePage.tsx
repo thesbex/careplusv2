@@ -38,7 +38,8 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
-  params: '/parametres',
+  catalogue: '/catalogue',
+          params: '/parametres',
 } as const;
 
 type Tab = 'cabinet' | 'tarifs' | 'utilisateurs' | 'conges' | 'droits';

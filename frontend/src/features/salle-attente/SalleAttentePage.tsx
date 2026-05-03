@@ -87,6 +87,7 @@ export default function SalleAttentePage() {
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          catalogue: '/catalogue',
           params: '/parametres',
         } as const;
         navigate(map[id]);

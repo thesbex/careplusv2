@@ -230,7 +230,8 @@ export default function AgendaPage() {
             salle: '/salle',
             consult: '/consultations',
             factu: '/facturation',
-            params: '/parametres',
+            catalogue: '/catalogue',
+          params: '/parametres',
           } as const;
           navigate(map[id]);
         }}

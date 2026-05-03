@@ -17,7 +17,8 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
-  params: '/parametres',
+  catalogue: '/catalogue',
+          params: '/parametres',
 } as const;
 
 function fmtDateTime(iso: string): string {

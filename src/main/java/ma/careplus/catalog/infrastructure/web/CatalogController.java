@@ -189,6 +189,109 @@ public class CatalogController {
         return catalogService.searchMedications(q).stream().map(this::toMedicationResponse).toList();
     }
 
+    public record MedicationFullView(
+            UUID id, String commercialName, String dci, String form, String dosage,
+            String tags, boolean favorite, boolean active) {}
+
+    public record MedicationWriteRequest(
+            String commercialName, String dci, String form, String dosage,
+            String tags, Boolean favorite, Boolean active) {}
+
+    /**
+     * Liste paginée pour l'écran Catalogue (recherche + tri par DCI puis nom).
+     * Distinct du /medications type-ahead qui limite à 20 entrées.
+     */
+    @GetMapping("/medications/browse")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<MedicationFullView> browseMedications(
+            @RequestParam(required = false, defaultValue = "") String q,
+            @RequestParam(required = false) String tag,
+            @RequestParam(required = false, defaultValue = "200") int limit) {
+        String trimmed = q == null ? "" : q.trim();
+        StringBuilder sql = new StringBuilder(
+                "SELECT id, commercial_name, dci, form, dosage, tags, favorite, active "
+                + "FROM catalog_medication WHERE active = TRUE");
+        java.util.List<Object> args = new java.util.ArrayList<>();
+        if (!trimmed.isEmpty()) {
+            sql.append(" AND (commercial_name ILIKE ? OR dci ILIKE ?)");
+            String like = "%" + trimmed + "%";
+            args.add(like);
+            args.add(like);
+        }
+        if (tag != null && !tag.isBlank()) {
+            sql.append(" AND tags = ?");
+            args.add(tag.trim());
+        }
+        sql.append(" ORDER BY favorite DESC, dci, commercial_name, dosage LIMIT ?");
+        args.add(Math.min(Math.max(limit, 1), 1000));
+        return jdbc.query(sql.toString(),
+                (rs, i) -> new MedicationFullView(
+                        (UUID) rs.getObject("id"),
+                        rs.getString("commercial_name"),
+                        rs.getString("dci"),
+                        rs.getString("form"),
+                        rs.getString("dosage"),
+                        rs.getString("tags"),
+                        rs.getBoolean("favorite"),
+                        rs.getBoolean("active")),
+                args.toArray());
+    }
+
+    @GetMapping("/medications/tags")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<String> medicationTags() {
+        return jdbc.queryForList(
+                "SELECT DISTINCT tags FROM catalog_medication "
+                + "WHERE active = TRUE AND tags IS NOT NULL AND tags <> '' "
+                + "ORDER BY tags",
+                String.class);
+    }
+
+    @PostMapping("/medications")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<MedicationFullView> createMedication(
+            @RequestBody MedicationWriteRequest req) {
+        UUID id = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO catalog_medication "
+                + "(id, commercial_name, dci, form, dosage, tags, favorite, active) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)",
+                id,
+                req.commercialName(), req.dci(), req.form(), req.dosage(),
+                req.tags(),
+                req.favorite() != null && req.favorite());
+        return ResponseEntity.created(URI.create("/api/catalog/medications/" + id))
+                .body(new MedicationFullView(id, req.commercialName(), req.dci(),
+                        req.form(), req.dosage(), req.tags(),
+                        req.favorite() != null && req.favorite(), true));
+    }
+
+    @PutMapping("/medications/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> updateMedication(
+            @PathVariable UUID id,
+            @RequestBody MedicationWriteRequest req) {
+        int updated = jdbc.update(
+                "UPDATE catalog_medication SET "
+                + "commercial_name = ?, dci = ?, form = ?, dosage = ?, "
+                + "tags = ?, favorite = COALESCE(?, favorite), updated_at = now() "
+                + "WHERE id = ?",
+                req.commercialName(), req.dci(), req.form(), req.dosage(),
+                req.tags(), req.favorite(), id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/medications/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deactivateMedication(@PathVariable UUID id) {
+        int updated = jdbc.update(
+                "UPDATE catalog_medication SET active = FALSE, updated_at = now() WHERE id = ?",
+                id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Mapping ───────────────────────────────────────────────────────────────
 
     private ActResponse toActResponse(Act act) {

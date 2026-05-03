@@ -78,6 +78,7 @@ export function Placeholder({ active, mobileTab, title, sub, sprintDay }: Placeh
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          catalogue: '/catalogue',
           params: '/parametres',
         };
         navigate(map[id]);

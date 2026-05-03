@@ -13,6 +13,7 @@ import FacturationPage from '@/features/facturation/FacturationPage';
 import ApercuFacturePage from '@/features/facturation/ApercuFacturePage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import ParametragePage from '@/features/parametres/ParametragePage';
+import CataloguePage from '@/features/catalogue/CataloguePage';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -167,6 +168,14 @@ export const router = createBrowserRouter(
         <RequireRole roles={['ADMIN', 'MEDECIN']}>
           <ParametragePage />
         </RequireRole>
+      ),
+    },
+    {
+      path: '/catalogue',
+      element: (
+        <RequireAuth>
+          <CataloguePage />
+        </RequireAuth>
       ),
     },
     { path: '*', element: <Navigate to="/login" replace /> },

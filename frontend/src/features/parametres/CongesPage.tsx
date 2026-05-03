@@ -60,7 +60,8 @@ export default function CongesPage() {
       onNavigate={(id) => {
         const map = {
           agenda: '/agenda', patients: '/patients', salle: '/salle',
-          consult: '/consultations', factu: '/facturation', params: '/parametres',
+          consult: '/consultations', factu: '/facturation', catalogue: '/catalogue',
+          params: '/parametres',
         } as const;
         navigate(map[id]);
       }}

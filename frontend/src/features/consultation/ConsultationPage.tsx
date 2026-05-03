@@ -158,7 +158,8 @@ export default function ConsultationPage() {
     salle: '/salle',
     consult: '/consultations',
     factu: '/facturation',
-    params: '/parametres',
+    catalogue: '/catalogue',
+          params: '/parametres',
   } as const);
 
   const startedLabel = consultation

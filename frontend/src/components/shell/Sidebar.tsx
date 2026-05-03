@@ -7,6 +7,7 @@ import {
   Invoice,
   Settings,
   ChevronDown,
+  Pill,
 } from '@/components/icons';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -21,6 +22,7 @@ export type SidebarScreen =
   | 'salle'
   | 'consult'
   | 'factu'
+  | 'catalogue'
   | 'params';
 
 interface NavItem {
@@ -40,6 +42,7 @@ const ITEMS: NavItem[] = [
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
   { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux', requiresPermission: 'INVOICE_READ' },
+  { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
 ];
 
