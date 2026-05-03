@@ -8,6 +8,8 @@ import java.util.UUID;
 import ma.careplus.clinical.domain.VitalSigns;
 import ma.careplus.clinical.infrastructure.persistence.VitalSignsRepository;
 import ma.careplus.clinical.infrastructure.web.dto.RecordVitalsRequest;
+import ma.careplus.clinical.domain.Consultation;
+import ma.careplus.clinical.infrastructure.persistence.ConsultationRepository;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentStatus;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
@@ -21,11 +23,14 @@ public class VitalsService {
 
     private final VitalSignsRepository vitalsRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ConsultationRepository consultationRepository;
 
     public VitalsService(VitalSignsRepository vitalsRepository,
-                         AppointmentRepository appointmentRepository) {
+                         AppointmentRepository appointmentRepository,
+                         ConsultationRepository consultationRepository) {
         this.vitalsRepository = vitalsRepository;
         this.appointmentRepository = appointmentRepository;
+        this.consultationRepository = consultationRepository;
     }
 
     public VitalSigns record(UUID appointmentId, UUID recordedBy, RecordVitalsRequest req) {
@@ -44,6 +49,35 @@ public class VitalsService {
         VitalSigns v = new VitalSigns();
         v.setPatientId(a.getPatientId());
         v.setAppointmentId(a.getId());
+        v.setSystolicMmhg(req.systolicMmhg());
+        v.setDiastolicMmhg(req.diastolicMmhg());
+        v.setTemperatureC(req.temperatureC());
+        v.setWeightKg(req.weightKg());
+        v.setHeightCm(req.heightCm());
+        v.setHeartRateBpm(req.heartRateBpm());
+        v.setSpo2Percent(req.spo2Percent());
+        v.setGlycemiaGPerL(req.glycemiaGPerL());
+        v.setNotes(req.notes());
+        v.setBmi(computeBmi(req.weightKg(), req.heightCm()));
+        v.setRecordedBy(recordedBy);
+        return vitalsRepository.save(v);
+    }
+
+    /**
+     * Enregistre des constantes rattachées à une consultation directement
+     * (sans passer par la salle d'attente). Utile pour une consultation
+     * ad-hoc créée depuis le dossier sans rendez-vous.
+     */
+    public VitalSigns recordForConsultation(UUID consultationId, UUID recordedBy,
+                                            RecordVitalsRequest req) {
+        Consultation c = consultationRepository.findById(consultationId)
+                .orElseThrow(() -> new NotFoundException(
+                        "CONSULT_NOT_FOUND", "Consultation introuvable : " + consultationId));
+
+        VitalSigns v = new VitalSigns();
+        v.setPatientId(c.getPatientId());
+        v.setAppointmentId(c.getAppointmentId()); // peut être null
+        v.setConsultationId(c.getId());
         v.setSystolicMmhg(req.systolicMmhg());
         v.setDiastolicMmhg(req.diastolicMmhg());
         v.setTemperatureC(req.temperatureC());

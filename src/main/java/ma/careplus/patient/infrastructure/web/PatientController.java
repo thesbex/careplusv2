@@ -64,7 +64,7 @@ public class PatientController {
     // ── Patient endpoints ─────────────────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<PatientView> create(@Valid @RequestBody CreatePatientRequest req) {
         Patient created = service.create(req);
         PatientView body = mapper.toView(created, java.util.List.of(), java.util.List.of());
@@ -87,14 +87,14 @@ public class PatientController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public PatientView update(@PathVariable UUID id, @Valid @RequestBody UpdatePatientRequest req) {
         Patient p = service.update(id, req);
         return mapper.toView(p, service.getAllergies(id), service.getAntecedents(id));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> softDelete(@PathVariable UUID id) {
         service.softDelete(id);
         return ResponseEntity.noContent().build();
@@ -103,7 +103,7 @@ public class PatientController {
     // ── Allergies ──────────────────────────────────────────────────
 
     @PostMapping("/{id}/allergies")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<AllergyView> addAllergy(
             @PathVariable UUID id,
             @Valid @RequestBody CreateAllergyRequest req) {
@@ -115,7 +115,7 @@ public class PatientController {
     // ── Antecedents ────────────────────────────────────────────────
 
     @PostMapping("/{id}/antecedents")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<AntecedentView> addAntecedent(
             @PathVariable UUID id,
             @Valid @RequestBody CreateAntecedentRequest req) {
@@ -125,14 +125,14 @@ public class PatientController {
     }
 
     @DeleteMapping("/{id}/allergies/{allergyId}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> deleteAllergy(@PathVariable UUID id, @PathVariable UUID allergyId) {
         service.deleteAllergy(id, allergyId);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{id}/antecedents/{antecedentId}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> deleteAntecedent(@PathVariable UUID id, @PathVariable UUID antecedentId) {
         service.deleteAntecedent(id, antecedentId);
         return ResponseEntity.noContent().build();
@@ -153,7 +153,7 @@ public class PatientController {
     }
 
     @GetMapping("/{id}/notes")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<List<PatientNoteResponse>> getNotes(@PathVariable UUID id) {
         return ResponseEntity.ok(service.getNotes(id));
     }
@@ -161,7 +161,7 @@ public class PatientController {
     // ── Tier & mutuelle ────────────────────────────────────────────
 
     @PutMapping("/{id}/tier")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public PatientView updateTier(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateTierRequest req,

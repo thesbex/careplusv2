@@ -135,7 +135,7 @@ public class CatalogController {
     }
 
     @PostMapping("/acts")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<ActResponse> createAct(@Valid @RequestBody ActRequest req,
                                                   Authentication auth) {
         UUID actorId = UUID.fromString(auth.getName());
@@ -145,7 +145,7 @@ public class CatalogController {
     }
 
     @PutMapping("/acts/{id}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ActResponse updateAct(@PathVariable UUID id,
                                   @Valid @RequestBody ActRequest req,
                                   Authentication auth) {
@@ -154,7 +154,7 @@ public class CatalogController {
     }
 
     @DeleteMapping("/acts/{id}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> deactivateAct(@PathVariable UUID id, Authentication auth) {
         UUID actorId = UUID.fromString(auth.getName());
         catalogService.deactivateAct(id, actorId);
@@ -164,7 +164,7 @@ public class CatalogController {
     // ── Tariffs ───────────────────────────────────────────────────────────────
 
     @PostMapping("/acts/{id}/tariffs")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<TariffResponse> addTariff(@PathVariable UUID id,
                                                      @Valid @RequestBody TariffRequest req,
                                                      Authentication auth) {

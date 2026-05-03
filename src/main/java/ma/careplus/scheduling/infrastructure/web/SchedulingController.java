@@ -49,7 +49,7 @@ public class SchedulingController {
     // ── Appointments ───────────────────────────────────────────────
 
     @PostMapping("/appointments")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<AppointmentView> create(@Valid @RequestBody CreateAppointmentRequest req) {
         Appointment a = service.create(req);
         return ResponseEntity.created(URI.create("/api/appointments/" + a.getId())).body(toView(a));
@@ -105,13 +105,13 @@ public class SchedulingController {
     }
 
     @PutMapping("/appointments/{id}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public AppointmentView move(@PathVariable UUID id, @Valid @RequestBody MoveAppointmentRequest req) {
         return toView(service.move(id, req));
     }
 
     @DeleteMapping("/appointments/{id}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public AppointmentView cancel(
             @PathVariable UUID id,
             @RequestBody(required = false) CancelAppointmentRequest req) {
@@ -154,7 +154,7 @@ public class SchedulingController {
     }
 
     @PostMapping("/practitioners/{practitionerId}/leaves")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<LeaveView> createLeave(
             @PathVariable UUID practitionerId,
             @Valid @RequestBody CreateLeaveRequest req) {
@@ -165,7 +165,7 @@ public class SchedulingController {
     }
 
     @DeleteMapping("/practitioners/{practitionerId}/leaves/{leaveId}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> deleteLeave(
             @PathVariable UUID practitionerId,
             @PathVariable UUID leaveId) {

@@ -88,6 +88,19 @@ public class ClinicalController {
                 .body(toView(v));
     }
 
+    @PostMapping("/consultations/{id}/vitals")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<VitalSignsView> recordVitalsForConsultation(
+            @PathVariable UUID id,
+            @Valid @RequestBody RecordVitalsRequest req,
+            Authentication auth) {
+        UUID recordedBy = UUID.fromString(auth.getName());
+        VitalSigns v = vitalsService.recordForConsultation(id, recordedBy, req);
+        return ResponseEntity.created(
+                URI.create("/api/patients/" + v.getPatientId() + "/vitals/" + v.getId()))
+                .body(toView(v));
+    }
+
     @GetMapping("/patients/{id}/vitals")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public List<VitalSignsView> patientVitals(@PathVariable UUID id) {
@@ -97,7 +110,7 @@ public class ClinicalController {
     // ── Consultations ─────────────────────────────────────────────
 
     @PostMapping("/consultations")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<ConsultationView> start(
             @Valid @RequestBody CreateConsultationRequest req,
             Authentication auth) {
@@ -132,20 +145,20 @@ public class ClinicalController {
     }
 
     @PutMapping("/consultations/{id}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ConsultationView update(@PathVariable UUID id,
                                    @Valid @RequestBody UpdateConsultationRequest req) {
         return toView(consultationService.update(id, req));
     }
 
     @PostMapping("/consultations/{id}/sign")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ConsultationView sign(@PathVariable UUID id) {
         return toView(consultationService.sign(id));
     }
 
     @PostMapping("/consultations/{id}/follow-up")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<FollowUpResponse> followUp(
             @PathVariable UUID id,
             @Valid @RequestBody FollowUpRequest req,

@@ -191,7 +191,8 @@ class PatientDocumentIT {
     }
 
     @Test
-    void assistantCannotUpload() throws Exception {
+    void assistantCanUpload() throws Exception {
+        // V010: ASSISTANT now has parity with MEDECIN.
         String patientId = createPatient();
         MockMultipartFile pdf = new MockMultipartFile(
                 "file", "x.pdf", "application/pdf", new byte[]{1, 2, 3});
@@ -200,7 +201,7 @@ class PatientDocumentIT {
                         .file(pdf)
                         .param("type", "AUTRE")
                         .header("Authorization", bearer(asstEmail)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
     }
 
     @Test

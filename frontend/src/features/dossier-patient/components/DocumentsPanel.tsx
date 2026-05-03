@@ -23,6 +23,7 @@ import {
   type PatientDocument,
 } from '../hooks/usePatientDocuments';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { DocumentPreviewDialog } from './DocumentPreviewDialog';
 
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif';
 const MAX_BYTES = 10 * 1024 * 1024; // 10 Mo — aligné avec spring.servlet.multipart.
@@ -71,6 +72,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
   const [pendingNotes, setPendingNotes] = useState('');
   const [activeFilter, setActiveFilter] = useState<DocumentType | 'ALL'>(filter ?? 'ALL');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<PatientDocument | null>(null);
 
   const visible = documents.filter((d) =>
     filter ? d.type === filter : (activeFilter === 'ALL' ? true : d.type === activeFilter),
@@ -254,8 +256,8 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
               <File style={{ width: 16, height: 16, color: 'var(--ink-3)', flexShrink: 0 }} />
               <button
                 type="button"
-                onClick={() => { void handleDownload(d); }}
-                title="Télécharger"
+                onClick={() => setPreviewDoc(d)}
+                title="Visualiser"
                 style={{
                   flex: 1, textAlign: 'left', background: 'none', border: 'none',
                   cursor: 'pointer', fontFamily: 'inherit', padding: 0,
@@ -268,6 +270,19 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
                   {DOCUMENT_TYPE_LABEL[d.type]} · {formatDate(d.uploadedAt)} · {formatSize(d.sizeBytes)}
                   {d.notes ? ` · ${d.notes}` : ''}
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { void handleDownload(d); }}
+                title="Télécharger"
+                aria-label={`Télécharger ${d.originalFilename}`}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--ink-3)', fontSize: 11, padding: '4px 8px',
+                  borderRadius: 4, fontFamily: 'inherit',
+                }}
+              >
+                Télécharger
               </button>
               {canDelete && (
                 <button
@@ -287,6 +302,11 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
           ))}
         </ul>
       )}
+
+      <DocumentPreviewDialog
+        doc={previewDoc}
+        onOpenChange={(open) => { if (!open) setPreviewDoc(null); }}
+      />
     </div>
   );
 }

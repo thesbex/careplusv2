@@ -3,7 +3,7 @@
  * Radix Dialog-based drawer anchored right. Medication autocomplete against
  * /api/catalog/medications, dynamic line editor, allergy override flow on 422.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
@@ -49,12 +49,26 @@ export function PrescriptionDrawer({
   onCreated,
 }: PrescriptionDrawerProps) {
   const [query, setQuery] = useState('');
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [lines, setLines] = useState<PrescriptionLineDraft[]>([emptyLine()]);
   const [recommendations, setRecommendations] = useState('');
   const [conflict, setConflict] = useState<{ medication: string; allergy: string } | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  const searchWrapRef = useRef<HTMLDivElement | null>(null);
 
   const { results, isFetching, hasQuery } = useCatalogSearch(type, query);
+
+  useEffect(() => {
+    if (!suggestOpen) return;
+    function onDocMouseDown(e: MouseEvent) {
+      if (!searchWrapRef.current) return;
+      if (!searchWrapRef.current.contains(e.target as Node)) {
+        setSuggestOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [suggestOpen]);
   const { createPrescription, isPending } = useCreatePrescription();
 
   function selectItem(item: CatalogItem) {
@@ -69,6 +83,7 @@ export function PrescriptionDrawer({
       return [...ls, { ...emptyLine(), item }];
     });
     setQuery('');
+    setSuggestOpen(false);
   }
 
   function updateLine(i: number, patch: Partial<PrescriptionLineDraft>) {
@@ -127,6 +142,7 @@ export function PrescriptionDrawer({
 
   function resetState() {
     setQuery('');
+    setSuggestOpen(false);
     setLines([emptyLine()]);
     setRecommendations('');
     setConflict(null);
@@ -197,7 +213,7 @@ export function PrescriptionDrawer({
                     ? 'Rechercher une analyse'
                     : "Rechercher un examen d'imagerie"}
                 </div>
-                <div className="pr-search">
+                <div className="pr-search" ref={searchWrapRef}>
                   <span className="pr-search-icon">
                     <Search aria-hidden="true" />
                   </span>
@@ -211,14 +227,17 @@ export function PrescriptionDrawer({
                         : "Nom de l'examen ou code…"
                     }
                     value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onFocus={() => {
-                      // Trigger empty-query suggestion list for LAB/IMAGING.
-                      if (type !== 'DRUG' && query === '') setQuery(' ');
+                    onChange={(e) => {
+                      setQuery(e.target.value);
+                      setSuggestOpen(true);
+                    }}
+                    onFocus={() => setSuggestOpen(true)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Escape') setSuggestOpen(false);
                     }}
                     aria-label="Rechercher dans le catalogue"
                   />
-                  {hasQuery && (
+                  {suggestOpen && hasQuery && (
                     <div className="pr-suggest" role="listbox">
                       {isFetching && (
                         <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>

@@ -46,7 +46,7 @@ public class PatientDocumentController {
     @PostMapping(
             value = "/api/patients/{patientId}/documents",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<PatientDocumentView> upload(
             @PathVariable UUID patientId,
             @RequestParam("file") MultipartFile file,
@@ -78,20 +78,31 @@ public class PatientDocumentController {
     public ResponseEntity<Resource> download(@PathVariable UUID id) {
         PatientDocument doc = service.getActive(id);
         Resource res = storage.loadAsResource(doc.getStorageKey());
-        if (!res.exists()) {
+        long actualLength;
+        try {
+            actualLength = res.exists() ? res.contentLength() : -1L;
+        } catch (java.io.IOException e) {
+            actualLength = -1L;
+        }
+        // A 0-byte or missing file is an orphan record (storage root reset,
+        // tmpdir wipe, etc.). Surface it as 410 GONE so the UI can show
+        // a clear "fichier disparu" instead of streaming an empty body
+        // and letting the client fail with a generic PDF parse error.
+        if (actualLength <= 0) {
             throw new BusinessException("DOCUMENT_FILE_MISSING",
-                    "Fichier physique introuvable.", HttpStatus.GONE.value());
+                    "Fichier physique introuvable ou vide. Supprimez puis réimportez le document.",
+                    HttpStatus.GONE.value());
         }
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, doc.getMimeType())
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "inline; filename=\"" + sanitizeForHeader(doc.getOriginalFilename()) + "\"")
-                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(doc.getSizeBytes()))
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(actualLength))
                 .body(res);
     }
 
     @DeleteMapping("/api/documents/{id}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.softDelete(id);
         return ResponseEntity.noContent().build();

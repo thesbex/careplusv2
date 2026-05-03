@@ -46,7 +46,7 @@ public class PrescriptionController {
     }
 
     @PostMapping("/api/consultations/{consultationId}/prescriptions")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<PrescriptionResponse> createPrescription(
             @PathVariable UUID consultationId,
             @Valid @RequestBody PrescriptionRequest req,
@@ -83,7 +83,7 @@ public class PrescriptionController {
     }
 
     @GetMapping("/api/prescriptions/{id}/pdf")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<byte[]> getPdf(@PathVariable UUID id) {
         byte[] pdf = pdfService.generateOrdonnancePdf(id);
         HttpHeaders headers = new HttpHeaders();

@@ -26,6 +26,7 @@ import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
 import { PatientContextCard } from './components/PatientContextCard';
+import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
 import { SignatureLock } from './components/SignatureLock';
 import { useConsultation } from './hooks/useConsultation';
@@ -72,6 +73,7 @@ export default function ConsultationPage() {
   const { adjustTotal, isPending: isAdjusting } = useAdjustInvoiceTotal();
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
   const [adjustingDiscount, setAdjustingDiscount] = useState<number | null>(null);
+  const [vitalsOpen, setVitalsOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
 
@@ -207,7 +209,12 @@ export default function ConsultationPage() {
         }}
         className="cs-layout"
       >
-        <PatientContextCard patient={patient} vitals={vitals} />
+        <PatientContextCard
+          patient={patient}
+          vitals={vitals}
+          canRecordVitals={!isSigned && !!consultation}
+          onRecordVitals={() => setVitalsOpen(true)}
+        />
 
         <div className="cs-soap-col">
           <div className="cs-soap-toolbar">
@@ -397,6 +404,15 @@ export default function ConsultationPage() {
           </Panel>
         </div>
       </form>
+      {consultation && (
+        <QuickVitalsDialog
+          open={vitalsOpen}
+          onOpenChange={setVitalsOpen}
+          consultationId={consultation.id}
+          appointmentId={consultation.appointmentId}
+          patientId={consultation.patientId}
+        />
+      )}
       {consultation && rxOpen && (
         <PrescriptionDrawer
           open={!!rxOpen}

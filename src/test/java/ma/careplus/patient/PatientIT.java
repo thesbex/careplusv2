@@ -176,14 +176,14 @@ class PatientIT {
     }
 
     @Test
-    void assistant_canReadButNotCreate() throws Exception {
+    void assistant_hasFullAccess() throws Exception {
+        // Per V010 the ASSISTANT role has parity with MEDECIN — can create + read.
         mockMvc.perform(post("/api/patients")
                 .header("Authorization", bearer(asstEmail))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"firstName\":\"Xavier\",\"lastName\":\"Yassine\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isCreated());
 
-        // Seed one patient via secretaire, then read as assistant
         MvcResult res = mockMvc.perform(post("/api/patients")
                 .header("Authorization", bearer(secEmail))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -393,7 +393,7 @@ class PatientIT {
     }
 
     @Test
-    void createNote_asNonMedecin_returns403() throws Exception {
+    void createNote_asSecretaire_returns403() throws Exception {
         MvcResult res = mockMvc.perform(post("/api/patients")
                 .header("Authorization", bearer(secEmail))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -401,19 +401,19 @@ class PatientIT {
                 .andReturn();
         String id = objectMapper.readTree(res.getResponse().getContentAsString()).get("id").asText();
 
-        // SECRETAIRE cannot create notes
+        // SECRETAIRE cannot create notes — clinical content stays MEDECIN/ASSISTANT.
         mockMvc.perform(post("/api/patients/" + id + "/notes")
                 .header("Authorization", bearer(secEmail))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"content\":\"Tentative non autorisée\"}"))
                 .andExpect(status().isForbidden());
 
-        // ASSISTANT cannot create notes
+        // ASSISTANT now has parity with MEDECIN (V010) — can create notes.
         mockMvc.perform(post("/api/patients/" + id + "/notes")
                 .header("Authorization", bearer(asstEmail))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"content\":\"Tentative non autorisée\"}"))
-                .andExpect(status().isForbidden());
+                .content("{\"content\":\"Note prise par l'assistante\"}"))
+                .andExpect(status().isCreated());
     }
 
     @Test

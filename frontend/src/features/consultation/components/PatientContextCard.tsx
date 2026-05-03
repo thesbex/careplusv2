@@ -10,6 +10,8 @@ import type { VitalsApi } from '../hooks/useLatestVitals';
 interface PatientContextCardProps {
   patient: PatientSummary | null;
   vitals: VitalsApi | null;
+  onRecordVitals?: () => void;
+  canRecordVitals?: boolean;
 }
 
 function SectionH({ children }: { children: React.ReactNode }) {
@@ -40,7 +42,9 @@ function VitalRow({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
   );
 }
 
-export function PatientContextCard({ patient, vitals }: PatientContextCardProps) {
+export function PatientContextCard({
+  patient, vitals, onRecordVitals, canRecordVitals = true,
+}: PatientContextCardProps) {
   if (!patient) {
     return (
       <div
@@ -104,7 +108,25 @@ export function PatientContextCard({ patient, vitals }: PatientContextCardProps)
       )}
 
       <div style={{ marginTop: 14 }}>
-        <SectionH>Constantes {vitalsTime ?? '—'}</SectionH>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1 }}>
+            <SectionH>Constantes {vitalsTime ?? '—'}</SectionH>
+          </div>
+          {canRecordVitals && onRecordVitals && (
+            <button
+              type="button"
+              onClick={onRecordVitals}
+              style={{
+                background: 'none', border: '1px solid var(--border)',
+                cursor: 'pointer', fontFamily: 'inherit', fontSize: 11,
+                padding: '3px 8px', borderRadius: 4, color: 'var(--primary)',
+                marginBottom: 6,
+              }}
+            >
+              {vitals ? 'Mettre à jour' : 'Saisir'}
+            </button>
+          )}
+        </div>
         <Panel>
           <div style={{ padding: '10px 12px', fontSize: 12 }}>
             {!vitals && (

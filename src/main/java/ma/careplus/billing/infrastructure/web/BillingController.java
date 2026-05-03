@@ -47,7 +47,7 @@ public class BillingController {
     // ── Invoice list + detail ─────────────────────────────────────────────────
 
     @GetMapping("/api/invoices")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<List<InvoiceResponse>> listInvoices(
             @RequestParam(required = false) InvoiceStatus status,
             @RequestParam(required = false) UUID patientId,
@@ -59,13 +59,13 @@ public class BillingController {
     }
 
     @GetMapping("/api/invoices/{id}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<InvoiceResponse> getInvoice(@PathVariable UUID id, Authentication auth) {
         return ResponseEntity.ok(toResponse(billingService.getInvoice(id)));
     }
 
     @GetMapping("/api/consultations/{consultationId}/invoice")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<InvoiceResponse> getInvoiceByConsultation(
             @PathVariable UUID consultationId, Authentication auth) {
         return ResponseEntity.ok(toResponse(billingService.getInvoiceByConsultation(consultationId)));
@@ -74,7 +74,7 @@ public class BillingController {
     // ── Edit draft ────────────────────────────────────────────────────────────
 
     @PutMapping("/api/invoices/{id}")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<InvoiceResponse> updateInvoice(
             @PathVariable UUID id,
             @Valid @RequestBody InvoiceUpdateRequest req,
@@ -96,7 +96,7 @@ public class BillingController {
     // ── Issue ─────────────────────────────────────────────────────────────────
 
     @PostMapping("/api/invoices/{id}/issue")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<IssueInvoiceResponse> issueInvoice(
             @PathVariable UUID id, Authentication auth) {
         UUID actorId = UUID.fromString(auth.getName());
@@ -106,7 +106,7 @@ public class BillingController {
     // ── Payments ──────────────────────────────────────────────────────────────
 
     @PostMapping("/api/invoices/{id}/payments")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<PaymentResponse> recordPayment(
             @PathVariable UUID id,
             @Valid @RequestBody RecordPaymentRequest req,
@@ -118,7 +118,7 @@ public class BillingController {
     // ── Credit note ───────────────────────────────────────────────────────────
 
     @PostMapping("/api/invoices/{id}/credit-note")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<CreditNoteResponse> issueCreditNote(
             @PathVariable UUID id,
             @Valid @RequestBody CreditNoteRequest req,

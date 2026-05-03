@@ -75,7 +75,7 @@ public class SettingsController {
     // ── Clinic settings ───────────────────────────────────────────────────────
 
     @GetMapping("/api/settings/clinic")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<ClinicSettingsView> getClinic() {
         try {
             ClinicSettingsView v = jdbc.queryForObject(
@@ -101,7 +101,7 @@ public class SettingsController {
     }
 
     @PutMapping("/api/settings/clinic")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ClinicSettingsView updateClinic(@Valid @RequestBody UpdateClinicSettingsRequest req) {
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
@@ -138,7 +138,7 @@ public class SettingsController {
     // ── Tier discount ─────────────────────────────────────────────────────────
 
     @GetMapping("/api/settings/tiers")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public List<TierConfigView> listTiers() {
         return jdbc.query(
                 "SELECT id, tier, discount_percent FROM config_patient_tier ORDER BY tier",
@@ -149,7 +149,7 @@ public class SettingsController {
     }
 
     @PutMapping("/api/settings/tiers/{tier}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<TierConfigView> updateTierDiscount(
             @PathVariable String tier,
             @Valid @RequestBody UpdateTierDiscountRequest req) {
@@ -186,7 +186,7 @@ public class SettingsController {
     ) {}
 
     @GetMapping("/api/settings/role-permissions")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<List<RolePermissionView>> listRolePermissions() {
         List<RolePermissionView> rows = jdbc.query(
                 "SELECT role_code, permission, granted FROM identity_role_permission "
@@ -199,7 +199,7 @@ public class SettingsController {
     }
 
     @PutMapping("/api/settings/role-permissions/{roleCode}")
-    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<List<RolePermissionView>> updateRolePermissions(
             @PathVariable String roleCode,
             @Valid @RequestBody UpdateRolePermissionsRequest req) {
