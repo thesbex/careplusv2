@@ -3,8 +3,14 @@ package ma.careplus.billing.application;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import ma.careplus.billing.domain.ConfigPatientTier;
 import ma.careplus.billing.domain.CreditNote;
@@ -18,9 +24,12 @@ import ma.careplus.billing.infrastructure.persistence.InvoiceLineRepository;
 import ma.careplus.billing.infrastructure.persistence.InvoiceRepository;
 import ma.careplus.billing.infrastructure.persistence.InvoiceSequenceRepository;
 import ma.careplus.billing.infrastructure.persistence.PaymentRepository;
+import ma.careplus.billing.domain.PaymentMode;
 import ma.careplus.billing.infrastructure.web.dto.AdjustTotalRequest;
 import ma.careplus.billing.infrastructure.web.dto.CreditNoteResponse;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceLineRequest;
+import ma.careplus.billing.infrastructure.web.dto.InvoiceListRow;
+import ma.careplus.billing.infrastructure.web.dto.InvoiceSearchResponse;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceUpdateRequest;
 import ma.careplus.billing.infrastructure.web.dto.IssueInvoiceResponse;
 import ma.careplus.billing.infrastructure.web.dto.PaymentResponse;
@@ -313,6 +322,145 @@ public class BillingService {
     @Transactional(readOnly = true)
     public List<Payment> getPaymentsForInvoice(UUID invoiceId) {
         return paymentRepository.findByInvoiceIdOrderByReceivedAtDesc(invoiceId);
+    }
+
+    /**
+     * Filtered + paginated invoice search with KPI aggregates over the full match.
+     *
+     * <p>Implementation note: we load the full filtered set in one query to compute
+     * KPIs and slice in-memory for pagination. Acceptable while bounded by the export
+     * cap (10 000) — beyond that we'll switch to streaming.
+     */
+    @Transactional(readOnly = true)
+    public InvoiceSearchResponse searchInvoices(InvoiceSearchFilter filter, int page, int size) {
+        var spec = InvoiceSpecifications.build(filter);
+        List<Invoice> matched = new java.util.ArrayList<>(invoiceRepository.findAll(spec));
+        sortIssuedDescNullsLast(matched);
+        int total = matched.size();
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(200, size));
+        int from = Math.min(safePage * safeSize, total);
+        int to = Math.min(from + safeSize, total);
+        List<Invoice> pageItems = matched.subList(from, to);
+
+        BigDecimal totalNet = sum(matched, Invoice::getNetAmount);
+        BigDecimal totalPaid = sum(matched, Invoice::getPaidTotal);
+        BigDecimal totalRemaining = totalNet.subtract(totalPaid);
+
+        List<InvoiceListRow> rows = enrich(pageItems);
+        return new InvoiceSearchResponse(rows, total, safePage, safeSize, totalNet, totalPaid, totalRemaining);
+    }
+
+    /** Loads matching invoices for export as enriched rows, capped at {@code maxRows}. */
+    @Transactional(readOnly = true)
+    public List<InvoiceListRow> exportInvoices(InvoiceSearchFilter filter, int maxRows) {
+        var spec = InvoiceSpecifications.build(filter);
+        long count = invoiceRepository.count(spec);
+        if (count > maxRows) {
+            throw new BusinessException(
+                    "EXPORT_TOO_LARGE",
+                    "Trop de résultats (" + count + "). Affinez les filtres (max " + maxRows + ").",
+                    HttpStatus.UNPROCESSABLE_ENTITY.value());
+        }
+        List<Invoice> matched = new java.util.ArrayList<>(invoiceRepository.findAll(spec));
+        sortIssuedDescNullsLast(matched);
+        return enrich(matched);
+    }
+
+    /**
+     * Sort invoices by issued_at DESC NULLS LAST, then created_at DESC. Done in-memory
+     * to dodge Hibernate's inconsistent NULLS LAST translation on PostgreSQL DESC.
+     */
+    private static void sortIssuedDescNullsLast(List<Invoice> invoices) {
+        invoices.sort(Comparator
+                .comparing(Invoice::getIssuedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(Invoice::getCreatedAt, Comparator.reverseOrder()));
+    }
+
+    private List<InvoiceListRow> enrich(List<Invoice> invoices) {
+        if (invoices.isEmpty()) return List.of();
+
+        // Batch-load patients
+        Set<UUID> patientIds = new java.util.HashSet<>();
+        Set<UUID> insuranceIds = new java.util.HashSet<>();
+        Set<UUID> invoiceIds = new java.util.HashSet<>();
+        for (Invoice inv : invoices) {
+            patientIds.add(inv.getPatientId());
+            invoiceIds.add(inv.getId());
+            if (inv.getMutuelleInsuranceId() != null) insuranceIds.add(inv.getMutuelleInsuranceId());
+        }
+        Map<UUID, Patient> patientMap = new HashMap<>();
+        for (Patient p : patientRepository.findAllById(patientIds)) patientMap.put(p.getId(), p);
+
+        Map<UUID, String> insuranceNames = new HashMap<>();
+        if (!insuranceIds.isEmpty()) {
+            jdbc.query(
+                    "SELECT id, name FROM catalog_insurance WHERE id = ANY (?)",
+                    ps -> ps.setArray(1, ps.getConnection().createArrayOf(
+                            "uuid", insuranceIds.toArray())),
+                    (rs, i) -> {
+                        insuranceNames.put((UUID) rs.getObject("id"), rs.getString("name"));
+                        return null;
+                    });
+        }
+
+        // Batch-load payments per invoice
+        List<Payment> allPayments = paymentRepository.findByInvoiceIdIn(invoiceIds);
+        Map<UUID, List<Payment>> paymentsByInvoice = new HashMap<>();
+        for (Payment p : allPayments) {
+            paymentsByInvoice.computeIfAbsent(p.getInvoiceId(), k -> new java.util.ArrayList<>()).add(p);
+        }
+
+        return invoices.stream().map(inv -> {
+            Patient pat = patientMap.get(inv.getPatientId());
+            String fullName = pat == null
+                    ? ""
+                    : (safe(pat.getLastName()) + " " + safe(pat.getFirstName())).trim();
+            String phone = pat == null ? null : pat.getPhone();
+            String mutuelle = inv.getMutuelleInsuranceId() == null
+                    ? null
+                    : insuranceNames.get(inv.getMutuelleInsuranceId());
+
+            List<Payment> ps = paymentsByInvoice.getOrDefault(inv.getId(), List.of());
+            Set<PaymentMode> modes = ps.isEmpty()
+                    ? EnumSet.noneOf(PaymentMode.class)
+                    : ps.stream()
+                            .map(Payment::getMode)
+                            .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+            OffsetDateTime lastPaymentAt = ps.stream()
+                    .map(Payment::getReceivedAt)
+                    .max(Comparator.naturalOrder())
+                    .orElse(null);
+
+            return new InvoiceListRow(
+                    inv.getId(),
+                    inv.getNumber(),
+                    inv.getStatus(),
+                    inv.getPatientId(),
+                    fullName,
+                    phone,
+                    mutuelle,
+                    inv.getTotalAmount(),
+                    inv.getDiscountAmount(),
+                    inv.getNetAmount(),
+                    inv.getPaidTotal(),
+                    modes,
+                    inv.getIssuedAt(),
+                    lastPaymentAt,
+                    inv.getCreatedAt());
+        }).toList();
+    }
+
+    private static String safe(String s) { return s == null ? "" : s; }
+
+    private static BigDecimal sum(List<Invoice> invoices, java.util.function.Function<Invoice, BigDecimal> f) {
+        BigDecimal acc = BigDecimal.ZERO;
+        for (Invoice inv : invoices) {
+            BigDecimal v = f.apply(inv);
+            if (v != null) acc = acc.add(v);
+        }
+        return acc;
     }
 
     // ── Write operations ──────────────────────────────────────────────────────

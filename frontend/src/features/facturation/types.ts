@@ -60,3 +60,57 @@ export const PAYMENT_MODE_LABEL: Record<PaymentMode, string> = {
   VIREMENT: 'Virement',
   TIERS_PAYANT: 'Tiers payant',
 };
+
+// ── Search / filter types (mirror backend /api/invoices/search) ─────────────
+
+export type DateField = 'ISSUED' | 'PAID';
+
+export interface InvoiceSearchFilters {
+  dateField: DateField;
+  from: string | null; // YYYY-MM-DD
+  to: string | null;
+  statuses: InvoiceStatus[];
+  paymentModes: PaymentMode[];
+  patientId: string | null;
+  amountMin: number | null;
+  amountMax: number | null;
+}
+
+export const EMPTY_FILTERS: InvoiceSearchFilters = {
+  dateField: 'ISSUED',
+  from: null,
+  to: null,
+  statuses: [],
+  paymentModes: [],
+  patientId: null,
+  amountMin: null,
+  amountMax: null,
+};
+
+export interface InvoiceListRow {
+  id: string;
+  number: string | null;
+  status: InvoiceStatus;
+  patientId: string;
+  patientFullName: string;
+  patientPhone: string | null;
+  mutuelleName: string | null;
+  totalAmount: number;
+  discountAmount: number;
+  netAmount: number;
+  paidAmount: number;
+  paymentModes: PaymentMode[];
+  issuedAt: string | null;
+  lastPaymentAt: string | null;
+  createdAt: string;
+}
+
+export interface InvoiceSearchResponse {
+  items: InvoiceListRow[];
+  totalCount: number;
+  page: number;
+  size: number;
+  totalNet: number;
+  totalPaid: number;
+  totalRemaining: number;
+}

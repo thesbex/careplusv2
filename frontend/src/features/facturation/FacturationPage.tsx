@@ -1,15 +1,25 @@
 /**
  * Screen 09 — Facturation (desktop).
- * List of invoices, filter by status, click row to open drawer.
+ * Liste des factures avec filtres avancés (dates, modes, patient, montants),
+ * KPIs agrégés sur le résultat filtré, et export CSV / xlsx.
  */
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
-import { useInvoices } from './hooks/useInvoices';
+import { useAuthStore } from '@/lib/auth/authStore';
+import { useInvoice } from './hooks/useInvoices';
+import { useInvoiceSearch } from './hooks/useInvoiceSearch';
 import { InvoiceDrawer } from './InvoiceDrawer';
 import { CaisseTodayPanel } from '../caisse/CaisseTodayPanel';
-import { STATUS_LABEL, type InvoiceApi, type InvoiceStatus } from './types';
+import { AdvancedFiltersPopover } from './AdvancedFiltersPopover';
+import { ExportButton } from './ExportButton';
+import {
+  EMPTY_FILTERS,
+  STATUS_LABEL,
+  type InvoiceSearchFilters,
+  type InvoiceStatus,
+} from './types';
 import './facturation.css';
 
 const NAV_MAP = {
@@ -18,11 +28,12 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
+  vaccinations: '/vaccinations',
   catalogue: '/catalogue',
-          params: '/parametres',
+  params: '/parametres',
 } as const;
 
-const FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
+const STATUS_FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
   { key: 'ALL', label: 'Toutes' },
   { key: 'BROUILLON', label: 'Brouillons' },
   { key: 'EMISE', label: 'Émises' },
@@ -43,46 +54,95 @@ function formatMad(n: number): string {
   return `${n.toFixed(2).replace('.', ',')} MAD`;
 }
 
+// ── URL sync helpers ────────────────────────────────────────────────────────
+
+function filtersFromUrl(params: URLSearchParams): InvoiceSearchFilters {
+  const statuses = params.getAll('status') as InvoiceStatus[];
+  const paymentModes = params.getAll('paymentMode') as InvoiceSearchFilters['paymentModes'];
+  return {
+    dateField: (params.get('dateField') as InvoiceSearchFilters['dateField']) ?? 'ISSUED',
+    from: params.get('from'),
+    to: params.get('to'),
+    statuses,
+    paymentModes,
+    patientId: params.get('patientId'),
+    amountMin: params.get('amountMin') ? Number(params.get('amountMin')) : null,
+    amountMax: params.get('amountMax') ? Number(params.get('amountMax')) : null,
+  };
+}
+
+function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.dateField !== 'ISSUED') p.set('dateField', f.dateField);
+  if (f.from) p.set('from', f.from);
+  if (f.to) p.set('to', f.to);
+  for (const s of f.statuses) p.append('status', s);
+  for (const m of f.paymentModes) p.append('paymentMode', m);
+  if (f.patientId) p.set('patientId', f.patientId);
+  if (f.amountMin !== null) p.set('amountMin', String(f.amountMin));
+  if (f.amountMax !== null) p.set('amountMax', String(f.amountMax));
+  return p;
+}
+
 export default function FacturationPage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<InvoiceStatus | 'ALL'>('ALL');
+  const [urlParams, setUrlParams] = useSearchParams();
+  const [filters, setFilters] = useState<InvoiceSearchFilters>(() => filtersFromUrl(urlParams));
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { invoices, isLoading, error } = useInvoices(filter);
+  // Sync filter state → URL
+  useEffect(() => {
+    setUrlParams(filtersToUrl(filters), { replace: true });
+  }, [filters, setUrlParams]);
 
-  const selected = useMemo<InvoiceApi | null>(
-    () => invoices.find((i) => i.id === selectedId) ?? null,
-    [invoices, selectedId],
-  );
+  const statusChip: InvoiceStatus | 'ALL' =
+    filters.statuses.length === 1 ? (filters.statuses[0] ?? 'ALL') : 'ALL';
 
-  const totalNet = invoices.reduce((s, i) => s + i.netAmount, 0);
-  const totalPaid = invoices.reduce(
-    (s, i) => s + i.payments.reduce((p, x) => p + x.amount, 0),
-    0,
-  );
+  function setStatusChip(s: InvoiceStatus | 'ALL') {
+    setFilters({ ...filters, statuses: s === 'ALL' ? [] : [s] });
+  }
+
+  const { items, totalCount, totalNet, totalPaid, totalRemaining, isLoading, error } =
+    useInvoiceSearch(filters);
+
+  // Drawer needs the full invoice (lines + payments). When user clicks a row
+  // we fetch the detail; the legacy hook still works.
+  const { invoice: selectedDetail } = useInvoice(selectedId ?? undefined);
+  const selected = useMemo(() => selectedDetail ?? null, [selectedDetail]);
+
+  const canExport = useAuthStore(
+    (s) => s.user?.roles.includes('MEDECIN') || s.user?.roles.includes('ADMIN'),
+  ) ?? false;
 
   return (
     <Screen
       active="factu"
       title="Facturation"
-      sub={`${invoices.length} facture${invoices.length > 1 ? 's' : ''}`}
+      sub={`${totalCount} facture${totalCount > 1 ? 's' : ''}`}
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <div className="fa-scroll scroll">
         <CaisseTodayPanel />
-        <div className="fa-filters" role="tablist" aria-label="Filtres statut">
-          {FILTERS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              role="tab"
-              aria-selected={filter === f.key}
-              className={`fa-filter-btn${filter === f.key ? ' active' : ''}`}
-              onClick={() => setFilter(f.key)}
-            >
-              {f.label}
-            </button>
-          ))}
+
+        <div className="fa-toolbar">
+          <div className="fa-filters" role="tablist" aria-label="Filtres statut">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                role="tab"
+                aria-selected={statusChip === f.key}
+                className={`fa-filter-btn${statusChip === f.key ? ' active' : ''}`}
+                onClick={() => setStatusChip(f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <div className="fa-toolbar-end">
+            <AdvancedFiltersPopover filters={filters} onChange={setFilters} />
+            {canExport && <ExportButton filters={filters} />}
+          </div>
         </div>
 
         <div
@@ -125,7 +185,7 @@ export default function FacturationPage() {
                 className="tnum"
                 style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: 'var(--amber)' }}
               >
-                {formatMad(Math.max(0, totalNet - totalPaid))}
+                {formatMad(totalRemaining)}
               </div>
             </div>
           </Panel>
@@ -143,7 +203,7 @@ export default function FacturationPage() {
             <div style={{ padding: 20, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
           )}
 
-          {!isLoading && invoices.length === 0 && !error && (
+          {!isLoading && items.length === 0 && !error && (
             <div
               style={{
                 padding: 32,
@@ -152,11 +212,11 @@ export default function FacturationPage() {
                 fontSize: 13,
               }}
             >
-              Aucune facture pour ce filtre.
+              Aucune facture pour ces filtres.
             </div>
           )}
 
-          {invoices.length > 0 && (
+          {items.length > 0 && (
             <table className="fa-table" style={{ borderRadius: 0, border: 'none' }}>
               <thead>
                 <tr>
@@ -169,8 +229,7 @@ export default function FacturationPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((inv) => {
-                  const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+                {items.map((inv) => {
                   const date = inv.issuedAt ?? inv.createdAt;
                   return (
                     <tr key={inv.id} onClick={() => setSelectedId(inv.id)}>
@@ -180,8 +239,8 @@ export default function FacturationPage() {
                         </span>
                       </td>
                       <td>
-                        <span className="mono" style={{ fontSize: 12 }}>
-                          {inv.patientId.slice(0, 8).toUpperCase()}
+                        <span style={{ fontSize: 12 }}>
+                          {inv.patientFullName || inv.patientId.slice(0, 8).toUpperCase()}
                         </span>
                       </td>
                       <td className="tnum">
@@ -196,7 +255,7 @@ export default function FacturationPage() {
                         {formatMad(inv.netAmount)}
                       </td>
                       <td className="tnum" style={{ textAlign: 'right' }}>
-                        {formatMad(paid)}
+                        {formatMad(inv.paidAmount)}
                       </td>
                     </tr>
                   );
@@ -217,3 +276,6 @@ export default function FacturationPage() {
     </Screen>
   );
 }
+
+// Backward-compat: keep `EMPTY_FILTERS` reachable from tests via a re-export
+export { EMPTY_FILTERS };

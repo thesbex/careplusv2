@@ -1,19 +1,25 @@
 /**
  * Screen 09 — Facturation (mobile).
- * Compact list view with status filter chips and KPI strip.
- * Tapping a row opens the desktop InvoiceDrawer (acceptable on phones —
- * it covers the full screen via overlay).
+ * Compact list view with status filter chips + advanced filters popover.
+ * Export button is hidden on mobile (cf. design Q10) — comptable use case
+ * lives on desktop.
  */
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronRight } from '@/components/icons';
-import { useInvoices } from './hooks/useInvoices';
+import { useInvoice } from './hooks/useInvoices';
+import { useInvoiceSearch } from './hooks/useInvoiceSearch';
 import { InvoiceDrawer } from './InvoiceDrawer';
 import { CaisseTodayPanel } from '../caisse/CaisseTodayPanel';
-import { STATUS_LABEL, type InvoiceApi, type InvoiceStatus } from './types';
+import { AdvancedFiltersPopover } from './AdvancedFiltersPopover';
+import {
+  STATUS_LABEL,
+  type InvoiceSearchFilters,
+  type InvoiceStatus,
+} from './types';
 import './facturation.css';
 
 const TAB_MAP: Record<MobileTab, string> = {
@@ -32,11 +38,6 @@ const FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
   { key: 'PAYEE_TOTALE', label: 'Payées' },
 ];
 
-/**
- * Map invoice status to a mobile-pill variant from `mobile.css`. We avoid the
- * desktop-only `fa-status-pill` class (hardcoded hex colors) because it bypasses
- * the mobile token system.
- */
 const STATUS_PILL: Record<InvoiceStatus, string> = {
   BROUILLON: 'waiting',
   EMISE: 'arrived',
@@ -49,22 +50,52 @@ function formatMad(n: number): string {
   return `${n.toFixed(2).replace('.', ',')} MAD`;
 }
 
+function filtersFromUrl(params: URLSearchParams): InvoiceSearchFilters {
+  return {
+    dateField: (params.get('dateField') as InvoiceSearchFilters['dateField']) ?? 'ISSUED',
+    from: params.get('from'),
+    to: params.get('to'),
+    statuses: params.getAll('status') as InvoiceStatus[],
+    paymentModes: params.getAll('paymentMode') as InvoiceSearchFilters['paymentModes'],
+    patientId: params.get('patientId'),
+    amountMin: params.get('amountMin') ? Number(params.get('amountMin')) : null,
+    amountMax: params.get('amountMax') ? Number(params.get('amountMax')) : null,
+  };
+}
+
+function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
+  const p = new URLSearchParams();
+  if (f.dateField !== 'ISSUED') p.set('dateField', f.dateField);
+  if (f.from) p.set('from', f.from);
+  if (f.to) p.set('to', f.to);
+  for (const s of f.statuses) p.append('status', s);
+  for (const m of f.paymentModes) p.append('paymentMode', m);
+  if (f.patientId) p.set('patientId', f.patientId);
+  if (f.amountMin !== null) p.set('amountMin', String(f.amountMin));
+  if (f.amountMax !== null) p.set('amountMax', String(f.amountMax));
+  return p;
+}
+
 export default function FacturationMobilePage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<InvoiceStatus | 'ALL'>('ALL');
+  const [urlParams, setUrlParams] = useSearchParams();
+  const [filters, setFilters] = useState<InvoiceSearchFilters>(() => filtersFromUrl(urlParams));
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { invoices, isLoading, error } = useInvoices(filter);
 
-  const selected = useMemo<InvoiceApi | null>(
-    () => invoices.find((i) => i.id === selectedId) ?? null,
-    [invoices, selectedId],
-  );
+  useEffect(() => {
+    setUrlParams(filtersToUrl(filters), { replace: true });
+  }, [filters, setUrlParams]);
 
-  const totalNet = invoices.reduce((s, i) => s + i.netAmount, 0);
-  const totalPaid = invoices.reduce(
-    (s, i) => s + i.payments.reduce((p, x) => p + x.amount, 0),
-    0,
-  );
+  const statusChip: InvoiceStatus | 'ALL' =
+    filters.statuses.length === 1 ? (filters.statuses[0] ?? 'ALL') : 'ALL';
+  function setStatusChip(s: InvoiceStatus | 'ALL') {
+    setFilters({ ...filters, statuses: s === 'ALL' ? [] : [s] });
+  }
+
+  const { items, totalCount, totalPaid, totalRemaining, isLoading, error } =
+    useInvoiceSearch(filters);
+  const { invoice: selectedDetail } = useInvoice(selectedId ?? undefined);
+  const selected = useMemo(() => selectedDetail ?? null, [selectedDetail]);
 
   return (
     <MScreen
@@ -75,10 +106,9 @@ export default function FacturationMobilePage() {
       <div className="mb-pad">
         <CaisseTodayPanel />
         <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 12 }}>
-          {invoices.length} facture{invoices.length > 1 ? 's' : ''}
+          {totalCount} facture{totalCount > 1 ? 's' : ''}
         </div>
 
-        {/* KPI strip */}
         <div className="m-stat-grid">
           <div className="m-stat">
             <div className="m-stat-k">Encaissé</div>
@@ -89,12 +119,11 @@ export default function FacturationMobilePage() {
           <div className="m-stat">
             <div className="m-stat-k">À encaisser</div>
             <div className="m-stat-v" style={{ color: 'var(--amber)' }}>
-              {formatMad(Math.max(0, totalNet - totalPaid))}
+              {formatMad(totalRemaining)}
             </div>
           </div>
         </div>
 
-        {/* Filter chips — horizontal scroll */}
         <div
           role="tablist"
           aria-label="Filtres statut"
@@ -105,17 +134,18 @@ export default function FacturationMobilePage() {
             paddingBottom: 8,
             marginBottom: 4,
             WebkitOverflowScrolling: 'touch',
+            alignItems: 'center',
           }}
         >
           {FILTERS.map((f) => {
-            const on = filter === f.key;
+            const on = statusChip === f.key;
             return (
               <button
                 key={f.key}
                 type="button"
                 role="tab"
                 aria-selected={on}
-                onClick={() => setFilter(f.key)}
+                onClick={() => setStatusChip(f.key)}
                 style={{
                   flexShrink: 0,
                   height: 32,
@@ -135,6 +165,9 @@ export default function FacturationMobilePage() {
               </button>
             );
           })}
+          <div style={{ marginLeft: 'auto' }}>
+            <AdvancedFiltersPopover filters={filters} onChange={setFilters} />
+          </div>
         </div>
 
         {error && (
@@ -148,7 +181,7 @@ export default function FacturationMobilePage() {
             <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
               Chargement…
             </div>
-          ) : invoices.length === 0 ? (
+          ) : items.length === 0 ? (
             <div
               style={{
                 padding: 32,
@@ -157,11 +190,10 @@ export default function FacturationMobilePage() {
                 fontSize: 13,
               }}
             >
-              Aucune facture pour ce filtre.
+              Aucune facture pour ces filtres.
             </div>
           ) : (
-            invoices.map((inv, i) => {
-              const paid = inv.payments.reduce((s, p) => s + p.amount, 0);
+            items.map((inv, i) => {
               const date = inv.issuedAt ?? inv.createdAt;
               return (
                 <button
@@ -194,7 +226,7 @@ export default function FacturationMobilePage() {
                       </span>
                     </div>
                     <div className="m-row-sub">
-                      Patient {inv.patientId.slice(0, 8).toUpperCase()} ·{' '}
+                      {inv.patientFullName || inv.patientId.slice(0, 8).toUpperCase()} ·{' '}
                       {new Date(date).toLocaleDateString('fr-MA', {
                         day: '2-digit',
                         month: '2-digit',
@@ -205,12 +237,12 @@ export default function FacturationMobilePage() {
                     <div className="tnum" style={{ fontSize: 13, fontWeight: 600 }}>
                       {formatMad(inv.netAmount)}
                     </div>
-                    {paid > 0 && (
+                    {inv.paidAmount > 0 && (
                       <div
                         className="tnum"
                         style={{ fontSize: 11, color: 'var(--success)', marginTop: 2 }}
                       >
-                        {formatMad(paid)} payé
+                        {formatMad(inv.paidAmount)} payé
                       </div>
                     )}
                   </div>

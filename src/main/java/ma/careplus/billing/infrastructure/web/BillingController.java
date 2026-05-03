@@ -2,22 +2,36 @@ package ma.careplus.billing.infrastructure.web;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.billing.application.BillingService;
+import ma.careplus.billing.application.InvoiceSearchFilter;
+import ma.careplus.billing.application.export.CsvInvoiceExporter;
+import ma.careplus.billing.application.export.InvoiceExporter;
+import ma.careplus.billing.application.export.XlsxInvoiceExporter;
 import ma.careplus.billing.domain.Invoice;
 import ma.careplus.billing.domain.InvoiceLine;
 import ma.careplus.billing.domain.InvoiceStatus;
 import ma.careplus.billing.domain.Payment;
+import ma.careplus.billing.domain.PaymentMode;
 import ma.careplus.billing.infrastructure.web.dto.AdjustTotalRequest;
 import ma.careplus.billing.infrastructure.web.dto.CreditNoteRequest;
 import ma.careplus.billing.infrastructure.web.dto.CreditNoteResponse;
+import ma.careplus.billing.infrastructure.web.dto.InvoiceListRow;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceLineResponse;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceResponse;
+import ma.careplus.billing.infrastructure.web.dto.InvoiceSearchResponse;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceUpdateRequest;
 import ma.careplus.billing.infrastructure.web.dto.IssueInvoiceResponse;
 import ma.careplus.billing.infrastructure.web.dto.PaymentResponse;
 import ma.careplus.billing.infrastructure.web.dto.RecordPaymentRequest;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -56,6 +70,76 @@ public class BillingController {
                 ? billingService.getInvoicesForPatient(patientId)
                 : billingService.getInvoices(status);
         return ResponseEntity.ok(invoices.stream().map(this::toResponse).toList());
+    }
+
+    /** Hard cap for /export. Beyond this, the endpoint returns 422 EXPORT_TOO_LARGE. */
+    private static final int EXPORT_MAX_ROWS = 10_000;
+
+    /**
+     * Filtered + paginated invoice search with KPI aggregates.
+     * Supports filters: dateField (ISSUED|PAID) + from/to, status[], paymentMode[],
+     * patientId, amountMin/Max. All filters AND-combined.
+     */
+    @GetMapping("/api/invoices/search")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<InvoiceSearchResponse> searchInvoices(
+            @RequestParam(required = false, defaultValue = "ISSUED") InvoiceSearchFilter.DateField dateField,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) List<InvoiceStatus> status,
+            @RequestParam(required = false) List<PaymentMode> paymentMode,
+            @RequestParam(required = false) UUID patientId,
+            @RequestParam(required = false) BigDecimal amountMin,
+            @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "50") int size) {
+        InvoiceSearchFilter filter = new InvoiceSearchFilter(
+                dateField, from, to,
+                status == null ? List.of() : status,
+                paymentMode == null ? List.of() : paymentMode,
+                patientId, amountMin, amountMax);
+        return ResponseEntity.ok(billingService.searchInvoices(filter, page, size));
+    }
+
+    /**
+     * Streams a CSV or xlsx export of the same filter set as {@code /search}.
+     * Capped at {@value #EXPORT_MAX_ROWS} rows — beyond, returns 422 EXPORT_TOO_LARGE.
+     * RBAC: MEDECIN + ADMIN only (SECRETAIRE / ASSISTANT can browse on screen but not extract).
+     */
+    @GetMapping("/api/invoices/export")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<byte[]> exportInvoices(
+            @RequestParam(required = false, defaultValue = "ISSUED") InvoiceSearchFilter.DateField dateField,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(required = false) List<InvoiceStatus> status,
+            @RequestParam(required = false) List<PaymentMode> paymentMode,
+            @RequestParam(required = false) UUID patientId,
+            @RequestParam(required = false) BigDecimal amountMin,
+            @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false, defaultValue = "csv") String format) throws IOException {
+        InvoiceSearchFilter filter = new InvoiceSearchFilter(
+                dateField, from, to,
+                status == null ? List.of() : status,
+                paymentMode == null ? List.of() : paymentMode,
+                patientId, amountMin, amountMax);
+        List<InvoiceListRow> rows = billingService.exportInvoices(filter, EXPORT_MAX_ROWS);
+
+        InvoiceExporter exporter = "xlsx".equalsIgnoreCase(format)
+                ? new XlsxInvoiceExporter()
+                : new CsvInvoiceExporter();
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        exporter.write(rows, buf);
+
+        String fromPart = from != null ? from.toString() : "all";
+        String toPart = to != null ? to.toString() : "all";
+        String filename = "factures_" + fromPart + "_" + toPart + exporter.fileExtension();
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(exporter.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(buf.toByteArray());
     }
 
     @GetMapping("/api/invoices/{id}")

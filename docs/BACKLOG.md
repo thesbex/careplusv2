@@ -386,6 +386,7 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 - Relance impayés workflow
 - VAT paramétrable per act
 - Per-practitioner revenue split (when cabinet → clinic with multiple doctors)
+- **Filtres + export détaillé sur les factures** : aujourd'hui la liste Caisse/Factures n'a pas de filtres avancés. Ajouter filtres combinables (plage de dates émission/encaissement, statut DRAFT/ISSUED/PAID/CANCELLED, mode de paiement, praticien, patient, montant min/max, type d'acte/prestation) + export détaillé du résultat filtré au format CSV et Excel (xlsx) avec une ligne par ligne de facture (pas seulement totaux). Use cases : clôture comptable mensuelle, déclaration fiscale, contrôle URSSAF/CNSS, analyse par praticien. Backend : endpoint `GET /api/invoices/export?from=&to=&status=&mode=&practitionerId=&patientId=&format=csv|xlsx` qui stream le fichier (pas de chargement en mémoire pour gros volumes). Frontend : panneau de filtres dans `CaissePage` + bouton "Exporter" qui passe les mêmes filtres.
 
 ## Pregnancy vertical
 

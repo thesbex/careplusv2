@@ -27,6 +27,7 @@
         <springdoc.version>2.6.0</springdoc.version>
         <nimbus-jose.version>9.40</nimbus-jose.version>
         <openhtmltopdf.version>1.0.10</openhtmltopdf.version>
+        <fastexcel.version>0.18.4</fastexcel.version>
         <bucket4j.version>8.10.1</bucket4j.version>
         <archunit.version>1.3.0</archunit.version>
         <testcontainers.version>1.20.3</testcontainers.version>
@@ -115,6 +116,19 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>1.17.2</version>
+        </dependency>
+
+        <!-- xlsx export (lighter than Apache POI: ~200 Ko vs 15 Mo). ADR-XXX. -->
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel</artifactId>
+            <version>${fastexcel.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.dhatim</groupId>
+            <artifactId>fastexcel-reader</artifactId>
+            <version>${fastexcel.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
