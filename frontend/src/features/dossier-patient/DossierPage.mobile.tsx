@@ -18,6 +18,7 @@ import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices'
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { usePatient } from './hooks/usePatient';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
+import { EditPatientMobileSheet } from './components/EditPatientMobileSheet';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
@@ -25,6 +26,7 @@ export default function DossierMobilePage() {
   const navigate = useNavigate();
   const { patient, raw, isLoading } = usePatient(id);
   const [tab, setTab] = useState<MobileDossierTab>('historique');
+  const [showEdit, setShowEdit] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
   const { consultations: patientConsultations } = useConsultations(
     raw?.id ? { patientId: raw.id } : {},
@@ -71,6 +73,13 @@ export default function DossierMobilePage() {
         <MTopbar
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
           title="Dossier patient"
+          right={
+            <MIconBtn
+              icon="Edit"
+              label="Modifier le patient"
+              onClick={() => setShowEdit(true)}
+            />
+          }
         />
       }
     >
@@ -555,6 +564,14 @@ export default function DossierMobilePage() {
           </div>
         )}
       </div>
+
+      {raw && (
+        <EditPatientMobileSheet
+          open={showEdit}
+          onOpenChange={setShowEdit}
+          patient={raw}
+        />
+      )}
     </MScreen>
   );
 }

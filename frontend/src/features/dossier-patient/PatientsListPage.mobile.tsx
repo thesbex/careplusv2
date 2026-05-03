@@ -1,15 +1,23 @@
 /**
  * Patients list — mobile.
- * Search-and-tap. Patient creation is desktop-only (the form is too dense
- * for a phone) — a hint message points the user there.
+ * Search-and-tap + bouton flottant « + » pour créer un dossier.
+ *
+ * Avant 2026-05-01, la création était désactivée sur mobile (« le formulaire
+ * est trop dense pour un téléphone »). Les secrétaires sur tablette en salle
+ * d'attente n'avaient donc aucun moyen de créer un nouveau patient sans
+ * basculer sur PC. NewPatientMobileSheet propose une variante condensée des
+ * champs essentiels (état civil + contact + photo), les sections denses
+ * (allergies/antécédents/mutuelle/historique) restent côté desktop.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Search, ChevronRight } from '@/components/icons';
+import { Search, ChevronRight, Plus } from '@/components/icons';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { usePatientList } from './hooks/usePatientList';
+import { NewPatientMobileSheet } from './components/NewPatientMobileSheet';
 
 function toAge(birthDate: string): number {
   const d = new Date(birthDate);
@@ -31,13 +39,46 @@ const TAB_MAP: Record<MobileTab, string> = {
 export default function PatientsListMobilePage() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const [showNew, setShowNew] = useState(false);
   const { patients, total, isLoading, error } = usePatientList(q);
+  // QA3-3 — backward-compat: legacy sessions sans `permissions` gardent
+  // l'ancien comportement (création autorisée). Le gate s'engage dès que
+  // le backend remonte la liste.
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
 
   return (
     <MScreen
       tab="patients"
       topbar={<MTopbar brand title="Patients" />}
       onTabChange={(t) => navigate(TAB_MAP[t])}
+      fab={
+        canCreatePatient ? (
+          <button
+            type="button"
+            aria-label="Nouveau patient"
+            onClick={() => setShowNew(true)}
+            style={{
+              position: 'fixed',
+              right: 16,
+              bottom: 76,
+              width: 56,
+              height: 56,
+              borderRadius: '50%',
+              border: 0,
+              background: 'var(--primary)',
+              color: 'var(--on-primary, #fff)',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+              display: 'grid',
+              placeItems: 'center',
+              cursor: 'pointer',
+              zIndex: 30,
+            }}
+          >
+            <Plus aria-hidden="true" />
+          </button>
+        ) : undefined
+      }
     >
       <div className="mb-pad">
         {/* Search — uses .m-search token for visual consistency. */}
@@ -165,10 +206,20 @@ export default function PatientsListMobilePage() {
             lineHeight: 1.5,
           }}
         >
-          La création de patient se fait depuis la version desktop (formulaire complet
-          avec onglets personnel / médical et téléversement de documents).
+          Astuce : appuyez sur le bouton « + » pour créer un nouveau patient.
+          Pour saisir allergies, antécédents, mutuelle ou documents historiques,
+          utilisez la version desktop (formulaire complet à onglets).
         </div>
       </div>
+
+      <NewPatientMobileSheet
+        open={showNew}
+        onOpenChange={setShowNew}
+        onCreated={(id) => {
+          setShowNew(false);
+          navigate(`/patients/${id}`);
+        }}
+      />
     </MScreen>
   );
 }
