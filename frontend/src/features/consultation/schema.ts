@@ -15,12 +15,18 @@ export const consultationDraftSchema = z.object({
   plan: z.string(),
 });
 
-/** Stricter schema used at sign time — all four sections must be non-empty. */
+/**
+ * Stricter schema used at sign time — all four SOAP sections must be non-empty.
+ *
+ * Le champ `analyse` correspond au "A" du SOAP (Appréciation / synthèse
+ * diagnostique), pas à une prescription d'analyse biologique. Les messages
+ * sont volontairement explicites pour lever cette ambiguïté côté praticien.
+ */
 export const consultationSignSchema = z.object({
-  subjectif: z.string().min(1, 'Subjectif requis'),
-  objectif: z.string().min(1, 'Objectif requis'),
-  analyse: z.string().min(1, 'Analyse requise'),
-  plan: z.string().min(1, 'Plan requis'),
+  subjectif: z.string().min(1, 'Subjectif (S) requis pour signer'),
+  objectif: z.string().min(1, 'Objectif (O) requis pour signer'),
+  analyse: z.string().min(1, 'Appréciation / diagnostic (A du SOAP) requis pour signer'),
+  plan: z.string().min(1, 'Plan (P) requis pour signer'),
 });
 
 export type ConsultationDraft = z.infer<typeof consultationDraftSchema>;
