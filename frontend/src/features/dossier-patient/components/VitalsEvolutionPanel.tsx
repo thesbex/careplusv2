@@ -117,23 +117,40 @@ function lastValue(
 export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
   const { history, isLoading } = usePatientVitalsHistory(patientId);
 
+  // Le DossierTabPanel parent est `display: flex; overflow: hidden` — sans
+  // `flex: 1` + `overflow: auto` ici, le contenu serait clippé / invisible.
+  // La classe `.scroll` (commune aux autres onglets) assure le scroll vertical
+  // dans les écrans plus petits que la grille de cartes.
+  const containerStyle: React.CSSProperties = {
+    flex: 1,
+    minWidth: 0,
+    overflow: 'auto',
+    padding: 20,
+  };
+
   if (isLoading) {
-    return <div style={{ padding: 20, color: 'var(--ink-3)' }}>Chargement de l'historique…</div>;
+    return (
+      <div className="scroll" style={containerStyle}>
+        <div style={{ color: 'var(--ink-3)' }}>Chargement de l'historique…</div>
+      </div>
+    );
   }
 
   if (history.length === 0) {
     return (
-      <div
-        style={{
-          padding: '32px 20px',
-          textAlign: 'center',
-          color: 'var(--ink-3)',
-          fontSize: 13,
-        }}
-      >
-        Aucune constante enregistrée pour ce patient.
-        <div style={{ fontSize: 11.5, marginTop: 4 }}>
-          Les graphes apparaîtront dès la première saisie en consultation.
+      <div className="scroll" style={containerStyle}>
+        <div
+          style={{
+            padding: '32px 20px',
+            textAlign: 'center',
+            color: 'var(--ink-3)',
+            fontSize: 13,
+          }}
+        >
+          Aucune constante enregistrée pour ce patient.
+          <div style={{ fontSize: 11.5, marginTop: 4 }}>
+            Les graphes apparaîtront dès la première saisie en consultation.
+          </div>
         </div>
       </div>
     );
@@ -159,7 +176,7 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
   const glyPoints = pick(history, 'glycemiaGPerL').map((p) => ({ x: p.x, y: p.y }));
 
   return (
-    <div style={{ padding: 20 }}>
+    <div className="scroll" style={containerStyle}>
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Évolution des constantes</h3>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
