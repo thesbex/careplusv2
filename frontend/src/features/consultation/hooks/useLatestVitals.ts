@@ -20,6 +20,20 @@ export interface VitalsApi {
   notes: string | null;
 }
 
+/** True dès qu'une mesure clinique au moins est renseignée. */
+function hasAnyMeasurement(v: VitalsApi): boolean {
+  return (
+    v.systolicMmhg != null ||
+    v.diastolicMmhg != null ||
+    v.heartRateBpm != null ||
+    v.spo2Percent != null ||
+    v.temperatureC != null ||
+    v.weightKg != null ||
+    v.heightCm != null ||
+    v.glycemiaGPerL != null
+  );
+}
+
 export function useLatestVitals(patientId?: string): {
   vitals: VitalsApi | null;
   isLoading: boolean;
@@ -31,8 +45,13 @@ export function useLatestVitals(patientId?: string): {
     staleTime: 30_000,
   });
 
-  return {
-    vitals: data && data.length > 0 ? (data[0] ?? null) : null,
-    isLoading,
-  };
+  // Le backend renvoie l'historique complet (toutes consultations confondues),
+  // déjà ordonné DESC par recordedAt. On retourne le dernier enregistrement
+  // qui contient *au moins* une mesure : ainsi un patient avec des constantes
+  // d'une consultation antérieure les verra dans la nouvelle, et d'éventuels
+  // records pollués (tous champs null, créés avant le pré-remplissage) sont
+  // ignorés sans casser l'audit trail.
+  const vitals = data?.find(hasAnyMeasurement) ?? null;
+
+  return { vitals, isLoading };
 }

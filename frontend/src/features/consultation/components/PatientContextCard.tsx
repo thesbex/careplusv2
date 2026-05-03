@@ -63,8 +63,22 @@ export function PatientContextCard({
     );
   }
 
+  // Affiche `HH:mm` si pris aujourd'hui, sinon `JJ/MM HH:mm` — le médecin doit
+  // pouvoir distinguer en un coup d'œil les constantes de la visite courante
+  // de celles héritées d'une consultation précédente.
   const vitalsTime = vitals
-    ? new Date(vitals.recordedAt).toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' })
+    ? (() => {
+        const d = new Date(vitals.recordedAt);
+        const today = new Date();
+        const sameDay =
+          d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate();
+        const hm = d.toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' });
+        if (sameDay) return hm;
+        const dm = d.toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit' });
+        return `${dm} ${hm}`;
+      })()
     : null;
 
   const ta =
