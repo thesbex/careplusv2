@@ -81,7 +81,10 @@ public class PrescriptionTemplateService {
         t.setName(req.name().trim());
         t.setType(req.type());
         t.setLinesJson(serialize(req.lines()));
-        return toView(repo.save(t));
+        // saveAndFlush forces @PreUpdate to fire immediately so toView() reads
+        // the final updatedAt — repo.save() alone defers flush to tx commit
+        // and the view would capture the stale pre-flush timestamp (Bug #1, 2026-05-02).
+        return toView(repo.saveAndFlush(t));
     }
 
     @Transactional
