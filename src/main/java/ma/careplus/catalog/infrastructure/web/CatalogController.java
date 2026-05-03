@@ -16,6 +16,7 @@ import ma.careplus.catalog.infrastructure.web.dto.ActResponse;
 import ma.careplus.catalog.infrastructure.web.dto.MedicationResponse;
 import ma.careplus.catalog.infrastructure.web.dto.TariffRequest;
 import ma.careplus.catalog.infrastructure.web.dto.TariffResponse;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -70,6 +71,11 @@ public class CatalogController {
 
     public record LabTestView(UUID id, String code, String name, String category) {}
 
+    public record LabTestWriteRequest(
+            @NotBlank @Size(max = 32) String code,
+            @NotBlank @Size(max = 255) String name,
+            @Size(max = 64) String category) {}
+
     @GetMapping("/lab-tests")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public List<LabTestView> searchLabTests(
@@ -100,6 +106,11 @@ public class CatalogController {
 
     public record ImagingExamView(UUID id, String code, String name, String modality) {}
 
+    public record ImagingExamWriteRequest(
+            @NotBlank @Size(max = 32) String code,
+            @NotBlank @Size(max = 255) String name,
+            @Size(max = 32) String modality) {}
+
     @GetMapping("/imaging-exams")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public List<ImagingExamView> searchImagingExams(
@@ -126,6 +137,109 @@ public class CatalogController {
                         rs.getString("name"),
                         rs.getString("modality")),
                 like, like);
+    }
+
+    // ── Lab tests CRUD (unitaire — l'import bulk est sur /lab-tests/import) ───
+
+    @PostMapping("/lab-tests")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<LabTestView> createLabTest(@Valid @RequestBody LabTestWriteRequest req) {
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ?",
+                Integer.class, req.code());
+        if (existing != null && existing > 0) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        UUID id = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO catalog_lab_test (id, code, name, category, active) "
+                + "VALUES (?, ?, ?, ?, TRUE)",
+                id, req.code(), req.name(), req.category());
+        return ResponseEntity.created(URI.create("/api/catalog/lab-tests/" + id))
+                .body(new LabTestView(id, req.code(), req.name(), req.category()));
+    }
+
+    @PutMapping("/lab-tests/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> updateLabTest(
+            @PathVariable UUID id,
+            @Valid @RequestBody LabTestWriteRequest req) {
+        // Le code est la clé naturelle UNIQUE — un PUT qui le change vers
+        // un code déjà pris doit retourner 409, pas 500.
+        Integer conflict = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ? AND id <> ?",
+                Integer.class, req.code(), id);
+        if (conflict != null && conflict > 0) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        int updated = jdbc.update(
+                "UPDATE catalog_lab_test SET "
+                + "code = ?, name = ?, category = ?, updated_at = now() "
+                + "WHERE id = ?",
+                req.code(), req.name(), req.category(), id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/lab-tests/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deactivateLabTest(@PathVariable UUID id) {
+        int updated = jdbc.update(
+                "UPDATE catalog_lab_test SET active = FALSE, updated_at = now() WHERE id = ?",
+                id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Imaging exams CRUD ────────────────────────────────────────────────────
+
+    @PostMapping("/imaging-exams")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<ImagingExamView> createImagingExam(
+            @Valid @RequestBody ImagingExamWriteRequest req) {
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ?",
+                Integer.class, req.code());
+        if (existing != null && existing > 0) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        UUID id = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO catalog_imaging_exam (id, code, name, modality, active) "
+                + "VALUES (?, ?, ?, ?, TRUE)",
+                id, req.code(), req.name(), req.modality());
+        return ResponseEntity.created(URI.create("/api/catalog/imaging-exams/" + id))
+                .body(new ImagingExamView(id, req.code(), req.name(), req.modality()));
+    }
+
+    @PutMapping("/imaging-exams/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> updateImagingExam(
+            @PathVariable UUID id,
+            @Valid @RequestBody ImagingExamWriteRequest req) {
+        Integer conflict = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM catalog_imaging_exam WHERE code = ? AND id <> ?",
+                Integer.class, req.code(), id);
+        if (conflict != null && conflict > 0) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+        int updated = jdbc.update(
+                "UPDATE catalog_imaging_exam SET "
+                + "code = ?, name = ?, modality = ?, updated_at = now() "
+                + "WHERE id = ?",
+                req.code(), req.name(), req.modality(), id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/imaging-exams/{id}")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> deactivateImagingExam(@PathVariable UUID id) {
+        int updated = jdbc.update(
+                "UPDATE catalog_imaging_exam SET active = FALSE, updated_at = now() WHERE id = ?",
+                id);
+        if (updated == 0) return ResponseEntity.notFound().build();
+        return ResponseEntity.noContent().build();
     }
 
     // ── Acts ──────────────────────────────────────────────────────────────────
