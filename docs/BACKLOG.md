@@ -350,7 +350,7 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 - Stupéfiants / psychotropes: enforced ordonnance sécurisée legal format (Moroccan requirements)
 - Ordonnance renewal in 1 click for chronic patients
 - Chronic condition follow-up module (diabetes HbA1c trend, HTA, asthma peak-flow)
-- Vaccination schedule + reminders
+- ~~Vaccination schedule + reminders~~ — **livré 2026-05-03** (module Vaccination enfant Étapes 1-6 ; voir `docs/plans/2026-05-02-vaccination-enfant-design.md`).
 - Lab results inbound: mark analysis as "result received", attach PDF, flag doctor
 - ICD-10 diagnosis coding (optional autocomplete)
 - Templates per consultation type (first visit, follow-up, certificate, vaccination)

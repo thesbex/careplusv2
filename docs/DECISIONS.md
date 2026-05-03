@@ -213,10 +213,21 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 
 ## ADR-028 — Vaccination worklist: PageView record over Spring Data Page<T>
 **Date**: 2026-05-03
-**Status**: accepted
+**Status**: accepted (amended 2026-05-03 — voir ADR-029)
 **Context**: Spring Data `Page<T>` serialises to JSON with extra HATEOAS fields (`pageable`, `sort`, `first`, `last`, `numberOfElements`, `empty`) that the React client does not use and that introduce brittle coupling to Spring Data internals (the serialisation format may change between Spring Boot minor versions, and PageImpl serialisation logs a WARN in Spring Boot 3.3+).
-**Choice**: Custom `PageView<T>` record with `{content, totalElements, pageNumber, pageSize}` — exactly what the frontend needs, nothing more.
+**Choice**: Custom `PageView<T>` record with `{content, totalElements, pageNumber, number, pageSize, totalPages}` — `number` et `totalPages` ajoutés à la suite du QA wave 7 (2026-05-03) parce que TanStack Query côté frontend les attendait pour la pagination ; `pageNumber`/`pageSize` conservés en alias backward-compat.
 **Consequence**: One tiny shared record in the vaccination web DTO package. If other modules need pagination wrappers, promote it to `shared/web/dto/`. Not done now (YAGNI).
+
+## ADR-029 — Frontend-driven DTO contract: nommage des champs aligné avec le client React
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: QA wave 7 sur le module Vaccination Étape 5 a révélé que `VaccinationQueueEntry` exposait `patientFullName` (concaténation prénom+nom) + `birthDate` + ne portait ni `vaccineId` ni `scheduleDoseId`. Le frontend TypeScript (`useVaccinationsQueue.ts` + `VaccinationsQueuePage*.tsx` + drawer pré-rempli) lisait `patientFirstName` / `patientLastName` / `patientBirthDate` / `vaccineId` / `scheduleDoseId`. Conséquences en browser : table desktop vide (crash silencieux sur `entry.patientFirstName[0]`), crash mobile bloquant, drawer "Saisir dose" cassé (vaccineId undefined → select vide → validation impossible). Tests d'intégration backend passaient car ils n'asseraient que la présence de champs concaténés ou agrégés, pas le contrat exact.
+**Choice**: Pour les DTOs servis à un client React typé strict (TS `exactOptionalPropertyTypes`), le nommage des champs DOIT refléter ce que le client utilise réellement, pas une vue agrégée "humaine". Concrètement :
+- Pas de concaténation côté backend de champs que le client peut composer (lastName + firstName).
+- Inclure les FK utiles à la composition d'un POST en retour (vaccineId, scheduleDoseId, patientId — pas seulement les libellés).
+- Préfixer les champs imbriqués par leur entité source quand le DTO est dénormalisé (`patientBirthDate` plutôt que `birthDate` — sinon collision sémantique avec d'autres dates).
+- Couvrir la non-régression par un IT de contrat JSON (`*DtoContractIT`) qui assert la présence ET l'absence des champs critiques. Pas suffisant d'asserter `jsonPath("$.content[0].patientLastName")` — il faut `assertThat(entry.has("patientFullName")).isFalse()` pour bloquer un retour de l'ancien nommage.
+**Consequence**: Le pattern `*DtoContractIT` devient la 5ᵉ classe de tests vaccination obligatoire (à côté de Catalog/PatientVaccination/Queue/Booklet). Coût : ~5 scénarios par DTO transversal exposé à l'IHM. Bénéfice : un drift backend↔frontend ne traversera plus QA browser sans être attrapé par le pipeline CI.
 
 ---
 

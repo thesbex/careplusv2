@@ -4,10 +4,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Billing — filtres avancés + export CSV/xlsx shipped
+**Phase**: Vaccination enfant — module shipped (Étapes 1-6 complets)
 **Last update**: 2026-05-03
-**Build**: Backend — 33/33 billing tests green (BillingIT 11 + BillingSearchIT 11 + BillingExportIT 6 + InvoiceFilterCombinationIT 5). Frontend — 376/384 (8 pré-existants : 7 SalleAttentePage mobile, 1 DossierPage 8→9 tabs après vaccination).
-**Next action**: Vaccination Étape 5 worklist `/vaccinations` (en cours, commit `0761ad8` partiel) + corriger DossierPage.test (8→9 tabs). Voir `MEMORY.md` pour resume vaccination.
+**Build**: Backend — 328/328 mvn verify (43 vaccination ITs : VaccinationCatalogIT 9 + PatientVaccinationIT 12 + VaccinationQueueIT 10 + VaccinationBookletPdfIT 7 + VaccinationQueueDtoContractIT 5). Frontend — 410/418 (8 pré-existants hors scope : 7 SalleAttentePage mobile, 1 DossierPage 8→9 tabs).
+**Next action**: Suivi de grossesse — design dédié post-pilote (séquentiel par décision Q2). Item au backlog `Pregnancy vertical`.
+
+### 2026-05-03 — Vaccination Étapes 5 + 6 (worklist + Paramétrage + QA + docs)
+
+**Shipped (2 commits Étape 5/6)** :
+- `0761ad8 feat(vaccination): frontend Étape 5 — worklist /vaccinations + Paramétrage` — page transversale (3 onglets OVERDUE/DUE_SOON/UPCOMING + filtres + tableau paginé + drawer pré-rempli, desktop + mobile 390 px), sidebar item + badge polling 30 s, onglet Paramétrage desktop (CRUD vaccins + CRUD calendrier, drawers form + zod, PNI lock 422 PNI_PROTECTED). 18 fichiers, 3010 insertions, 37 tests vitest verts.
+- `0539ca8 fix(vaccination): contrat DTO worklist — firstName/lastName, vaccineId, scheduleDoseId, totalPages` — QA wave 7 a révélé 2 bugs critiques (DTO `patientFullName` au lieu de firstName/lastName + manque vaccineId/scheduleDoseId ; PageView sans totalPages/number). Fix backend + IT régression `VaccinationQueueDtoContractIT` (5 scénarios).
+
+**ADR ajoutée** : ADR-022 « Module vaccination — calendrier matérialisé à la volée ».
+**API** : 17 endpoints documentés (catalog 4 + schedule 4 + patient doses 6 + worklist 1 + booklet 1 + 1 défer).
+**BACKLOG** : retrait de `Vaccination schedule + reminders` (ligne 300, scope du MVP désormais livré).
+
+**Design doc** : `docs/plans/2026-05-02-vaccination-enfant-design.md` (6 étapes, plan figé via brainstorming Q1-Q8).
 
 ### 2026-05-03 — Billing : filtres avancés + export
 
