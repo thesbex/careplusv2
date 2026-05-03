@@ -14,9 +14,20 @@
 #   2. Créer un .env.prod à partir de .env.prod.example
 #   3. docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
 #
+# IMPORTANT : ce stack force `name: careplus-prod` plus bas pour s'isoler
+# du `docker-compose.yml` dev (même dossier → même nom de projet par défaut
+# → écrasement du container Postgres dev). Ne pas retirer la ligne `name:`.
+#
 # Backup : le service `pgbackup` dump tous les jours à 02:00 Casablanca dans
 # ./backups/ — à cron-uploader vers OVH Object Storage Casablanca pour la
 # stratégie hybride définie dans CLAUDE.md.
+
+
+# Nom de projet explicite — sinon compose le dérive du dossier et entre en
+# collision avec le `docker-compose.yml` dev (même répertoire), ce qui
+# détruit le container Postgres dev. Le volume dev survit (volume distinct),
+# mais le container disparaît. Toujours lancer ce stack avec ce projet isolé.
+name: careplus-prod
 
 services:
   postgres:

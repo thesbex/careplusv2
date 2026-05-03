@@ -11,6 +11,12 @@ spring:
       hibernate:
         format_sql: true
 
+careplus:
+  security:
+    cors:
+      # Vite dev server runs on :5173 separately from Spring Boot on :8080.
+      allowed-origins: http://localhost:5173,http://127.0.0.1:5173
+
 logging:
   level:
     ma.careplus: DEBUG
