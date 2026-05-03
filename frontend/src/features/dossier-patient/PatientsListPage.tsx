@@ -16,6 +16,25 @@ import {
 } from './hooks/useCreatePatient';
 import { useInsurances } from './hooks/useInsurances';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { api } from '@/lib/api/client';
+import { File as FileIcon, Trash } from '@/components/icons';
+import { DOCUMENT_TYPE_LABEL, type DocumentType } from './hooks/usePatientDocuments';
+
+const DOC_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif';
+const DOC_MAX_BYTES = 10 * 1024 * 1024;
+const DOC_TYPES: DocumentType[] = [
+  'PRESCRIPTION_HISTORIQUE',
+  'ANALYSE',
+  'IMAGERIE',
+  'COMPTE_RENDU',
+  'AUTRE',
+];
+
+interface PendingDocument {
+  file: File;
+  type: DocumentType;
+  notes: string;
+}
 
 function Lbl({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', marginBottom: 4 }}>{children}</div>;
@@ -217,6 +236,10 @@ function NewPatientPanel({
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'personnel' | 'medical'>('personnel');
+  const [pendingDocs, setPendingDocs] = useState<PendingDocument[]>([]);
+  const [pendingDocType, setPendingDocType] = useState<DocumentType>('PRESCRIPTION_HISTORIQUE');
+  const [docError, setDocError] = useState<string | null>(null);
+  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const { insurances } = useInsurances();
 
   function set<K extends keyof CreatePatientForm>(key: K, value: CreatePatientForm[K]) {
@@ -289,7 +312,45 @@ function NewPatientPanel({
       return;
     }
     const created = await create(form).catch(() => null);
-    if (created) onCreated(created.id);
+    if (!created) return;
+
+    if (pendingDocs.length > 0) {
+      setIsUploadingDocs(true);
+      try {
+        for (const d of pendingDocs) {
+          const fd = new FormData();
+          fd.append('file', d.file);
+          fd.append('type', d.type);
+          if (d.notes.trim()) fd.append('notes', d.notes.trim());
+          await api.post(`/patients/${created.id}/documents`, fd, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+        }
+      } catch {
+        setDocError('Patient créé, mais certains documents n\'ont pas pu être téléversés. Reprenez depuis son dossier.');
+      } finally {
+        setIsUploadingDocs(false);
+      }
+    }
+
+    onCreated(created.id);
+  }
+
+  function addPendingDoc(file: File) {
+    if (file.size > DOC_MAX_BYTES) {
+      setDocError('Fichier trop volumineux (max 10 Mo).');
+      return;
+    }
+    setDocError(null);
+    setPendingDocs((arr) => [...arr, { file, type: pendingDocType, notes: '' }]);
+  }
+
+  function removePendingDoc(index: number) {
+    setPendingDocs((arr) => arr.filter((_, i) => i !== index));
+  }
+
+  function updatePendingDocNotes(index: number, notes: string) {
+    setPendingDocs((arr) => arr.map((d, i) => (i === index ? { ...d, notes } : d)));
   }
 
   return (
@@ -556,6 +617,118 @@ function NewPatientPanel({
           <div><Lbl>Notes médicales libres</Lbl>
             <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 80 }} />
           </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+          {/* Documents historiques (anciennes prescriptions, analyses, radio, comptes rendus) */}
+          <div>
+            <Lbl>Documents historiques</Lbl>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: -2, marginBottom: 8 }}>
+              Anciennes prescriptions, résultats d'analyses, imagerie, comptes rendus.
+              Téléversés automatiquement après création du patient.
+            </div>
+            <div
+              style={{
+                display: 'flex', flexDirection: 'column', gap: 8,
+                padding: 12,
+                border: '1px dashed var(--border)', borderRadius: 8,
+                background: 'var(--bg-alt)',
+              }}
+            >
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  value={pendingDocType}
+                  onChange={(e) => setPendingDocType(e.target.value as DocumentType)}
+                  aria-label="Type de document"
+                  style={{
+                    height: 32, fontSize: 12.5, fontFamily: 'inherit',
+                    border: '1px solid var(--border)', borderRadius: 6,
+                    padding: '0 8px', background: 'var(--surface)',
+                  }}
+                >
+                  {DOC_TYPES.map((t) => (
+                    <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
+                  ))}
+                </select>
+                <label
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    height: 32, padding: '0 12px', borderRadius: 6,
+                    background: 'var(--primary)', color: '#fff',
+                    fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  <Plus style={{ width: 12, height: 12 }} />
+                  Ajouter un fichier
+                  <input
+                    type="file"
+                    accept={DOC_ACCEPT}
+                    hidden
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (f) addPendingDoc(f);
+                    }}
+                  />
+                </label>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                PDF, JPEG, PNG, WebP, HEIC — max 10 Mo par fichier.
+              </div>
+              {docError && (
+                <div style={{ fontSize: 12, color: 'var(--danger)' }}>{docError}</div>
+              )}
+            </div>
+
+            {pendingDocs.length > 0 && (
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 0, marginTop: 8, listStyle: 'none' }}>
+                {pendingDocs.map((d, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '8px 10px',
+                      border: '1px solid var(--border)', borderRadius: 8,
+                      background: 'var(--surface)',
+                    }}
+                  >
+                    <FileIcon style={{ width: 16, height: 16, color: 'var(--ink-3)', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {d.file.name}
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+                        {DOCUMENT_TYPE_LABEL[d.type]} · {(d.file.size / 1024).toFixed(0)} Ko
+                      </span>
+                      <input
+                        type="text"
+                        value={d.notes}
+                        onChange={(e) => updatePendingDocNotes(i, e.target.value)}
+                        placeholder="Note (optionnelle)"
+                        style={{
+                          height: 26, fontSize: 11.5,
+                          border: '1px solid var(--border)', borderRadius: 4,
+                          padding: '0 6px', fontFamily: 'inherit', background: 'var(--surface)',
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePendingDoc(i)}
+                      aria-label={`Retirer ${d.file.name}`}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0,
+                      }}
+                    >
+                      <Trash style={{ width: 14, height: 14 }} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
 
         {(validationError ?? error) && (
@@ -564,8 +737,12 @@ function NewPatientPanel({
           </div>
         )}
 
-        <Button type="submit" variant="primary" disabled={isPending} style={{ marginTop: 4 }}>
-          {isPending ? 'Enregistrement…' : 'Créer le patient'}
+        <Button type="submit" variant="primary" disabled={isPending || isUploadingDocs} style={{ marginTop: 4 }}>
+          {isUploadingDocs
+            ? 'Téléversement des documents…'
+            : isPending
+            ? 'Enregistrement…'
+            : 'Créer le patient'}
         </Button>
       </form>
     </Panel>
