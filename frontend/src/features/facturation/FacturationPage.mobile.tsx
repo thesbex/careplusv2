@@ -173,6 +173,7 @@ export default function FacturationMobilePage() {
                     width: '100%',
                     textAlign: 'left',
                     background: 'transparent',
+                    border: 0,
                     borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
                     fontFamily: 'inherit',
                     font: 'inherit',

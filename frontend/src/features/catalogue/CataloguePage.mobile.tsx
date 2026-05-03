@@ -144,6 +144,7 @@ export default function CatalogueMobilePage() {
                 key={m.id}
                 className="m-row"
                 style={{
+                  border: 0,
                   borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
                 }}
               >
