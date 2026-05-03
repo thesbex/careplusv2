@@ -4,10 +4,25 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Vaccination module — Étape 4 (frontend dossier patient) shipped
-**Last update**: 2026-05-02
-**Build**: Frontend — `tsc --noEmit` clean, `vite build` green (33/33 tests). Backend — 318 tests green.
-**Next action**: Vaccination Étape 5 — page `/vaccinations` worklist (liste des doses à venir / en retard) + ParametragePage vaccination tab (paramétrage calendrier PNI). Backend endpoints for worklist already exist (Étape 3).
+**Phase**: Billing — filtres avancés + export CSV/xlsx shipped
+**Last update**: 2026-05-03
+**Build**: Backend — 33/33 billing tests green (BillingIT 11 + BillingSearchIT 11 + BillingExportIT 6 + InvoiceFilterCombinationIT 5). Frontend — 376/384 (8 pré-existants : 7 SalleAttentePage mobile, 1 DossierPage 8→9 tabs après vaccination).
+**Next action**: Vaccination Étape 5 worklist `/vaccinations` (en cours, commit `0761ad8` partiel) + corriger DossierPage.test (8→9 tabs). Voir `MEMORY.md` pour resume vaccination.
+
+### 2026-05-03 — Billing : filtres avancés + export
+
+**Shipped (3 commits)** :
+- `8d3e663 feat(billing): filtres avancés + export CSV/xlsx des factures` — backend (V023 indexes, JPA Specifications, EXISTS subqueries pour dateField=PAID + paymentMode multi, fastexcel exporter, 10000-row guard 422), frontend (popover Radix avec presets, ExportButton split CSV/xlsx, URL-sync, RBAC MEDECIN+ADMIN, mobile sans export).
+- `ac5686c test(billing): IT + spec sibling pour filtres + export factures` — 22 IT (BillingSearchIT 11 + BillingExportIT 6 + InvoiceFilterCombinationIT 5) + 12 specs frontend (FacturationPage.filters 9 + useInvoiceSearch.params 3).
+- `fd0fa4d fix(clinical): saveAndFlush sur update de PrescriptionTemplate` — bug surfacé par manual-qa du 2026-05-02 (parallel agent), avec PrescriptionTemplateExtendedIT (14 scénarios).
+
+**Bugs corrigés en QA IHM avant commit (Playwright sur localhost:5173)** :
+- axios sérialisait `status[]=` (Spring `@RequestParam List<>` attend `status=v1&status=v2`) → `paramsSerializer: { indexes: null }` sur les deux hooks. Sibling test : `useInvoiceSearch.params.test.ts`.
+- `toIso(d)` utilisait `Date.toISOString()` (UTC) → en Africa/Casablanca (UTC+1), le 1er du mois local devenait le 30 du mois précédent. Fix : composantes locales. Sibling test : assertion locale (l'ancienne version reproduisait le bug et passait).
+
+**ADR ajoutée** (déjà commit en `e8f389c`) : ADR-025 fastexcel vs Apache POI (~70× plus léger, 200 Ko vs 15 Mo, suffisant pour table plate + SUM footer).
+
+**Design doc** : `docs/plans/2026-05-02-invoice-filter-export-design.md`.
 
 > ⚠️ **Flow deviation (session 2026-04-24)** — Several UX fixes and patient module enhancements were shipped outside the planned J-day sequence in response to live product feedback. All changes are logged below. Backend tests remain green. Resume planned frontend porting next.
 
