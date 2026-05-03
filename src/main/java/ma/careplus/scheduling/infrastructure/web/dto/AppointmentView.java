@@ -6,8 +6,12 @@ import java.util.UUID;
 public record AppointmentView(
         UUID id,
         UUID patientId,
+        String patientFullName,
         UUID practitionerId,
         UUID reasonId,
+        String reasonLabel,
+        String type,
+        UUID originConsultationId,
         OffsetDateTime startAt,
         OffsetDateTime endAt,
         String status,

@@ -1,21 +1,29 @@
-/**
- * Consultation reason options.
- *
- * TODO(backend:J4): replace with TanStack Query hitting GET /api/reasons
- * and derive loading/error states. For now returns static fixtures
- * synchronously — matches the prototype exactly per ADR-021.
- */
-import { REASON_OPTIONS } from '../fixtures';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api/client';
 import type { ReasonOption } from '../types';
+
+interface ReasonApi {
+  id: string;
+  code: string;
+  label: string;
+  durationMinutes: number;
+  colorHex: string;
+}
 
 export function useReasons(): {
   reasons: ReasonOption[];
-  isLoading: false;
-  error: null;
+  isLoading: boolean;
+  error: string | null;
 } {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['reasons'],
+    queryFn: () => api.get<ReasonApi[]>('/reasons').then((r) => r.data),
+    staleTime: 5 * 60_000,
+  });
+
   return {
-    reasons: REASON_OPTIONS,
-    isLoading: false,
-    error: null,
+    reasons: (data ?? []).map((r) => ({ id: r.id, label: r.label })),
+    isLoading,
+    error: error ? 'Impossible de charger les motifs.' : null,
   };
 }

@@ -5,13 +5,24 @@
  * Mobile: renders the full-screen form page.
  * Both: jest-axe a11y check.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { PriseRDVDialog } from '../PriseRDVDialog';
 import PriseRDVMobilePage from '../PriseRDVPage.mobile';
+import { REASON_OPTIONS, MOBILE_SLOTS, AVAILABLE_SLOTS_HINT, PATIENT_SUGGESTIONS } from '../fixtures';
+
+vi.mock('../hooks/useReasons', () => ({
+  useReasons: () => ({ reasons: REASON_OPTIONS, isLoading: false, error: null }),
+}));
+vi.mock('../hooks/useAvailability', () => ({
+  useAvailability: () => ({ slots: MOBILE_SLOTS, hintText: AVAILABLE_SLOTS_HINT, isLoading: false, error: null }),
+}));
+vi.mock('../hooks/usePatientSearch', () => ({
+  usePatientSearch: () => ({ candidates: PATIENT_SUGGESTIONS, isLoading: false, error: null }),
+}));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
