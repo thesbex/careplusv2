@@ -307,3 +307,11 @@ export const Upload = (p: IconProps) => (
     <path d="M2.5 11.5v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1" />
   </Base>
 );
+
+export const Box = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2.5 5l5.5-2.5L13.5 5v7L8 14.5 2.5 12V5z" />
+    <path d="M2.5 5L8 7.5l5.5-2.5" />
+    <path d="M8 7.5V14.5" />
+  </Base>
+);

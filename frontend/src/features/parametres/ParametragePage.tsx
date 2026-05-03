@@ -41,8 +41,9 @@ const NAV_MAP = {
   consult: '/consultations',
   factu: '/facturation',
   vaccinations: '/vaccinations',
+  stock: '/stock',
   catalogue: '/catalogue',
-          params: '/parametres',
+  params: '/parametres',
 } as const;
 
 type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations';

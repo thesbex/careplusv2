@@ -79,6 +79,7 @@ export function Placeholder({ active, mobileTab, title, sub, sprintDay }: Placeh
           consult: '/consultations',
           factu: '/facturation',
           vaccinations: '/vaccinations',
+          stock: '/stock',
           catalogue: '/catalogue',
           params: '/parametres',
         };

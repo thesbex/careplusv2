@@ -61,7 +61,7 @@ export default function CongesPage() {
         const map = {
           agenda: '/agenda', patients: '/patients', salle: '/salle',
           consult: '/consultations', factu: '/facturation', vaccinations: '/vaccinations',
-          catalogue: '/catalogue', params: '/parametres',
+          stock: '/stock', catalogue: '/catalogue', params: '/parametres',
         } as const;
         navigate(map[id]);
       }}

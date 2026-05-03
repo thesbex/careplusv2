@@ -29,6 +29,7 @@ const NAV_MAP = {
   consult: '/consultations',
   factu: '/facturation',
   vaccinations: '/vaccinations',
+  stock: '/stock',
   catalogue: '/catalogue',
   params: '/parametres',
 } as const;
