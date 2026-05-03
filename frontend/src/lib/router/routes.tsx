@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import LandingPage from '@/features/landing/LandingPage';
 import LoginPage from '@/features/login/LoginRoute';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
@@ -46,7 +47,14 @@ const future = {
 
 export const router = createBrowserRouter(
   [
-    { path: '/', element: <Navigate to="/login" replace /> },
+    {
+      path: '/',
+      element: (
+        <GuestOnly>
+          <LandingPage />
+        </GuestOnly>
+      ),
+    },
     {
       path: '/login',
       element: (
@@ -196,7 +204,7 @@ export const router = createBrowserRouter(
         </RequireAuth>
       ),
     },
-    { path: '*', element: <Navigate to="/login" replace /> },
+    { path: '*', element: <Navigate to="/" replace /> },
   ],
   { future },
 );
