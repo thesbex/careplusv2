@@ -22,6 +22,11 @@
  *      sans recharger la page (rapport Y. Boutaleb 2026-05-01)
  *   9. SECRETAIRE ne voit PAS le bouton « Importer CSV » (gate front) — et
  *      même en POST direct, le backend retourne 403 (gate Spring Security)
+ *  10. Mobile : la création de patient depuis le FAB « + » crée bien le
+ *      dossier (POST /patients) et navigue vers le dossier (avant 2026-05-02
+ *      ce flow était desktop-only)
+ *  11. Mobile : l'icône crayon du dossier ouvre la sheet d'édition,
+ *      le PUT /patients/:id passe et l'UI reflète la nouvelle valeur
  *
  * Pré-requis : Spring Boot + Vite up, dev profile (cf. playwright.config.ts).
  *
@@ -377,6 +382,98 @@ test.describe('IHM regressions — 2026-05-01 manual QA findings', () => {
       timeout: 10_000,
     });
     await expect(page.getByRole('button', { name: /Importer CSV/i })).toHaveCount(0);
+  });
+
+  test('10. Mobile: « Nouveau patient » FAB creates a patient and navigates to dossier', async ({ page, isMobile, request }) => {
+    // Avant 2026-05-02 la création de patient n'existait pas sur mobile —
+    // le FAB + et la NewPatientMobileSheet sont nouveaux. On valide que :
+    //   1. le FAB est visible pour MEDECIN
+    //   2. la sheet ouvre et accepte la saisie
+    //   3. le POST /patients passe
+    //   4. l'app navigue vers /patients/:id
+    test.skip(!isMobile, 'mobile-only flow — desktop has its own NewPatientPanel');
+
+    await uiLogin(page, USERS.medecin.email, USERS.medecin.password);
+    await page.goto('/patients');
+
+    const fab = page.getByRole('button', { name: /Nouveau patient/i });
+    await expect(fab).toBeVisible({ timeout: 10_000 });
+    await fab.click();
+
+    // Sheet opens — title visible
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    const stamp = Date.now().toString().slice(-6);
+    const firstName = `QAFirst${stamp}`;
+    const lastName = `QALast${stamp}`;
+
+    await page.getByLabel('Prénom *').fill(firstName);
+    await page.getByLabel('Nom *').fill(lastName);
+    await page.getByLabel('Date de naissance *').fill('1985-06-15');
+    await page.getByLabel('Téléphone *').fill('+212 6 00 00 00 00');
+
+    // Submit creates the patient + navigates to the dossier
+    await page.getByRole('button', { name: /Créer le patient/i }).click();
+
+    await expect(page).toHaveURL(/\/patients\/[a-f0-9-]+$/i, { timeout: 10_000 });
+    await expect(page.getByText(`${firstName} ${lastName}`)).toBeVisible({ timeout: 10_000 });
+
+    // Backend persisted the row — the search endpoint returns it.
+    const { accessToken } = await apiLogin(request, USERS.medecin.email, USERS.medecin.password);
+    const api = await authedApi(accessToken);
+    const matches = await api.get(`/patients?q=${firstName}`).then((r) => r.json() as Promise<{ content?: { id: string }[] } | { id: string }[]>);
+    const list = Array.isArray(matches) ? matches : matches.content ?? [];
+    expect(list.length, `patient ${firstName} should be in /patients?q=`).toBeGreaterThan(0);
+  });
+
+  test('11. Mobile: pencil-icon edit sheet persists changes via PUT /patients/:id', async ({ page, isMobile, request }) => {
+    test.skip(!isMobile, 'mobile-only flow — desktop has its own EditPatientPanel');
+
+    // Seed a patient via the API so the test is self-contained.
+    const { accessToken } = await apiLogin(request, USERS.medecin.email, USERS.medecin.password);
+    const api = await authedApi(accessToken);
+    const stamp = Date.now().toString().slice(-6);
+    const seedFirst = `EditQA${stamp}`;
+    const seedLast = `Patient${stamp}`;
+    const created = await api
+      .post('/patients', {
+        data: {
+          firstName: seedFirst,
+          lastName: seedLast,
+          gender: 'M',
+          birthDate: '1990-01-01',
+          phone: '+212 6 11 22 33 44',
+          city: 'Casablanca',
+          tier: 'NORMAL',
+        },
+      })
+      .then((r) => r.json() as Promise<{ id: string }>);
+    expect(created.id, 'seed patient created').toBeTruthy();
+
+    await uiLogin(page, USERS.medecin.email, USERS.medecin.password);
+    await page.goto(`/patients/${created.id}`);
+
+    // Topbar pencil icon (right slot, aria-label "Modifier le patient").
+    const editBtn = page.getByRole('button', { name: /Modifier le patient/i });
+    await expect(editBtn).toBeVisible({ timeout: 10_000 });
+    await editBtn.click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+
+    // Change the city — phone is required, leaving it empty would block submit.
+    const newCity = 'Rabat';
+    await page.getByLabel('Ville').fill(newCity);
+    await page.getByRole('button', { name: /^Enregistrer$/ }).click();
+
+    // Wait for the success toast / saved hint, then for the sheet to auto-close.
+    await expect(page.getByText(/Modifications enregistrées/i)).toBeVisible({ timeout: 5_000 });
+
+    // Backend reflects the change.
+    const reread = await api.get(`/patients/${created.id}`).then((r) => r.json() as Promise<{ city?: string }>);
+    expect(reread.city ?? '').toBe(newCity);
+
+    // Cleanup so reruns stay green.
+    await api.delete(`/patients/${created.id}`);
   });
 
   test.fixme(

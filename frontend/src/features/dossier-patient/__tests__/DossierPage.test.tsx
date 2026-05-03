@@ -185,7 +185,14 @@ function renderMobileDossier() {
     ],
     { initialEntries: ['/patients/PT-00482'] },
   );
-  return render(<RouterProvider router={router} />);
+  // DossierPage.mobile rend EditPatientMobileSheet, qui utilise useMutation
+  // (useUpdatePatient + usePatientPhoto) — donc on a besoin d'un QueryClient.
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 describe('<DossierMobilePage />', () => {
@@ -235,6 +242,21 @@ describe('<DossierMobilePage />', () => {
   it('renders Antécédents info card', () => {
     renderMobileDossier();
     expect(screen.getByText('HTA (2018), Dyslipidémie')).toBeInTheDocument();
+  });
+
+  it('opens the EditPatientMobileSheet from the topbar pencil icon', async () => {
+    // Avant 2026-05-02 il n'y avait aucun bouton « Modifier » sur mobile.
+    // Le crayon dans le right-slot du MTopbar ouvre la sheet pré-remplie.
+    const user = userEvent.setup();
+    renderMobileDossier();
+    const editBtn = screen.getByRole('button', { name: /Modifier le patient/i });
+    expect(editBtn).toBeInTheDocument();
+    await user.click(editBtn);
+
+    // La sheet se monte (radix Dialog → role="dialog") avec les champs pré-remplis.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const phoneInput = screen.getByLabelText('Téléphone *');
+    expect((phoneInput as HTMLInputElement).value.length).toBeGreaterThan(0);
   });
 
   it('has no a11y violations', async () => {

@@ -96,8 +96,27 @@ describe('<PatientsListMobilePage /> — NRG', () => {
     expect(screen.getByText('Dossier')).toBeInTheDocument();
   });
 
-  it('shows the desktop-creation hint message', () => {
+  it('exposes the « Nouveau patient » FAB to authorised users', () => {
+    // Avant 2026-05-01 la création n'était pas faisable depuis mobile :
+    // seul un message « la création se fait sur desktop » était rendu. Avec
+    // NewPatientMobileSheet la création est désormais possible via le FAB +.
     renderPage();
-    expect(screen.getByText(/création de patient se fait depuis la version desktop/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nouveau patient/i })).toBeInTheDocument();
+  });
+
+  it('points to the desktop variant for the dense fields (allergies, mutuelle, …)', () => {
+    renderPage();
+    expect(screen.getByText(/version desktop/i)).toBeInTheDocument();
+  });
+
+  it('opens the NewPatientMobileSheet when the FAB is tapped', () => {
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /Nouveau patient/i }));
+    // La sheet est portal'ed via radix Dialog. Le rôle dialog + les champs
+    // requis suffisent à prouver qu'elle s'est bien montée.
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('Prénom *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Téléphone *')).toBeInTheDocument();
+    expect(screen.getByLabelText('Date de naissance *')).toBeInTheDocument();
   });
 });
