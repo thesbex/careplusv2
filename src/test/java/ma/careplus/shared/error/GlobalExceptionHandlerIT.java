@@ -159,4 +159,16 @@ class GlobalExceptionHandlerIT {
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.supported").isArray());
     }
+
+    @Test
+    @DisplayName("7. JSON malformé / encodage cassé → 400 BODY_UNREADABLE (pas 500)")
+    void malformedBody_returns400() throws Exception {
+        // JSON syntaxiquement invalide (accolade non fermée).
+        mockMvc.perform(post("/api/patients")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Bad"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BODY_UNREADABLE"));
+    }
 }

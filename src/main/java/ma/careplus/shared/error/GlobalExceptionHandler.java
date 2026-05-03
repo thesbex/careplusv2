@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -177,6 +178,25 @@ public class GlobalExceptionHandler {
         pd.setProperty("code", "PARAM_INVALID");
         pd.setProperty("parameter", ex.getName());
         pd.setProperty("expectedType", required);
+        pd.setProperty("timestamp", OffsetDateTime.now());
+        pd.setProperty("correlationId", MDC.get("correlationId"));
+        return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);
+    }
+
+    /**
+     * Corps de requête illisible : JSON malformé, encodage invalide
+     * (UTF-8 cassé), media-type incompatible. C'est une erreur client,
+     * pas serveur. Trouvé en QA manuelle 2026-05-01 sur POST
+     * /api/consultations/{id}/prescriptions avec un body curl mal encodé.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ProblemDetail> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest req) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "Corps de requête illisible (JSON malformé ou encodage invalide).");
+        pd.setType(URI.create("https://careplus.ma/errors/BODY_UNREADABLE"));
+        pd.setTitle("BODY_UNREADABLE");
+        pd.setInstance(URI.create(req.getRequestURI()));
+        pd.setProperty("code", "BODY_UNREADABLE");
         pd.setProperty("timestamp", OffsetDateTime.now());
         pd.setProperty("correlationId", MDC.get("correlationId"));
         return ResponseEntity.badRequest().contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);

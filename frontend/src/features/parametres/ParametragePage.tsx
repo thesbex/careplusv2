@@ -610,6 +610,8 @@ const PERMISSIONS: { code: string; label: string; category: string }[] = [
   // QA5-1 — administre les sources d'import auto + valide / rejette les
   // documents arrivés dans la corbeille. Distincte de l'upload manuel.
   { code: 'DOCUMENT_IMPORT_ADMIN', label: "Administrer l'import auto de documents", category: 'Documents' },
+  // V016 — administre le catalogue des prestations (CRUD + tarifs).
+  { code: 'PRESTATION_ADMIN', label: 'Administrer le catalogue des prestations', category: 'Prestations' },
 ];
 
 const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [
