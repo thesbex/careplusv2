@@ -849,6 +849,7 @@ export default function PatientsListPage() {
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          vaccinations: '/vaccinations',
           catalogue: '/catalogue',
           params: '/parametres',
         } as const;

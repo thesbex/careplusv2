@@ -16,8 +16,9 @@ const NAV_MAP = {
   salle: '/salle',
   consult: '/consultations',
   factu: '/facturation',
+  vaccinations: '/vaccinations',
   catalogue: '/catalogue',
-          params: '/parametres',
+  params: '/parametres',
 } as const;
 
 function formatMad(n: number): string {

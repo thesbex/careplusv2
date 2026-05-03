@@ -91,6 +91,7 @@ export default function SalleAttentePage() {
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          vaccinations: '/vaccinations',
           catalogue: '/catalogue',
           params: '/parametres',
         } as const;

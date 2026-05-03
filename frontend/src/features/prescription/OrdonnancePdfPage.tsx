@@ -59,6 +59,7 @@ export default function OrdonnancePdfPage() {
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
+          vaccinations: '/vaccinations',
           catalogue: '/catalogue',
           params: '/parametres',
         } as const;
