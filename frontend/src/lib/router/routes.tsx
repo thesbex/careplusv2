@@ -3,6 +3,7 @@ import LoginPage from '@/features/login/LoginPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
 import DossierRoute from '@/features/dossier-patient';
+import PatientsListPage from '@/features/dossier-patient/PatientsListPage';
 import SalleAttenteRoute from '@/features/salle-attente';
 import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import PriseConstantesRoute from '@/features/prise-constantes';
@@ -60,7 +61,7 @@ export const router = createBrowserRouter(
       path: '/patients',
       element: (
         <RequireAuth>
-          <DossierRoute />
+          <PatientsListPage />
         </RequireAuth>
       ),
     },
