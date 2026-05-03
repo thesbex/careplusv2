@@ -32,6 +32,7 @@ import { useDeleteLeave } from './hooks/useDeleteLeave';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
+import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -46,7 +47,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'cabinet', label: 'Cabinet' },
@@ -57,6 +58,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'conges', label: 'Congés' },
   { id: 'droits', label: 'Droits d’accès' },
   { id: 'vaccinations', label: 'Vaccinations' },
+  { id: 'stock', label: 'Stock' },
 ];
 
 const EMPTY_FORM: ClinicSettingsForm = {
@@ -785,6 +787,7 @@ export default function ParametragePage() {
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}
         {tab === 'vaccinations' && <VaccinationParamTab />}
+        {tab === 'stock' && <StockParamTab />}
       </div>
     </Screen>
   );

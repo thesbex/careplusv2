@@ -7,7 +7,9 @@ export { useStockAlertsCount } from './hooks/useStockAlertsCount';
 export { useStockAlerts } from './hooks/useStockAlerts';
 export { useStockSuppliers } from './hooks/useStockSuppliers';
 export { useUpsertArticle } from './hooks/useUpsertArticle';
+export { useUpsertSupplier } from './hooks/useUpsertSupplier';
 export { useDeactivateArticle } from './hooks/useDeactivateArticle';
+export { useDeactivateSupplier } from './hooks/useDeactivateSupplier';
 export { useRecordMovement } from './hooks/useRecordMovement';
 export { useInactivateLot } from './hooks/useInactivateLot';
 
@@ -16,6 +18,7 @@ export { MovementDrawer } from './components/MovementDrawer';
 export { MovementDrawerMobile } from './components/MovementDrawer.mobile';
 export { StockArticleFormDrawer } from './components/StockArticleFormDrawer';
 export { LotInactivateDialog } from './components/LotInactivateDialog';
+export { StockParamTab } from './components/StockParamTab';
 
 // ── Pages ────────────────────────────────────────────────────────────────────
 export { default as StockArticlesRoute } from './StockArticlesRoute';
@@ -41,4 +44,5 @@ export type { MovementValues, UpsertArticleValues, UpsertSupplierValues } from '
 export type { StockArticlesFilters } from './hooks/useStockArticles';
 export type { StockMovementsFilters } from './hooks/useStockMovements';
 export type { UpsertArticleBody } from './hooks/useUpsertArticle';
+export type { UpsertSupplierBody } from './hooks/useUpsertSupplier';
 export type { RecordMovementBody } from './hooks/useRecordMovement';
