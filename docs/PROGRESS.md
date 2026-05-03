@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Sprint MVP, J5 complete
+**Phase**: Sprint MVP, J6 complete
 **Last update**: 2026-04-24
-**Build**: `BUILD SUCCESS` — 51 integration tests green (Testcontainers + Postgres 16)
-**Next action**: J6 — prescriptions module (clinical_prescription, PDF generation via Thymeleaf + openhtmltopdf)
+**Build**: `BUILD SUCCESS` — 60 integration tests green (Testcontainers + Postgres 16)
+**Next action**: J7 — billing module (invoice, payment, credit note, ConsultationSigneeEvent → invoice draft)
 
 ## Session log
 
@@ -90,6 +90,29 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **State**: `mvn clean verify` → `BUILD SUCCESS`, 51 tests / 0 failures / 0 errors.
 
 **Next action**: J6 — prescriptions (clinical_prescription + PDF); catalog search endpoints.
+
+**Blockers**: none.
+
+### 2026-04-24 — J6 catalog + prescriptions module shipped
+
+**Shipped:**
+- `V004__catalog_prescription.sql` — adds `type` column to `catalog_act`; creates `catalog_tariff` table with tier-based temporal history (UNIQUE(act_id, tier, effective_from)); adds `patient_id`, `allergy_override`, `allergy_override_reason` to `clinical_prescription`; adds `medication_id`, `lab_test_id`, `imaging_exam_id`, `dosage`, `quantity`, `instructions`, `sort_order`, `updated_at` columns to `clinical_prescription_line`.
+- `ma.careplus.catalog.domain` — `Act`, `Tariff`, `Medication`, `Prescription`, `PrescriptionLine` JPA entities, `PrescriptionType` enum.
+- `ma.careplus.catalog.infrastructure.persistence` — `ActRepository`, `TariffRepository` (findEffectiveTariff JPQL, findOpenTariffs), `MedicationRepository` (searchByNameOrDci native), `PrescriptionRepository`, `PrescriptionLineRepository`.
+- `ma.careplus.catalog.application.CatalogService` — CRUD acts, tariff lifecycle (close previous open tariff on new insert), medication search (ILIKE on commercial_name/dci).
+- `ma.careplus.catalog.application.PrescriptionService` — createPrescription (status=BROUILLON guard, allergy check for DRUG type via PatientService public API, AllergyConflictException if conflict + override=false), getPrescription, getPrescriptionsByConsultation, getLinesForPrescription.
+- `ma.careplus.catalog.application.AllergyConflictException` — 422 mapped in GlobalExceptionHandler with RFC 7807-style body `{type,title,medication,allergy,status}`.
+- `ma.careplus.catalog.application.PrescriptionPdfService` — Thymeleaf + openhtmltopdf + jsoup (HTML5 → W3C DOM → PDF) for ordonnance generation; cabinet settings from `configuration_clinic_settings` with dev fallback.
+- `src/main/resources/templates/ordonnance.html` — Thymeleaf ordonnance template (cabinet header, patient box, prescription lines, allergy warning, signature area).
+- `ma.careplus.catalog.infrastructure.web.CatalogController` — acts CRUD + tariff endpoints + medication search.
+- `ma.careplus.catalog.infrastructure.web.PrescriptionController` — prescriptions CRUD + PDF endpoint.
+- `CatalogIT` — 9 tests: createAct, deactivateAct, addTariff, addNewTariff closes old one, medication search, DRUG prescription creation, allergy conflict 422, allergy override saved, PDF bytes non-empty with %PDF magic.
+- Fixed pre-existing `PatientIT` failures: `phone` field was `@NotBlank` in `CreatePatientRequest` but tests didn't send phone → removed `@NotBlank` (phone is optional for medical workflow; patient may only have an emergency contact).
+- Added jsoup 1.17.2 to pom.xml (HTML5 parsing for PDF generation; existing transitive version promoted to explicit dep).
+
+**State**: `mvn clean verify` → `BUILD SUCCESS`, 60 tests / 0 failures / 0 errors. All prior modules green.
+
+**Next action**: J7 — billing module. `ConsultationSigneeEvent` listener creates draft invoice. Invoice CRUD, issue (sequential number), payment, credit note, PDF.
 
 **Blockers**: none.
 
