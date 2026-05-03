@@ -66,7 +66,10 @@ export default function ConsultationPage() {
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, error, update, isSaving, lastSavedAt } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
-  const { vitals } = useLatestVitals(consultation?.patientId);
+  // Constantes scope = LA consultation en cours uniquement. Une visite
+  // antérieure ne pollue pas la bannière courante : nouvelle consultation
+  // = bilan neuf, dialog vide.
+  const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
   const { invoice } = useInvoiceByConsultation(id);

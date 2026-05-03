@@ -34,7 +34,20 @@ function hasAnyMeasurement(v: VitalsApi): boolean {
   );
 }
 
-export function useLatestVitals(patientId?: string): {
+/**
+ * Constantes de LA consultation en cours uniquement (pas l'historique du
+ * patient). Comportement médicalement correct : chaque visite a ses propres
+ * constantes — celles d'il y a deux semaines ne sont pas "actuelles". Si
+ * aucune mesure n'a encore été prise pour cette consultation, retourne null
+ * (le médecin saisit alors un bilan neuf, dialog vide).
+ *
+ * L'historique longitudinal reste consultable dans le dossier patient
+ * (onglet "Constantes") — il agrège toutes les visites pour les courbes.
+ */
+export function useLatestVitals(
+  patientId?: string,
+  consultationId?: string,
+): {
   vitals: VitalsApi | null;
   isLoading: boolean;
 } {
@@ -45,13 +58,13 @@ export function useLatestVitals(patientId?: string): {
     staleTime: 30_000,
   });
 
-  // Le backend renvoie l'historique complet (toutes consultations confondues),
-  // déjà ordonné DESC par recordedAt. On retourne le dernier enregistrement
-  // qui contient *au moins* une mesure : ainsi un patient avec des constantes
-  // d'une consultation antérieure les verra dans la nouvelle, et d'éventuels
-  // records pollués (tous champs null, créés avant le pré-remplissage) sont
-  // ignorés sans casser l'audit trail.
-  const vitals = data?.find(hasAnyMeasurement) ?? null;
+  // Filtre par consultation courante quand l'ID est connu — sinon on retombe
+  // sur "dernière mesure non vide du patient" (utilisé hors contexte de
+  // consultation, ex. salle d'attente ou badge dossier).
+  const scoped = consultationId
+    ? data?.filter((v) => v.consultationId === consultationId)
+    : data;
+  const vitals = scoped?.find(hasAnyMeasurement) ?? null;
 
   return { vitals, isLoading };
 }

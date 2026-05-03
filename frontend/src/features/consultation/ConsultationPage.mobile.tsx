@@ -60,7 +60,7 @@ export default function ConsultationMobilePage() {
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, update, isSaving } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
-  const { vitals } = useLatestVitals(consultation?.patientId);
+  const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
