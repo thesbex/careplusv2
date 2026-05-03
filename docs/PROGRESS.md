@@ -4,10 +4,30 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Grossesse — Étape 2 livrée (visites obstétricales + échographies + correction DPA T1)
+**Phase**: Grossesse — Étape 3 livrée (alertes + worklist + bio-panel template)
 **Last update**: 2026-05-03
-**Build**: Backend — 16/16 PregnancyVisitIT + PregnancyUltrasoundIT verts (10 + 6). Étape 1 IT (15) non régressés. Régression complète à lancer avant commit.
-**Next action**: Étape 3 — `PregnancyAlertService` (7 règles hardcodées : HTA, GAJ, HGPO, terme dépassé, absence visite T3, BCF absent, BU positive) + `PregnancyQueueService` (worklist paginée) + bio-panel template + `PregnancyAlertIT` (5) + `PregnancyQueueIT` (4).
+**Build**: Backend — 45/45 Pregnancy*IT verts (15 Declare + 10 Visit + 6 Ultrasound + 5 Alert + 4 Queue + 5 BioPanel). Pas de régression sur Étapes 1-2.
+**Next action**: Étape 4 — Frontend slice `features/grossesse/` (14 hooks + types + schemas zod + onglet Dossier desktop + mobile 390 px + `PregnancyVisitDrawer` + `PregnancyUltrasoundDrawer` + dialogs).
+
+### 2026-05-03 — Grossesse Étape 3 (alertes + worklist + bio-panel template)
+
+**Shipped (no new migration — Étape 3 is pure query)**:
+- Application : `PregnancyAlertService` (interface + `PregnancyAlertServiceImpl`) — 7 règles hardcodées : HTA_GRAVIDIQUE (TA ≥ 140/90), GAJ_GLUCOSE_URINAIRE (glycosurie BU), TERME_DEPASSE (today > dueDate + 7 j), NO_VISIT_T3 (pas de visite depuis > 6 sem à SA ≥ 28), BCF_ABSENT (BCF null/0 à SA ≥ 12), BU_POSITIVE (protéines/leuco/nitrites). HGPO_POSITIVE = TODO v2. `countActiveAlerts()` + `countByPregnancy(ids)` batch pour worklist.
+- Application : `PregnancyQueueService` (interface + `PregnancyQueueServiceImpl`) — worklist paginée EN_COURS, SA décroissant, filtres trimestre/withAlerts/q. Réutilise `PageView<T>` de Vaccination. Cross-module `PatientRepository` (même exception acceptée que VaccinationQueueServiceImpl).
+- Application : `PregnancyBioPanelService` (interface + `PregnancyBioPanelServiceImpl`) — templates T1/T2/T3 per PSGA. Lookup `catalog_lab_test` via `JdbcTemplate` (cross-module sans entité JPA). Fallback free-text si code absent du catalogue (ex : STREPTO_B). 422 `INVALID_TRIMESTER` si trimestre invalide.
+- Persistence : `PregnancyVisitRepository` étendu — `countByPregnancyIdAndRecordedAtAfter()` (JPQL) pour règle NO_VISIT_T3. `PregnancyRepository` étendu — `findByStatus()` pour `countActiveAlerts()`.
+- Web : `PregnancyAlertController` (2 endpoints), `PregnancyQueueController` (1 endpoint), `PregnancyBioPanelController` (1 endpoint) — 3 sous-contrôleurs cohérents avec le split Vaccination/Stock.
+- IT : `PregnancyAlertIT` 5/5 + `PregnancyQueueIT` 4/4 + `PregnancyBioPanelIT` 5/5.
+
+**Décisions prises** :
+- Contrôleurs séparés (AlertController + QueueController + BioPanelController) par analogie avec `StockAlertController` + `VaccinationQueueController`.
+- Stratégie alertes : boucle par grossesse (N=10-50 grossesses actives au cabinet, acceptable MVP). Post-MVP : native SQL aggregate si dégradation.
+- Bio-panel : inline `Map<String, String>` + `JdbcTemplate` vers `catalog_lab_test` (pas d'entité catalog dans le module pregnancy). Fallback free-text si code absent.
+- `countActiveAlerts()` = grossesses EN_COURS avec ≥ 1 alerte (pas somme des alertes), cohérent avec le badge sidebar "N gestantes à surveiller".
+
+**State**: `mvn test -Dtest='Pregnancy*IT'` → 45/45 green, ~79 s total.
+**Next action**: Étape 4 — Frontend grossesse.
+**Blockers**: none.
 
 ### 2026-05-03 — Grossesse Étape 2 (visites obstétricales + échographies)
 

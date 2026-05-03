@@ -20,4 +20,7 @@ public interface PregnancyRepository extends JpaRepository<Pregnancy, UUID> {
 
     /** Convenience: returns the unique active pregnancy for a patient (at most 1 EN_COURS enforced at service layer). */
     Optional<Pregnancy> findFirstByPatientIdAndStatus(UUID patientId, PregnancyStatus status);
+
+    /** All pregnancies with a given status — used by alert service for countActiveAlerts batch. */
+    List<Pregnancy> findByStatus(PregnancyStatus status);
 }

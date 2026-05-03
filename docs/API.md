@@ -214,7 +214,7 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 `StockLotWithArticleView` : `{lotId, lotNumber, expiresOn, quantity, daysUntilExpiry, articleId, articleCode, articleLabel, articleCategory}`.
 
-## pregnancy — Étapes 1+2 (2026-05-03) 🔧 (Étapes 3-6 à venir)
+## pregnancy — Étapes 1+2+3 (2026-05-03) 🔧 (Étapes 4-6 à venir)
 
 ### Grossesses — patient-scoped
 
@@ -249,7 +249,24 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 `PregnancyVisitView` : `{id, pregnancyId, visitPlanId, consultationId, recordedAt, saWeeks, saDays, weightKg, bpSystolic, bpDiastolic, urineDipJson, fundalHeightCm, fetalHeartRateBpm, fetalMovementsPerceived, presentation, notes, recordedBy, version}`.
 `UltrasoundView` : `{id, pregnancyId, kind, performedAt, saWeeksAtExam, saDaysAtExam, findings, documentId, biometryJson, correctsDueDate, recordedBy, version, createdAt}`.
 
-**Étapes 3-6 à venir** : alertes + worklist + bio-panel template, frontend.
+### Alertes obstétricales (Étape 3)
+
+- `GET /api/pregnancies/{id}/alerts` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste des alertes actives pour une grossesse (0–7 items). Évalue 7 règles hardcodées OMS + PSGA : HTA_GRAVIDIQUE, GAJ_GLUCOSE_URINAIRE, TERME_DEPASSE, NO_VISIT_T3, BCF_ABSENT, BU_POSITIVE (HGPO_POSITIVE = TODO v2). Retourne `List<PregnancyAlertView>`.
+- `GET /api/pregnancies/alerts/count` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — `{withActiveAlerts: int}` nombre de grossesses EN_COURS avec ≥ 1 alerte. Pour badge sidebar (polling 30 s).
+
+### Worklist grossesses (Étape 3)
+
+- `GET /api/pregnancies/queue` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — worklist paginée des grossesses EN_COURS, triée SA décroissant. Filtres : `?trimester=T1|T2|T3&withAlerts=true&q=nom&page=0&size=20`. Retourne `PageView<PregnancyQueueEntry>`.
+
+### Bio-panel template (Étape 3)
+
+- `GET /api/pregnancies/{id}/bio-panel-template?trimester=T1` — MEDECIN/ADMIN — template de prescription biologique prénatal par trimestre (PSGA Min Santé Maroc). Retourne `BioPanelTemplate`. Erreur : 422 `INVALID_TRIMESTER` si trimestre ≠ T1/T2/T3.
+
+`PregnancyAlertView` : `{code, label, severity /* INFO|WARN|CRITICAL */, since}`.
+`PregnancyQueueEntry` : `{pregnancyId, patientId, patientLastName, patientFirstName, lmpDate, dueDate, saWeeks, trimester, lastVisitAt, alertCount}`.
+`BioPanelTemplate` : `{pregnancyId, trimester, lines: [{catalogCode?, label, prescription?}]}`.
+
+**Étapes 4-6 à venir** : frontend onglet dossier + worklist, manual QA, docs finaux.
 
 ## Actuator & meta (J1) ✅
 
