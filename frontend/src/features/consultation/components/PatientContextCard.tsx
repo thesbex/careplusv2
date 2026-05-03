@@ -3,7 +3,7 @@
  * Receives patient summary + latest vitals; renders skeleton while loading.
  */
 import { Panel } from '@/components/ui/Panel';
-import { Warn } from '@/components/icons';
+import { Warn, Plus } from '@/components/icons';
 import type { PatientSummary } from '@/features/dossier-patient/types';
 import type { VitalsApi } from '../hooks/useLatestVitals';
 
@@ -150,9 +150,15 @@ export function PatientContextCard({
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <SectionH>Constantes {vitalsTime ?? '—'}</SectionH>
+            <SectionH>Constantes {vitalsTime ? `· ${vitalsTime}` : ''}</SectionH>
           </div>
-          {canRecordVitals && onRecordVitals && (
+          {/*
+            Action button — "Saisir" plein quand aucune constante n'a été
+            prise pour CETTE consultation, "Modifier" discret quand elle a
+            déjà été remplie. Évite que le médecin ne re-sauvegarde par
+            mégarde des valeurs d'une visite antérieure.
+          */}
+          {canRecordVitals && onRecordVitals && vitals && (
             <button
               type="button"
               onClick={onRecordVitals}
@@ -163,14 +169,42 @@ export function PatientContextCard({
                 marginBottom: 6,
               }}
             >
-              {vitals ? 'Mettre à jour' : 'Saisir'}
+              Modifier
             </button>
           )}
         </div>
         <Panel>
           <div style={{ padding: '10px 12px', fontSize: 12 }}>
             {!vitals && (
-              <div style={{ color: 'var(--ink-3)' }}>Aucune constante enregistrée.</div>
+              <>
+                <div style={{ color: 'var(--ink-3)', marginBottom: 8 }}>
+                  Aucune constante prise pour cette consultation.
+                </div>
+                {canRecordVitals && onRecordVitals && (
+                  <button
+                    type="button"
+                    onClick={onRecordVitals}
+                    style={{
+                      width: '100%',
+                      background: 'var(--primary)',
+                      color: 'var(--primary-ink, #fff)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '6px 10px',
+                      borderRadius: 4,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <Plus aria-hidden="true" /> Saisir les constantes
+                  </button>
+                )}
+              </>
             )}
             {vitals && (
               <>
