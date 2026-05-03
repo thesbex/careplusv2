@@ -56,7 +56,15 @@ export function RequirePermission({
   // permissions) keep the old role-based behaviour. The check kicks in only
   // once the backend starts populating the field.
   if (userPerms != null && !userPerms.includes(permission)) {
-    return <Navigate to="/agenda" replace />;
+    // Pick a safe fallback so we don't infinite-loop when the redirect
+    // target itself requires a permission the user doesn't have. /agenda is
+    // the default landing page; if the user lacks even APPOINTMENT_READ,
+    // bounce to /login (force re-auth).
+    const fallback = userPerms.includes('APPOINTMENT_READ') ? '/agenda' : '/login';
+    if (fallback === location.pathname) {
+      return <>{children}</>; // shouldn't happen but guard against the loop anyway
+    }
+    return <Navigate to={fallback} replace />;
   }
   return <>{children}</>;
 }

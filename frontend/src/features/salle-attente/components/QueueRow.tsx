@@ -31,6 +31,8 @@ interface QueueRowProps {
   onStartConsult?: (entry: QueueEntry) => void;
   onOpenConsult?: (entry: QueueEntry) => void;
   busy?: boolean;
+  /** When false, the "Prendre constantes" CTA is hidden (QA3-3 VITALS_RECORD). */
+  canRecordVitals?: boolean;
 }
 
 export function QueueRow({
@@ -39,6 +41,7 @@ export function QueueRow({
   onStartConsult,
   onOpenConsult,
   busy,
+  canRecordVitals = true,
 }: QueueRowProps) {
   const waitedAmber = p.waited.includes('25');
 
@@ -103,7 +106,7 @@ export function QueueRow({
 
       <td className="sa-td sa-td-actions">
         <div className="sa-actions-group">
-          {p.status === 'arrived' && p.appointmentId && (
+          {p.status === 'arrived' && p.appointmentId && canRecordVitals && (
             <Button
               size="sm"
               variant="primary"

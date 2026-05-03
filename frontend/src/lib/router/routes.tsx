@@ -56,25 +56,25 @@ export const router = createBrowserRouter(
     {
       path: '/agenda',
       element: (
-        <RequireAuth>
+        <RequirePermission permission="APPOINTMENT_READ">
           <AgendaRoute />
-        </RequireAuth>
+        </RequirePermission>
       ),
     },
     {
       path: '/patients',
       element: (
-        <RequireAuth>
+        <RequirePermission permission="PATIENT_READ">
           <PatientsListPage />
-        </RequireAuth>
+        </RequirePermission>
       ),
     },
     {
       path: '/patients/:id',
       element: (
-        <RequireAuth>
+        <RequirePermission permission="PATIENT_READ">
           <DossierRoute />
-        </RequireAuth>
+        </RequirePermission>
       ),
     },
     {

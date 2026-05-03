@@ -78,16 +78,20 @@ export function PatientHeader({
         <Button>
           <Print /> Imprimer
         </Button>
-        <Button onClick={onEdit}>
-          <Edit /> Modifier
-        </Button>
-        <Button
-          variant="primary"
-          onClick={onNewConsultation}
-          disabled={!onNewConsultation || isStartingConsult}
-        >
-          <Plus /> {isStartingConsult ? 'Démarrage…' : 'Nouvelle consultation'}
-        </Button>
+        {onEdit && (
+          <Button onClick={onEdit}>
+            <Edit /> Modifier
+          </Button>
+        )}
+        {onNewConsultation && (
+          <Button
+            variant="primary"
+            onClick={onNewConsultation}
+            disabled={isStartingConsult}
+          >
+            <Plus /> {isStartingConsult ? 'Démarrage…' : 'Nouvelle consultation'}
+          </Button>
+        )}
       </div>
 
       {/* Alerts strip */}

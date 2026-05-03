@@ -15,6 +15,7 @@ import {
   type AntecedentType,
 } from './hooks/useCreatePatient';
 import { useInsurances } from './hooks/useInsurances';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 function Lbl({ children }: { children: React.ReactNode }) {
   return <div style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', marginBottom: 4 }}>{children}</div>;
@@ -576,6 +577,11 @@ export default function PatientsListPage() {
   const [q, setQ] = useState('');
   const [showNew, setShowNew] = useState(false);
   const { patients, total, isLoading, error } = usePatientList(q);
+  // QA3-3 v1 — backward-compat: legacy sessions without `permissions` keep
+  // the previous behaviour. Once the backend populates the field, the gate
+  // engages.
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
 
   return (
     <Screen
@@ -611,9 +617,11 @@ export default function PatientsListPage() {
                 aria-label="Rechercher un patient"
               />
             </div>
-            <Button onClick={() => setShowNew((v) => !v)} style={{ flexShrink: 0 }} aria-pressed={showNew}>
-              <Plus /> Nouveau patient
-            </Button>
+            {canCreatePatient && (
+              <Button onClick={() => setShowNew((v) => !v)} style={{ flexShrink: 0 }} aria-pressed={showNew}>
+                <Plus /> Nouveau patient
+              </Button>
+            )}
           </div>
 
           {error && (

@@ -23,6 +23,7 @@ import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SummaryPanel } from './components/SummaryPanel';
 import type { DossierTab } from './types';
+import { useAuthStore } from '@/lib/auth/authStore';
 import './dossier-patient.css';
 import '@/features/facturation/facturation.css';
 
@@ -109,6 +110,7 @@ function EditPatientPanel({
   const [form, setForm] = useState<UpdatePatientForm>(initial);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [activeTab, setActiveTab] = useState<'personnel' | 'medical'>('personnel');
 
   function setField<K extends keyof UpdatePatientForm>(key: K, value: UpdatePatientForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -159,19 +161,25 @@ function EditPatientPanel({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // All required fields live on the Personnel tab — bounce there on error
+    // so the user actually sees the offending field.
     if (!isValidName(form.firstName)) {
+      setActiveTab('personnel');
       setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
       return;
     }
     if (!isValidName(form.lastName)) {
+      setActiveTab('personnel');
       setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
       return;
     }
     if (!form.phone.trim()) {
+      setActiveTab('personnel');
       setValidationError('Le numéro de téléphone est obligatoire.');
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
+      setActiveTab('personnel');
       setValidationError('Numéro de téléphone invalide.');
       return;
     }
@@ -205,59 +213,92 @@ function EditPatientPanel({
         </Button>
       </div>
 
+      {/* Tabs (QA3-2) — same split as the creation panel for consistency. */}
+      <div style={{ display: 'flex', gap: 4, padding: '8px 16px 0' }} role="tablist">
+        {(['personnel', 'medical'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === t}
+            onClick={() => setActiveTab(t)}
+            style={{
+              flex: 1,
+              height: 34,
+              fontSize: 12.5,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+              borderRadius: '6px 6px 0 0',
+              border: '1px solid var(--border)',
+              borderBottom: activeTab === t ? '1px solid var(--surface)' : '1px solid var(--border)',
+              background: activeTab === t ? 'var(--surface)' : 'var(--bg-alt)',
+              color: activeTab === t ? 'var(--primary)' : 'var(--ink-3)',
+              marginBottom: -1,
+            }}
+          >
+            {t === 'personnel' ? 'Informations personnelles' : 'Informations médicales'}
+          </button>
+        ))}
+      </div>
+
       <form
         onSubmit={(e) => { void handleSubmit(e); }}
-        style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}
+        style={{ flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14, borderTop: '1px solid var(--border)' }}
       >
-        {/* ── Identité ─────────────────────────────────────────────── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div><Lbl>Prénom *</Lbl>
-            <Input value={form.firstName} onChange={(e) => setField('firstName', sanitizeName(e.target.value))} autoFocus />
+        {/* ── Onglet Personnel ─────────────────────────────────────────────── */}
+        <div hidden={activeTab !== 'personnel'} style={{ display: activeTab === 'personnel' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><Lbl>Prénom *</Lbl>
+              <Input value={form.firstName} onChange={(e) => setField('firstName', sanitizeName(e.target.value))} autoFocus />
+            </div>
+            <div><Lbl>Nom *</Lbl>
+              <Input value={form.lastName} onChange={(e) => setField('lastName', sanitizeName(e.target.value))} />
+            </div>
           </div>
-          <div><Lbl>Nom *</Lbl>
-            <Input value={form.lastName} onChange={(e) => setField('lastName', sanitizeName(e.target.value))} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div><Lbl>Sexe</Lbl>
+              <select
+                value={form.gender}
+                onChange={(e) => setField('gender', e.target.value as 'M' | 'F' | 'O')}
+                style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+              >
+                <option value="M">Homme</option>
+                <option value="F">Femme</option>
+                <option value="O">Autre</option>
+              </select>
+            </div>
+            <div><Lbl>Date de naissance</Lbl>
+              <Input type="date" value={form.birthDate} onChange={(e) => setField('birthDate', e.target.value)} />
+            </div>
           </div>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <div><Lbl>Sexe</Lbl>
-            <select
-              value={form.gender}
-              onChange={(e) => setField('gender', e.target.value as 'M' | 'F' | 'O')}
-              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
-            >
-              <option value="M">Homme</option>
-              <option value="F">Femme</option>
-              <option value="O">Autre</option>
-            </select>
+          <div><Lbl>CIN</Lbl>
+            <Input value={form.cin} onChange={(e) => setField('cin', e.target.value)} placeholder="BE 328451" />
           </div>
-          <div><Lbl>Date de naissance</Lbl>
-            <Input type="date" value={form.birthDate} onChange={(e) => setField('birthDate', e.target.value)} />
+
+          <div><Lbl>Téléphone *</Lbl>
+            <Input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setField('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
+              placeholder="+212 6 61 12 34 56"
+              inputMode="tel"
+            />
           </div>
-        </div>
 
-        <div><Lbl>CIN</Lbl>
-          <Input value={form.cin} onChange={(e) => setField('cin', e.target.value)} placeholder="BE 328451" />
-        </div>
+          <div><Lbl>Email</Lbl>
+            <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="patient@email.ma" />
+          </div>
 
-        <div><Lbl>Téléphone *</Lbl>
-          <Input
-            type="tel"
-            value={form.phone}
-            onChange={(e) => setField('phone', e.target.value.replace(/[^\d\s+\-().]/g, ''))}
-            placeholder="+212 6 61 12 34 56"
-            inputMode="tel"
-          />
-        </div>
-
-        <div><Lbl>Email</Lbl>
-          <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="patient@email.ma" />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div><Lbl>Ville</Lbl>
             <Input value={form.city} onChange={(e) => setField('city', e.target.value)} placeholder="Casablanca" />
           </div>
+        </div>
+
+        {/* ── Onglet Médical ─────────────────────────────────────────────── */}
+        <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
           <div><Lbl>Groupe sanguin</Lbl>
             <select
               value={form.bloodGroup}
@@ -268,12 +309,11 @@ function EditPatientPanel({
               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
-        </div>
 
-        {/* ── Divider ───────────────────────────────────────────────── */}
-        <div style={{ height: 1, background: 'var(--border)' }} />
+          {/* ── Divider ───────────────────────────────────────────────── */}
+          <div style={{ height: 1, background: 'var(--border)' }} />
 
-        {/* ── Allergies ─────────────────────────────────────────────── */}
+          {/* ── Allergies ─────────────────────────────────────────────── */}
         <div>
           <SectionHeader label="Allergies" onAdd={addNewAllergy} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -376,12 +416,13 @@ function EditPatientPanel({
           </div>
         </div>
 
-        {/* ── Divider ───────────────────────────────────────────────── */}
-        <div style={{ height: 1, background: 'var(--border)' }} />
+          {/* ── Divider ───────────────────────────────────────────────── */}
+          <div style={{ height: 1, background: 'var(--border)' }} />
 
-        {/* ── Notes libres ──────────────────────────────────────────── */}
-        <div><Lbl>Notes libres</Lbl>
-          <Textarea value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
+          {/* ── Notes médicales libres ──────────────────────────────────────────── */}
+          <div><Lbl>Notes médicales libres</Lbl>
+            <Textarea value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
+          </div>
         </div>
 
         {(validationError ?? error) && (
@@ -411,6 +452,9 @@ export default function DossierPage() {
   const [tab, setTab] = useState<DossierTab>('timeline');
   const [showEdit, setShowEdit] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
+  // QA3-3 v1 — backward-compat: allow when permissions absent.
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const canEditPatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
   const { consultations: patientConsultations } = useConsultations(
     raw?.id ? { patientId: raw.id } : {},
   );
@@ -490,7 +534,7 @@ export default function DossierPage() {
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative' }}>
         <PatientHeader
           patient={patient}
-          onEdit={() => setShowEdit((v) => !v)}
+          {...(canEditPatient ? { onEdit: () => setShowEdit((v) => !v) } : {})}
           onNewConsultation={() => {
             void handleNewConsultation();
           }}

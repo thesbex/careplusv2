@@ -15,6 +15,7 @@ import { useQueue } from './hooks/useQueue';
 import { useCheckIn } from './hooks/useCheckIn';
 import { useStartConsultation } from './hooks/useStartConsultation';
 import type { QueueEntry } from './types';
+import { useAuthStore } from '@/lib/auth/authStore';
 import './salle-attente.css';
 
 export default function SalleAttentePage() {
@@ -22,6 +23,10 @@ export default function SalleAttentePage() {
   const { queue, kpis, upcoming } = useQueue();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
+  // QA3-3 v1 — backward-compat: legacy sessions keep all CTAs visible.
+  const userPerms = useAuthStore((s) => s.user?.permissions);
+  const canDeclareArrival = userPerms == null || userPerms.includes('ARRIVAL_DECLARE');
+  const canRecordVitals = userPerms == null || userPerms.includes('VITALS_RECORD');
 
   function handleTakeVitals(appointmentId: string) {
     navigate(`/constantes/${appointmentId}`);
@@ -146,6 +151,7 @@ export default function SalleAttentePage() {
                 <QueueRow
                   key={p.appointmentId ?? `${p.name}-${i}`}
                   patient={p}
+                  canRecordVitals={canRecordVitals}
                   onTakeVitals={handleTakeVitals}
                   onStartConsult={(entry) => {
                     void handleStartConsult(entry);
@@ -179,17 +185,19 @@ export default function SalleAttentePage() {
                   <span className="sa-upcoming-time tnum">
                     {p.time} <span className="sa-upcoming-eta">· {p.eta}</span>
                   </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={isCheckingIn || !('appointmentId' in p)}
-                    onClick={() => {
-                      const apt = (p as unknown as { appointmentId?: string }).appointmentId;
-                      if (apt) void handleMarkArrived(apt);
-                    }}
-                  >
-                    Marquer arrivé
-                  </Button>
+                  {canDeclareArrival && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isCheckingIn || !('appointmentId' in p)}
+                      onClick={() => {
+                        const apt = (p as unknown as { appointmentId?: string }).appointmentId;
+                        if (apt) void handleMarkArrived(apt);
+                      }}
+                    >
+                      Marquer arrivé
+                    </Button>
+                  )}
                 </div>
               ))}
             </Panel>
