@@ -3,6 +3,8 @@ import LoginPage from '@/features/login/LoginPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
 import DossierRoute from '@/features/dossier-patient';
+import SalleAttenteRoute from '@/features/salle-attente';
+import PriseRDVMobilePage from '@/features/prise-rdv/PriseRDVPage.mobile';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 
@@ -72,7 +74,15 @@ export const router = createBrowserRouter(
       path: '/salle',
       element: (
         <RequireAuth>
-          <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />
+          <SalleAttenteRoute />
+        </RequireAuth>
+      ),
+    },
+    {
+      path: '/rdv/new',
+      element: (
+        <RequireAuth>
+          <PriseRDVMobilePage />
         </RequireAuth>
       ),
     },
