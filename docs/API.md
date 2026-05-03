@@ -214,6 +214,31 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 `StockLotWithArticleView` : `{lotId, lotNumber, expiresOn, quantity, daysUntilExpiry, articleId, articleCode, articleLabel, articleCategory}`.
 
+## pregnancy — Étape 1 déclaration + plan visites (2026-05-03) 🔧 (Étapes 2-6 à venir)
+
+### Grossesses — patient-scoped
+
+- `GET /api/patients/{patientId}/pregnancies` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste toutes les grossesses (en cours + historique). Retourne `List<PregnancyView>` avec `gravidity` et `parity` calculés.
+- `GET /api/patients/{patientId}/pregnancies/current` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — grossesse `EN_COURS` ou 404. Inclut `saWeeks` calculé depuis `lmp_date`. Pour badge dossier patient.
+- `POST /api/patients/{patientId}/pregnancies` — MEDECIN/ADMIN — déclarer grossesse `{lmpDate, notes?}`. Auto-génère 8 entrées `pregnancy_visit_plan` (OMS SA 12/20/26/30/34/36/38/40). `due_date = lmpDate + 280 j`. Erreurs : 422 `PATIENT_NOT_FEMALE`, 422 `PREGNANCY_ALREADY_ACTIVE`.
+
+### Grossesses — pregnancy-scoped
+
+- `PUT /api/pregnancies/{id}` — MEDECIN/ADMIN — modifier `{lmpDate, dueDate?, dueDateSource?, notes?}`. Si `lmpDate` change → plan visites supprimé et recalculé.
+- `POST /api/pregnancies/{id}/close` — MEDECIN/ADMIN — clôturer `{endedAt, outcome, notes?}`. Status → `TERMINEE` (accouchement, mort-née) ou `INTERROMPUE` (FCS/IVG/GEU/MOLE/MFIU). Erreur : 422 `PREGNANCY_NOT_ACTIVE`.
+- `POST /api/pregnancies/{id}/create-child` — MEDECIN/ADMIN — créer fiche enfant `{firstName, sex}`. Appel cross-module `PatientService.create` (lastName = mère, birthDate = endedAt). Persiste `child_patient_id`. Calendrier vaccination PNI matérialisé lazily. Erreurs : 422 `OUTCOME_NOT_LIVE_BIRTH`, 422 `CHILD_ALREADY_CREATED`.
+
+### Plan de visites
+
+- `GET /api/pregnancies/{id}/plan` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — 8 entrées planifiées (SA cible, date cible, tolérance ±14 j, statut).
+- `PUT /api/pregnancies/{id}/plan/{planId}` — MEDECIN/ADMIN — modifier une entrée `{targetDate?, status?}`.
+
+`PregnancyView` : `{id, patientId, lmpDate, dueDate, dueDateSource, status, startedAt, endedAt, outcome, childPatientId, fetusesJson, notes, version, saWeeks, gravidity, parity}`.
+
+`PregnancyVisitPlanView` : `{id, pregnancyId, targetSaWeeks, targetDate, toleranceDays, status, appointmentId, consultationId, version}`.
+
+**Étapes 2-6 à venir** : visites (POST /visits, biométrie), échographies (POST /ultrasounds), alertes + worklist, frontend.
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)

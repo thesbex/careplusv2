@@ -4,10 +4,23 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Stock interne — module shipped (Étapes 1-5 complets)
+**Phase**: Grossesse — Étape 1 livrée (schéma + déclaration + plan visites + RBAC)
 **Last update**: 2026-05-03
-**Build**: Backend — 355/355 mvn verify (10 StockCatalogIT + 12 StockMovementIT + 5 StockAlertIT + 328 existants). Frontend — ~480/488 (8 pré-existants hors scope ; ~70 nouveaux tests stock).
-**Next action**: après pilote feedback — soit Suivi de grossesse (BACKLOG `Pregnancy vertical`), soit Email reminders RDV (BACKLOG `Scheduling`).
+**Build**: Backend — 370/370 mvn test (15 PregnancyDeclareIT + 355 existants). Régression complète non encore lancée (à faire avant commit).
+**Next action**: Étape 2 — `PregnancyVisitService` + `PregnancyUltrasoundService` + endpoints visits + echos + `PregnancyVisitIT` (10) + `PregnancyUltrasoundIT` (6).
+
+### 2026-05-03 — Grossesse Étape 1 (schéma + déclaration + plan visites OMS)
+
+**Shipped (1 commit feature)**:
+- `V026__pregnancy_module.sql` — 4 tables (`pregnancy`, `pregnancy_visit_plan`, `pregnancy_visit`, `pregnancy_ultrasound`) + 4 triggers `touch_updated_at` + indexes + CHECK constraints + extension COMMENT `scheduling_appointment.type` avec `SUIVI_GROSSESSE`.
+- Domain : `Pregnancy`, `PregnancyVisitPlan` (entités JPA fields-only), 5 enums (`PregnancyStatus`, `PregnancyOutcome`, `DueDateSource`, `VisitPlanStatus`, `UltrasoundKind`, `Presentation`). JSONB via `@JdbcTypeCode(SqlTypes.JSON)` (pattern `clinical_prescription_template`).
+- `AppointmentType` Java enum étendu avec `SUIVI_GROSSESSE` (col VARCHAR — additif).
+- Persistence : `PregnancyRepository` (3 finders + existsBy) + `PregnancyVisitPlanRepository` (findByPregnancyIdOrderByTargetSaWeeks + deleteByPregnancyId).
+- Application : `PregnancyService` (interface) + `PregnancyServiceImpl` — declare (guard PATIENT_NOT_FEMALE + PREGNANCY_ALREADY_ACTIVE, auto-génération 8 visites OMS, MANQUEE si target_date < today), update (recalcul plan si lmpDate change, flush avant réinsertion pour éviter UNIQUE violation), close (TERMINEE vs INTERROMPUE selon outcome), createChild (cross-module PatientService.create + retourne childId), getVisitPlan, updateVisitPlanEntry, listByPatient, findCurrent.
+- Web : `PregnancyController` (8 endpoints), DTOs records (`DeclarePregnancyRequest`, `UpdatePregnancyRequest`, `ClosePregnancyRequest`, `CreateChildRequest`, `PregnancyVisitPlanUpdateRequest`, `PregnancyView`, `PregnancyVisitPlanView`), `PregnancyMapper` (MapStruct).
+- IT : `PregnancyDeclareIT` 15/15 scenarios (includes bonus sc7b INTERROMPUE + sc11 GET current).
+
+**Design doc** : `docs/plans/2026-05-03-grossesse-design.md`.
 
 ### 2026-05-03 — Stock interne Étapes 1-5 (module complet, ~4 j compressés en 1 session)
 
