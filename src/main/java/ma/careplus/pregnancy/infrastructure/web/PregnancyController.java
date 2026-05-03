@@ -187,11 +187,14 @@ public class PregnancyController {
 
     private PregnancyView toView(Pregnancy p, int gravidity, int parity) {
         Integer saWeeks = null;
+        Integer saDays = null;
         if (p.getStatus() == ma.careplus.pregnancy.domain.PregnancyStatus.EN_COURS
                 && p.getLmpDate() != null) {
-            saWeeks = (int) ChronoUnit.WEEKS.between(p.getLmpDate(), LocalDate.now());
+            long totalDays = ChronoUnit.DAYS.between(p.getLmpDate(), LocalDate.now());
+            saWeeks = (int) (totalDays / 7);
+            saDays = (int) (totalDays % 7);
         }
-        return mapper.toView(p, saWeeks, gravidity, parity);
+        return mapper.toView(p, saWeeks, saDays, gravidity, parity);
     }
 
     private int computeGravidity(UUID patientId) {

@@ -1,12 +1,30 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
-import type { PregnancyVisit } from '../types';
+import type { PregnancyVisit, UrineDip } from '../types';
 
 interface PageView<T> {
   content: T[];
   totalElements: number;
   page: number;
   size: number;
+}
+
+/** Backend returns urineDipJson as a String — parse to typed UrineDip on read. */
+interface PregnancyVisitWire extends Omit<PregnancyVisit, 'urineDip'> {
+  urineDipJson?: string | null;
+}
+
+function parseVisit(wire: PregnancyVisitWire): PregnancyVisit {
+  let urineDip: UrineDip | null = null;
+  if (wire.urineDipJson) {
+    try {
+      urineDip = JSON.parse(wire.urineDipJson) as UrineDip;
+    } catch {
+      urineDip = null;
+    }
+  }
+  const { urineDipJson: _drop, ...rest } = wire;
+  return { ...rest, urineDip };
 }
 
 /**
@@ -18,7 +36,7 @@ export function usePregnancyVisits(pregnancyId?: string) {
     queryKey: ['pregnancies', 'visits', pregnancyId],
     queryFn: () =>
       api
-        .get<PageView<PregnancyVisit> | PregnancyVisit[]>(
+        .get<PageView<PregnancyVisitWire> | PregnancyVisitWire[]>(
           `/pregnancies/${pregnancyId}/visits`,
         )
         .then((r) => r.data),
@@ -27,11 +45,8 @@ export function usePregnancyVisits(pregnancyId?: string) {
   });
 
   // Backend may return either a PageView or a plain array — accept both.
-  const visits = !data
-    ? []
-    : Array.isArray(data)
-      ? data
-      : data.content;
+  const wires = !data ? [] : Array.isArray(data) ? data : data.content;
+  const visits = wires.map(parseVisit);
 
   return {
     visits,

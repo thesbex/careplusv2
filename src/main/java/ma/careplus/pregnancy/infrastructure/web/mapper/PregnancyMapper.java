@@ -25,10 +25,12 @@ import org.mapstruct.Mapping;
 public interface PregnancyMapper {
 
     @Mapping(target = "saWeeks",   expression = "java(saWeeks)")
+    @Mapping(target = "saDays",    expression = "java(saDays)")
     @Mapping(target = "gravidity", expression = "java(gravidity)")
     @Mapping(target = "parity",    expression = "java(parity)")
     PregnancyView toView(Pregnancy entity,
                           Integer saWeeks,
+                          Integer saDays,
                           int gravidity,
                           int parity);
 

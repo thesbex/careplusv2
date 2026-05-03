@@ -33,6 +33,8 @@ public record PregnancyView(
         long version,
         /** Gestational age in full weeks at today's date (null when pregnancy is closed). */
         Integer saWeeks,
+        /** Days remainder of gestational age (0-6). Null when pregnancy is closed. */
+        Integer saDays,
         /** Total number of pregnancies (including this one) for the patient. */
         int gravidity,
         /** Number of deliveries resulting in live birth or stillbirth. */
