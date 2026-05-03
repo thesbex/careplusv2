@@ -22,6 +22,7 @@ import { Check, Doc, Clipboard, Print } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
@@ -310,20 +311,22 @@ export default function ConsultationPage() {
               <div style={{ color: 'var(--ink-3)' }}>Aucun document généré.</div>
             )}
             {prescriptions.map((p) => (
-              <DocRow
-                key={p.id}
-                title={`Ordonnance · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`}
-                meta={
-                  p.type === 'DRUG'
-                    ? 'Médicaments'
-                    : p.type === 'LAB'
-                    ? 'Analyses'
-                    : p.type === 'IMAGING'
-                    ? 'Imagerie'
-                    : (p.type ?? '—')
-                }
-                onClick={() => navigate(`/prescriptions/${p.id}`)}
-              />
+              <div key={p.id}>
+                <DocRow
+                  title={`Ordonnance · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`}
+                  meta={
+                    p.type === 'DRUG'
+                      ? 'Médicaments'
+                      : p.type === 'LAB'
+                      ? 'Analyses'
+                      : p.type === 'IMAGING'
+                      ? 'Imagerie'
+                      : (p.type ?? '—')
+                  }
+                  onClick={() => navigate(`/prescriptions/${p.id}`)}
+                />
+                <PrescriptionResultsPanel prescription={p} readOnly={isSigned} />
+              </div>
             ))}
           </div>
 

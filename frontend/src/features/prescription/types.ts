@@ -41,6 +41,8 @@ export interface PrescriptionLineApi {
   quantity: number | null;
   instructions: string | null;
   sortOrder: number;
+  /** V015 — résultat (PDF/image) attaché à cette ligne (LAB/IMAGING uniquement). */
+  resultDocumentId: string | null;
 }
 
 export interface PrescriptionApi {

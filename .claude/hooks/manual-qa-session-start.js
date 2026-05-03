@@ -14,12 +14,27 @@
  * start. We keep it short; details are one Bash away.
  */
 
+const fs = require('fs');
+const path = require('path');
 const { execSync } = require('child_process');
 
 function safe(cmd) {
   try { return execSync(cmd, { encoding: 'utf8' }); }
   catch { return ''; }
 }
+
+// Record session baseline (HEAD + WT dirty list) so the Stop hook can
+// distinguish edits made THIS session from pre-session WIP.
+try {
+  const head = safe('git rev-parse HEAD').trim();
+  const dirty = safe('git status --porcelain')
+    .split('\n').map(l => l.slice(3).trim()).filter(Boolean);
+  fs.mkdirSync(path.join('.claude', 'state'), { recursive: true });
+  fs.writeFileSync(
+    path.join('.claude', 'state', 'session-baseline'),
+    JSON.stringify({ head, dirty, recordedAt: new Date().toISOString() }),
+  );
+} catch { /* ignore — baseline is best-effort */ }
 
 const branch = safe('git rev-parse --abbrev-ref HEAD').trim();
 if (!branch || branch === 'HEAD') process.exit(0);
