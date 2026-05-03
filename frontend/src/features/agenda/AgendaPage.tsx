@@ -1,7 +1,6 @@
 /**
  * Screen 01 — Agenda semaine (desktop).
  * Ported from design/prototype/screens/agenda.jsx.
- * Backend dependency: J4 scheduling — currently uses fixtures via useWeekAppointments.
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +11,7 @@ import { AgendaToolbar } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { TodayArrivals } from './components/TodayArrivals';
 import { useWeekAppointments } from './hooks/useAppointments';
+import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
 import type { Appointment } from './types';
 import './agenda.css';
 
@@ -19,8 +19,10 @@ export default function AgendaPage() {
   const navigate = useNavigate();
   const { days, appointments, arrivals } = useWeekAppointments();
   const [, setSelected] = useState<Appointment | null>(null);
+  const [showRDV, setShowRDV] = useState(false);
 
   return (
+    <>
     <Screen
       active="agenda"
       title="Agenda"
@@ -31,7 +33,7 @@ export default function AgendaPage() {
           <Button>
             <Phone /> Appel rapide
           </Button>
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => setShowRDV(true)}>
             <Plus /> Nouveau RDV
           </Button>
         </>
@@ -52,5 +54,7 @@ export default function AgendaPage() {
       <AgendaToolbar />
       <AgendaGrid days={days} appointments={appointments} onSelect={setSelected} />
     </Screen>
+    {showRDV && <PriseRDVDialog open={showRDV} onOpenChange={setShowRDV} />}
+    </>
   );
 }
