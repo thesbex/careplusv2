@@ -8,13 +8,13 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close, Pill as PillIcon, Plus, Search, Trash, Warn, Check } from '@/components/icons';
-import { useMedicationSearch } from './hooks/useMedicationSearch';
+import { useCatalogSearch } from './hooks/useCatalogSearch';
 import {
   useCreatePrescription,
   AllergyConflictError,
 } from './hooks/useCreatePrescription';
 import type {
-  MedicationApi,
+  CatalogItem,
   PrescriptionLineDraft,
   PrescriptionType,
 } from './types';
@@ -31,7 +31,7 @@ interface PrescriptionDrawerProps {
 
 function emptyLine(): PrescriptionLineDraft {
   return {
-    medication: null,
+    item: null,
     dosage: '',
     frequency: '',
     duration: '',
@@ -54,19 +54,19 @@ export function PrescriptionDrawer({
   const [conflict, setConflict] = useState<{ medication: string; allergy: string } | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
 
-  const { results, isFetching, hasQuery } = useMedicationSearch(query);
+  const { results, isFetching, hasQuery } = useCatalogSearch(type, query);
   const { createPrescription, isPending } = useCreatePrescription();
 
-  function selectMedication(med: MedicationApi) {
+  function selectItem(item: CatalogItem) {
     setLines((ls) => {
       const lastIdx = ls.length - 1;
       const last = ls[lastIdx];
-      if (last && !last.medication) {
+      if (last && !last.item) {
         const next = [...ls];
-        next[lastIdx] = { ...last, medication: med };
+        next[lastIdx] = { ...last, item };
         return next;
       }
-      return [...ls, { ...emptyLine(), medication: med }];
+      return [...ls, { ...emptyLine(), item }];
     });
     setQuery('');
   }
@@ -80,9 +80,17 @@ export function PrescriptionDrawer({
   }
 
   async function handleSave(allergyOverride = false) {
-    const filled = lines.filter((l) => l.medication !== null || l.instructions.trim().length > 0);
+    const filled = lines.filter((l) => l.item !== null || l.instructions.trim().length > 0);
     if (filled.length === 0) {
-      toast.error('Ajoutez au moins un médicament.');
+      toast.error(
+        type === 'DRUG'
+          ? 'Ajoutez au moins un médicament.'
+          : type === 'LAB'
+          ? 'Ajoutez au moins une analyse.'
+          : type === 'IMAGING'
+          ? 'Ajoutez au moins un examen.'
+          : 'Ajoutez au moins une ligne.',
+      );
       return;
     }
     const instructionsWithReco = recommendations
@@ -140,7 +148,13 @@ export function PrescriptionDrawer({
             <PillIcon />
             <div style={{ flex: 1 }}>
               <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-                Prescription médicamenteuse
+                {type === 'DRUG'
+                  ? 'Prescription médicamenteuse'
+                  : type === 'LAB'
+                  ? "Bon d'analyses biologiques"
+                  : type === 'IMAGING'
+                  ? "Bon d'imagerie médicale"
+                  : 'Ordonnance'}
               </Dialog.Title>
               <Dialog.Description style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: 0 }}>
                 {type === 'DRUG'
@@ -174,57 +188,59 @@ export function PrescriptionDrawer({
           )}
 
           <div className="pr-body scroll">
-            {type === 'DRUG' && (
+            {(type === 'DRUG' || type === 'LAB' || type === 'IMAGING') && (
               <>
-                <div className="pr-section-h">Rechercher un médicament</div>
+                <div className="pr-section-h">
+                  {type === 'DRUG'
+                    ? 'Rechercher un médicament'
+                    : type === 'LAB'
+                    ? 'Rechercher une analyse'
+                    : "Rechercher un examen d'imagerie"}
+                </div>
                 <div className="pr-search">
                   <span className="pr-search-icon">
                     <Search aria-hidden="true" />
                   </span>
                   <input
                     className="pr-search-input"
-                    placeholder="Nom commercial ou DCI…"
+                    placeholder={
+                      type === 'DRUG'
+                        ? 'Nom commercial ou DCI…'
+                        : type === 'LAB'
+                        ? 'Nom de l\'analyse ou code…'
+                        : "Nom de l'examen ou code…"
+                    }
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    aria-label="Rechercher un médicament"
+                    onFocus={() => {
+                      // Trigger empty-query suggestion list for LAB/IMAGING.
+                      if (type !== 'DRUG' && query === '') setQuery(' ');
+                    }}
+                    aria-label="Rechercher dans le catalogue"
                   />
                   {hasQuery && (
                     <div className="pr-suggest" role="listbox">
                       {isFetching && (
-                        <div
-                          style={{
-                            padding: 10,
-                            fontSize: 12,
-                            color: 'var(--ink-3)',
-                          }}
-                        >
+                        <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>
                           Recherche…
                         </div>
                       )}
                       {!isFetching && results.length === 0 && (
-                        <div
-                          style={{
-                            padding: 10,
-                            fontSize: 12,
-                            color: 'var(--ink-3)',
-                          }}
-                        >
-                          Aucun résultat pour « {query} ».
+                        <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>
+                          Aucun résultat.
                         </div>
                       )}
-                      {results.map((m) => (
+                      {results.map((it) => (
                         <button
-                          key={m.id}
+                          key={it.id}
                           type="button"
                           role="option"
                           aria-selected="false"
                           className="pr-suggest-row"
-                          onClick={() => selectMedication(m)}
+                          onClick={() => selectItem(it)}
                         >
-                          <span className="pr-suggest-name">{m.name}</span>
-                          <span className="pr-suggest-sub">
-                            {[m.molecule, m.form, m.strength].filter(Boolean).join(' · ')}
-                          </span>
+                          <span className="pr-suggest-name">{it.name}</span>
+                          {it.sub && <span className="pr-suggest-sub">{it.sub}</span>}
                         </button>
                       ))}
                     </div>
@@ -234,25 +250,31 @@ export function PrescriptionDrawer({
             )}
 
             <div className="pr-section-h">
-              {type === 'DRUG' ? `Médicaments (${lines.filter((l) => l.medication).length})` : 'Lignes'}
+              {type === 'DRUG'
+                ? `Médicaments (${lines.filter((l) => l.item).length})`
+                : type === 'LAB'
+                ? `Analyses (${lines.filter((l) => l.item).length})`
+                : type === 'IMAGING'
+                ? `Examens (${lines.filter((l) => l.item).length})`
+                : 'Lignes'}
             </div>
             {lines.map((line, i) => (
               <div key={i} className="pr-line-card">
                 <div className="pr-line-head">
                   <div style={{ flex: 1 }}>
                     <div className="pr-line-name">
-                      {line.medication?.name ??
-                        (type === 'DRUG' ? 'Sélectionner un médicament…' : 'Ligne libre')}
+                      {line.item?.name ??
+                        (type === 'DRUG'
+                          ? 'Sélectionner un médicament…'
+                          : type === 'LAB'
+                          ? 'Sélectionner une analyse…'
+                          : type === 'IMAGING'
+                          ? 'Sélectionner un examen…'
+                          : 'Ligne libre')}
                     </div>
-                    {line.medication && (
+                    {line.item?.sub && (
                       <div className="pr-line-meta">
-                        {[
-                          line.medication.molecule,
-                          line.medication.form,
-                          line.medication.strength,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
+                        {line.item.sub}
                       </div>
                     )}
                   </div>
