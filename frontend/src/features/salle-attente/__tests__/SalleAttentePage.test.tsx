@@ -70,6 +70,7 @@ function renderDesktop() {
 }
 
 function renderMobile() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
     [
       { path: '/salle',   element: <SalleAttenteMobilePage /> },
@@ -78,7 +79,11 @@ function renderMobile() {
     ],
     { initialEntries: ['/salle'] },
   );
-  return render(<RouterProvider router={router} />);
+  return render(
+    <QueryClientProvider client={qc}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 }
 
 // ── Desktop suite ────────────────────────────────────────
