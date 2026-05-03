@@ -8,6 +8,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useInvoices } from './hooks/useInvoices';
 import { InvoiceDrawer } from './InvoiceDrawer';
+import { CaisseTodayPanel } from '../caisse/CaisseTodayPanel';
 import { STATUS_LABEL, type InvoiceApi, type InvoiceStatus } from './types';
 import './facturation.css';
 
@@ -68,6 +69,7 @@ export default function FacturationPage() {
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <div className="fa-scroll scroll">
+        <CaisseTodayPanel />
         <div className="fa-filters" role="tablist" aria-label="Filtres statut">
           {FILTERS.map((f) => (
             <button

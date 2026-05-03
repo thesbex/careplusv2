@@ -27,6 +27,7 @@ import { ConsultationPrestationsPanel } from '@/features/prestation/components/C
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
+import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
@@ -74,7 +75,8 @@ export default function ConsultationPage() {
   const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
-  const { invoice } = useInvoiceByConsultation(id);
+  const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
+  const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
   const { adjustTotal, isPending: isAdjusting } = useAdjustInvoiceTotal();
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
   const [adjustingDiscount, setAdjustingDiscount] = useState<number | null>(null);
@@ -149,8 +151,12 @@ export default function ConsultationPage() {
     }
     const ok = await sign();
     if (ok) {
-      toast.success('Consultation signée. Facture brouillon générée.');
-      void navigate('/facturation');
+      toast.success('Consultation signée. Détail de la facturation ouvert.');
+      // Au lieu de rediriger immédiatement, ouvrir le détail facture pour que
+      // le médecin puisse ajuster montants/remise avant que la secrétaire
+      // n'émette. La modale poll le brouillon (créé en AFTER_COMMIT) jusqu'à
+      // apparition. Demande Y. Boutaleb 2026-05-01.
+      setPostSignDialogOpen(true);
     } else {
       toast.error('Signature refusée par le serveur.');
     }
@@ -429,6 +435,41 @@ export default function ConsultationPage() {
           patientId={consultation.patientId}
           current={vitals}
         />
+      )}
+      <InvoiceDrawer
+        invoice={invoice}
+        open={postSignDialogOpen && !!invoice}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPostSignDialogOpen(false);
+            void navigate('/facturation');
+          }
+        }}
+      />
+      {postSignDialogOpen && !invoice && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 'var(--r-md)',
+              padding: 24,
+              fontSize: 13,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+            }}
+          >
+            Génération du brouillon de facture en cours…
+          </div>
+        </div>
       )}
       {consultation && rxOpen && (
         <PrescriptionDrawer

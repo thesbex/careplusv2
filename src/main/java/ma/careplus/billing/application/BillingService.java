@@ -32,6 +32,10 @@ import ma.careplus.catalog.infrastructure.persistence.ActRepository;
 import ma.careplus.clinical.domain.ConsultationSigneeEvent;
 import ma.careplus.patient.domain.Patient;
 import ma.careplus.patient.infrastructure.persistence.PatientRepository;
+import ma.careplus.prestation.domain.ConsultationPrestation;
+import ma.careplus.prestation.domain.Prestation;
+import ma.careplus.prestation.infrastructure.persistence.ConsultationPrestationRepository;
+import ma.careplus.prestation.infrastructure.persistence.PrestationRepository;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
 import ma.careplus.shared.error.BusinessException;
@@ -71,6 +75,8 @@ public class BillingService {
     private final AppointmentRepository appointmentRepository;
     private final ActRepository actRepository;
     private final CatalogService catalogService;
+    private final ConsultationPrestationRepository consultationPrestationRepository;
+    private final PrestationRepository prestationRepository;
     private final JdbcTemplate jdbc;
 
     public BillingService(InvoiceRepository invoiceRepository,
@@ -83,6 +89,8 @@ public class BillingService {
                           AppointmentRepository appointmentRepository,
                           ActRepository actRepository,
                           CatalogService catalogService,
+                          ConsultationPrestationRepository consultationPrestationRepository,
+                          PrestationRepository prestationRepository,
                           JdbcTemplate jdbc) {
         this.invoiceRepository = invoiceRepository;
         this.invoiceLineRepository = invoiceLineRepository;
@@ -94,6 +102,8 @@ public class BillingService {
         this.appointmentRepository = appointmentRepository;
         this.actRepository = actRepository;
         this.catalogService = catalogService;
+        this.consultationPrestationRepository = consultationPrestationRepository;
+        this.prestationRepository = prestationRepository;
         this.jdbc = jdbc;
     }
 
@@ -139,6 +149,7 @@ public class BillingService {
 
             // Step 2: Resolve lines from appointment reason's default act
             BigDecimal totalAmount = BigDecimal.ZERO;
+            int position = 0;
             if (event.appointmentId() != null) {
                 Optional<Appointment> apptOpt = appointmentRepository.findById(event.appointmentId());
                 if (apptOpt.isPresent()) {
@@ -152,6 +163,7 @@ public class BillingService {
                             InvoiceLine line = new InvoiceLine();
                             line.setInvoiceId(invoice.getId());
                             line.setActId(defaultActId);
+                            line.setPosition(position++);
                             line.setDescription(act.map(Act::getName).orElse("Consultation"));
                             line.setUnitPrice(amount);
                             line.setQuantity(BigDecimal.ONE);
@@ -160,6 +172,35 @@ public class BillingService {
                             totalAmount = amount;
                         }
                     }
+                }
+            }
+
+            // Step 2bis: Append prestations performed during the consultation (V016).
+            // The unit_price stored on clinical_consultation_prestation is already the
+            // snapshot at add-time (CONSULT_LOCKED on signed → no further mutation).
+            List<ConsultationPrestation> prestationLinks =
+                    consultationPrestationRepository.findByConsultationIdOrderByCreatedAtAsc(
+                            event.consultationId());
+            if (!prestationLinks.isEmpty()) {
+                java.util.Map<UUID, Prestation> labelLookup = prestationRepository
+                        .findAllById(prestationLinks.stream()
+                                .map(ConsultationPrestation::getPrestationId)
+                                .toList())
+                        .stream()
+                        .collect(java.util.stream.Collectors.toMap(Prestation::getId, p -> p));
+                for (ConsultationPrestation link : prestationLinks) {
+                    Prestation p = labelLookup.get(link.getPrestationId());
+                    BigDecimal qty = BigDecimal.valueOf(link.getQuantity());
+                    BigDecimal lineTotal = link.getUnitPrice().multiply(qty);
+                    InvoiceLine line = new InvoiceLine();
+                    line.setInvoiceId(invoice.getId());
+                    line.setPosition(position++);
+                    line.setDescription(p != null ? p.getLabel() : "Prestation");
+                    line.setUnitPrice(link.getUnitPrice());
+                    line.setQuantity(qty);
+                    line.setLineTotal(lineTotal);
+                    invoiceLineRepository.save(line);
+                    totalAmount = totalAmount.add(lineTotal);
                 }
             }
 

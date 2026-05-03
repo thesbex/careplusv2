@@ -52,8 +52,8 @@ export function useInvoice(id?: string) {
   };
 }
 
-export function useInvoiceByConsultation(consultationId?: string) {
-  const { data, isLoading } = useQuery({
+export function useInvoiceByConsultation(consultationId?: string, opts?: { pollUntilFound?: boolean }) {
+  const { data, isLoading, refetch } = useQuery<InvoiceApi | null>({
     queryKey: ['invoice-by-consult', consultationId],
     queryFn: () =>
       api
@@ -62,7 +62,12 @@ export function useInvoiceByConsultation(consultationId?: string) {
         .catch(() => null),
     enabled: !!consultationId,
     staleTime: 5_000,
+    // Quand on attend la création async du brouillon (post-signature
+    // AFTER_COMMIT listener), on poll toutes les 500 ms jusqu'à ce que
+    // le brouillon apparaisse.
+    refetchInterval: (query) =>
+      opts?.pollUntilFound && !query.state.data ? 500 : false,
   });
 
-  return { invoice: data ?? null, isLoading };
+  return { invoice: data ?? null, isLoading, refetch };
 }
