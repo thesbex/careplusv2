@@ -1,6 +1,57 @@
 # Post-MVP backlog
 
-Anything explicitly out of the 7-day MVP goes here. Append-only list of ideas/features/gaps, grouped by theme. Decide priority at MVP exit.
+Anything explicitly out of the MVP goes here. Append-only list of ideas/features/gaps, grouped by theme. Decide priority at MVP exit.
+
+> **Status MVP — `v0.1.0-mvp` taggé sur `467e4f7` (2026-04-26).** Plan en 8 étapes + 5 sous-étapes QA livré intégralement. Voir `docs/MVP_WIRING.md` pour le détail commit-par-commit. Les items ci-dessous sont **post-pilote** : à prioriser après retour terrain.
+
+## QA-driven follow-ups (extensions des features livrées dans le sprint MVP-wiring)
+
+Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé ici pour ne pas être oublié quand un cabinet pilote demandera l'évolution naturelle.
+
+### Patient (issu de QA P1–P5)
+- **Mobile parity du panneau "Nouveau patient"** : actuellement le panneau (incluant Mutuelle + Premium + Allergies + Antécédents) n'existe que sur desktop. Porter en `MNouveauPatient` pour mobile (sheet plein écran).
+- **Tier discount mode fixe (MAD) en plus du %** : actuellement `config_patient_tier.discount_percent` uniquement. Ajouter colonne `discount_amount` + UI Tarifs avec radio Pourcentage/Forfait. Demande potentielle de cabinets qui font un rabais fixe (50 MAD) plutôt que %.
+- **Tiers personnalisés** : aujourd'hui figés à NORMAL/PREMIUM. Ajouter `GOLD`, `STAGIAIRE`, `FAMILLE`, etc. avec tiering éditable depuis Paramétrage.
+- **Antécédents in-place edit** : depuis le dossier (tab Chronologie / SummaryPanel), permettre la modification/suppression sans passer par le panneau "Modifier". Boutons crayon + corbeille à côté de chaque entrée.
+- **Mutuelle history** : aujourd'hui un patient a une seule mutuelle courante. Ajouter un historique (changements de couverture) avec date d'effet.
+
+### RDV / nouveau patient inline (issu de 5.5b)
+- **Mini-form étendu** : la version actuelle ne demande que prénom/nom/sexe/téléphone. Ajouter optionnel CIN + DDN au mini-form (toujours skippables) pour gagner un aller-retour quand l'info est connue à la réception.
+- **Recherche fuzzy par téléphone** : la recherche patient actuelle est ILIKE. Quand un nouveau RDV est pris au téléphone, suggérer le patient existant si le téléphone matche partiellement (anti-doublon).
+
+### Référentiels (issu de 5.5c + R4 du QA)
+- **CRUD UI référentiels** dans Paramétrage : médecin doit pouvoir ajouter/désactiver/marquer favori médicaments, lab-tests, imaging-exams. Endpoints à créer : `POST/PUT/DELETE /api/catalog/medications`, idem labs/imaging. Onglet "Référentiels" dans `ParametragePage`.
+- **Médicament favori** : la colonne `favorite` existe déjà (`catalog_medication.favorite`). UI : étoile cliquable, médicaments favoris remontent en tête de l'autocomplete.
+- **Étendre les seeds** : 146 médicaments c'est déjà bien, mais une vraie base = ~2000+ produits enregistrés au Maroc. Importer depuis le Bulletin Officiel marocain ou une base AMM publique.
+- **Synonymes / DCI alternatives** : le médecin tape "Doliprane" → trouve "Paracétamol" et inversement (déjà partiel via DCI search). Renforcer.
+- **Codes NABM / CCAM officiels** : aujourd'hui codes maison (`NFS`, `CRP`, etc.). Aligner sur la nomenclature officielle (NABM Maroc, ou CCAM française à défaut).
+
+### Prescription par type (issu de 5.5d)
+- **PDF distinct par type** : aujourd'hui `PrescriptionPdfService` génère un seul template `ordonnance.html`. Ajouter `bon-analyses.html` + `bon-imagerie.html` avec leur propre header.
+- **Modèles d'ordonnance pré-remplis** : "HTA de base", "Renouvellement diabète", etc. — le drawer prescription doit pouvoir piocher dans des modèles sauvegardés. Table `config_prescription_template` à créer.
+- **Renouvellement 1-clic** : depuis l'onglet Prescriptions du dossier, bouton "Renouveler" qui duplique l'ordonnance avec date du jour.
+- **Stupéfiants ordonnance sécurisée** : format légal marocain (déjà mentionné en Clinical).
+
+### Agenda mois + congés (issu de 5.5e)
+- **Drag-to-move optimistic** : explicitement skippé. Quand on aura besoin (cabinet à fort volume), implémenter avec `dnd-kit` (HTML5 drag natif chez Radix).
+- **Vue mois multi-praticien** : aujourd'hui mono. Avec multi-cabinet, switch praticien dans la toolbar.
+- **Congés multi-praticien** : aujourd'hui un médecin gère ses propres congés. Pour cabinet multi-praticien, vue agrégée "Qui est en congé cette semaine ?".
+- **Congés overlap warning** (déjà listé plus haut dans Scheduling).
+- **Saisie RDV durant congé** : aujourd'hui le booking est refusé (409). Permettre un override avec confirmation explicite ("ce médecin est en congé ce jour-là, confirmer ?") pour les urgences.
+
+### Paramétrage (issu d'étape 6)
+- **Onboarding 7-step wired** : l'écran 13 du prototype reste statique. Câbler aux endpoints `/api/admin/bootstrap` (step 1) + `PUT /api/settings/clinic` (steps 2-5) + `POST /api/admin/users` (step 6). Sans ça, chaque fresh install nécessite un curl manuel.
+- **Document templates editor** : aujourd'hui le letterhead PDF est en dur dans `ordonnance.html`. Permettre au médecin d'éditer son en-tête (logo, signature image, mentions légales) depuis Paramétrage > Documents.
+- **Mobile parity Paramétrage** : la page est desktop-only. Porter en `MParametrage` (tabs en bottom-sheet).
+- **User edit (pas seulement create + désactiver)** : éditer email, password reset, ajouter/retirer un rôle. Endpoints existent (`PUT /admin/users/:id`, `PUT /admin/users/:id/password`).
+- **Audit log UI** (déjà dans Admin & ops) — relevant ici car listé comme prochaine cible naturelle après users.
+
+### Queue + Salle (issu d'étape 7)
+- **Mobile parity Salle d'attente** avec champs enrichis (age/reason/practitioner/duration/Premium). La version mobile actuelle utilise une partie des champs.
+- **Filtres queue** : aujourd'hui liste plate. Filtres par praticien, motif, statut une fois multi-praticien.
+- **SSE real-time** (déjà listé Scheduling) : remplacerait le polling 15s actuel.
+
+
 
 ## Clinical
 
