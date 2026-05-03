@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import type { VitalsApi } from '../hooks/useLatestVitals';
 
 interface QuickVitalsDialogProps {
   open: boolean;
@@ -84,19 +85,31 @@ export function QuickVitalsDialog({
       const url = appointmentId
         ? `/appointments/${appointmentId}/vitals`
         : `/consultations/${consultationId}/vitals`;
-      await api.post(url, payload);
+      const res = await api.post<VitalsApi>(url, payload);
+      const created = res.data;
       toast.success('Constantes enregistrées.');
-      // Refresh every cache that surfaces vitals. Previously this only
-      // invalidated `['vitals', patientId]` which no hook reads — the
-      // consultation TA banner uses `['patient-vitals', patientId]`, so the
-      // banner appeared "stuck" until a manual refresh.
+      // Optimistic cache update — push the freshly-created record at the head
+      // of the patient-vitals list so the consultation TA banner reflects the
+      // new values *immediately*, without waiting for a refetch round-trip.
+      // Cache invalidation alone has proven flaky in production (some users
+      // saw the banner stay empty even though the toast confirmed the save),
+      // most likely a race between the close-and-reset and React Query's
+      // refetch. Writing the response into the cache directly removes the race.
+      if (patientId) {
+        queryClient.setQueryData<VitalsApi[]>(
+          ['patient-vitals', patientId],
+          (old) => [created, ...(old ?? [])],
+        );
+      }
+      // Then still invalidate so the next read confirms with the server (and
+      // refreshes the other surfaces : queue pill, agenda timeline, dossier
+      // patient header, prise-constantes screen).
       const keys: readonly unknown[][] = [
-        // consultation TA banner (useLatestVitals) — scope to this patient when known
         patientId ? ['patient-vitals', patientId] : ['patient-vitals'],
-        ['queue'],              // salle d'attente status pill
-        ['appointments'],       // agenda timeline pill
-        ['patient'],            // dossier patient header
-        ['appointment'],        // PriseConstantes own query
+        ['queue'],
+        ['appointments'],
+        ['patient'],
+        ['appointment'],
       ];
       for (const queryKey of keys) {
         void queryClient.invalidateQueries({ queryKey, refetchType: 'all' });
