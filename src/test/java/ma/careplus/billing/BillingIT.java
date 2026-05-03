@@ -528,6 +528,44 @@ class BillingIT {
         });
     }
 
+    // ── Test 11: fallback consult line when motif RDV n'a pas default_act ────
+    //
+    // Régression rapport Y. Boutaleb 2026-05-01 : "les prestations apparaissent
+    // bien avec les montants au moment de cloture mais le montant relatif a la
+    // consultation n'apparait pas". Cas réel : consultation dont le motif RDV
+    // n'avait pas de default_act_id résolu → la ligne consultation tombait,
+    // seul les prestations restaient. Ce test verrouille le fallback : si on
+    // ne peut pas résoudre via le motif, on prend le premier acte CONSULTATION
+    // actif du catalogue.
+    @Test
+    void signConsultation_fallsBackToFirstConsultationActWhenReasonHasNoDefault() throws Exception {
+        String token = bearer(medEmail);
+
+        // Casser le lien motif → default_act pour ce flow
+        jdbc.update("""
+                UPDATE scheduling_appointment_reason
+                SET default_act_id = NULL
+                WHERE code = 'CONSULT-BIL-REASON'
+                """);
+
+        // Signer
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/sign")
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+
+        // La facture brouillon doit malgré tout contenir la ligne consultation
+        // (tirée du premier acte CONSULTATION actif — ici 'CONSULT-BIL' à 350).
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            MvcResult r = mockMvc.perform(get("/api/consultations/" + consultationId + "/invoice")
+                            .header("Authorization", token))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            JsonNode body = objectMapper.readTree(r.getResponse().getContentAsString());
+            assertThat(body.get("totalAmount").asDouble()).isGreaterThan(0.0);
+            assertThat(body.get("lines")).hasSizeGreaterThanOrEqualTo(1);
+        });
+    }
+
     // ── Helper: create an issued invoice ─────────────────────────────────────
 
     private String createIssuedInvoice(String token, UUID consultId) throws Exception {
