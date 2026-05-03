@@ -4,6 +4,31 @@ Anything explicitly out of the MVP goes here. Append-only list of ideas/features
 
 > **Status MVP — `v0.1.0-mvp` taggé sur `467e4f7` (2026-04-26).** Plan en 8 étapes + 5 sous-étapes QA livré intégralement. Voir `docs/MVP_WIRING.md` pour le détail commit-par-commit. Les items ci-dessous sont **post-pilote** : à prioriser après retour terrain.
 
+## 🔥 À faire cette semaine (semaine du 2026-05-04) — DX / vitesse des tests
+
+Priorité élevée. `mvn verify` actuel ≈ 6-7 min sur 410 IT, manual-qa Playwright 15-30 min, ça ralentit chaque cycle. Cible : couper de moitié.
+
+### Cette semaine — quick wins (faible effort, gain immédiat)
+
+- [ ] **Testcontainers reuse mode** — créer `~/.testcontainers.properties` avec `testcontainers.reuse.enable=true` + `.withReuse(true)` sur le `PostgreSQLContainer` dans la base IT (chercher la classe parente, probablement `IntegrationTestSupport` ou similaire). Le container Postgres survit entre `mvn` invocations. Gain ~5-10 s par run, immédiat. Effort : 5 min. Doc : <https://java.testcontainers.org/features/reuse/>.
+- [ ] **Drop `clean` du `mvn verify` quotidien** — utiliser `mvn verify` au lieu de `mvn clean verify` quand seules les sources Java ont changé. Adapter le script `scripts/regress-touched.sh` (déjà existant) ou les CLAUDE.md instructions pour suggérer `mvn verify` par défaut. Gain ~30 s. Effort : 5 min de doc.
+- [ ] **Playwright `globalSetup` réutilise la session login** — créer `frontend/tests/playwright/globalSetup.ts` qui fait le login MEDECIN une fois, sauvegarde `storageState.json`, et chaque test/walk repart authentifié. Gain ~10-15 s par walk × 10 walks = **2-3 min sur le manual-qa**. Effort : 30 min.
+
+### Cette semaine — gain massif (effort moyen)
+
+- [ ] **BaseIT unique → context cache Spring stable** — audit des ~30 classes `*IT.java`, identifier ce qui invalide le cache (`@MockBean`, `@TestPropertySource`, profils différents, ports random), consolider derrière une `BaseIT` abstraite. Aujourd'hui chaque IT redémarre potentiellement le contexte → coût total ~3 min. Cible : un seul contexte partagé pour 90 % des IT. Gain estimé : **2-3 min sur `mvn verify`**. Effort : 4-6 h. Risque : régressions de mocks à corriger un par un.
+- [ ] **Audit `@DirtiesContext`** — chercher toutes les annotations `@DirtiesContext` dans `src/test/`, vérifier qu'elles sont vraiment nécessaires. Chaque `@DirtiesContext` force un redémarrage de contexte ≈ 3-5 s. Effort : 1 h.
+
+### Différé post-pilote (haut effort, haut risque)
+
+- [ ] **Parallélisation Failsafe** — `<parallel>classes</parallel>` + `<threadCount>4</threadCount>`. Gain potentiel **40-50 %** mais risque de flakiness sur Postgres concurrentes (Stock + Grossesse + Vaccination IT touchent des aggregates indépendants → théoriquement OK, mais à valider). Pré-requis : BaseIT stable + isolation transactionnelle stricte vérifiée.
+- [ ] **Slices fins (`@WebMvcTest`, `@DataJpaTest`)** — pour les modules très simples (catalogue, settings). Gain ~80 % sur le sous-ensemble migré. Trade-off : perte de la confiance "le truc s'allume vraiment de bout en bout". À réserver à des composants stables sans logique cross-couche.
+- [ ] **Manual-qa parallel workers** — Playwright `--workers=4` parallélise les walks. RAM ~1 Go par worker. À configurer dans le prompt par défaut de l'agent `manual-qa` après validation que les walks ne se marchent pas dessus (login concurrent, écritures sur la même fixture).
+
+### Cible
+
+`mvn verify` 6-7 min → **3-4 min** d'ici fin de semaine grâce aux 5 premiers items. Manual-qa 15-30 min → **8-15 min** grâce à `globalSetup` Playwright.
+
 ## QA-driven follow-ups (extensions des features livrées dans le sprint MVP-wiring)
 
 Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé ici pour ne pas être oublié quand un cabinet pilote demandera l'évolution naturelle.
