@@ -9,7 +9,9 @@ import { Screen } from '@/components/shell/Screen';
 import { Panel } from '@/components/ui/Panel';
 import { Search } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { CatalogueTabs } from './LabCataloguePage';
+import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
 
 interface ImagingExam {
@@ -31,11 +33,14 @@ const NAV_MAP = {
 
 export default function ImagingCataloguePage() {
   const navigate = useNavigate();
+  const userRoles = useAuthStore((s) => s.user?.roles ?? []);
+  const canImport = userRoles.includes('MEDECIN') || userRoles.includes('ADMIN');
   const [items, setItems] = useState<ImagingExam[]>([]);
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [modalityFilter, setModalityFilter] = useState<string>('');
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 250);
@@ -51,7 +56,7 @@ export default function ImagingCataloguePage() {
       .then((r) => setItems(r.data))
       .catch(() => toast.error('Impossible de charger les examens d’imagerie.'))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ]);
+  }, [debouncedQ, refreshTick]);
 
   const modalities = useMemo(() => {
     const set = new Set<string>();
@@ -80,6 +85,11 @@ export default function ImagingCataloguePage() {
       active="catalogue"
       title="Catalogue radio / imagerie"
       sub={`${filtered.length} examen${filtered.length > 1 ? 's' : ''}`}
+      topbarRight={
+        canImport ? (
+          <CatalogImportButton kind="imaging" onImported={() => setRefreshTick((t) => t + 1)} />
+        ) : undefined
+      }
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <CatalogueTabs active="radio" />

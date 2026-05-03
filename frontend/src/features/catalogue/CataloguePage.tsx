@@ -20,6 +20,7 @@ import { Plus, Search, Trash, Pill as PillIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { CatalogueTabs } from './LabCataloguePage';
+import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
 
 interface Medication {
@@ -77,6 +78,8 @@ export default function CataloguePage() {
 
   // Debounced search.
   const [debouncedQ, setDebouncedQ] = useState('');
+  // Bumped to force a list reload (e.g. after a successful CSV import).
+  const [refreshTick, setRefreshTick] = useState(0);
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 250);
     return () => clearTimeout(t);
@@ -96,7 +99,7 @@ export default function CataloguePage() {
       .then((r) => setItems(r.data))
       .catch(() => toast.error('Impossible de charger le catalogue.'))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ, tagFilter]);
+  }, [debouncedQ, tagFilter, refreshTick]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, Medication[]>();
@@ -185,9 +188,12 @@ export default function CataloguePage() {
       sub={`${items.length} entrée${items.length > 1 ? 's' : ''} commercialisée${items.length > 1 ? 's' : ''} au Maroc`}
       topbarRight={
         canEdit ? (
-          <Button variant="primary" onClick={openCreate}>
-            <Plus /> Ajouter
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <CatalogImportButton kind="drug" onImported={() => setRefreshTick((t) => t + 1)} />
+            <Button variant="primary" onClick={openCreate}>
+              <Plus /> Ajouter
+            </Button>
+          </div>
         ) : undefined
       }
       onNavigate={(navId) => navigate(NAV_MAP[navId])}

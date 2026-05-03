@@ -612,6 +612,8 @@ const PERMISSIONS: { code: string; label: string; category: string }[] = [
   { code: 'DOCUMENT_IMPORT_ADMIN', label: "Administrer l'import auto de documents", category: 'Documents' },
   // V016 — administre le catalogue des prestations (CRUD + tarifs).
   { code: 'PRESTATION_ADMIN', label: 'Administrer le catalogue des prestations', category: 'Prestations' },
+  // V018 — import CSV des catalogues médicaments / analyses / radio.
+  { code: 'CATALOG_IMPORT', label: 'Importer un catalogue (médicaments, analyses, radio)', category: 'Catalogue' },
 ];
 
 const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [

@@ -11,6 +11,8 @@ import { Screen } from '@/components/shell/Screen';
 import { Panel } from '@/components/ui/Panel';
 import { Search } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useAuthStore } from '@/lib/auth/authStore';
+import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
 
 interface LabTest {
@@ -32,11 +34,14 @@ const NAV_MAP = {
 
 export default function LabCataloguePage() {
   const navigate = useNavigate();
+  const userRoles = useAuthStore((s) => s.user?.roles ?? []);
+  const canImport = userRoles.includes('MEDECIN') || userRoles.includes('ADMIN');
   const [items, setItems] = useState<LabTest[]>([]);
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [refreshTick, setRefreshTick] = useState(0);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQ(q), 250);
@@ -52,7 +57,7 @@ export default function LabCataloguePage() {
       .then((r) => setItems(r.data))
       .catch(() => toast.error('Impossible de charger les analyses.'))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ]);
+  }, [debouncedQ, refreshTick]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -81,6 +86,11 @@ export default function LabCataloguePage() {
       active="catalogue"
       title="Catalogue analyses"
       sub={`${filtered.length} analyse${filtered.length > 1 ? 's' : ''}`}
+      topbarRight={
+        canImport ? (
+          <CatalogImportButton kind="lab" onImported={() => setRefreshTick((t) => t + 1)} />
+        ) : undefined
+      }
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <CatalogueTabs active="analyses" />
