@@ -23,6 +23,7 @@ import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
+import { ConsultationPrestationsPanel } from '@/features/prestation/components/ConsultationPrestationsPanel';
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMutations';
@@ -329,6 +330,8 @@ export default function ConsultationPage() {
               </div>
             ))}
           </div>
+
+          {id && <ConsultationPrestationsPanel consultationId={id} readOnly={isSigned} />}
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
             Facturation
