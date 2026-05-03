@@ -153,13 +153,13 @@ describe('<PriseConstantesPage /> (desktop)', () => {
     expect(screen.getByLabelText('FR (/min)')).toBeInTheDocument();
   });
 
-  it('renders the notes textarea with prototype default text', () => {
+  it('renders the notes textarea EMPTY (regression: never pre-fill — audit 2026-05-01)', () => {
     renderDesktop();
     const textarea = screen.getByLabelText('Motif déclaré par le patient');
     expect(textarea).toBeInTheDocument();
-    expect(textarea).toHaveValue(
-      'Patient vient pour première consultation. Se plaint de fatigue depuis 2 semaines, maux de tête le matin. Antécédents familiaux : père hypertendu.',
-    );
+    // Pre-filled fixture text was a safety hazard — the medic could submit
+    // without realizing the values weren't theirs. Form must start blank.
+    expect(textarea).toHaveValue('');
   });
 
   it('renders checkbox options verbatim from prototype', () => {
@@ -169,10 +169,13 @@ describe('<PriseConstantesPage /> (desktop)', () => {
     expect(screen.getByLabelText(/Résultats d'analyses apportés/)).toBeInTheDocument();
   });
 
-  it('renders right-panel patient identity (Youssef Ziani)', () => {
+  it('renders right-panel patient identity from REAL patient data (regression: no fixture fallback)', () => {
     renderDesktop();
+    // The patient comes from usePatient — this is the mocked Youssef Ziani.
+    // Importantly, the meta line is now built from real fields (age + sex + RDV time),
+    // not from the static "Première consultation" fixture string.
     expect(screen.getByText('Youssef Ziani')).toBeInTheDocument();
-    expect(screen.getByText('38 ans · ♂ · Première consultation')).toBeInTheDocument();
+    expect(screen.getByText(/38 ans · H · RDV \d{2}:\d{2}/)).toBeInTheDocument();
   });
 
   it('renders the reference range panel header', () => {
@@ -180,12 +183,11 @@ describe('<PriseConstantesPage /> (desktop)', () => {
     expect(screen.getByText('Repères (H 30-50 ans)')).toBeInTheDocument();
   });
 
-  it('renders the amber TA warning callout', () => {
+  it('does NOT render the amber TA warning at mount (regression: needs real input ≥ 130)', () => {
     renderDesktop();
-    expect(screen.getByText('TA légèrement élevée')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Le patient sera orienté en consultation/),
-    ).toBeInTheDocument();
+    // Previously rendered against DEFAULT_VITALS.tensionSys = 132 — pure fixture.
+    // With the form blank, the warning must be silent until the medic types ≥ 130.
+    expect(screen.queryByText('TA légèrement élevée')).not.toBeInTheDocument();
   });
 
   it('renders both CTA buttons verbatim', () => {
@@ -205,11 +207,11 @@ describe('<PriseConstantesPage /> (desktop)', () => {
     expect(screen.getByText(/Saisi par/)).toBeInTheDocument();
   });
 
-  it('renders the IMC bar with calculated BMI', () => {
+  it('renders the IMC bar with placeholder when no weight/height yet', () => {
     renderDesktop();
-    // Default: 74kg, 178cm → BMI ≈ 23.4
+    // Form starts blank; IMC must show the em-dash placeholder, not 23.4.
     expect(screen.getByText(/IMC calculé/)).toBeInTheDocument();
-    expect(screen.getByText('23.4')).toBeInTheDocument();
+    expect(screen.queryByText('23.4')).not.toBeInTheDocument();
   });
 
   it('calls submit handler when "Envoyer en consultation" is clicked', async () => {

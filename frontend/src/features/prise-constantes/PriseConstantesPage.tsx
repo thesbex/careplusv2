@@ -14,6 +14,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Panel } from '@/components/ui/Panel';
 import { Field } from '@/components/ui/Field';
@@ -25,15 +26,37 @@ import { useRecordVitals } from './hooks/useRecordVitals';
 import { useAppointment } from './hooks/useAppointment';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { vitalsFormSchema, type VitalsFormValues } from './schema';
-import { DEFAULT_VITALS } from './fixtures';
 import './prise-constantes.css';
+
+/**
+ * Empty form values — the medic must enter every measurement themselves.
+ * Pre-filling with realistic-looking defaults (TA 132/84, IMC 23.4, etc.) is a
+ * safety hazard: the medic submits without realizing the values were never
+ * confirmed for this patient. See audit 2026-05-01, IHM QA.
+ */
+const EMPTY_VITALS: VitalsFormValues = {
+  tensionSys: null,
+  tensionDia: null,
+  pulse: null,
+  spo2: null,
+  tempC: null,
+  weightKg: null,
+  heightCm: null,
+  glycemia: null,
+  abdominalCm: null,
+  respRate: null,
+  notes: '',
+  jeun: false,
+  carnet: false,
+  analyses: false,
+};
 
 export default function PriseConstantesPage() {
   const navigate = useNavigate();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
-  const { appointment } = useAppointment(appointmentId);
-  const { patient } = usePatient(appointment?.patientId);
+  const { appointment, isLoading: aptLoading, error: aptError } = useAppointment(appointmentId);
+  const { patient, isLoading: patLoading, error: patError } = usePatient(appointment?.patientId);
 
   const aptTime = appointment
     ? new Date(appointment.startAt).toLocaleTimeString('fr-MA', {
@@ -52,12 +75,7 @@ export default function PriseConstantesPage() {
     formState: { errors },
   } = useForm<VitalsFormValues>({
     resolver: zodResolver(vitalsFormSchema),
-    defaultValues: {
-      ...DEFAULT_VITALS,
-      glycemia:    null,
-      abdominalCm: null,
-      respRate:    null,
-    },
+    defaultValues: EMPTY_VITALS,
   });
 
   const weightKg   = watch('weightKg');
@@ -71,30 +89,79 @@ export default function PriseConstantesPage() {
       : '—';
 
   /** Mirror prototype warn logic: TA card turns amber when sys >= 130. */
-  const taWarn = (tensionSys ?? DEFAULT_VITALS.tensionSys) >= 130;
+  const taWarn = typeof tensionSys === 'number' && tensionSys >= 130;
 
-  const onSubmit = handleSubmit(async (values) => {
-    await submit(values);
-    navigate('/salle');
-  });
+  const onSubmit = handleSubmit(
+    async (values) => {
+      await submit(values);
+      navigate('/salle');
+    },
+    (errs) => {
+      const first = Object.values(errs)[0] as { message?: string } | undefined;
+      const root = (errs as { root?: { message?: string } }).root;
+      toast.error('Impossible d\'enregistrer', {
+        description: root?.message ?? first?.message ?? 'Vérifiez les valeurs saisies.',
+      });
+    },
+  );
+
+  // Hard gate: never render the form when the patient context is missing or
+  // failed to load. Showing a half-loaded form means the medic could record
+  // vitals while looking at stale / wrong / fixture data.
+  const navMap = {
+    agenda:   '/agenda',
+    patients: '/patients',
+    salle:    '/salle',
+    consult:  '/consultations',
+    factu:    '/facturation',
+    catalogue:'/catalogue',
+    params:   '/parametres',
+  } as const;
+  if (aptError || patError) {
+    return (
+      <Screen
+        active="salle"
+        title="Prise des constantes"
+        sub="Chargement impossible"
+        onNavigate={(id) => navigate(navMap[id])}
+      >
+        <div role="alert" style={{ padding: 24, color: 'var(--danger)', fontSize: 14 }}>
+          {aptError ?? patError}
+          <div style={{ marginTop: 12 }}>
+            <button type="button" onClick={() => navigate('/salle')} className="btn">
+              {"Retour à la salle d'attente"}
+            </button>
+          </div>
+        </div>
+      </Screen>
+    );
+  }
+  if (aptLoading || patLoading || !appointment || !patient) {
+    return (
+      <Screen
+        active="salle"
+        title="Prise des constantes"
+        sub="Chargement…"
+        onNavigate={(id) => navigate(navMap[id])}
+      >
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du patient…</div>
+      </Screen>
+    );
+  }
+
+  // From here on, patient + appointment are real — never fixture.
+  const patientCardData = {
+    initials: patient.initials,
+    fullName: patient.fullName,
+    meta: `${patient.age} ans · ${patient.sex} · RDV ${aptTime}`,
+  };
 
   return (
     <Screen
       active="salle"
       title="Prise des constantes"
       sub={patientSub}
-      onNavigate={(id) => {
-        const map = {
-          agenda:   '/agenda',
-          patients: '/patients',
-          salle:    '/salle',
-          consult:  '/consultations',
-          factu:    '/facturation',
-          catalogue:'/catalogue',
-          params:   '/parametres',
-        } as const;
-        navigate(map[id]);
-      }}
+      onNavigate={(id) => navigate(navMap[id])}
     >
       <form onSubmit={onSubmit} noValidate className="pc-layout">
 
@@ -147,7 +214,7 @@ export default function PriseConstantesPage() {
                           : 'var(--border)',
                         background: taWarn ? 'var(--amber-soft)' : 'var(--surface)',
                       }}
-                      {...register('tensionSys', { valueAsNumber: true })}
+                      {...register('tensionSys', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                     />
                     <span style={{ fontSize: 16, color: 'var(--ink-3)', padding: '0 2px' }}>/</span>
                     <input
@@ -167,7 +234,7 @@ export default function PriseConstantesPage() {
                           : 'var(--border)',
                         background: taWarn ? 'var(--amber-soft)' : 'var(--surface)',
                       }}
-                      {...register('tensionDia', { valueAsNumber: true })}
+                      {...register('tensionDia', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                     />
                     <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>mmHg</span>
                   </div>
@@ -193,7 +260,7 @@ export default function PriseConstantesPage() {
                   type="number"
                   aria-label="Fréquence cardiaque"
                   errorMessage={errors.pulse?.message}
-                  {...register('pulse', { valueAsNumber: true })}
+                  {...register('pulse', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Température */}
@@ -206,7 +273,7 @@ export default function PriseConstantesPage() {
                   step="0.1"
                   aria-label="Température"
                   errorMessage={errors.tempC?.message}
-                  {...register('tempC', { valueAsNumber: true })}
+                  {...register('tempC', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* SpO₂ */}
@@ -218,7 +285,7 @@ export default function PriseConstantesPage() {
                   type="number"
                   aria-label="Saturation O₂"
                   errorMessage={errors.spo2?.message}
-                  {...register('spo2', { valueAsNumber: true })}
+                  {...register('spo2', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Poids */}
@@ -231,7 +298,7 @@ export default function PriseConstantesPage() {
                   step="0.1"
                   aria-label="Poids"
                   errorMessage={errors.weightKg?.message}
-                  {...register('weightKg', { valueAsNumber: true })}
+                  {...register('weightKg', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Taille */}
@@ -243,7 +310,7 @@ export default function PriseConstantesPage() {
                   type="number"
                   aria-label="Taille"
                   errorMessage={errors.heightCm?.message}
-                  {...register('heightCm', { valueAsNumber: true })}
+                  {...register('heightCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
               </div>
 
@@ -323,6 +390,7 @@ export default function PriseConstantesPage() {
         {/* ── Right — reference panel ────────────────────────── */}
         <div className="pc-right scroll">
           <PreviousVitalsCard
+            patient={patientCardData}
             showTaWarn={taWarn}
             submitting={isPending}
             onSaveAndWait={() => navigate('/salle')}

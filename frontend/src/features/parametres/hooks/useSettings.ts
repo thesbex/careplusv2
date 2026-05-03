@@ -65,13 +65,18 @@ export function useUpdateClinicSettings() {
   };
 }
 
+// Stable empty fallback — without it, `data ?? []` returns a fresh `[]` on every
+// render and any `useEffect(..., [tiers])` consumer ends up in an infinite loop
+// (TarifsTab triggered "Maximum update depth exceeded" before this was added).
+const EMPTY_TIERS: TierConfig[] = [];
+
 export function useTiers() {
   const { data, isLoading } = useQuery({
     queryKey: ['tier-config'],
     queryFn: () => api.get<TierConfig[]>('/settings/tiers').then((r) => r.data),
     staleTime: 60_000,
   });
-  return { tiers: data ?? [], isLoading };
+  return { tiers: data ?? EMPTY_TIERS, isLoading };
 }
 
 export function useUpdateTierDiscount() {

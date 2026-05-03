@@ -14,6 +14,7 @@ import type { CSSProperties } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Heart, Thermo, Signal, Warn } from '@/components/icons';
@@ -21,8 +22,25 @@ import { useRecordVitals } from './hooks/useRecordVitals';
 import { useAppointment } from './hooks/useAppointment';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { vitalsFormSchema, type VitalsFormValues } from './schema';
-import { DEFAULT_VITALS } from './fixtures';
 import './prise-constantes.css';
+
+/** Empty form values — same rationale as the desktop variant: never pre-fill. */
+const EMPTY_VITALS: VitalsFormValues = {
+  tensionSys: null,
+  tensionDia: null,
+  pulse: null,
+  spo2: null,
+  tempC: null,
+  weightKg: null,
+  heightCm: null,
+  glycemia: null,
+  abdominalCm: null,
+  respRate: null,
+  notes: '',
+  jeun: false,
+  carnet: false,
+  analyses: false,
+};
 
 /** Large-input style shared across all vital input fields. */
 const largeInputStyle: CSSProperties = {
@@ -38,8 +56,8 @@ export default function PriseConstantesMobilePage() {
   const navigate = useNavigate();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
-  const { appointment } = useAppointment(appointmentId);
-  const { patient } = usePatient(appointment?.patientId);
+  const { appointment, isLoading: aptLoading, error: aptError } = useAppointment(appointmentId);
+  const { patient, isLoading: patLoading, error: patError } = usePatient(appointment?.patientId);
   const patientName = patient?.fullName ?? 'Chargement…';
   const allergyLabel =
     patient && patient.allergies.length > 0 ? patient.allergies.join(', ') : null;
@@ -50,12 +68,7 @@ export default function PriseConstantesMobilePage() {
     watch,
   } = useForm<VitalsFormValues>({
     resolver: zodResolver(vitalsFormSchema),
-    defaultValues: {
-      ...DEFAULT_VITALS,
-      glycemia:    null,
-      abdominalCm: null,
-      respRate:    null,
-    },
+    defaultValues: EMPTY_VITALS,
   });
 
   const weightKg = watch('weightKg');
@@ -67,10 +80,62 @@ export default function PriseConstantesMobilePage() {
       ? (weightKg / Math.pow(heightCm / 100, 2)).toFixed(1)
       : '';
 
-  const onSubmit = handleSubmit(async (values) => {
-    await submit(values);
-    navigate('/salle');
-  });
+  const onSubmit = handleSubmit(
+    async (values) => {
+      await submit(values);
+      navigate('/salle');
+    },
+    (errs) => {
+      const first = Object.values(errs)[0] as { message?: string } | undefined;
+      const root = (errs as { root?: { message?: string } }).root;
+      toast.error('Impossible d\'enregistrer', {
+        description: root?.message ?? first?.message ?? 'Vérifiez les valeurs saisies.',
+      });
+    },
+  );
+
+  // Same hard gate as desktop — never let the form render with stale / fixture
+  // patient data. See audit 2026-05-01.
+  if (aptError || patError) {
+    return (
+      <MScreen
+        tab="salle"
+        noTabs
+        topbar={
+          <MTopbar
+            left={
+              <MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/salle')} />
+            }
+            title="Constantes"
+            sub="Erreur de chargement"
+          />
+        }
+      >
+        <div role="alert" style={{ padding: 16, color: 'var(--danger)', fontSize: 14 }}>
+          {aptError ?? patError}
+        </div>
+      </MScreen>
+    );
+  }
+  if (aptLoading || patLoading || !appointment || !patient) {
+    return (
+      <MScreen
+        tab="salle"
+        noTabs
+        topbar={
+          <MTopbar
+            left={
+              <MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/salle')} />
+            }
+            title="Constantes"
+            sub="Chargement…"
+          />
+        }
+      >
+        <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du patient…</div>
+      </MScreen>
+    );
+  }
 
   return (
     <MScreen
@@ -120,7 +185,7 @@ export default function PriseConstantesMobilePage() {
                 placeholder="—"
                 aria-label="Tension systolique"
                 style={largeInputStyle}
-                {...register('tensionSys', { valueAsNumber: true })}
+                {...register('tensionSys', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <span className="pc-m-input-unit">/</span>
               <input
@@ -129,7 +194,7 @@ export default function PriseConstantesMobilePage() {
                 placeholder="—"
                 aria-label="Tension diastolique"
                 style={largeInputStyle}
-                {...register('tensionDia', { valueAsNumber: true })}
+                {...register('tensionDia', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <span className="pc-m-input-unit">mmHg</span>
             </div>
@@ -149,7 +214,7 @@ export default function PriseConstantesMobilePage() {
                 placeholder="—"
                 aria-label="Fréquence cardiaque"
                 style={largeInputStyle}
-                {...register('pulse', { valueAsNumber: true })}
+                {...register('pulse', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <span className="pc-m-input-unit">bpm</span>
             </div>
@@ -170,7 +235,7 @@ export default function PriseConstantesMobilePage() {
                 placeholder="—"
                 aria-label="Température"
                 style={largeInputStyle}
-                {...register('tempC', { valueAsNumber: true })}
+                {...register('tempC', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <span className="pc-m-input-unit">°C</span>
             </div>
@@ -190,7 +255,7 @@ export default function PriseConstantesMobilePage() {
                 placeholder="—"
                 aria-label="Saturation O₂"
                 style={largeInputStyle}
-                {...register('spo2', { valueAsNumber: true })}
+                {...register('spo2', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <span className="pc-m-input-unit">%</span>
             </div>
@@ -206,14 +271,14 @@ export default function PriseConstantesMobilePage() {
                 step="0.1"
                 placeholder="Poids"
                 aria-label="Poids (kg)"
-                {...register('weightKg', { valueAsNumber: true })}
+                {...register('weightKg', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"
                 type="number"
                 placeholder="Taille"
                 aria-label="Taille (cm)"
-                {...register('heightCm', { valueAsNumber: true })}
+                {...register('heightCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"

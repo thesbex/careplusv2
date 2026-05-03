@@ -294,6 +294,53 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - In-app notifications center per user
 - WhatsApp share link for PDFs (deep link with pre-filled message)
 
+## Test automation — Karate for backend APIs
+
+Origin: 2026-05-01 IHM QA pass surfaced ~7 backend bugs (PUT /invoices 500, prescription 500, /patients/{id} 500, sign() accepts empty diagnosis, invoice issue at 0 MAD, payment overpayment, charset double-encoding). Each one had **zero IT** before — they only got caught because someone walked the UI in a browser. We need a layer between unit tests and Playwright that exercises every endpoint as a real HTTP client.
+
+**Why Karate (not REST-assured / Postman):**
+- Specs read like Gherkin (`Given path /api/invoices` / `When method PUT` / `Then status 422`) — non-Java QA can write tests without knowing JUnit
+- Built-in JSON match with partial / wildcard / regex
+- Same runner can do API + DB assertions (via JDBC) — useful for billing flows where the side effects (auto-invoice on sign) are what matters
+- One Maven dep, runs as part of `mvn verify` next to existing `*IT.java`
+- The team already invested in Testcontainers — Karate plays nice with the same Postgres container
+
+**Scope to cover (from AUDIT_TODO.md "Sécurité applicative / robustesse" + audit sweep):**
+- Identity: login happy / wrong password / lockout after N failed / refresh rotation / logout revokes
+- Patients: CRUD + soft-delete + tier change + mutuelle change + 404 vs 500 on bad UUID + the `severity='GRAVE'` poisoning regression (V017 CHECK)
+- Scheduling: create / update / status machine / availability slots / holiday refusal / leave refusal / reschedule conflicts
+- Clinical: vitals record + range validation + consultation lifecycle (BROUILLON → SIGNEE) + sign rejects empty diagnosis (audit fix) + prescription DRUG/LAB/IMAGING + allergy override + free-text line
+- Billing: auto-invoice on sign + add lines + issue (must reject 0 MAD) + payment (must reject overpayment) + credit note
+- Catalog: medication / lab / imaging / acts CRUD + tariff effective dates
+- Settings: clinic update + tiers update + RBAC matrix UPDATE persists
+- Documents: upload happy + size guard + MIME guard + photo replace + result attach/detach + RESULT_NOT_APPLICABLE on DRUG line
+- Errors: ROUTE_NOT_FOUND, PARAM_MISSING, PARAM_INVALID, METHOD_NOT_ALLOWED, BODY_UNREADABLE all return their declared codes (regression-guard the GlobalExceptionHandler)
+
+**Layout:**
+```
+src/test/java/karate/
+  KarateRunner.java                # JUnit 5 @Karate.Test bootstrap
+  features/
+    auth.feature
+    patients.feature
+    scheduling.feature
+    clinical.feature
+    billing.feature
+    catalog.feature
+    documents.feature
+    settings.feature
+    errors.feature
+  helpers.js                        # auth headers, fixture seeders
+karate-config.js                    # baseUrl per env (test / dev / staging)
+```
+
+**Boot strategy:** reuse the same Testcontainers Postgres + Spring Boot test slice as the existing `*IT.java` so we don't double the CI cost. `@SpringBootTest(webEnvironment = RANDOM_PORT)` exposes the port to Karate via `karate-config.js`.
+
+**Acceptance to close this item:**
+- All endpoints in `docs/API.md` have at least one Karate scenario covering happy + one error case
+- `mvn verify` runs Karate green in CI
+- README explains how to add a new feature file
+
 ## Admin & ops
 
 - Audit log UI with filters (user, action, entity, date range)

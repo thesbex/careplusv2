@@ -14,10 +14,18 @@ import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { Warn } from '@/components/icons';
-import { CURRENT_PATIENT, REFERENCE_RANGES } from '../fixtures';
+import { REFERENCE_RANGES } from '../fixtures';
 import { useAuthStore } from '@/lib/auth/authStore';
 
 interface PreviousVitalsCardProps {
+  /**
+   * Real patient identity. REQUIRED — historically this card fell back to a
+   * Youssef Ziani fixture when the patient query failed, which let the medic
+   * record vitals while looking at the wrong patient's reference data
+   * (audit 2026-05-01, IHM QA). Caller must guarantee the patient is loaded
+   * before mounting this card.
+   */
+  patient: { initials: string; fullName: string; meta: string };
   /** Show amber warning callout (TA élevée). */
   showTaWarn?: boolean;
   /** Called when "Envoyer en consultation" is clicked. */
@@ -44,6 +52,7 @@ function formatRecordedBy(user: { firstName: string; lastName: string; roles: st
 }
 
 export function PreviousVitalsCard({
+  patient,
   showTaWarn = true,
   onSendToConsult,
   onSaveAndWait,
@@ -55,10 +64,10 @@ export function PreviousVitalsCard({
     <>
       {/* Patient identity */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <Avatar initials={CURRENT_PATIENT.initials} size="lg" />
+        <Avatar initials={patient.initials} size="lg" />
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{CURRENT_PATIENT.fullName}</div>
-          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{CURRENT_PATIENT.meta}</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{patient.fullName}</div>
+          <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{patient.meta}</div>
         </div>
       </div>
 
