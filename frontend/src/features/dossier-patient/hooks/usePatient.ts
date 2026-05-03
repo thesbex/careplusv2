@@ -61,8 +61,11 @@ function adapt(v: PatientViewApi): PatientSummary {
   };
 }
 
+export type { PatientViewApi };
+
 export function usePatient(id?: string): {
   patient: PatientSummary | null;
+  raw: PatientViewApi | null;
   isLoading: boolean;
   error: string | null;
 } {
@@ -75,6 +78,7 @@ export function usePatient(id?: string): {
 
   return {
     patient: data ? adapt(data) : null,
+    raw: data ?? null,
     isLoading,
     error: error ? 'Impossible de charger le dossier patient.' : null,
   };
