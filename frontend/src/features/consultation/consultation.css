@@ -1,0 +1,186 @@
+/*
+ * Consultation (SOAP) screen — screen 06
+ * Styles extracted from design/prototype/screens/consultation.jsx inline styles
+ * and design/prototype/mobile/screens.jsx (MConsultation).
+ * All values reference CSS custom properties from tokens.css.
+ */
+
+/* ── Cursor blink animation for active SOAP textarea ── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Desktop 3-column layout ─────────────────────────── */
+.cs-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── SOAP center column ─────────────────────────────── */
+.cs-soap-col {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cs-soap-toolbar {
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+}
+
+.cs-soap-body {
+  padding: 20px 24px;
+  overflow: auto;
+  flex: 1;
+}
+
+.cs-soap-footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cs-autosave {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Right actions panel ─────────────────────────────── */
+.cs-actions-col {
+  border-left: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 16px;
+  overflow: auto;
+}
+
+.cs-section-h {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+
+.cs-section-h + .cs-section-h,
+.cs-billing-panel + .cs-section-h,
+.cs-actions-list + .cs-section-h,
+.cs-docs-list + .cs-section-h {
+  margin-top: 18px;
+}
+
+.cs-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cs-docs-list {
+  font-size: 12px;
+}
+
+/* ── Billing mini-panel ──────────────────────────────── */
+.cs-billing-panel {
+  padding: 10px 12px;
+  font-size: 12.5px;
+}
+
+.cs-billing-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.cs-billing-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0 2px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+
+/* ── Mobile vitals grid ──────────────────────────────── */
+.cs-m-vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.cs-m-vital-cell {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.cs-m-vital-k {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.cs-m-vital-v {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+
+/* ── Mobile patient context strip ────────────────────── */
+.cs-m-context {
+  background: var(--primary-soft);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10;
+  border-bottom: 1px solid var(--border);
+}
+
+.cs-m-context-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.cs-m-context-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cs-m-context-meta {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+/* ── Mobile action row ───────────────────────────────── */
+.cs-m-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}

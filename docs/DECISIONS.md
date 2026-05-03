@@ -158,6 +158,20 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 **Choice**: Full frontend suite (`npm run lint && npm test -- --run && npm run build`) runs only at J-day boundaries (end of J8 / J9 / J10) and before a commit that touches `frontend/**`. Per-screen: run only that screen's local test file + invoke `design-parity-auditor` (textual diff vs prototype). No full-suite invocation per screen.
 **Consequence**: Faster iteration during screen port. Discipline stays where it adds value (day boundaries, commits). Documented in `.claude/agents/regression-guard.md` and feedback memory.
 
+## ADR-023 — Patient tier (NORMAL/PREMIUM), mutuelle, categorized antécédents, free-form patient notes, médecin-owned tariff parameterization
+**Date**: 2026-04-24
+**Status**: accepted
+**Context**: Real-cabinet business rules clarified by the user: (a) consultation start is not exclusively médecin — a habilitated SECRETAIRE/ASSISTANT may open the draft by taking vitals, but signature stays médecin-only; (b) patients have a tier (normal / premium) with a parameterizable discount; (c) mutuelle selection belongs to patient registration, not only to billing; (d) antécédents are not free-form — they cluster into 6 clinically meaningful categories (personnels, familiaux, médicamenteux, sociaux, gynéco-obstétricaux, psychiatriques); (e) médecin may adjust the invoice total before closing the consultation; (f) billing can be handled either by the médecin or handed off to SECRETAIRE/ASSISTANT; (g) tariffs (acts & prices) are self-service for the médecin, not an ADMIN-gated parametrage.
+**Choice**:
+- Add `tier` (`NORMAL` | `PREMIUM`) on `patient` + `config_patient_tier` table holding the premium discount (percent or fixed).
+- Add `has_mutuelle` + `insurance_id` (FK) + `insurance_policy_number` on `patient`. Insurance list already seeded in V002.
+- `antecedent.category` becomes an enum of 17 values grouped under 6 clinical categories (see WORKFLOWS.md WF7b); `Allergy` stays its own dedicated entity.
+- New `patient_note` entity: free-form, authored, timestamped, appendable at any time by médecin from the dossier patient screen.
+- New `UserCapability` flag `canStartConsultation` (bool on `user`) enabling habilitated S/A to transition `ConstantesPrises` → `EnConsultation` + create the `Brouillon`. Clinical content (diagnostic / prescription / signature) remains médecin-only regardless.
+- Médecin can adjust the draft invoice total during WF4 step 9 (before signature). Invoice draft persists the adjusted total; S/A/M may edit the draft afterwards until `Émettre`.
+- `Act` and `Tariff` management exposed under `MANAGE_TARIFFS` capability granted to MEDECIN + ADMIN (not ADMIN-only). Tariffs historicized via `effective_from` / `effective_to` — never overwritten, so past invoices stay reproducible.
+**Consequence**: Flyway migration needed for J5/J6/J7: `patient.tier`, `patient.has_mutuelle`, `patient.insurance_id`, `patient.insurance_policy_number`, `user.can_start_consultation`, `patient_note`, `antecedent.category` enum, `config_patient_tier`, `tariff.effective_from` / `tariff.effective_to`. Permission matrix updated in WORKFLOWS.md. Frontend dossier patient screen gains a tier/mutuelle section + a patient notes thread. Ordonnance & facture PDFs carry mutuelle info when present.
+
 ---
 
 ## How to add an entry
