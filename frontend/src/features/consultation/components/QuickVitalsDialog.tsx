@@ -86,8 +86,20 @@ export function QuickVitalsDialog({
         : `/consultations/${consultationId}/vitals`;
       await api.post(url, payload);
       toast.success('Constantes enregistrées.');
-      if (patientId) {
-        await queryClient.invalidateQueries({ queryKey: ['vitals', patientId] });
+      // Refresh every cache that surfaces vitals. Previously this only
+      // invalidated `['vitals', patientId]` which no hook reads — the
+      // consultation TA banner uses `['patient-vitals', patientId]`, so the
+      // banner appeared "stuck" until a manual refresh.
+      const keys: readonly unknown[][] = [
+        // consultation TA banner (useLatestVitals) — scope to this patient when known
+        patientId ? ['patient-vitals', patientId] : ['patient-vitals'],
+        ['queue'],              // salle d'attente status pill
+        ['appointments'],       // agenda timeline pill
+        ['patient'],            // dossier patient header
+        ['appointment'],        // PriseConstantes own query
+      ];
+      for (const queryKey of keys) {
+        void queryClient.invalidateQueries({ queryKey, refetchType: 'all' });
       }
       onOpenChange(false);
       setForm(EMPTY);

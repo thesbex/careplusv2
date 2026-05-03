@@ -19,23 +19,26 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
         glycemiaGPerL: values.glycemia ?? null,
         notes: values.notes ?? null,
       }),
-    // Awaiting the invalidation chain inside onSuccess defers the mutation's
-    // mutateAsync resolution until the refetches are in-flight, so the page
-    // we navigate to after submit (typically /salle) lands with fresh data
-    // instead of a "stale flash + late refetch" cycle.
-    onSuccess: async () => {
-      await Promise.all([
-        // Salle d'attente queue (status pill flips to CONSTANTES_PRISES).
-        queryClient.invalidateQueries({ queryKey: ['queue'] }),
-        // Agenda — status pill on the timeline.
-        queryClient.invalidateQueries({ queryKey: ['appointments'] }),
-        // Consultation page TA banner (useLatestVitals).
-        queryClient.invalidateQueries({ queryKey: ['patient-vitals'] }),
-        // Dossier patient header "Dernières constantes".
-        queryClient.invalidateQueries({ queryKey: ['patient'] }),
-        // PriseConstantes page itself (useAppointment).
-        queryClient.invalidateQueries({ queryKey: ['appointment'] }),
-      ]);
+    // Fire-and-forget invalidation. We *do not* await — the previous attempt
+    // to await Promise.all([...]) made the mutation hang whenever any of the
+    // 5 invalidated queries took >1s to refetch (slow network, large queue).
+    // The button stayed on "Enregistrement…" and the navigate('/salle') that
+    // follows the await never fired. With refetchType: 'all' the next page
+    // gets fresh data on mount even for queries that weren't active here.
+    onSuccess: () => {
+      const keys = [
+        ['queue'],         // salle d'attente — status pill flips to CONSTANTES_PRISES
+        ['appointments'],  // agenda timeline pill
+        ['patient-vitals'],// consultation TA banner (useLatestVitals)
+        ['patient'],       // dossier patient header "Dernières constantes"
+        ['appointment'],   // PriseConstantes own appointment query
+      ] as const;
+      for (const queryKey of keys) {
+        void queryClient.invalidateQueries({
+          queryKey,
+          refetchType: 'all',
+        });
+      }
     },
   });
 
