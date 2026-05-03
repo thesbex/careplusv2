@@ -60,6 +60,7 @@ export default function OrdonnancePdfPage() {
           consult: '/consultations',
           factu: '/facturation',
           vaccinations: '/vaccinations',
+  grossesses: '/grossesses',
           stock: '/stock',
           catalogue: '/catalogue',
           params: '/parametres',

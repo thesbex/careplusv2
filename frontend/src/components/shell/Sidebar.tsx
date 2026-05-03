@@ -17,6 +17,7 @@ import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
+import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -29,6 +30,7 @@ export type SidebarScreen =
   | 'catalogue'
   | 'params'
   | 'vaccinations'
+  | 'grossesses'
   | 'stock';
 
 interface NavItem {
@@ -49,6 +51,7 @@ const ITEMS: NavItem[] = [
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
   { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux', requiresPermission: 'INVOICE_READ' },
   { id: 'vaccinations', label: 'Vaccinations', Icon: Heart, section: 'flux' },
+  { id: 'grossesses', label: 'Grossesses', Icon: Heart, section: 'flux' },
   { id: 'stock', label: 'Stock', Icon: Box, section: 'flux' },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
@@ -56,7 +59,7 @@ const ITEMS: NavItem[] = [
 
 export interface SidebarProps {
   active?: SidebarScreen;
-  counts?: { salle?: number; vaccinations?: number; stock?: number };
+  counts?: { salle?: number; vaccinations?: number; stock?: number; grossesses?: number };
   cabinet?: { name: string; city: string };
   user?: { name: string; role: string; initials: string };
   onNavigate?: (id: SidebarScreen) => void;
@@ -89,6 +92,10 @@ export function Sidebar({
   // Stock alerts badge — polled every 30 s (lowStock + expiringSoon).
   const liveStock = useStockAlertsCount(safeCounts.stock === undefined);
   const stockBadge = safeCounts.stock ?? liveStock ?? 0;
+
+  // Grossesses alerts badge — polled every 30 s (pregnancies with active alerts).
+  const liveGrossesses = useGrossesseAlertsCount(safeCounts.grossesses === undefined);
+  const grossessesBadge = safeCounts.grossesses ?? liveGrossesses ?? 0;
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -138,6 +145,8 @@ export function Sidebar({
               ? safeCounts.salle
               : it.id === 'vaccinations'
               ? (vaccinationsBadge > 0 ? vaccinationsBadge : undefined)
+              : it.id === 'grossesses'
+              ? (grossessesBadge > 0 ? grossessesBadge : undefined)
               : it.id === 'stock'
               ? (stockBadge > 0 ? stockBadge : undefined)
               : undefined

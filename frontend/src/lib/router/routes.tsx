@@ -15,6 +15,7 @@ import ApercuFacturePage from '@/features/facturation/ApercuFactureRoute';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import ParametragePage from '@/features/parametres/ParametrageRoute';
 import VaccinationsQueueRoute from '@/features/vaccination/VaccinationsQueueRoute';
+import PregnancesQueueRoute from '@/features/grossesse/PregnancesQueueRoute';
 import StockArticlesRoute from '@/features/stock/StockArticlesRoute';
 import StockArticleDetailRoute from '@/features/stock/StockArticleDetailRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
@@ -180,6 +181,14 @@ export const router = createBrowserRouter(
       element: (
         <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
           <VaccinationsQueueRoute />
+        </RequireRole>
+      ),
+    },
+    {
+      path: '/grossesses',
+      element: (
+        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+          <PregnancesQueueRoute />
         </RequireRole>
       ),
     },

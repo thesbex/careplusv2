@@ -231,6 +231,7 @@ export default function AgendaPage() {
             consult: '/consultations',
             factu: '/facturation',
             vaccinations: '/vaccinations',
+  grossesses: '/grossesses',
             stock: '/stock',
             catalogue: '/catalogue',
             params: '/parametres',

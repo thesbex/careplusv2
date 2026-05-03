@@ -13,10 +13,9 @@ export { useRecordVisit } from './hooks/useRecordVisit';
 export { useUpdateVisit } from './hooks/useUpdateVisit';
 export { useRecordUltrasound } from './hooks/useRecordUltrasound';
 export { useBioPanelTemplate } from './hooks/useBioPanelTemplate';
-
-// TODO Étape 5 — worklist + sidebar badge :
-// export { usePregnancyQueue } from './hooks/usePregnancyQueue';
-// export { useGrossesseAlertsCount } from './hooks/useGrossesseAlertsCount';
+export { usePregnancyQueue } from './hooks/usePregnancyQueue';
+export type { PregnancyQueueEntry, PregnancyQueueFilters } from './hooks/usePregnancyQueue';
+export { useGrossesseAlertsCount } from './hooks/useGrossesseAlertsCount';
 
 // ── Components ───────────────────────────────────────────────────────────────
 export { PregnancyTab } from './components/PregnancyTab';
@@ -28,6 +27,7 @@ export { PregnancyCloseDialog } from './components/PregnancyCloseDialog';
 export { CreateChildDialog } from './components/CreateChildDialog';
 export { PregnancyAlertsBanner } from './components/PregnancyAlertsBanner';
 export { BioPanelButton } from './components/BioPanelButton';
+export { BioPanelPreviewDialog } from './components/BioPanelPreviewDialog';
 
 // ── Types & schemas ──────────────────────────────────────────────────────────
 export type {

@@ -604,6 +604,7 @@ export default function DossierPage() {
         const map = {
           agenda: '/agenda', patients: '/patients', salle: '/salle',
           consult: '/consultations', factu: '/facturation', vaccinations: '/vaccinations',
+          grossesses: '/grossesses',
           stock: '/stock', catalogue: '/catalogue', params: '/parametres',
         } as const;
         navigate(map[navId]);
