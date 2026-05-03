@@ -4,10 +4,27 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Grossesse — Étape 1 livrée (schéma + déclaration + plan visites + RBAC)
+**Phase**: Grossesse — Étape 2 livrée (visites obstétricales + échographies + correction DPA T1)
 **Last update**: 2026-05-03
-**Build**: Backend — 370/370 mvn test (15 PregnancyDeclareIT + 355 existants). Régression complète non encore lancée (à faire avant commit).
-**Next action**: Étape 2 — `PregnancyVisitService` + `PregnancyUltrasoundService` + endpoints visits + echos + `PregnancyVisitIT` (10) + `PregnancyUltrasoundIT` (6).
+**Build**: Backend — 16/16 PregnancyVisitIT + PregnancyUltrasoundIT verts (10 + 6). Étape 1 IT (15) non régressés. Régression complète à lancer avant commit.
+**Next action**: Étape 3 — `PregnancyAlertService` (7 règles hardcodées : HTA, GAJ, HGPO, terme dépassé, absence visite T3, BCF absent, BU positive) + `PregnancyQueueService` (worklist paginée) + bio-panel template + `PregnancyAlertIT` (5) + `PregnancyQueueIT` (4).
+
+### 2026-05-03 — Grossesse Étape 2 (visites obstétricales + échographies)
+
+**Shipped (1 commit feature, no new migration — V026 already had the tables)**:
+- Domain : `PregnancyVisit` + `PregnancyUltrasound` (entités JPA, fields-only, `@Version`, `@PrePersist`/`@PreUpdate`). JSONB pour `urineDipJson` et `biometryJson` via `@JdbcTypeCode(SqlTypes.JSON)`.
+- Persistence : `PregnancyVisitRepository` (`findByPregnancyIdOrderByRecordedAtDesc(Pageable)` + `findFirstByPregnancyIdOrderByRecordedAtDesc`) + `PregnancyUltrasoundRepository` (`findByPregnancyIdOrderByPerformedAt`).
+- Cross-module : `ConsultationStatusReader` (component dans `clinical.application`) — query narrow de status de consultation pour guard anti-modification après signature. Évite d'importer `ConsultationRepository` dans le module pregnancy.
+- `PregnancyService` interface étendue avec `recomputePlanVisites(pregnancyId, actorUserId)` (méthode publique exposant la logique interne de `generateVisitPlan`). `PregnancyServiceImpl` implémente.
+- Application : `PregnancyVisitService` (interface) + `PregnancyVisitServiceImpl` — record (calcul saWeeks/saDays depuis lmpDate, validation ranges OMS, liaison plan via appointmentId + fenêtre de tolérance), update (guard CONSULTATION_SIGNED via ConsultationStatusReader), listByPregnancy.
+- Application : `PregnancyUltrasoundService` (interface) + `PregnancyUltrasoundServiceImpl` — record (guard SA_TOO_EARLY, correction DPA T1 via extraction `eg` du JSONB biométrie + recomputePlanVisites), listByPregnancy.
+- Web : `PregnancyVisitController` (3 endpoints) + `PregnancyUltrasoundController` (2 endpoints). DTOs records : `RecordVisitRequest`, `UpdateVisitRequest`, `PregnancyVisitView`, `RecordUltrasoundRequest`, `UltrasoundView`. `PregnancyMapper` étendu avec `toVisitView` + `toUltrasoundView`.
+- IT : `PregnancyVisitIT` 10/10 + `PregnancyUltrasoundIT` 6/6. Tests sc3/sc4 ont des TODO commentés pour les assertions alertes (scope Étape 3). sc7 utilise un vrai `scheduling_appointment` inséré en JdbcTemplate pour satisfaire la FK.
+
+**Interprétations notables** :
+- Split en sous-contrôleurs : `PregnancyVisitController` + `PregnancyUltrasoundController` (séparation des sous-ressources, cohérent avec Vaccination qui split `PatientVaccinationController` + `VaccinationQueueController`).
+- Correction DPA T1 : `newDueDate = performedAt + (280 - eg)`. Si `biometryJson.eg` absent → fallback `eg = saWeeksAtExam * 7 + saDaysAtExam`. Le `lmpDate` n'est PAS modifié — c'est la `dueDate` qui est ajustée directement, et le plan de visites recompute depuis `lmpDate` (les `target_date = lmpDate + sa_weeks * 7` restent inchangés — seule la DPA est recalculée).
+- `ConsultationStatusReader` : pattern interface publique dans `clinical.application` plutôt qu'import direct de `ConsultationRepository` (respect du contrat inter-module ARCHITECTURE.md).
 
 ### 2026-05-03 — Grossesse Étape 1 (schéma + déclaration + plan visites OMS)
 

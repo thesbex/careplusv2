@@ -214,7 +214,7 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 `StockLotWithArticleView` : `{lotId, lotNumber, expiresOn, quantity, daysUntilExpiry, articleId, articleCode, articleLabel, articleCategory}`.
 
-## pregnancy — Étape 1 déclaration + plan visites (2026-05-03) 🔧 (Étapes 2-6 à venir)
+## pregnancy — Étapes 1+2 (2026-05-03) 🔧 (Étapes 3-6 à venir)
 
 ### Grossesses — patient-scoped
 
@@ -233,11 +233,23 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 - `GET /api/pregnancies/{id}/plan` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — 8 entrées planifiées (SA cible, date cible, tolérance ±14 j, statut).
 - `PUT /api/pregnancies/{id}/plan/{planId}` — MEDECIN/ADMIN — modifier une entrée `{targetDate?, status?}`.
 
+### Visites obstétricales (Étape 2)
+
+- `GET /api/pregnancies/{pregnancyId}/visits` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste paginée desc `{page, size}`. Retourne `Page<PregnancyVisitView>`.
+- `POST /api/pregnancies/{pregnancyId}/visits` — ASSISTANT/MEDECIN/ADMIN — saisir biométrie `{weightKg?, bpSystolic?, bpDiastolic?, urineDipJson?, fundalHeightCm?, fetalHeartRateBpm?, fetalMovementsPerceived?, presentation?, notes?, appointmentId?, consultationId?}`. Calcule `saWeeks`/`saDays` depuis `lmpDate`. Lie `visit_plan_id` + marque plan HONOREE si `appointmentId` matche dans la fenêtre de tolérance. Erreurs : 422 `PREGNANCY_NOT_ACTIVE`, 422 `VITALS_OUT_OF_RANGE`.
+- `PUT /api/pregnancies/visits/{visitId}` — ASSISTANT/MEDECIN/ADMIN — modifier (patch sémantique, nulls ignorés). Erreur : 422 `CONSULTATION_SIGNED` si `consultation_id` est en statut SIGNEE.
+
+### Échographies (Étape 2)
+
+- `GET /api/pregnancies/{pregnancyId}/ultrasounds` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste par date d'examen asc. Retourne `List<UltrasoundView>`.
+- `POST /api/pregnancies/{pregnancyId}/ultrasounds` — MEDECIN/ADMIN — saisir écho `{kind, performedAt, saWeeksAtExam, saDaysAtExam, findings?, biometryJson?, documentId?, correctsDueDate}`. Si `correctsDueDate=true` et `kind=T1_DATATION` → ajuste `pregnancy.due_date = performedAt + (280 - eg)` + `due_date_source=ECHO_T1` + recalcule plan de 8 visites. Erreurs : 422 `SA_TOO_EARLY` (saWeeksAtExam < 6).
+
 `PregnancyView` : `{id, patientId, lmpDate, dueDate, dueDateSource, status, startedAt, endedAt, outcome, childPatientId, fetusesJson, notes, version, saWeeks, gravidity, parity}`.
-
 `PregnancyVisitPlanView` : `{id, pregnancyId, targetSaWeeks, targetDate, toleranceDays, status, appointmentId, consultationId, version}`.
+`PregnancyVisitView` : `{id, pregnancyId, visitPlanId, consultationId, recordedAt, saWeeks, saDays, weightKg, bpSystolic, bpDiastolic, urineDipJson, fundalHeightCm, fetalHeartRateBpm, fetalMovementsPerceived, presentation, notes, recordedBy, version}`.
+`UltrasoundView` : `{id, pregnancyId, kind, performedAt, saWeeksAtExam, saDaysAtExam, findings, documentId, biometryJson, correctsDueDate, recordedBy, version, createdAt}`.
 
-**Étapes 2-6 à venir** : visites (POST /visits, biométrie), échographies (POST /ultrasounds), alertes + worklist, frontend.
+**Étapes 3-6 à venir** : alertes + worklist + bio-panel template, frontend.
 
 ## Actuator & meta (J1) ✅
 

@@ -137,4 +137,16 @@ public interface PregnancyService {
      * Returns the current EN_COURS pregnancy for a patient, or empty.
      */
     java.util.Optional<Pregnancy> findCurrent(UUID patientId);
+
+    /**
+     * Recomputes the visit plan for a pregnancy from its current {@code lmpDate}.
+     *
+     * <p>Deletes all existing plan entries and regenerates the 8-entry OMS plan.
+     * Called by {@link PregnancyUltrasoundService} when a T1 datation echo corrects
+     * the due date.
+     *
+     * @param pregnancyId target pregnancy (must exist)
+     * @param actorUserId actor to store in {@code created_by} of the new plan rows
+     */
+    void recomputePlanVisites(UUID pregnancyId, UUID actorUserId);
 }

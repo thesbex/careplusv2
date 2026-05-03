@@ -283,6 +283,18 @@ public class PregnancyServiceImpl implements PregnancyService {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // recomputePlanVisites (public entry point for Étape 2 echo correction)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @Override
+    public void recomputePlanVisites(UUID pregnancyId, UUID actorUserId) {
+        Pregnancy p = requirePregnancy(pregnancyId);
+        visitPlanRepo.deleteByPregnancyId(pregnancyId);
+        em.flush();
+        generateVisitPlan(p, p.getLmpDate(), LocalDate.now(), actorUserId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Private helpers
     // ─────────────────────────────────────────────────────────────────────────
 

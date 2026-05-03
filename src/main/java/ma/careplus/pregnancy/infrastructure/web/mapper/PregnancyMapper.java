@@ -1,9 +1,13 @@
 package ma.careplus.pregnancy.infrastructure.web.mapper;
 
 import ma.careplus.pregnancy.domain.Pregnancy;
+import ma.careplus.pregnancy.domain.PregnancyUltrasound;
+import ma.careplus.pregnancy.domain.PregnancyVisit;
 import ma.careplus.pregnancy.domain.PregnancyVisitPlan;
 import ma.careplus.pregnancy.infrastructure.web.dto.PregnancyView;
 import ma.careplus.pregnancy.infrastructure.web.dto.PregnancyVisitPlanView;
+import ma.careplus.pregnancy.infrastructure.web.dto.PregnancyVisitView;
+import ma.careplus.pregnancy.infrastructure.web.dto.UltrasoundView;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -29,4 +33,10 @@ public interface PregnancyMapper {
                           int parity);
 
     PregnancyVisitPlanView toPlanView(PregnancyVisitPlan entity);
+
+    @Mapping(target = "urineDipJson", source = "urineDipJson")
+    PregnancyVisitView toVisitView(PregnancyVisit entity);
+
+    @Mapping(target = "biometryJson", source = "biometryJson")
+    UltrasoundView toUltrasoundView(PregnancyUltrasound entity);
 }
