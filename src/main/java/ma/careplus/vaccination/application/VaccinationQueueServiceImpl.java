@@ -165,14 +165,17 @@ public class VaccinationQueueServiceImpl implements VaccinationQueueService {
 
                 allEntries.add(new VaccinationQueueEntry(
                         patient.getId(),
-                        patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
+                        patient.getFirstName(),
+                        patient.getLastName(),
                         patient.getPhotoDocumentId(),
                         patient.getBirthDate(),
                         ageMonths,
+                        catalog.getId(),
                         catalog.getCode(),
                         catalog.getNameFr(),
                         sched.getDoseNumber(),
                         sched.getLabelFr(),
+                        sched.getId(),
                         targetDate,
                         daysOverdue,
                         computedStatus
