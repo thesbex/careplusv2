@@ -7,6 +7,18 @@ import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import DossierPage from '../DossierPage';
 import { PATIENT_MOHAMED_ALAMI } from '../fixtures';
 
+vi.mock('@/features/consultation/hooks/useConsultations', () => ({
+  useConsultations: () => ({ consultations: [], isLoading: false, error: null, refetch: () => Promise.resolve() }),
+}));
+
+vi.mock('@/features/salle-attente/hooks/useStartConsultation', () => ({
+  useStartConsultation: () => ({
+    startConsultation: () => Promise.resolve({ id: 'c1' }),
+    isPending: false,
+    error: null,
+  }),
+}));
+
 vi.mock('../hooks/usePatient', () => ({
   usePatient: () => ({
     patient: PATIENT_MOHAMED_ALAMI,
@@ -136,7 +148,8 @@ describe('<DossierPage /> (desktop)', () => {
     const consultsTab = screen.getByRole('tab', { name: /Consultations/ });
     await user.click(consultsTab);
     expect(consultsTab).toHaveAttribute('data-state', 'active');
-    expect(screen.getByText(/14 consultations/)).toBeInTheDocument();
+    // useConsultations mocked to []; empty state displays.
+    expect(screen.getByText(/Aucune consultation enregistrée/)).toBeInTheDocument();
   });
 
   it('has no a11y violations', async () => {

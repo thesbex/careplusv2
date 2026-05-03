@@ -118,8 +118,9 @@ describe('<ConsultationPage /> (wired)', () => {
 
   it('renders patient context: name, age, allergy', () => {
     renderPage();
-    expect(screen.getByText('Mohamed Alami')).toBeInTheDocument();
-    expect(screen.getByText(/52 ans/)).toBeInTheDocument();
+    // Name appears in both topbar sub and patient context card
+    expect(screen.getAllByText(/Mohamed Alami/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/52 ans/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Allergie : Pénicilline/)).toBeInTheDocument();
   });
 

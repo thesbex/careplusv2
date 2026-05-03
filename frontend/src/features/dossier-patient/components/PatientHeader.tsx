@@ -11,9 +11,16 @@ import type { PatientSummary } from '../types';
 interface PatientHeaderProps {
   patient: PatientSummary;
   onEdit?: () => void;
+  onNewConsultation?: () => void;
+  isStartingConsult?: boolean;
 }
 
-export function PatientHeader({ patient, onEdit }: PatientHeaderProps) {
+export function PatientHeader({
+  patient,
+  onEdit,
+  onNewConsultation,
+  isStartingConsult,
+}: PatientHeaderProps) {
   return (
     <div
       style={{
@@ -64,8 +71,12 @@ export function PatientHeader({ patient, onEdit }: PatientHeaderProps) {
         <Button onClick={onEdit}>
           <Edit /> Modifier
         </Button>
-        <Button variant="primary">
-          <Plus /> Nouvelle consultation
+        <Button
+          variant="primary"
+          onClick={onNewConsultation}
+          disabled={!onNewConsultation || isStartingConsult}
+        >
+          <Plus /> {isStartingConsult ? 'Démarrage…' : 'Nouvelle consultation'}
         </Button>
       </div>
 

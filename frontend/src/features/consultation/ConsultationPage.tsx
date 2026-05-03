@@ -163,7 +163,11 @@ export default function ConsultationPage() {
   const savedLabel = lastSavedAt
     ? lastSavedAt.toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' })
     : '—';
-  const patientLabel = patient ? patient.fullName : 'Chargement…';
+  const patientLabel = patient
+    ? `${patient.fullName} (${patient.age} ans · ${patient.sex})`
+    : consultation
+    ? 'Patient introuvable'
+    : 'Chargement…';
 
   if (error) {
     return (
@@ -183,6 +187,13 @@ export default function ConsultationPage() {
       active="consult"
       title="Consultation en cours"
       sub={`${patientLabel}${consultation ? ` · Débutée à ${startedLabel}` : ''}`}
+      topbarRight={
+        consultation && patient ? (
+          <Button onClick={() => navigate(`/patients/${patient.id}`)}>
+            Voir dossier patient
+          </Button>
+        ) : undefined
+      }
       onNavigate={(navId) => navigate(navigateMap[navId])}
     >
       <form

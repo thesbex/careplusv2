@@ -5,6 +5,7 @@ import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Close, Plus } from '@/components/icons';
+import { toast } from 'sonner';
 import { usePatient } from './hooks/usePatient';
 import {
   useUpdatePatient,
@@ -12,6 +13,8 @@ import {
   type AllergySeverity,
   type AntecedentType,
 } from './hooks/useUpdatePatient';
+import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
+import { useConsultations } from '@/features/consultation/hooks/useConsultations';
 import { PatientHeader, AllergyStrip } from './components/PatientHeader';
 import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
@@ -403,6 +406,22 @@ export default function DossierPage() {
   const { patient, raw, isLoading, error } = usePatient(id);
   const [tab, setTab] = useState<DossierTab>('timeline');
   const [showEdit, setShowEdit] = useState(false);
+  const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
+  const { consultations: patientConsultations } = useConsultations(
+    raw?.id ? { patientId: raw.id } : {},
+  );
+
+  async function handleNewConsultation() {
+    if (!raw) return;
+    try {
+      const created = await startConsultation({ patientId: raw.id });
+      void navigate(`/consultations/${created.id}`);
+    } catch {
+      toast.error('Impossible de démarrer la consultation', {
+        description: 'Le rôle MEDECIN est requis pour cette action.',
+      });
+    }
+  }
 
   if (isLoading) {
     return (
@@ -463,7 +482,14 @@ export default function DossierPage() {
       }}
     >
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, position: 'relative' }}>
-        <PatientHeader patient={patient} onEdit={() => setShowEdit((v) => !v)} />
+        <PatientHeader
+          patient={patient}
+          onEdit={() => setShowEdit((v) => !v)}
+          onNewConsultation={() => {
+            void handleNewConsultation();
+          }}
+          isStartingConsult={isStartingConsult}
+        />
         <AllergyStrip patient={patient} />
 
         <DossierTabs value={tab} onValueChange={setTab}>
@@ -474,7 +500,62 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="consults">
-            <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>14 consultations — à venir J5</div>
+            <div style={{ padding: '20px 24px' }}>
+              {!raw && (
+                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+              )}
+              {raw && patientConsultations.length === 0 && (
+                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
+                  Aucune consultation enregistrée pour ce patient.
+                </div>
+              )}
+              {patientConsultations.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {patientConsultations.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => navigate(`/consultations/${c.id}`)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '12px 14px',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        background: 'var(--surface)',
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {new Date(c.startedAt).toLocaleString('fr-MA', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                        {c.motif && (
+                          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
+                            {c.motif}
+                          </div>
+                        )}
+                      </div>
+                      <span
+                        className={`pill ${c.status === 'SIGNEE' ? 'done' : 'consult'}`}
+                        style={{ fontSize: 11 }}
+                      >
+                        {c.status === 'SIGNEE' ? 'Signée' : 'Brouillon'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </DossierTabPanel>
           <DossierTabPanel value="prescr">
             <div style={{ padding: '20px 24px', color: 'var(--ink-3)', fontSize: 13 }}>22 prescriptions — à venir J6</div>
