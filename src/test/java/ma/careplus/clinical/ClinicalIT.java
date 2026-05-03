@@ -63,6 +63,14 @@ class ClinicalIT {
     @BeforeEach
     void seed() {
         rateLimitFilter.clearBucketsForTests();
+        // Billing invoices référencent les consultations via FK ; il faut les
+        // supprimer avant. Idem credit notes / payments / lines (cascade).
+        jdbc.update("UPDATE billing_invoice SET credit_note_id = NULL");
+        jdbc.update("DELETE FROM billing_credit_note");
+        jdbc.update("DELETE FROM billing_payment");
+        jdbc.update("DELETE FROM billing_invoice_line");
+        jdbc.update("DELETE FROM billing_invoice");
+        jdbc.update("DELETE FROM clinical_consultation_prestation");
         jdbc.update("DELETE FROM clinical_vital_signs");
         jdbc.update("DELETE FROM clinical_consultation");
         jdbc.update("DELETE FROM scheduling_appointment");
@@ -225,6 +233,59 @@ class ClinicalIT {
                 .content("{\"notes\":\"oops\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("CONSULT_LOCKED"));
+    }
+
+    // ── Prochain RDV (follow-up) ──────────────────────────────────────────────
+    //
+    // Verrouille le flux UI "Programmer un prochain RDV" : depuis une
+    // consultation BROUILLON, POST /follow-up crée un RDV typé CONTROLE
+    // pour le même patient, lié à la consultation via origin_consultation_id,
+    // statut PLANIFIE.
+    @Test
+    void scheduleFollowUp_createsControleAppointmentLinkedToConsultation() throws Exception {
+        // Crée la consultation
+        MvcResult r = mockMvc.perform(post("/api/consultations")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format(
+                                "{\"patientId\":\"%s\",\"appointmentId\":\"%s\",\"motif\":\"Bilan\"}",
+                                patientId, appointmentId)))
+                .andExpect(status().isCreated()).andReturn();
+        String cId = objectMapper.readTree(r.getResponse().getContentAsString())
+                .get("id").asText();
+
+        // Programme un follow-up à J+7 09:00
+        java.time.LocalDate followDate = java.time.LocalDate.now().plusDays(7);
+        String body = String.format("{\"date\":\"%s\",\"time\":\"09:00:00\",\"notes\":\"Contrôle bilan\"}",
+                followDate);
+
+        MvcResult fr = mockMvc.perform(post("/api/consultations/" + cId + "/follow-up")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("CONTROLE"))
+                .andExpect(jsonPath("$.originConsultationId").value(cId))
+                .andExpect(jsonPath("$.appointmentId").exists())
+                .andReturn();
+
+        UUID followAppointmentId = UUID.fromString(
+                objectMapper.readTree(fr.getResponse().getContentAsString())
+                        .get("appointmentId").asText());
+
+        // L'appointment est bien stocké avec type=CONTROLE et statut PLANIFIE
+        String type = jdbc.queryForObject(
+                "SELECT type FROM scheduling_appointment WHERE id = ?",
+                String.class, followAppointmentId);
+        String status = jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, followAppointmentId);
+        UUID originId = jdbc.queryForObject(
+                "SELECT origin_consultation_id FROM scheduling_appointment WHERE id = ?",
+                UUID.class, followAppointmentId);
+        assertThat(type).isEqualTo("CONTROLE");
+        assertThat(status).isEqualTo("PLANIFIE");
+        assertThat(originId.toString()).isEqualTo(cId);
     }
 
     @Test

@@ -428,4 +428,45 @@ class CatalogIT {
         // PDF magic bytes: %PDF
         assertThat(new String(pdfBytes, 0, 4)).isEqualTo("%PDF");
     }
+
+    // ── Certificat médical (type=CERT) ────────────────────────────────────────
+    //
+    // Verrouille le branchement template `certificat.html` pour CERT et le
+    // PDF de sortie. La consultation doit toujours être en BROUILLON pour
+    // accepter une prescription, mais le certificat lui-même n'a pas
+    // d'autre champ qu'un freeText (corps libre).
+    @Test
+    void createCertificat_then_pdf_returnsValidPdf() throws Exception {
+        String token = bearer(medEmail);
+
+        String body = """
+                {
+                  "type": "CERT",
+                  "allergyOverride": false,
+                  "lines": [
+                    { "freeText": "Le patient est apte à reprendre toutes ses activités sportives sans contre-indication médicale." }
+                  ]
+                }
+                """;
+
+        MvcResult r = mockMvc.perform(post("/api/consultations/" + consultationId + "/prescriptions")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("CERT"))
+                .andExpect(jsonPath("$.lines[0].freeText").exists())
+                .andReturn();
+
+        String rxId = objectMapper.readTree(r.getResponse().getContentAsString()).get("id").asText();
+
+        byte[] pdfBytes = mockMvc.perform(get("/api/prescriptions/" + rxId + "/pdf")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(pdfBytes).hasSizeGreaterThan(0);
+        assertThat(new String(pdfBytes, 0, 4)).isEqualTo("%PDF");
+    }
 }
