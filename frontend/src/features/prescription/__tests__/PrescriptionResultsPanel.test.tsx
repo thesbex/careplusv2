@@ -1,13 +1,13 @@
 /**
- * PrescriptionResultsPanel — affichage des lignes LAB/IMAGING avec
- * bouton « Téléverser résultat » (V015).
+ * PrescriptionResultsPanel — un seul bouton « Téléverser résultat » par
+ * ordonnance LAB / IMAGING (V015).
  *
  * Pinne le contrat :
  *   - DRUG : panneau invisible (RESULT_NOT_APPLICABLE backend).
- *   - LAB / IMAGING : une ligne rendue par PrescriptionLineApi.
- *   - Si resultDocumentId présent : lien « Voir résultat » qui pointe
+ *   - LAB / IMAGING avec N lignes : exactement UN bouton (pas N).
+ *   - Si une ligne a un resultDocumentId : lien « Voir résultat » qui pointe
  *     bien sur /api/documents/{id}/content.
- *   - Si null : DocumentUploadButton est rendu (Téléverser + Photographier).
+ *   - Sinon : DocumentUploadButton est rendu (Téléverser + Photographier).
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
@@ -62,39 +62,54 @@ describe('PrescriptionResultsPanel', () => {
     expect(container.querySelector('[data-testid="prescription-results-panel"]')).toBeNull();
   });
 
-  it('LAB sans résultat : affiche bouton « Téléverser résultat »', () => {
+  it('LAB sans résultat : un seul bouton « Téléverser résultat » même avec 3 lignes', () => {
     render(
       withClient(
         <PrescriptionResultsPanel
           prescription={rx({
             type: 'LAB',
-            lines: [{ ...baseLine, labTestId: 'lab1', freeText: 'Glycémie' }],
+            lines: [
+              { ...baseLine, id: 'l1', labTestId: 'lab1', freeText: 'Glycémie' },
+              { ...baseLine, id: 'l2', labTestId: 'lab2', freeText: 'NFS' },
+              { ...baseLine, id: 'l3', labTestId: 'lab3', freeText: 'Bilan lipidique' },
+            ],
           })}
         />,
       ),
     );
-    expect(screen.getByRole('button', { name: /Téléverser résultat/i })).toBeInTheDocument();
+    const buttons = screen.getAllByRole('button', { name: /Téléverser résultat/i });
+    expect(buttons).toHaveLength(1);
     expect(screen.queryByText(/Voir résultat/i)).not.toBeInTheDocument();
-    expect(screen.getByText('Glycémie')).toBeInTheDocument();
   });
 
-  it('LAB avec résultat : affiche lien « Voir résultat » vers /api/documents/{id}/content', () => {
+  it('LAB avec résultat sur une ligne : un seul lien « Voir résultat » même avec 3 lignes', () => {
     render(
       withClient(
         <PrescriptionResultsPanel
           prescription={rx({
             type: 'LAB',
-            lines: [{ ...baseLine, labTestId: 'lab1', freeText: 'Bilan lipidique', resultDocumentId: 'doc-uuid-xyz' }],
+            lines: [
+              { ...baseLine, id: 'l1', labTestId: 'lab1', freeText: 'Glycémie' },
+              {
+                ...baseLine,
+                id: 'l2',
+                labTestId: 'lab2',
+                freeText: 'Bilan lipidique',
+                resultDocumentId: 'doc-uuid-xyz',
+              },
+              { ...baseLine, id: 'l3', labTestId: 'lab3', freeText: 'NFS' },
+            ],
           })}
         />,
       ),
     );
-    const link = screen.getByRole('link', { name: /Voir résultat/i });
-    expect(link).toHaveAttribute('href', '/api/documents/doc-uuid-xyz/content');
-    expect(link).toHaveAttribute('target', '_blank');
+    const links = screen.getAllByRole('link', { name: /Voir résultat/i });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', '/api/documents/doc-uuid-xyz/content');
+    expect(links[0]).toHaveAttribute('target', '_blank');
   });
 
-  it('readOnly : pas de bouton de suppression sur une ligne avec résultat', () => {
+  it('readOnly : pas de bouton de suppression sur une prescription avec résultat', () => {
     render(
       withClient(
         <PrescriptionResultsPanel
@@ -121,6 +136,6 @@ describe('PrescriptionResultsPanel', () => {
       ),
     );
     expect(screen.getByTestId('prescription-results-panel')).toBeInTheDocument();
-    expect(screen.getByText('Radio thorax')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Téléverser résultat/i })).toBeInTheDocument();
   });
 });
