@@ -4,10 +4,25 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Stock interne — Étape 3 livrée (alertes stock faible + péremption + count badge)
+**Phase**: Stock interne — module shipped (Étapes 1-5 complets)
 **Last update**: 2026-05-03
-**Build**: Backend — 355/355 mvn verify (5 nouveaux StockAlertIT + 350 existants). Frontend — 410/418 (inchangé).
-**Next action**: Stock Étape 4 — Frontend slice `features/stock/` : 11 hooks + types + schemas zod, `/stock` page liste (desktop + mobile 390px), `/stock/articles/{id}` page fiche (desktop + mobile), `MovementDrawer` (IN/OUT/ADJUSTMENT), badge sidebar `useStockAlertsCount()` polling 30s.
+**Build**: Backend — 355/355 mvn verify (10 StockCatalogIT + 12 StockMovementIT + 5 StockAlertIT + 328 existants). Frontend — ~480/488 (8 pré-existants hors scope ; ~70 nouveaux tests stock).
+**Next action**: après pilote feedback — soit Suivi de grossesse (BACKLOG `Pregnancy vertical`), soit Email reminders RDV (BACKLOG `Scheduling`).
+
+### 2026-05-03 — Stock interne Étapes 1-5 (module complet, ~4 j compressés en 1 session)
+
+**Shipped (5 commits)** :
+- `1931556 feat(stock): backend Étape 1 — schéma + référentiel articles + fournisseurs` — V024 (4 tables, GENERATED column tracks_lots), entités/enums (Category, LotStatus, MovementType), repos, `StockCatalogService` (CRUD articles + suppliers, garde 409 CODE_DUPLICATE + 422 CATEGORY_LOCKED), 17 endpoints, `StockCatalogIT` 10/10.
+- `5f58c88 feat(stock): backend Étape 2 — mouvements + FIFO + lots inactivate` — V025 (drop CHECK quantity > 0), `StockMovementService` (recordIn/Out/Adjustment, FIFO automatique sur péremption), `StockLotService.inactivate`, controllers movements + lots, RBAC nuancé (SECRETAIRE peut IN+ADJ pas OUT), `StockMovementIT` 12/12.
+- `551317b feat(stock): backend Étape 3 — alertes stock faible + péremption + count badge` — `StockAlertService` (lowStock < min_threshold + lots ACTIVE expiring < 30 j), endpoints `/alerts` + `/alerts/count`, native queries pour count, `StockAlertIT` 5/5.
+- `3d699eb feat(stock): frontend Étape 4 — liste + fiche article + drawer mouvement (desktop + mobile)` — slice `features/stock/` complet : 11 hooks, types + schemas zod, `/stock` page liste (URL-synced filters), `/stock/articles/:id` fiche (header + 3 quick-actions + lots + historique), `MovementDrawer` (IN/OUT/ADJUSTMENT modes), `StockArticleFormDrawer`, `LotInactivateDialog`, sidebar item + badge polling 30 s, navMap mis à jour 17 écrans, 68 tests vitest, build prod vert.
+- _Étape 5 commit en cours par agent en parallèle (onglet Paramétrage fournisseurs)._
+
+**ADR** : ADR-030 « Module stock — calcul de quantité à la volée + FIFO automatique » à ajouter.
+**API** : 17 endpoints stock documentés.
+**BACKLOG** : retrait QA7-1 (« Module gestion de stock interne ») — scope MVP livré.
+
+**Design doc** : `docs/plans/2026-05-03-stock-interne-design.md` (5 étapes, plan figé via brainstorming Q1-Q8).
 
 ### 2026-05-03 — Vaccination Étapes 5 + 6 (worklist + Paramétrage + QA + docs)
 

@@ -229,6 +229,17 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 - Couvrir la non-régression par un IT de contrat JSON (`*DtoContractIT`) qui assert la présence ET l'absence des champs critiques. Pas suffisant d'asserter `jsonPath("$.content[0].patientLastName")` — il faut `assertThat(entry.has("patientFullName")).isFalse()` pour bloquer un retour de l'ancien nommage.
 **Consequence**: Le pattern `*DtoContractIT` devient la 5ᵉ classe de tests vaccination obligatoire (à côté de Catalog/PatientVaccination/Queue/Booklet). Coût : ~5 scénarios par DTO transversal exposé à l'IHM. Bénéfice : un drift backend↔frontend ne traversera plus QA browser sans être attrapé par le pipeline CI.
 
+## ADR-030 — Module Stock : calcul de quantité à la volée + FIFO automatique sur OUT médicaments
+**Date**: 2026-05-03
+**Status**: accepted
+**Context**: Le module Stock interne doit afficher la quantité disponible par article dans la liste et la fiche, ET garantir l'unicité de la décrémentation lors des sorties (OUT) sur des médicaments avec lots multiples (péremptions différentes). Deux décisions liées à arbitrer :
+1. **Calcul quantité** : (A) colonne dénormalisée `current_quantity` sur `stock_article` mise à jour sur chaque mouvement (cache, rapide en lecture, risque de dérive cache↔historique en cas de bug ou de migration manquée), ou (B) calcul à la volée via SUM(stock_lot.quantity WHERE status='ACTIVE') pour médicaments / SUM signé sur stock_movement pour non-médicaments (toujours cohérent avec l'historique, coût négligeable < 50 articles cabinet GP).
+2. **Stratégie OUT médicament** : (A) FIFO automatique sur `expires_on ASC` ; (B) sélection manuelle du lot par le médecin ; (C) FIFO + override possible.
+**Choice**:
+- Question 1 → **B (calcul à la volée)**. Pattern aligné `VaccinationQueueServiceImpl` (matérialisation à la volée du calendrier). Évite la dérive et économise une migration de backfill si le module évolue. Cabinet GP a max 50-80 articles, perf non-critique.
+- Question 2 → **A (FIFO automatique)**. En consultation, le médecin n'a pas le temps de sélectionner un lot. Risque mitigé : si un lot est rappelé (alerte fournisseur), on le marque INACTIVE en bloc dans le référentiel et le FIFO l'ignore. Override (C) ajoute 30 min d'UI rarement utiles ; sélection manuelle (B) casse le quick-action drawer.
+**Consequence**: Pas de colonne `current_quantity` sur `stock_article`. Calcul exposé via méthode `StockMovementService.getCurrentQuantity()` réutilisée par `StockArticleView` enrich + `StockAlertService.lowStock`. FIFO implémenté en `recordOut` qui peut créer plusieurs `stock_movement` rows (un par lot consommé) avec un même `performed_at` — l'historique reste lisible (filtre par mouvement parent absent en MVP, possible v2 via `parent_movement_id`).
+
 ---
 
 ## How to add an entry

@@ -9,7 +9,7 @@ Anything explicitly out of the MVP goes here. Append-only list of ideas/features
 Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé ici pour ne pas être oublié quand un cabinet pilote demandera l'évolution naturelle.
 
 ### Patient (issu de QA P1–P5)
-- **Mobile parity du panneau "Nouveau patient"** : actuellement le panneau (incluant Mutuelle + Premium + Allergies + Antécédents) n'existe que sur desktop. Porter en `MNouveauPatient` pour mobile (sheet plein écran).
+- ~~**Mobile parity du panneau "Nouveau patient"**~~ — **livré 2026-04-26** (commits `8f78428` + `a92648f` — création + édition patient sur mobile, regression auto Playwright).
 - **Tier discount mode fixe (MAD) en plus du %** : actuellement `config_patient_tier.discount_percent` uniquement. Ajouter colonne `discount_amount` + UI Tarifs avec radio Pourcentage/Forfait. Demande potentielle de cabinets qui font un rabais fixe (50 MAD) plutôt que %.
 - **Tiers personnalisés** : aujourd'hui figés à NORMAL/PREMIUM. Ajouter `GOLD`, `STAGIAIRE`, `FAMILLE`, etc. avec tiering éditable depuis Paramétrage.
 - **Antécédents in-place edit** : depuis le dossier (tab Chronologie / SummaryPanel), permettre la modification/suppression sans passer par le panneau "Modifier". Boutons crayon + corbeille à côté de chaque entrée.
@@ -20,9 +20,9 @@ Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé
 - **Recherche fuzzy par téléphone** : la recherche patient actuelle est ILIKE. Quand un nouveau RDV est pris au téléphone, suggérer le patient existant si le téléphone matche partiellement (anti-doublon).
 
 ### Référentiels (issu de 5.5c + R4 du QA)
-- **CRUD UI référentiels** dans Paramétrage : médecin doit pouvoir ajouter/désactiver/marquer favori médicaments, lab-tests, imaging-exams. Endpoints à créer : `POST/PUT/DELETE /api/catalog/medications`, idem labs/imaging. Onglet "Référentiels" dans `ParametragePage`.
-- **Médicament favori** : la colonne `favorite` existe déjà (`catalog_medication.favorite`). UI : étoile cliquable, médicaments favoris remontent en tête de l'autocomplete.
-- **Étendre les seeds** : 146 médicaments c'est déjà bien, mais une vraie base = ~2000+ produits enregistrés au Maroc. Importer depuis le Bulletin Officiel marocain ou une base AMM publique.
+- ~~**CRUD UI référentiels**~~ — **livré** : médicaments via commit `a2207f5` (2026-04-29) + `f011aff`/`6431cb4` lab-tests + imaging-exams (QA6-4, 2026-05-02) + `2a9113a` recyclage code après soft-delete. Page `/catalogue` 4 onglets opérationnelle. Pas dans `ParametragePage` (choix : page dédiée plus large), reste à câbler le marquage « favori » dans l'autocomplete (le champ `favorite` existe et est éditable, mais l'autocomplete ne re-priorise pas encore).
+- **Médicament favori — autocomplete priorité** 🟡 PARTIEL : édition du flag `favorite` câblée dans `/catalogue` (`CataloguePage.tsx`). Reste à faire : étoile cliquable inline (UX 1-clic) + tri `favorite DESC` dans l'autocomplete `/medications` du `PrescriptionDrawer`.
+- **Étendre les seeds** 🟡 PARTIEL — V011 (commit `a2207f5`, 2026-04-29) seede ~180 médicaments commercialisés au Maroc avec tags pharmacologiques alignés sur `patient_allergy`. Le seed se déplace de `db/seed` (dev only) vers `db/migration` (prod). Reste à atteindre les ~2000+ produits AMM (import Bulletin Officiel ou base publique). L'ADMIN peut maintenir le référentiel via `POST/PUT/DELETE /api/catalog/medications` + écran `/catalogue`.
 - **Synonymes / DCI alternatives** : le médecin tape "Doliprane" → trouve "Paracétamol" et inversement (déjà partiel via DCI search). Renforcer.
 - **Codes NABM / CCAM officiels** : aujourd'hui codes maison (`NFS`, `CRP`, etc.). Aligner sur la nomenclature officielle (NABM Maroc, ou CCAM française à défaut).
 
@@ -33,14 +33,14 @@ Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé
 - **Stupéfiants ordonnance sécurisée** : format légal marocain (déjà mentionné en Clinical).
 
 ### Agenda mois + congés (issu de 5.5e)
-- **Drag-to-move optimistic** : explicitement skippé. Quand on aura besoin (cabinet à fort volume), implémenter avec `dnd-kit` (HTML5 drag natif chez Radix).
+- ~~**Drag-to-move optimistic**~~ — **livré 2026-04-26** (commit `dcb0f86`). Drag natif HTML5 sur les `.ag-block`, snap 5 min, optimistic move + rollback sur 4xx.
 - **Vue mois multi-praticien** : aujourd'hui mono. Avec multi-cabinet, switch praticien dans la toolbar.
 - **Congés multi-praticien** : aujourd'hui un médecin gère ses propres congés. Pour cabinet multi-praticien, vue agrégée "Qui est en congé cette semaine ?".
 - **Congés overlap warning** (déjà listé plus haut dans Scheduling).
 - **Saisie RDV durant congé** : aujourd'hui le booking est refusé (409). Permettre un override avec confirmation explicite ("ce médecin est en congé ce jour-là, confirmer ?") pour les urgences.
 
 ### Paramétrage (issu d'étape 6)
-- **Onboarding 7-step wired** : l'écran 13 du prototype reste statique. Câbler aux endpoints `/api/admin/bootstrap` (step 1) + `PUT /api/settings/clinic` (steps 2-5) + `POST /api/admin/users` (step 6). Sans ça, chaque fresh install nécessite un curl manuel.
+- **Onboarding 7-step wired** 🟡 PARTIEL — livré 2026-04-26 (commit `dcb0f86`) en wizard 4 étapes câblées : Cabinet (`PUT /api/settings/clinic`) → Tarifs (`PUT /api/settings/tiers/PREMIUM`) → Équipe (`POST /api/admin/users` en boucle) → Récap → `/agenda`. Steps « Horaires » + « Documents » du prototype intentionnellement skippés (pas de backend `config_working_hours` ni `document_template` — voir items dédiés ci-après).
 - **Document templates editor** : aujourd'hui le letterhead PDF est en dur dans `ordonnance.html`. Permettre au médecin d'éditer son en-tête (logo, signature image, mentions légales) depuis Paramétrage > Documents.
 - **Mobile parity Paramétrage** : la page est desktop-only. Porter en `MParametrage` (tabs en bottom-sheet).
 - **User edit (pas seulement create + désactiver)** : éditer email, password reset, ajouter/retirer un rôle. Endpoints existent (`PUT /admin/users/:id`, `PUT /admin/users/:id/password`).
@@ -57,10 +57,8 @@ Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé
 
 Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + post-mortem) · **[CHANGE]** = évolution de spec / nouvelle feature.
 
-### QA2-1 — Date de naissance obligatoire à la création patient — **[BUG]**
-- **État actuel** : `useCreatePatient` envoie `birthDate: form.birthDate || null` (`hooks/useCreatePatient.ts:58`). Le formulaire n'a pas de validation. Côté backend, `CreatePatientRequest.birthDate` est nullable.
-- **Pourquoi le bug existait** : la spec WORKFLOWS.md ne marquait pas DDN comme requis explicitement, j'ai porté le prototype tel quel. Or la DDN est cliniquement essentielle (calcul d'âge → posologies pédiatriques/gériatriques, dépistage par âge). On ne peut **pas** soigner sans.
-- **Fix prévu** : (a) zod `birthDate: z.string().min(1)` côté frontend + asterisk visible · (b) `@NotNull` côté backend `CreatePatientRequest.birthDate` + Flyway migration `ALTER TABLE patient ALTER COLUMN birth_date SET NOT NULL` (vérifier qu'aucun existant n'est null avant — `UPDATE` requis sinon).
+### QA2-1 — Date de naissance obligatoire à la création patient — **[BUG]** ✅ LIVRÉ 2026-04-26 (commit `a75c7d1`)
+- **Livré** : validation frontend DDN required + `max=today` sur les 2 paths (panneau "Nouveau patient" + mini-form `PriseRDVDialog`). Backend ajoute `@Past` sur `birthDate` (reste nullable côté API pour ne pas casser les ITs qui seedent par firstName/lastName seuls). `useCreatePatient` n'envoie plus de fallback null.
 - **Leçon** : pour chaque champ "optionnel", se demander "est-ce qu'un médecin peut prescrire sans ?". Si non, c'est obligatoire.
 
 ### QA2-2 — Upload historique patient (anciens docs : prescriptions, analyses, radios) — **[CHANGE / NEW FEATURE]** ✅ LIVRÉ 2026-04-27
@@ -80,10 +78,8 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
   - Impossible d'uploader pendant la création d'un patient (le panneau "Nouveau patient" doit d'abord créer le record). À ajouter en post-create flow ("voulez-vous ajouter des documents ?") quand un cabinet pilote en ressentira le besoin.
 - **Pourquoi le manque existait initialement** : le périmètre MVP (`SPRINT_MVP.md`) ne listait pas la gestion documentaire. Les onglets Analyses/Imagerie/Documents étaient des placeholders compilés dans le port du prototype. Le vrai signal terrain est arrivé via QA wave 2 — feature livrée immédiatement après confirmation en wave 4.
 
-### QA2-3 — Clic sur plage horaire vide dans l'agenda → ouvre la dialog RDV pré-remplie — **[BUG]**
-- **État actuel** : `AgendaGrid` rend des cellules `.ag-daycol` mais sans `onClick` sur les cellules vides (`components/AgendaGrid.tsx`). Seuls les blocs RDV existants sont cliquables → ouvrent `AppointmentDrawer`. Pour créer un RDV il faut cliquer "Nouveau RDV" en haut.
-- **Pourquoi le bug existait** : le prototype avait l'interaction "click slot vide → dialog" implicite mais pas explicitement câblée dans le port JSX → React. Étape 5 a câblé "click sur RDV existant" mais n'a pas couvert le cas inverse.
-- **Fix prévu** : ajouter `onSlotClick(day, hour, minute)` au `AgendaGrid` (calcul de la position via `clientY` − topOffset → minutes). Ouvrir `PriseRDVDialog` avec props `prefilledDate` + `prefilledTime`. Idem `MonthGrid` (clic sur jour vide → dialog avec date pré-sélectionnée). `PriseRDVDialog` doit accepter ces props et hydrater le formulaire.
+### QA2-3 — Clic sur plage horaire vide dans l'agenda → ouvre la dialog RDV pré-remplie — **[BUG]** ✅ LIVRÉ 2026-04-26 (commit `a75c7d1`)
+- **Livré** : `AgendaGrid` reçoit `onSlotClick(dayKey, "HH:mm")`, snap 5 min depuis `clientY`, ignore les clicks bubblés depuis un `.ag-block` existant. `AgendaPage.isoOfDayKey()` reconstruit la date ISO à partir du `dayKey + weekOffset` et alimente `rdvPrefill`. `PriseRDVDialog` accepte `prefilledDate` (ISO) + `prefilledTime`, convertit en dd/MM/yyyy et positionne le calendrier.
 - **Leçon** : "click on appointment block" est différent de "click on empty slot". Tester chaque interaction du prototype, pas juste "tester que ça compile".
 
 ### QA2-4 — Onglet "Historique" dans le dossier patient — **[CHANGE / NEW FEATURE]**
@@ -92,13 +88,11 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - **Scope estimé** : ajout d'un tab dans `DossierPage.tsx` (déjà 5 tabs). Hook `usePatientDocuments(patientId)`. Composants : groupement par type, thumbnail PDF (via `pdfjs-dist` déjà installé pour ordonnance), modal viewer plein écran, bouton télécharger, bouton supprimer (si l'utilisateur l'a uploadé).
 - **À ne pas confondre** avec l'onglet Consultations qui montre les consultations **internes** au cabinet. "Historique" = ce qui vient d'**ailleurs**.
 
-### QA2-5 — Barre de recherche du Topbar non fonctionnelle — **[BUG]**
-- **État actuel** : `Topbar.tsx:31-42` rend le button `.cp-search` avec un callback `onSearchOpen` mais aucun `<Screen>` ne le passe. Aujourd'hui le clic ne fait **rien**, et `⌘K` non plus.
-- **Pourquoi le bug existait** : J'ai porté Topbar avec la prop `onSearchOpen` en placeholder. La spotlight-search était notée "post-MVP" mais le bouton est resté visible → impression de feature cassée. C'est pire qu'absent.
-- **Fix prévu** : (a) immédiat → court-circuiter en redirigeant vers `/patients?q=` (la liste patients sait déjà filtrer). (b) propre → composant `PatientSearchSpotlight` (Radix Dialog modale top-anchored), debounce 200ms sur `GET /api/patients?q=&size=8`, résultats en liste cliquable (clic → `/patients/:id`), raccourci `⌘K` global. Câbler dans `Screen` via `onSearchOpen={() => setSpotlightOpen(true)}`.
+### QA2-5 — Barre de recherche du Topbar non fonctionnelle — **[BUG]** ✅ LIVRÉ 2026-04-26 (commit `a75c7d1`)
+- **Livré** : composant `PatientSearchSpotlight` (Radix Dialog top-anchored), debounce 200 ms sur `GET /api/patients?q=`, navigation clavier ↑↓↵, raccourci `⌘K` / `Ctrl+K` global, navigation full-reload vers `/patients/:id` (évite la dépendance à Router/QueryClient au niveau du shell). `Screen` monte le spotlight et passe `onSearchOpen` au `Topbar` — le bouton `.cp-search` a maintenant un handler.
 - **Leçon** : ne jamais shipper un bouton/CTA visible sans handler. Soit on le câble, soit on le cache derrière un feature flag. "Disabled with tooltip 'bientôt'" reste mieux que "rien ne se passe".
 
-### QA2-6 — Upload photo patient + scan CIN à la création — **[CHANGE / NEW FEATURE]**
+### QA2-6 — Upload photo patient + scan CIN à la création — **[CHANGE / NEW FEATURE]** 🟡 PARTIEL — photo livrée via QA5-3 (2026-05-01), CIN recto/verso encore à faire
 - **Demande** : champs upload photo patient (avatar) + photo CIN (recto + verso) dans le formulaire "Nouveau patient".
 - **Lien légal** : copie CIN exigée par certaines mutuelles + assurances. Photo patient utile pour identification visuelle en salle d'attente.
 - **Scope estimé** :
@@ -121,15 +115,14 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - **Fix livré** : (a) nouveau composant `RequireRole` (`lib/auth/RequireAuth.tsx`) qui bounce vers `/agenda` si l'utilisateur n'a pas l'un des rôles requis · (b) route `/parametres` wrappée en `RequireRole roles={['ADMIN','MEDECIN']}` · (c) Sidebar filtre l'item Paramètres si aucun rôle ne match · (d) backend `SettingsController` GET clinic + GET tiers durcis à `MEDECIN/ADMIN` seulement (les seuls consommateurs sont déjà la page Paramétrage).
 - **Leçon** : "lecture autorisée pour tous" n'est pas un défaut sûr. Pour chaque GET, se poser la question "ce rôle a-t-il un usage légitime de cette donnée ?" — sinon, on durcit. Privilege minimum côté backend, garde de route côté frontend, **les deux**.
 
-### QA3-2 — Formulaire patient : 2 onglets Personnel / Médical — **[CHANGE]**
-- **Demande** : dans `PatientsListPage` panneau "Nouveau patient" + dossier patient édition, séparer en 2 onglets :
-  - **Personnel** : prénom/nom, sexe, DDN, CIN, téléphone, email, ville, statut marital, profession, nb enfants, mutuelle, tier (Premium/Normal).
-  - **Médical** : groupe sanguin, allergies, antécédents, notes médicales générales.
-- **Pourquoi c'est un CHANGE et pas un BUG** : le formulaire actuel mélange tout dans un panneau scrollable de ~440px. C'est fonctionnel mais long. La séparation est une amélioration ergo, pas un défaut bloquant.
-- **Scope estimé** : Radix Tabs sur le panneau ; reuse Field/Input/Textarea ; les sections existantes deviennent des `Tabs.Content`. Aucun changement backend ni schéma. ~3h.
-- **Note implémentation** : profiter du refactor pour aligner avec `DossierPage` (lecture) qui a déjà des sections logiques équivalentes. Faire les 2 d'un coup.
+### QA3-2 — Formulaire patient : 2 onglets Personnel / Médical — **[CHANGE]** ✅ LIVRÉ 2026-04-26 (commits `6d867bb` + `9f89596`)
+- **Livré** : `NewPatientPanel` et `EditPatientPanel` ont 2 onglets — Personnel (identité, DDN, CIN, contact, ville, tier, mutuelle) et Médical (groupe sanguin, allergies, antécédents, notes libres). Validation auto-bascule vers l'onglet de l'erreur. Aucun changement de payload backend ni de schéma — pure refonte UX.
 
-### QA3-3 — RBAC granulaire (matrice rôle × fonctionnalité éditable) — **[CHANGE / BIG FEATURE]**
+### QA3-3 — RBAC granulaire (matrice rôle × fonctionnalité éditable) — **[CHANGE / BIG FEATURE]** 🟡 v1 LIVRÉE 2026-04-26 (commits `6d867bb` + `9f89596`)
+- **Livré v1** : V008 crée `identity_role_permission` seedée avec **8 permissions** × 4 rôles (`PATIENT_CREATE`, `PATIENT_READ`, `APPOINTMENT_CREATE`, `APPOINTMENT_READ`, `ARRIVAL_DECLARE`, `VITALS_RECORD`, `INVOICE_READ`, `INVOICE_ISSUE`). Endpoints `GET/PUT /api/settings/role-permissions[/{roleCode}]` (MEDECIN/ADMIN). `/users/me` retourne `permissions` (union des perms granted des rôles). UI : matrice dans Paramétrage > Droits, composant `RequirePermission` qui cache/garde les CTAs (Nouveau patient, Modifier dossier, Marquer arrivé, Prendre constantes, etc.) selon les permissions de la session. V014 ajoute `DOCUMENT_IMPORT_ADMIN` (squelette QA5-1).
+- **Reste à faire pour v2 complète** : étendre la couverture aux ~50 endpoints (aujourd'hui seules les 8 perms ci-dessus + `DOCUMENT_IMPORT_ADMIN` sont câblées en `@PreAuthorize`), remplacer les `hasRole(X)` restants par `hasAuthority(PERM_Y)`, ajouter perms manquantes (`INVOICE_PAYMENT`, `PRESCRIPTION_SIGN`, `CONSULTATION_AMEND`, `CATALOG_MANAGE`, `STOCK_*`, `PRESCRIPTION_TEMPLATE_MANAGE`, `TELECONSULTATION_*`…). Sprint dédié post-pilote.
+
+**Demande initiale (conservée pour référence)** :
 - **Demande** : l'admin/médecin doit pouvoir cocher/décocher pour chaque rôle (`SECRETAIRE`/`ASSISTANT`/etc.) l'accès à chaque fonctionnalité :
   - Création/modification patient
   - Consultation du planning (lecture agenda)
@@ -185,7 +178,8 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - **Estimation** : 5-7 jours backend (sans connecteur HTTP webhook standardisé), 3-4 jours frontend, 1 jour permission + tests RBAC. Total ≈ 10 jours.
 - **Lien** : étend QA2-2 (réutilise `patient_document`), s'aligne sur QA3-3 (matrice RBAC granulaire) — si QA3-3 n'est pas encore livré, hardcoder la permission MEDECIN/ADMIN au 1er ship et la rendre éditable plus tard.
 
-### QA5-2 — Capture caméra à l'upload de tout document — **[CHANGE]**
+### QA5-2 — Capture caméra à l'upload de tout document — **[CHANGE]** ✅ LIVRÉ 2026-05-01 (commits `ebb5342` + `3b8350a` + `e986fe9` + `81552b9`)
+- **Livré** : composant `DocumentUploadButton` partagé avec deux CTAs « Téléverser un fichier » et « Photographier » (`<input type=file accept="image/*" capture="environment">`), branché dans `DocumentsPanel` (toutes catégories) et le panneau « Nouveau patient ». Plusieurs fixes caméra ont suivi : webcam PC détectée correctement (`3b8350a`, `e986fe9`), diagnostic clair quand l'OS bloque toutes les caméras (`81552b9`). Pas encore de recadrage live ni de compression client agressive — listés en post-MVP.
 - **Demande (Youssef Boutaleb, 2026-05-01)** : sur tous les écrans qui acceptent un upload de document (panneau Modifier patient > Informations médicales, onglets Documents / Analyses / Imagerie du dossier, écran Imports à classer si livré, futur upload pièce jointe consultation, photo CIN de QA2-6), l'utilisateur doit avoir le choix entre :
   1. **Téléchargement classique** (déjà en place : `<input type=file>`).
   2. **Photographier le document** : ouvrir directement la caméra de l'appareil et envoyer la photo comme pièce jointe (PNG/JPEG).
@@ -200,7 +194,8 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer (fix + p
 - **Lien** : QA2-2 (module documents existant), QA2-6 (photo patient + CIN — bénéficie directement du même composant), futurs écrans d'upload consultation. Concrétise et élargit la ligne `Documents & files > Drag-drop from device camera (mobile PWA)` listée plus bas.
 - **Estimation** : 1 jour si on se limite aux 2 boutons + `capture` natif ; 2-3 jours additionnels avec recadrage live + compression client.
 
-### QA5-3 — Photo patient à la création + affichage dans liste & dossier — **[CHANGE]**
+### QA5-3 — Photo patient à la création + affichage dans liste & dossier — **[CHANGE]** ✅ LIVRÉ 2026-05-01 (commits `ebb5342` + `c1349f7`)
+- **Livré** : V014 ajoute `patient_patient.photo_document_id` + `DocumentType.PHOTO`. `PatientPhotoController` expose `PUT /api/patients/{id}/photo` (whitelist images, max 2 Mo) + `DELETE /api/patients/{id}/photo`. Composant `PatientAvatar` charge le binaire via `/preview`, cache React Query, fallback initiales en cas de 404. Propagé sur la liste patients, le header du dossier et le panneau Modifier. IT 12-scenario (`c1349f7` corrige un bug `flush JPA` avant le raw UPDATE).
 - **Demande (Youssef Boutaleb, 2026-05-01)** : au moment de la création d'un patient, l'utilisateur doit pouvoir soit **photographier** le patient (caméra) soit **téléverser une photo**. Cette photo doit ensuite apparaître :
   1. Dans le **tableau de la liste patients** (`PatientsListPage`) — cellule avatar.
   2. Dans le **détail du patient** (`DossierPage`) — header / panneau Profil.
@@ -294,7 +289,9 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 
 ## QA wave 7 — 2026-05-02 (demandes Y. Boutaleb)
 
-### QA7-1 — Module gestion de stock interne (médicaments, dossiers physiques, consommables) — **[CHANGE / NEW MODULE]**
+### ~~QA7-1 — Module gestion de stock interne~~ — **livré 2026-05-03** (5 commits `1931556`→Étape 5 ; voir `docs/plans/2026-05-03-stock-interne-design.md`).
+
+### QA7-1 (archive du périmètre) — Module gestion de stock interne (médicaments, dossiers physiques, consommables)
 - **Demande** : « Je veux mettre en place un module pour la gestion de stock interne (des médicaments, des dossiers physiques, des consommables) etc. » (Y. Boutaleb, 2026-05-02).
 - **Périmètre fonctionnel à cadrer** :
   - Référentiel **articles de stock** (≠ catalogue prescription) avec catégories : `MEDICAMENT_INTERNE` (échantillons, doses cabinet), `DOSSIER_PHYSIQUE` (chemises, intercalaires), `CONSOMMABLE` (gants, seringues, désinfectant, papier ECG, etc.), libre extension.
@@ -346,12 +343,12 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 
 - Consultation amendment (v2, v3… chain) with full audit trace
 - Out-of-range vitals alerts (configurable thresholds per cabinet)
-- Graphs of vitals over time (weight, blood pressure, glycemia)
+- ~~Graphs of vitals over time (weight, blood pressure, glycemia)~~ — **livré 2026-04-30** (commits `a3dcfcd` + `4884b2e` + suite — Recharts, ErrorBoundary global, yDomain dynamique, formatY propre).
 - Stupéfiants / psychotropes: enforced ordonnance sécurisée legal format (Moroccan requirements)
 - Ordonnance renewal in 1 click for chronic patients
 - Chronic condition follow-up module (diabetes HbA1c trend, HTA, asthma peak-flow)
 - ~~Vaccination schedule + reminders~~ — **livré 2026-05-03** (module Vaccination enfant Étapes 1-6 ; voir `docs/plans/2026-05-02-vaccination-enfant-design.md`).
-- Lab results inbound: mark analysis as "result received", attach PDF, flag doctor
+- ~~Lab results inbound: mark analysis as "result received", attach PDF, flag doctor~~ — **livré 2026-05-01** (commits `a1ad5e7` + `7738de0` + `ce1b4d2` + `db64aa6` — un seul bouton « Téléverser résultat » par ordonnance, attache PDF/image par ligne LAB/IMAGING, possible même après signature). Reste à faire : flag d'alerte médecin (badge / notif) quand un résultat arrive.
 - ICD-10 diagnosis coding (optional autocomplete)
 - Templates per consultation type (first visit, follow-up, certificate, vaccination)
 - Clinical exam templates by appareil (cardio, pulm, abdo, neuro, ORL)
@@ -386,7 +383,7 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 - Relance impayés workflow
 - VAT paramétrable per act
 - Per-practitioner revenue split (when cabinet → clinic with multiple doctors)
-- **Filtres + export détaillé sur les factures** : aujourd'hui la liste Caisse/Factures n'a pas de filtres avancés. Ajouter filtres combinables (plage de dates émission/encaissement, statut DRAFT/ISSUED/PAID/CANCELLED, mode de paiement, praticien, patient, montant min/max, type d'acte/prestation) + export détaillé du résultat filtré au format CSV et Excel (xlsx) avec une ligne par ligne de facture (pas seulement totaux). Use cases : clôture comptable mensuelle, déclaration fiscale, contrôle URSSAF/CNSS, analyse par praticien. Backend : endpoint `GET /api/invoices/export?from=&to=&status=&mode=&practitionerId=&patientId=&format=csv|xlsx` qui stream le fichier (pas de chargement en mémoire pour gros volumes). Frontend : panneau de filtres dans `CaissePage` + bouton "Exporter" qui passe les mêmes filtres.
+- ~~**Filtres + export détaillé sur les factures**~~ — **livré 2026-05-03** (commit `8d3e663`). Filtres serveur (dates émission/encaissement, statut, mode paiement, patient, montant) sur `GET /api/invoices/search` + KPIs agrégés + URL-sync. Export CSV (UTF-8 BOM, FR) et xlsx (fastexcel, ligne SUM, freeze pane) via `GET /api/invoices/export`, capé à 10 000 lignes (`422 EXPORT_TOO_LARGE`). RBAC : filtrer ouvert à tous, export MEDECIN+ADMIN. Design : `docs/plans/2026-05-02-invoice-filter-export-design.md`. ADR fastexcel vs Apache POI : ADR-025.
 
 ## Pregnancy vertical
 
@@ -397,9 +394,9 @@ Format : **[BUG]** = comportement actuel ≠ ce qu'on aurait dû livrer · **[CH
 
 ## Documents & files
 
-- **Ancien dossier patient** : lors de la création d'un patient, permettre de joindre des documents existants (anciennes prescriptions, comptes-rendus radio, bilans biologiques). Nécessite : table `patient_document` (id, patient_id, category enum PRESCRIPTION/RADIO/BIOLOGIE/AUTRE, filename, content_type, stored_path, uploaded_at, uploaded_by), endpoint `POST /patients/{id}/documents` (multipart), `GET /patients/{id}/documents`, stockage local configurable (répertoire `data/documents/` sur l'on-prem, path relatif stocké en base). Côté frontend : section "Documents apportés" dans le panneau Nouveau patient (upload via `<input type=file multiple>`, preview liste nom+type), plus tab "Documents" dans le dossier patient.
-- Patient document uploads (scans, photos, PDFs)
-- Drag-drop from device camera (mobile PWA)
+- ~~**Ancien dossier patient** (anciennes prescriptions, comptes-rendus radio, bilans biologiques)~~ — **livré 2026-04-27** via QA2-2 (module `ma.careplus.documents` + V009 + `DocumentsPanel` + `DocumentUploadButton`). Voir QA2-2 plus haut.
+- ~~Patient document uploads (scans, photos, PDFs)~~ — **livré** via QA2-2 (multipart, whitelist MIME, soft-delete, RBAC).
+- ~~Drag-drop from device camera (mobile PWA)~~ — **livré 2026-05-01** via QA5-2 (`DocumentUploadButton`, `capture="environment"`).
 - WYSIWYG template editor with variable picker
 - Multiple templates per document type + selection at print time
 - Watermark "copie" on reprinted invoices
@@ -469,6 +466,8 @@ karate-config.js                    # baseUrl per env (test / dev / staging)
 - Dashboard: activity KPIs, medical KPIs, financial KPIs, waiting time
 
 ## Public landing page — separate deliverable (planned 2026-04-24)
+
+> **Note 2026-05-03** : une **landing page in-app** a été livrée 2026-04-30 (commit `afd3056`) — `/` rend désormais hero + 4 features + trust strip + CTA `/login`, wrappée dans `<GuestOnly />`. C'est un dépannage qui mute le « NOT recommended » ci-dessous : pour la version finale (apex domain séparé, hébergée Vercel/Netlify, SEO indépendant) le travail reste à faire — la landing actuelle est dans le bundle Vite de l'app et partage le déploiement Render.
 
 User plans a public marketing landing page (`/` on the apex domain) that introduces careplus to prospective cabinets. Should NOT live inside `frontend/` — different audience, different SEO/perf needs, different deploy cadence.
 
