@@ -460,6 +460,74 @@ class BillingIT {
                 .andExpect(status().isConflict());
     }
 
+    // ── Test 10: prestations performed during consultation appear in draft ────
+    //
+    // Régression V016 : le médecin ajoute des prestations (ECG, piqûre…) dans
+    // l'écran consultation. Sans le câblage côté billing, le brouillon de
+    // facture ne contenait QUE la ligne consultation par défaut. Ce test
+    // verrouille la correction : les prestations doivent apparaître comme
+    // lignes de facture supplémentaires avec leur snapshot de prix.
+    @Test
+    void signConsultation_appendsPrestationLinesToDraftInvoice() throws Exception {
+        String token = bearer(medEmail);
+
+        // Récupérer 2 prestations du seed V016 (ECG = 200 MAD, PIQURE = 50 MAD)
+        UUID ecgId = jdbc.queryForObject(
+                "SELECT id FROM catalog_prestation WHERE code = 'ECG'", UUID.class);
+        UUID piqureId = jdbc.queryForObject(
+                "SELECT id FROM catalog_prestation WHERE code = 'PIQURE'", UUID.class);
+
+        // Ajouter 2 prestations à la consultation BEFORE signing
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/prestations")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prestationId\":\"" + ecgId + "\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/prestations")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prestationId\":\"" + piqureId
+                                + "\",\"unitPrice\":60,\"quantity\":2}"))
+                .andExpect(status().isCreated());
+
+        // Signer la consultation
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/sign")
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+
+        // Le brouillon doit avoir : 350 (consult NORMAL) + 200 (ECG) + 60×2 (piqûre)
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            MvcResult r = mockMvc.perform(get("/api/consultations/" + consultationId + "/invoice")
+                            .header("Authorization", token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("BROUILLON"))
+                    .andReturn();
+            JsonNode body = objectMapper.readTree(r.getResponse().getContentAsString());
+            // Total = 350 (consult) + 200 (ECG) + 120 (piqûre 60×2) = 670
+            assertThat(body.get("totalAmount").asDouble()).isEqualTo(670.0);
+            // Lignes : 1 consult + 1 ECG + 1 piqûre = 3
+            assertThat(body.get("lines")).hasSize(3);
+            // Lignes prestations identifiables par leur description
+            boolean hasEcg = false, hasPiqure = false;
+            for (JsonNode line : body.get("lines")) {
+                String desc = line.get("description").asText();
+                if (desc.toLowerCase().contains("électrocardiogramme") || desc.contains("ECG")) {
+                    hasEcg = true;
+                    assertThat(line.get("totalPrice").asDouble()).isEqualTo(200.0);
+                }
+                if (desc.toLowerCase().contains("piqûre") || desc.toLowerCase().contains("injection")) {
+                    hasPiqure = true;
+                    assertThat(line.get("quantity").asDouble()).isEqualTo(2.0);
+                    assertThat(line.get("unitPrice").asDouble()).isEqualTo(60.0);
+                    assertThat(line.get("totalPrice").asDouble()).isEqualTo(120.0);
+                }
+            }
+            assertThat(hasEcg).as("Ligne ECG présente").isTrue();
+            assertThat(hasPiqure).as("Ligne piqûre (override prix)").isTrue();
+        });
+    }
+
     // ── Helper: create an issued invoice ─────────────────────────────────────
 
     private String createIssuedInvoice(String token, UUID consultId) throws Exception {
