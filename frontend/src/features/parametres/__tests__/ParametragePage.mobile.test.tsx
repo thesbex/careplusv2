@@ -61,6 +61,15 @@ describe('<ParametrageMobilePage /> — NRG', () => {
     expect(screen.getByText('Compte')).toBeInTheDocument();
   });
 
+  it('exposes Vaccinations / Grossesses / Stock under Suivi clinique (mobile parity with desktop sidebar)', () => {
+    setUser(['MEDECIN']);
+    renderPage();
+    expect(screen.getByText('Suivi clinique')).toBeInTheDocument();
+    expect(screen.getByText('Vaccinations')).toBeInTheDocument();
+    expect(screen.getByText('Grossesses')).toBeInTheDocument();
+    expect(screen.getByText('Stock')).toBeInTheDocument();
+  });
+
   it('hides the Cabinet section for non-admin roles', () => {
     setUser(['SECRETAIRE']);
     renderPage();

@@ -17,9 +17,14 @@ import {
   Pill as PillIcon,
   Flask as FlaskIcon,
   Doc as DocIcon,
+  Heart as HeartIcon,
+  Box as BoxIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
+import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
+import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
+import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda:   '/agenda',
@@ -37,6 +42,10 @@ export default function ParametrageMobilePage() {
 
   const isAdminOrDoctor =
     !!user && (user.roles.includes('ADMIN') || user.roles.includes('MEDECIN'));
+
+  const vaccinationsBadge = useVaccinationOverdueCount() ?? 0;
+  const grossessesBadge = useGrossesseAlertsCount() ?? 0;
+  const stockBadge = useStockAlertsCount() ?? 0;
 
   async function handleLogout() {
     setPending(true);
@@ -127,6 +136,33 @@ export default function ParametrageMobilePage() {
         )}
 
         <div className="m-section-h">
+          <h3>Suivi clinique</h3>
+        </div>
+        <div className="m-card" style={{ marginBottom: 18 }}>
+          <MenuRow
+            Icon={HeartIcon}
+            label="Vaccinations"
+            hint="Worklist + rappels en retard"
+            badge={vaccinationsBadge}
+            onClick={() => navigate('/vaccinations')}
+          />
+          <MenuRow
+            Icon={HeartIcon}
+            label="Grossesses"
+            hint="Suivi prénatal + alertes"
+            badge={grossessesBadge}
+            onClick={() => navigate('/grossesses')}
+          />
+          <MenuRow
+            Icon={BoxIcon}
+            label="Stock"
+            hint="Articles, lots, mouvements"
+            badge={stockBadge}
+            onClick={() => navigate('/stock')}
+          />
+        </div>
+
+        <div className="m-section-h">
           <h3>Catalogues</h3>
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
@@ -214,11 +250,13 @@ function MenuRow({
   Icon,
   label,
   hint,
+  badge,
   onClick,
 }: {
   Icon?: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
   hint?: string;
+  badge?: number;
   onClick: () => void;
 }) {
   return (
@@ -258,6 +296,27 @@ function MenuRow({
         <div className="m-row-main">{label}</div>
         {hint && <div className="m-row-sub">{hint}</div>}
       </div>
+      {typeof badge === 'number' && badge > 0 && (
+        <span
+          aria-label={`${badge} alerte${badge > 1 ? 's' : ''}`}
+          style={{
+            minWidth: 20,
+            height: 20,
+            padding: '0 6px',
+            borderRadius: 999,
+            background: 'var(--danger)',
+            color: 'white',
+            fontSize: 11,
+            fontWeight: 600,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 4,
+          }}
+        >
+          {badge}
+        </span>
+      )}
       <ChevronRight aria-hidden="true" />
     </button>
   );
