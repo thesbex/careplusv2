@@ -14,6 +14,7 @@ import {
   AllergyConflictError,
 } from './hooks/useCreatePrescription';
 import { PrescriptionTemplatePicker } from './components/PrescriptionTemplatePicker';
+import { PdfGenerationOverlay } from './components/PdfGenerationOverlay';
 import type {
   CatalogItem,
   PrescriptionLineDraft,
@@ -172,6 +173,7 @@ export function PrescriptionDrawer({
   }
 
   return (
+    <>
     <Dialog.Root
       open={open}
       onOpenChange={(o) => {
@@ -491,6 +493,8 @@ export function PrescriptionDrawer({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+    <PdfGenerationOverlay open={isPending} type={type} />
+    </>
   );
 }
 
