@@ -13,8 +13,14 @@ export interface VitalsApi {
   heightCm: number | null;
   bmi: number | null;
   heartRateBpm: number | null;
+  /** Fréquence respiratoire (cycles/min). Ajouté V030 (B1, 2026-05-06). */
+  respiratoryRateBpm: number | null;
   spo2Percent: number | null;
   glycemiaGPerL: number | null;
+  /** Périmètre abdominal en cm. Ajouté V030. */
+  abdominalPerimeterCm: number | null;
+  /** Périmètre crânien en cm (pédiatrie). Ajouté V030. */
+  headCircumferenceCm: number | null;
   recordedAt: string;
   recordedBy: string | null;
   notes: string | null;
@@ -26,11 +32,14 @@ function hasAnyMeasurement(v: VitalsApi): boolean {
     v.systolicMmhg != null ||
     v.diastolicMmhg != null ||
     v.heartRateBpm != null ||
+    v.respiratoryRateBpm != null ||
     v.spo2Percent != null ||
     v.temperatureC != null ||
     v.weightKg != null ||
     v.heightCm != null ||
-    v.glycemiaGPerL != null
+    v.glycemiaGPerL != null ||
+    v.abdominalPerimeterCm != null ||
+    v.headCircumferenceCm != null
   );
 }
 

@@ -105,9 +105,15 @@ export function PatientContextCard({
   const sys = asNum(vitals?.systolicMmhg);
   const dia = asNum(vitals?.diastolicMmhg);
   const fc = asNum(vitals?.heartRateBpm);
+  const fr = asNum(vitals?.respiratoryRateBpm);
   const tempStr = formatDecimal(vitals?.temperatureC, 1);
   const spo2 = asNum(vitals?.spo2Percent);
+  const weightStr = formatDecimal(vitals?.weightKg, 1);
+  const heightNum = asNum(vitals?.heightCm);
   const bmiStr = formatDecimal(vitals?.bmi, 1);
+  const glycemiaStr = formatDecimal(vitals?.glycemiaGPerL, 2);
+  const abdominalNum = asNum(vitals?.abdominalPerimeterCm);
+  const headCircNum = asNum(vitals?.headCircumferenceCm);
 
   const ta = sys != null && dia != null ? `${sys} / ${dia}` : null;
   const taWarn = sys != null && sys >= 130;
@@ -208,11 +214,28 @@ export function PatientContextCard({
             )}
             {vitals && (
               <>
-                {ta && <VitalRow k="TA" v={ta} warn={taWarn} />}
-                {fc != null && <VitalRow k="FC" v={String(fc)} />}
-                {tempStr && <VitalRow k="T°" v={tempStr} />}
+                {/*
+                  Affiche TOUTES les constantes non-null (B1, 2026-05-06).
+                  Avant le fix, height/weight/glycemia/FR/abdominal/head étaient
+                  silencieusement filtrés : un médecin saisissait taille + FC,
+                  voyait FC mais pas taille, donc croyait à une perte de données.
+                  Les valeurs étaient bien persistées — seul le rendu mentait.
+                */}
+                {ta && <VitalRow k="TA" v={`${ta} mmHg`} warn={taWarn} />}
+                {fc != null && <VitalRow k="FC" v={`${fc} bpm`} />}
+                {fr != null && <VitalRow k="FR" v={`${fr} /min`} />}
+                {tempStr && <VitalRow k="T°" v={`${tempStr} °C`} />}
                 {spo2 != null && <VitalRow k="SpO₂" v={`${spo2}%`} />}
-                {bmiStr && <VitalRow k="IMC" v={bmiStr} warn={bmiWarn} />}
+                {weightStr && <VitalRow k="Poids" v={`${weightStr} kg`} />}
+                {heightNum != null && <VitalRow k="Taille" v={`${heightNum} cm`} />}
+                {bmiStr && <VitalRow k="IMC" v={`${bmiStr} kg/m²`} warn={bmiWarn} />}
+                {glycemiaStr && <VitalRow k="Glycémie" v={`${glycemiaStr} g/L`} />}
+                {abdominalNum != null && (
+                  <VitalRow k="Périm. abdo." v={`${abdominalNum} cm`} />
+                )}
+                {headCircNum != null && (
+                  <VitalRow k="Périm. crânien" v={`${headCircNum} cm`} />
+                )}
               </>
             )}
           </div>

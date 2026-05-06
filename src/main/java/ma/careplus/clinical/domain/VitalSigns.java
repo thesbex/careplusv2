@@ -48,11 +48,23 @@ public class VitalSigns {
     @Column(name = "heart_rate_bpm")
     private Integer heartRateBpm;
 
+    /** Fréquence respiratoire (cycles/min). Ajouté V030. */
+    @Column(name = "respiratory_rate_bpm")
+    private Integer respiratoryRateBpm;
+
     @Column(name = "spo2_percent")
     private Integer spo2Percent;
 
     @Column(name = "glycemia_g_per_l")
     private BigDecimal glycemiaGPerL;
+
+    /** Périmètre abdominal (cm). Ajouté V030. */
+    @Column(name = "abdominal_perimeter_cm")
+    private BigDecimal abdominalPerimeterCm;
+
+    /** Périmètre crânien (cm). Suivi pédiatrique. Ajouté V030. */
+    @Column(name = "head_circumference_cm")
+    private BigDecimal headCircumferenceCm;
 
     @Column(name = "recorded_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime recordedAt;
@@ -100,10 +112,16 @@ public class VitalSigns {
     public void setBmi(BigDecimal v) { this.bmi = v; }
     public Integer getHeartRateBpm() { return heartRateBpm; }
     public void setHeartRateBpm(Integer v) { this.heartRateBpm = v; }
+    public Integer getRespiratoryRateBpm() { return respiratoryRateBpm; }
+    public void setRespiratoryRateBpm(Integer v) { this.respiratoryRateBpm = v; }
     public Integer getSpo2Percent() { return spo2Percent; }
     public void setSpo2Percent(Integer v) { this.spo2Percent = v; }
     public BigDecimal getGlycemiaGPerL() { return glycemiaGPerL; }
     public void setGlycemiaGPerL(BigDecimal v) { this.glycemiaGPerL = v; }
+    public BigDecimal getAbdominalPerimeterCm() { return abdominalPerimeterCm; }
+    public void setAbdominalPerimeterCm(BigDecimal v) { this.abdominalPerimeterCm = v; }
+    public BigDecimal getHeadCircumferenceCm() { return headCircumferenceCm; }
+    public void setHeadCircumferenceCm(BigDecimal v) { this.headCircumferenceCm = v; }
     public OffsetDateTime getRecordedAt() { return recordedAt; }
     public UUID getRecordedBy() { return recordedBy; }
     public void setRecordedBy(UUID v) { this.recordedBy = v; }

@@ -49,16 +49,7 @@ public class VitalsService {
         VitalSigns v = new VitalSigns();
         v.setPatientId(a.getPatientId());
         v.setAppointmentId(a.getId());
-        v.setSystolicMmhg(req.systolicMmhg());
-        v.setDiastolicMmhg(req.diastolicMmhg());
-        v.setTemperatureC(req.temperatureC());
-        v.setWeightKg(req.weightKg());
-        v.setHeightCm(req.heightCm());
-        v.setHeartRateBpm(req.heartRateBpm());
-        v.setSpo2Percent(req.spo2Percent());
-        v.setGlycemiaGPerL(req.glycemiaGPerL());
-        v.setNotes(req.notes());
-        v.setBmi(computeBmi(req.weightKg(), req.heightCm()));
+        applyVitals(v, req);
         v.setRecordedBy(recordedBy);
         return vitalsRepository.save(v);
     }
@@ -78,18 +69,32 @@ public class VitalsService {
         v.setPatientId(c.getPatientId());
         v.setAppointmentId(c.getAppointmentId()); // peut être null
         v.setConsultationId(c.getId());
+        applyVitals(v, req);
+        v.setRecordedBy(recordedBy);
+        return vitalsRepository.save(v);
+    }
+
+    /**
+     * Recopie tous les champs métier du DTO vers l'entité. Centralisé
+     * pour éviter la duplication entre les 2 endpoints d'écriture
+     * (appointment + consultation), qui était précisément la source de
+     * B1 : un champ ajouté côté DTO mais oublié dans une seule des deux
+     * branches → perte silencieuse.
+     */
+    private static void applyVitals(VitalSigns v, RecordVitalsRequest req) {
         v.setSystolicMmhg(req.systolicMmhg());
         v.setDiastolicMmhg(req.diastolicMmhg());
         v.setTemperatureC(req.temperatureC());
         v.setWeightKg(req.weightKg());
         v.setHeightCm(req.heightCm());
         v.setHeartRateBpm(req.heartRateBpm());
+        v.setRespiratoryRateBpm(req.respiratoryRateBpm());
         v.setSpo2Percent(req.spo2Percent());
         v.setGlycemiaGPerL(req.glycemiaGPerL());
+        v.setAbdominalPerimeterCm(req.abdominalPerimeterCm());
+        v.setHeadCircumferenceCm(req.headCircumferenceCm());
         v.setNotes(req.notes());
         v.setBmi(computeBmi(req.weightKg(), req.heightCm()));
-        v.setRecordedBy(recordedBy);
-        return vitalsRepository.save(v);
     }
 
     @Transactional(readOnly = true)

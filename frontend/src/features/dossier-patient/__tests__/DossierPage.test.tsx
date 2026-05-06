@@ -54,6 +54,39 @@ vi.mock('../hooks/usePatient', () => ({
   }),
 }));
 
+// Bug B5 (2026-05-06) — la carte SummaryPanel "Constantes — dernière visite"
+// est désormais alimentée par usePatientVitalsHistory (GET /patients/{id}/vitals).
+// On fournit ici les valeurs cohérentes avec le test : sys 135 / dia 85,
+// IMC 27.4 → l'assertion `135 / 85 mmHg` + `27,4 kg/m²` continue à passer.
+vi.mock('../hooks/usePatientVitalsHistory', () => ({
+  usePatientVitalsHistory: () => ({
+    history: [
+      {
+        id: 'v-1',
+        patientId: PATIENT_MOHAMED_ALAMI.id,
+        appointmentId: null,
+        consultationId: null,
+        systolicMmhg: 135,
+        diastolicMmhg: 85,
+        temperatureC: 36.8,
+        weightKg: 82,
+        heightCm: 173,
+        bmi: 27.4,
+        heartRateBpm: 72,
+        respiratoryRateBpm: null,
+        spo2Percent: 98,
+        glycemiaGPerL: null,
+        abdominalPerimeterCm: null,
+        headCircumferenceCm: null,
+        recordedAt: '2026-04-23T09:12:00Z',
+        recordedBy: null,
+        notes: null,
+      },
+    ],
+    isLoading: false,
+  }),
+}));
+
 function renderDossier(path = '/patients/PT-00482') {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -138,8 +171,9 @@ describe('<DossierPage /> (desktop)', () => {
   it('renders the Constantes right-panel with TA warning', () => {
     renderDossier();
     expect(screen.getByText('Constantes — dernière visite')).toBeInTheDocument();
+    // SummaryPanel formate désormais avec unités (B5 fix 2026-05-06).
     expect(screen.getByText('135 / 85 mmHg')).toBeInTheDocument();
-    expect(screen.getByText('27.4')).toBeInTheDocument();
+    expect(screen.getByText('27,4 kg/m²')).toBeInTheDocument();
   });
 
   it('renders the Traitement en cours panel with medication names', () => {

@@ -84,6 +84,12 @@ export const vitalsFormSchema = z.object({
   /** Respiratory rate per minute. */
   respRate: z.number().int().min(0).max(100).nullable().optional(),
 
+  /**
+   * Périmètre crânien (pédiatrie) en cm. Utile en suivi nourrisson.
+   * Plage volontairement large : nourrisson 30 → adulte 65.
+   */
+  headCircumferenceCm: z.number().min(20).max(80).nullable().optional(),
+
   // ── Étape 3 — context ─────────────────────────────────────────────
   /** Chief complaint declared by patient. */
   notes: z.string().max(2000).optional(),
@@ -108,7 +114,8 @@ export const vitalsFormSchema = z.object({
       v.heightCm != null ||
       v.glycemia != null ||
       v.abdominalCm != null ||
-      v.respRate != null,
+      v.respRate != null ||
+      v.headCircumferenceCm != null,
     { message: 'Renseignez au moins une constante.' },
   );
 

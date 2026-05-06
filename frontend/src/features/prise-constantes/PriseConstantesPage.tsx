@@ -45,6 +45,7 @@ const EMPTY_VITALS: VitalsFormValues = {
   glycemia: null,
   abdominalCm: null,
   respRate: null,
+  headCircumferenceCm: null,
   notes: '',
   jeun: false,
   carnet: false,
@@ -376,6 +377,19 @@ export default function PriseConstantesPage() {
                     type="number"
                     placeholder="—"
                     {...register('respRate', {
+                      setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
+                    })}
+                  />
+                </Field>
+                <Field>
+                  <label htmlFor="pc-headcirc">Périmètre crânien (cm)</label>
+                  <Input
+                    id="pc-headcirc"
+                    type="number"
+                    step="0.1"
+                    placeholder="—"
+                    aria-label="Périmètre crânien"
+                    {...register('headCircumferenceCm', {
                       setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
                     })}
                   />

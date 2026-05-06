@@ -36,6 +36,7 @@ const EMPTY_VITALS: VitalsFormValues = {
   glycemia: null,
   abdominalCm: null,
   respRate: null,
+  headCircumferenceCm: null,
   notes: '',
   jeun: false,
   carnet: false,
@@ -303,6 +304,53 @@ export default function PriseConstantesMobilePage() {
                 style={{ background: 'var(--bg-alt)' }}
               />
             </div>
+          </div>
+
+          {/*
+            Mesures optionnelles (FR / glycémie / périmètres) — même contrat
+            DTO que le desktop (B1 fix 2026-05-06). Sans ces champs côté
+            mobile, un médecin saisissait ex. un périmètre crânien sur
+            tablette → champ absent → valeur jamais envoyée.
+          */}
+          <div className="m-field" style={{ marginTop: 12 }}>
+            <label>FR · Glycémie · Périm. abdo.</label>
+            <div className="pc-m-wht-grid">
+              <input
+                className="m-input"
+                type="number"
+                placeholder="FR (/min)"
+                aria-label="Fréquence respiratoire"
+                {...register('respRate', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
+              />
+              <input
+                className="m-input"
+                type="number"
+                step="0.1"
+                placeholder="Glycémie g/L"
+                aria-label="Glycémie capillaire"
+                {...register('glycemia', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
+              />
+              <input
+                className="m-input"
+                type="number"
+                placeholder="P. abdo (cm)"
+                aria-label="Périmètre abdominal"
+                {...register('abdominalCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
+              />
+            </div>
+          </div>
+
+          <div className="m-field" style={{ marginTop: 12 }}>
+            <label htmlFor="m-pc-head">Périmètre crânien (cm)</label>
+            <input
+              id="m-pc-head"
+              className="m-input"
+              type="number"
+              step="0.1"
+              placeholder="Pédiatrie"
+              aria-label="Périmètre crânien"
+              {...register('headCircumferenceCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
+            />
           </div>
 
           {/* Submit */}

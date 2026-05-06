@@ -213,25 +213,85 @@ export default function ConsultationMobilePage() {
 
       <div className="mb-pad">
         {vitals && (
+          // B1 (2026-05-06) — affiche TOUTES les constantes saisies sur la
+          // visite (pas seulement TA/FC/T°/SpO₂). Les cellules sont rendues
+          // de manière conditionnelle : pas d'affichage "—" pour les valeurs
+          // jamais saisies, pour ne pas saturer l'écran mobile.
           <div className="cs-m-vitals-grid" role="region" aria-label="Constantes">
-            <div className="cs-m-vital-cell">
-              <div className="cs-m-vital-k">TA</div>
-              <div className="cs-m-vital-v">{taLabel}</div>
-            </div>
-            <div className="cs-m-vital-cell">
-              <div className="cs-m-vital-k">FC</div>
-              <div className="cs-m-vital-v">{vitals.heartRateBpm ?? '—'}</div>
-            </div>
-            <div className="cs-m-vital-cell">
-              <div className="cs-m-vital-k">T°</div>
-              <div className="cs-m-vital-v">
-                {vitals.temperatureC?.toFixed(1).replace('.', ',') ?? '—'}
+            {vitals.systolicMmhg != null && vitals.diastolicMmhg != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">TA</div>
+                <div className="cs-m-vital-v">{taLabel}</div>
               </div>
-            </div>
-            <div className="cs-m-vital-cell">
-              <div className="cs-m-vital-k">SpO₂</div>
-              <div className="cs-m-vital-v">{vitals.spo2Percent ?? '—'}</div>
-            </div>
+            )}
+            {vitals.heartRateBpm != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">FC</div>
+                <div className="cs-m-vital-v">{vitals.heartRateBpm}</div>
+              </div>
+            )}
+            {vitals.respiratoryRateBpm != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">FR</div>
+                <div className="cs-m-vital-v">{vitals.respiratoryRateBpm}</div>
+              </div>
+            )}
+            {vitals.temperatureC != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">T°</div>
+                <div className="cs-m-vital-v">
+                  {Number(vitals.temperatureC).toFixed(1).replace('.', ',')}
+                </div>
+              </div>
+            )}
+            {vitals.spo2Percent != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">SpO₂</div>
+                <div className="cs-m-vital-v">{vitals.spo2Percent}</div>
+              </div>
+            )}
+            {vitals.weightKg != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">Poids</div>
+                <div className="cs-m-vital-v">
+                  {Number(vitals.weightKg).toFixed(1).replace('.', ',')}
+                </div>
+              </div>
+            )}
+            {vitals.heightCm != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">Taille</div>
+                <div className="cs-m-vital-v">{Number(vitals.heightCm)}</div>
+              </div>
+            )}
+            {vitals.bmi != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">IMC</div>
+                <div className="cs-m-vital-v">
+                  {Number(vitals.bmi).toFixed(1).replace('.', ',')}
+                </div>
+              </div>
+            )}
+            {vitals.glycemiaGPerL != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">Glycémie</div>
+                <div className="cs-m-vital-v">
+                  {Number(vitals.glycemiaGPerL).toFixed(2).replace('.', ',')}
+                </div>
+              </div>
+            )}
+            {vitals.abdominalPerimeterCm != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">P. abdo</div>
+                <div className="cs-m-vital-v">{Number(vitals.abdominalPerimeterCm)}</div>
+              </div>
+            )}
+            {vitals.headCircumferenceCm != null && (
+              <div className="cs-m-vital-cell">
+                <div className="cs-m-vital-k">P. crânien</div>
+                <div className="cs-m-vital-v">{Number(vitals.headCircumferenceCm)}</div>
+              </div>
+            )}
           </div>
         )}
 

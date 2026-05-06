@@ -2,9 +2,21 @@
  * SummaryPanel — right column with vitals, medications, admin cards.
  * Ported from design/prototype/screens/dossier-patient.jsx lines 133–154
  * (SummaryCard, KV, Med helpers).
+ *
+ * Bug B5 (2026-05-06) — la carte « Constantes — dernière visite » lisait
+ * `patient.lastVitals` qui n'a jamais été peuplé par `usePatient` (toujours
+ * `[]` sur les données réelles). Conséquence : les constantes saisies en
+ * consultation/SDA n'étaient pas visibles dans le dossier patient. Fix : la
+ * carte est maintenant alimentée directement par `usePatientVitalsHistory`
+ * (= GET /patients/{id}/vitals, même source que `VitalsEvolutionPanel` de
+ * l'onglet Constantes), avec agrégation "dernière valeur non-null par champ"
+ * (toutes consultations confondues — utile quand la dernière mesure n'a
+ * renseigné que TA, on récupère quand-même le poids de la visite précédente).
  */
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import type { PatientSummary } from '../types';
+import { usePatientVitalsHistory } from '../hooks/usePatientVitalsHistory';
+import type { VitalsApi } from '@/features/consultation/hooks/useLatestVitals';
 
 interface SummaryPanelProps {
   patient: PatientSummary;
@@ -25,9 +37,96 @@ const ANTECEDENT_LABELS: Record<string, string> = {
   TRAITEMENT_CHRONIQUE: 'Traitement',
 };
 
+/**
+ * Coerce backend BigDecimal → number propre (Jackson sérialise parfois en string).
+ */
+function asNum(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+interface SummaryVitalRow {
+  k: string;
+  v: string;
+  warn?: boolean;
+}
+
+/**
+ * Construit la liste affichée dans la carte « Constantes — dernière visite ».
+ * Stratégie : pour chaque mesure, prendre la valeur non-null la plus récente
+ * dans l'historique. Permet d'afficher des constantes anciennes (ex. taille)
+ * même quand la dernière visite n'a saisi que la TA. Renvoie une liste vide
+ * si aucune mesure n'existe pour ce patient.
+ */
+function buildLastVitals(history: VitalsApi[]): {
+  rows: SummaryVitalRow[];
+  asOf: string | null;
+} {
+  if (history.length === 0) return { rows: [], asOf: null };
+
+  // L'historique est fourni en ordre ASC par `usePatientVitalsHistory` ;
+  // on le parcourt à l'envers pour trouver la "dernière valeur non-null" par champ.
+  const desc = [...history].reverse();
+  function lastOf<K extends keyof VitalsApi>(k: K): VitalsApi[K] | null {
+    for (const v of desc) {
+      const val = v[k];
+      if (val != null) return val;
+    }
+    return null;
+  }
+
+  const sys = asNum(lastOf('systolicMmhg'));
+  const dia = asNum(lastOf('diastolicMmhg'));
+  const fc = asNum(lastOf('heartRateBpm'));
+  const fr = asNum(lastOf('respiratoryRateBpm'));
+  const temp = asNum(lastOf('temperatureC'));
+  const spo2 = asNum(lastOf('spo2Percent'));
+  const weight = asNum(lastOf('weightKg'));
+  const height = asNum(lastOf('heightCm'));
+  const bmi = asNum(lastOf('bmi'));
+  const glycemia = asNum(lastOf('glycemiaGPerL'));
+  const abdo = asNum(lastOf('abdominalPerimeterCm'));
+  const head = asNum(lastOf('headCircumferenceCm'));
+
+  const rows: SummaryVitalRow[] = [];
+  if (sys != null && dia != null) {
+    rows.push({ k: 'TA', v: `${sys} / ${dia} mmHg`, warn: sys >= 130 });
+  }
+  if (fc != null) rows.push({ k: 'FC', v: `${fc} bpm` });
+  if (fr != null) rows.push({ k: 'FR', v: `${fr} /min` });
+  if (temp != null) rows.push({ k: 'T°', v: `${temp.toFixed(1).replace('.', ',')} °C` });
+  if (spo2 != null) rows.push({ k: 'SpO₂', v: `${spo2}%` });
+  if (weight != null) rows.push({ k: 'Poids', v: `${weight.toFixed(1).replace('.', ',')} kg` });
+  if (height != null) rows.push({ k: 'Taille', v: `${height} cm` });
+  if (bmi != null) {
+    rows.push({
+      k: 'IMC',
+      v: `${bmi.toFixed(1).replace('.', ',')} kg/m²`,
+      warn: bmi >= 25 || bmi < 18.5,
+    });
+  }
+  if (glycemia != null) {
+    rows.push({ k: 'Glycémie', v: `${glycemia.toFixed(2).replace('.', ',')} g/L` });
+  }
+  if (abdo != null) rows.push({ k: 'Périm. abdo.', v: `${abdo} cm` });
+  if (head != null) rows.push({ k: 'Périm. crânien', v: `${head} cm` });
+
+  // « as of » = la date du dernier enregistrement (peu importe ses champs non-null).
+  const last = desc[0]!;
+  const asOf = new Date(last.recordedAt).toLocaleDateString('fr-MA');
+  return { rows, asOf };
+}
+
 export function SummaryPanel({ patient }: SummaryPanelProps) {
   const allergies = patient.allergyDetails ?? [];
   const antecedents = patient.antecedentDetails ?? [];
+  const { history, isLoading: vitalsLoading } = usePatientVitalsHistory(patient.id);
+  const { rows: vitalsRows, asOf: vitalsAsOf } = buildLastVitals(history);
   return (
     <div
       className="scroll"
@@ -137,7 +236,7 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
         </Panel>
       )}
 
-      {/* Constantes card */}
+      {/* Constantes card — alimentée par usePatientVitalsHistory (B5 fix). */}
       <Panel style={{ marginBottom: 12 }}>
         <PanelHeader style={{ display: 'flex' }}>
           <span>Constantes — dernière visite</span>
@@ -149,11 +248,19 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
               color: 'var(--ink-3)',
             }}
           >
-            {patient.lastVitalsDate}
+            {vitalsAsOf ?? ''}
           </span>
         </PanelHeader>
         <div style={{ padding: '10px 14px' }}>
-          {patient.lastVitals.map((v) => (
+          {vitalsLoading && vitalsRows.length === 0 && (
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+          )}
+          {!vitalsLoading && vitalsRows.length === 0 && (
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+              Aucune constante enregistrée.
+            </div>
+          )}
+          {vitalsRows.map((v) => (
             <div
               key={v.k}
               style={{

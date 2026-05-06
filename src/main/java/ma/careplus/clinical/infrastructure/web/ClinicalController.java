@@ -197,7 +197,9 @@ public class ClinicalController {
                 v.getId(), v.getPatientId(), v.getAppointmentId(), v.getConsultationId(),
                 v.getSystolicMmhg(), v.getDiastolicMmhg(), v.getTemperatureC(),
                 v.getWeightKg(), v.getHeightCm(), v.getBmi(),
-                v.getHeartRateBpm(), v.getSpo2Percent(), v.getGlycemiaGPerL(),
+                v.getHeartRateBpm(), v.getRespiratoryRateBpm(),
+                v.getSpo2Percent(), v.getGlycemiaGPerL(),
+                v.getAbdominalPerimeterCm(), v.getHeadCircumferenceCm(),
                 v.getRecordedAt(), v.getRecordedBy(), v.getNotes());
     }
 

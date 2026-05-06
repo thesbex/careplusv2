@@ -34,20 +34,28 @@ interface FormState {
   systolicMmhg: string;
   diastolicMmhg: string;
   heartRateBpm: string;
+  respiratoryRateBpm: string;
   spo2Percent: string;
   temperatureC: string;
   weightKg: string;
   heightCm: string;
+  glycemiaGPerL: string;
+  abdominalPerimeterCm: string;
+  headCircumferenceCm: string;
 }
 
 const EMPTY: FormState = {
   systolicMmhg: '',
   diastolicMmhg: '',
   heartRateBpm: '',
+  respiratoryRateBpm: '',
   spo2Percent: '',
   temperatureC: '',
   weightKg: '',
   heightCm: '',
+  glycemiaGPerL: '',
+  abdominalPerimeterCm: '',
+  headCircumferenceCm: '',
 };
 
 function toNumOrNull(v: string): number | null {
@@ -81,10 +89,14 @@ function fromCurrent(c: VitalsApi | null | undefined): FormState {
     systolicMmhg: fromNum(c.systolicMmhg),
     diastolicMmhg: fromNum(c.diastolicMmhg),
     heartRateBpm: fromNum(c.heartRateBpm),
+    respiratoryRateBpm: fromNum(c.respiratoryRateBpm),
     spo2Percent: fromNum(c.spo2Percent),
     temperatureC: fromNum(c.temperatureC),
     weightKg: fromNum(c.weightKg),
     heightCm: fromNum(c.heightCm),
+    glycemiaGPerL: fromNum(c.glycemiaGPerL),
+    abdominalPerimeterCm: fromNum(c.abdominalPerimeterCm),
+    headCircumferenceCm: fromNum(c.headCircumferenceCm),
   };
 }
 
@@ -114,10 +126,14 @@ export function QuickVitalsDialog({
       systolicMmhg: toNumOrNull(form.systolicMmhg),
       diastolicMmhg: toNumOrNull(form.diastolicMmhg),
       heartRateBpm: toNumOrNull(form.heartRateBpm),
+      respiratoryRateBpm: toNumOrNull(form.respiratoryRateBpm),
       spo2Percent: toNumOrNull(form.spo2Percent),
       temperatureC: toNumOrNull(form.temperatureC),
       weightKg: toNumOrNull(form.weightKg),
       heightCm: toNumOrNull(form.heightCm),
+      glycemiaGPerL: toNumOrNull(form.glycemiaGPerL),
+      abdominalPerimeterCm: toNumOrNull(form.abdominalPerimeterCm),
+      headCircumferenceCm: toNumOrNull(form.headCircumferenceCm),
     };
     if (Object.values(payload).every((v) => v === null)) {
       toast.error('Renseignez au moins une constante.');
@@ -233,10 +249,14 @@ export function QuickVitalsDialog({
             <Field label="Systolique (mmHg)" hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
             <Field label="Diastolique (mmHg)" hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
             <Field label="FC (bpm)" hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
+            <Field label="FR (/min)" hint="0 – 100" {...field('respiratoryRateBpm')} placeholder="16" />
             <Field label="SpO₂ (%)" hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
             <Field label="T° (°C)" hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
             <Field label="Poids (kg)" hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
             <Field label="Taille (cm)" hint="20 – 260" {...field('heightCm')} placeholder="178" />
+            <Field label="Glycémie (g/L)" hint="0,1 – 15,0" {...field('glycemiaGPerL')} placeholder="0,95" />
+            <Field label="Périm. abdo. (cm)" hint="0 – 300" {...field('abdominalPerimeterCm')} placeholder="92" />
+            <Field label="Périm. crânien (cm)" hint="20 – 80" {...field('headCircumferenceCm')} placeholder="44" />
           </div>
 
           <div style={{

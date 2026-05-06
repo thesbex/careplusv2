@@ -8,15 +8,22 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
 
   const mutation = useMutation({
     mutationFn: (values: VitalsFormValues) =>
+      // B1 fix (2026-05-06) : envoyer aussi respiratoryRateBpm,
+      // abdominalPerimeterCm et headCircumferenceCm. Avant le fix, ces 3
+      // champs étaient présents dans le form mais silencieusement omis du
+      // POST → données perdues à la persistance et invisibles au read.
       api.post(`/appointments/${appointmentId}/vitals`, {
         systolicMmhg: values.tensionSys ?? null,
         diastolicMmhg: values.tensionDia ?? null,
         heartRateBpm: values.pulse ?? null,
+        respiratoryRateBpm: values.respRate ?? null,
         spo2Percent: values.spo2 ?? null,
         temperatureC: values.tempC ?? null,
         weightKg: values.weightKg ?? null,
         heightCm: values.heightCm ?? null,
         glycemiaGPerL: values.glycemia ?? null,
+        abdominalPerimeterCm: values.abdominalCm ?? null,
+        headCircumferenceCm: values.headCircumferenceCm ?? null,
         notes: values.notes ?? null,
       }),
     // Fire-and-forget invalidation. We *do not* await — the previous attempt
