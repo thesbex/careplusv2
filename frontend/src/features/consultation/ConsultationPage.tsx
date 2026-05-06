@@ -14,7 +14,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { api } from '@/lib/api/client';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -308,13 +307,9 @@ export default function ConsultationPage() {
                 disabled={!latestCert}
                 onClick={() => {
                   if (!latestCert) return;
-                  void api
-                    .get(`/prescriptions/${latestCert.id}/pdf`, { responseType: 'blob' })
-                    .then((r) => {
-                      const url = URL.createObjectURL(r.data as Blob);
-                      window.open(url, '_blank', 'noopener,noreferrer');
-                    })
-                    .catch(() => toast.error('Aperçu PDF impossible.'));
+                  // Naviguer vers la route d'aperçu plutôt que window.open(blob)
+                  // — le popup-blocker de Chrome bloquait silencieusement.
+                  navigate(`/prescriptions/${latestCert.id}`);
                 }}
               >
                 <Print /> Certificat
