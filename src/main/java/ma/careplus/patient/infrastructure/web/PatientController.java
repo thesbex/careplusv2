@@ -5,6 +5,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.patient.application.PatientService;
+import ma.careplus.patient.application.PatientTabCountsService;
 import ma.careplus.patient.domain.Allergy;
 import ma.careplus.patient.domain.Antecedent;
 import ma.careplus.patient.domain.Patient;
@@ -16,6 +17,7 @@ import ma.careplus.patient.infrastructure.web.dto.CreatePatientNoteRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreatePatientRequest;
 import ma.careplus.patient.infrastructure.web.dto.PatientNoteResponse;
 import ma.careplus.patient.infrastructure.web.dto.PatientSummary;
+import ma.careplus.patient.infrastructure.web.dto.PatientTabCountsView;
 import ma.careplus.patient.infrastructure.web.dto.PatientView;
 import ma.careplus.patient.infrastructure.web.dto.UpdateMutuelleRequest;
 import ma.careplus.patient.infrastructure.web.dto.UpdatePatientRequest;
@@ -55,10 +57,14 @@ public class PatientController {
 
     private final PatientService service;
     private final PatientMapper mapper;
+    private final PatientTabCountsService tabCountsService;
 
-    public PatientController(PatientService service, PatientMapper mapper) {
+    public PatientController(PatientService service,
+                             PatientMapper mapper,
+                             PatientTabCountsService tabCountsService) {
         this.service = service;
         this.mapper = mapper;
+        this.tabCountsService = tabCountsService;
     }
 
     // ── Patient endpoints ─────────────────────────────────────────
@@ -98,6 +104,15 @@ public class PatientController {
     public ResponseEntity<Void> softDelete(@PathVariable UUID id) {
         service.softDelete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Tab counts (B6) ───────────────────────────────────────────
+    // Une réponse agrégée pour les badges des onglets du dossier patient.
+    // Lecture seule, accessible aux mêmes rôles que GET /api/patients/{id}.
+    @GetMapping("/{id}/tab-counts")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public PatientTabCountsView tabCounts(@PathVariable UUID id) {
+        return tabCountsService.countsFor(id);
     }
 
     // ── Allergies ──────────────────────────────────────────────────

@@ -1,11 +1,23 @@
 /**
- * DossierTabs — tab bar for Chronologie | Consultations | Prescriptions |
- * Analyses | Imagerie | Documents | Facturation.
+ * DossierTabs — tab bar for Chronologie | Consultations | Constantes |
+ * Prescriptions | Vaccination | (Grossesse) | Analyses | Imagerie |
+ * Documents | Facturation.
+ *
+ * Les compteurs (« badges ») viennent désormais de
+ * GET /api/patients/{id}/tab-counts (B6) via la prop `counts`. Avant ce
+ * fix, ils étaient hard-codés (14 / 22 / 9 / 3 / 7 / 14) → trompeur.
+ * Pendant le chargement initial (counts = undefined), on n'affiche aucun
+ * badge — afficher 0 serait pire qu'absent.
+ *
+ * Onglets sans badge : Chronologie, Constantes, Vaccination, Grossesse —
+ * ce sont des panneaux/timelines, pas des listes décomptables.
+ *
  * Ported from design/prototype/screens/dossier-patient.jsx lines 63–81.
  * Uses Radix Tabs (already in package.json) for keyboard navigation.
  */
 import * as RadixTabs from '@radix-ui/react-tabs';
 import type { DossierTab } from '../types';
+import type { PatientTabCounts } from '../hooks/useTabCounts';
 
 interface Tab {
   id: DossierTab;
@@ -13,32 +25,66 @@ interface Tab {
   count?: number;
 }
 
-const BASE_TABS: Tab[] = [
-  { id: 'timeline', label: 'Chronologie' },
-  { id: 'consults', label: 'Consultations', count: 14 },
-  { id: 'vitals', label: 'Constantes' },
-  { id: 'prescr', label: 'Prescriptions', count: 22 },
-  { id: 'vaccination', label: 'Vaccination' },
-  { id: 'analyses', label: 'Analyses', count: 9 },
-  { id: 'imagerie', label: 'Imagerie', count: 3 },
-  { id: 'docs', label: 'Documents', count: 7 },
-  { id: 'factu', label: 'Facturation', count: 14 },
-];
-
 interface DossierTabsProps {
   value: DossierTab;
   onValueChange: (v: DossierTab) => void;
   children: React.ReactNode;
   /** When true, inserts the "Grossesse" tab right after Vaccination. */
   showGrossesse?: boolean;
+  /** Real counts from the backend. `undefined` = still loading; render labels without badges. */
+  counts?: PatientTabCounts | null;
 }
 
-export function DossierTabs({ value, onValueChange, children, showGrossesse }: DossierTabsProps) {
-  const TABS: Tab[] = [...BASE_TABS];
+export function DossierTabs({
+  value,
+  onValueChange,
+  children,
+  showGrossesse,
+  counts,
+}: DossierTabsProps) {
+  // Build the tab list dynamically — `count` only set when counts are loaded.
+  const TABS: Tab[] = [
+    { id: 'timeline', label: 'Chronologie' },
+    {
+      id: 'consults',
+      label: 'Consultations',
+      ...(counts ? { count: counts.consultations } : {}),
+    },
+    { id: 'vitals', label: 'Constantes' },
+    {
+      id: 'prescr',
+      label: 'Prescriptions',
+      ...(counts ? { count: counts.prescriptions } : {}),
+    },
+    { id: 'vaccination', label: 'Vaccination' },
+  ];
+
   if (showGrossesse) {
-    const idx = TABS.findIndex((t) => t.id === 'vaccination');
-    TABS.splice(idx + 1, 0, { id: 'grossesse', label: 'Grossesse' });
+    TABS.push({ id: 'grossesse', label: 'Grossesse' });
   }
+
+  TABS.push(
+    {
+      id: 'analyses',
+      label: 'Analyses',
+      ...(counts ? { count: counts.analyses } : {}),
+    },
+    {
+      id: 'imagerie',
+      label: 'Imagerie',
+      ...(counts ? { count: counts.imagerie } : {}),
+    },
+    {
+      id: 'docs',
+      label: 'Documents',
+      ...(counts ? { count: counts.documents } : {}),
+    },
+    {
+      id: 'factu',
+      label: 'Facturation',
+      ...(counts ? { count: counts.facturation } : {}),
+    },
+  );
 
   return (
     <RadixTabs.Root

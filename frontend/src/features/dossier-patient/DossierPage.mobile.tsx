@@ -14,6 +14,7 @@ import { Warn, Phone, Calendar, Stetho, Lock } from '@/components/icons';
 import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
 import { useConsultations } from '@/features/consultation/hooks/useConsultations';
 import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
+import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { usePatient } from './hooks/usePatient';
@@ -464,8 +465,10 @@ export default function DossierMobilePage() {
                   >
                     <div className="m-row-pri">
                       <div className="m-row-main">
-                        {p.type ?? 'Ordonnance'} ·{' '}
-                        {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                        {metaForPrescription(p).label}
+                        {p.type !== 'CERT' && p.type !== 'SICK_LEAVE' && (
+                          <> · {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}</>
+                        )}
                       </div>
                       <div className="m-row-sub">
                         {new Date(p.issuedAt).toLocaleDateString('fr-MA', {

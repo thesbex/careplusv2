@@ -86,6 +86,8 @@ export function usePatientDocuments(patientId: string | undefined) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patient-documents', patientId] });
+      // B6 — refresh dossier patient tab badges (Documents/Analyses/Imagerie).
+      void queryClient.invalidateQueries({ queryKey: ['patient-tab-counts', patientId] });
     },
   });
 
@@ -95,6 +97,8 @@ export function usePatientDocuments(patientId: string | undefined) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['patient-documents', patientId] });
+      // B6 — refresh dossier patient tab badges (count decremented after soft-delete).
+      void queryClient.invalidateQueries({ queryKey: ['patient-tab-counts', patientId] });
     },
   });
 

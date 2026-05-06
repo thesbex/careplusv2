@@ -88,6 +88,14 @@ export function useCreatePrescription() {
       void queryClient.invalidateQueries({
         queryKey: ['prescriptions', data.consultationId],
       });
+      // B6 — refresh dossier patient tab badges (Prescriptions count++).
+      // Aussi documents si la création a déclenché une PRESCRIPTION_HISTORIQUE
+      // (rare, mais l'invalidation est cheap).
+      if (data.patientId) {
+        void queryClient.invalidateQueries({
+          queryKey: ['patient-tab-counts', data.patientId],
+        });
+      }
     },
   });
 

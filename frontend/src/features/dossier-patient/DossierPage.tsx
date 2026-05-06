@@ -10,6 +10,7 @@ import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { toast } from 'sonner';
 import { usePatient } from './hooks/usePatient';
 import { usePatientPhoto } from './hooks/usePatientPhoto';
+import { useTabCounts } from './hooks/useTabCounts';
 import {
   useUpdatePatient,
   type UpdatePatientForm,
@@ -19,6 +20,7 @@ import {
 import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
 import { useConsultations } from '@/features/consultation/hooks/useConsultations';
 import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
+import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { PatientHeader, AllergyStrip } from './components/PatientHeader';
@@ -537,6 +539,7 @@ export default function DossierPage() {
   );
   const { prescriptions: patientPrescriptions } = usePrescriptionsForPatient(raw?.id);
   const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
+  const { counts: tabCounts } = useTabCounts(raw?.id);
 
   async function handleNewConsultation() {
     if (!raw) return;
@@ -621,7 +624,12 @@ export default function DossierPage() {
         />
         <AllergyStrip patient={patient} />
 
-        <DossierTabs value={tab} onValueChange={setTab} showGrossesse={patient.sex === 'F'}>
+        <DossierTabs
+          value={tab}
+          onValueChange={setTab}
+          showGrossesse={patient.sex === 'F'}
+          counts={tabCounts}
+        >
           <DossierTabPanel value="timeline">
             <div className="dp-content">
               <TimelinePanel events={patient.timeline} />
@@ -718,13 +726,7 @@ export default function DossierPage() {
                     >
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {p.type === 'DRUG'
-                            ? 'Ordonnance médicaments'
-                            : p.type === 'LAB'
-                            ? "Bon d'analyses"
-                            : p.type === 'IMAGING'
-                            ? "Bon d'imagerie"
-                            : (p.type ?? 'Document')}
+                          {metaForPrescription(p).label}
                         </div>
                         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
                           {new Date(p.issuedAt).toLocaleString('fr-MA', {
@@ -734,8 +736,12 @@ export default function DossierPage() {
                             hour: '2-digit',
                             minute: '2-digit',
                           })}
-                          {' · '}
-                          {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                          {p.type !== 'CERT' && p.type !== 'SICK_LEAVE' && (
+                            <>
+                              {' · '}
+                              {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                            </>
+                          )}
                         </div>
                       </div>
                       {p.allergyOverride && (

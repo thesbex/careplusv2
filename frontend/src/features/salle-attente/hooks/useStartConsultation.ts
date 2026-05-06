@@ -14,8 +14,12 @@ export function useStartConsultation() {
   const mutation = useMutation({
     mutationFn: (payload: StartConsultationPayload) =>
       api.post<ConsultationApi>('/consultations', payload).then((r) => r.data),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['queue'] });
+      // B6 — refresh dossier patient tab badges (Consultations count++)
+      void queryClient.invalidateQueries({
+        queryKey: ['patient-tab-counts', variables.patientId],
+      });
     },
   });
 

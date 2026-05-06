@@ -17,6 +17,8 @@ export function useDeclarePregnancy(patientId: string) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['pregnancies', 'list', patientId] });
       void qc.invalidateQueries({ queryKey: ['pregnancies', 'current', patientId] });
+      // B6 — refresh dossier patient tab badges (Grossesses count++).
+      void qc.invalidateQueries({ queryKey: ['patient-tab-counts', patientId] });
       // TODO Étape 5 : invalider la worklist + le badge alertes sidebar.
     },
   });

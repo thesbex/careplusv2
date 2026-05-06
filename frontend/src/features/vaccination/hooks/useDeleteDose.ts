@@ -22,6 +22,10 @@ export function useDeleteDose(patientId: string) {
         queryKey: ['vaccination', 'queue'],
         refetchType: 'all',
       });
+      // B6 — refresh dossier patient tab badges (Vaccinations count-- via soft-delete).
+      void queryClient.invalidateQueries({
+        queryKey: ['patient-tab-counts', patientId],
+      });
     },
   });
 }

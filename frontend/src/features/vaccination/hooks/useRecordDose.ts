@@ -24,6 +24,10 @@ export function useRecordDose(patientId: string) {
         queryKey: ['vaccination', 'queue'],
         refetchType: 'all',
       });
+      // B6 — refresh dossier patient tab badges (Vaccinations count++).
+      void queryClient.invalidateQueries({
+        queryKey: ['patient-tab-counts', patientId],
+      });
     },
   });
 }

@@ -6,6 +6,9 @@ function invalidate(qc: ReturnType<typeof useQueryClient>) {
   void qc.invalidateQueries({ queryKey: ['invoices'] });
   void qc.invalidateQueries({ queryKey: ['invoice'] });
   void qc.invalidateQueries({ queryKey: ['invoice-by-consult'] });
+  // B6 — refresh dossier patient tab badges (Facturation count).
+  // patientId not in scope here, broadcast-invalidate all patient-tab-counts queries.
+  void qc.invalidateQueries({ queryKey: ['patient-tab-counts'] });
 }
 
 export function useUpdateInvoice() {
