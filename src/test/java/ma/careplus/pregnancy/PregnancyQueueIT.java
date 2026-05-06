@@ -213,10 +213,10 @@ class PregnancyQueueIT {
         JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
         JsonNode content = body.get("content");
 
-        // All entries in result must have alertCount > 0
+        // All entries in result must have at least one alert
         for (JsonNode entry : content) {
-            assertThat(entry.get("alertCount").asInt())
-                    .as("Entry with alertCount=0 should not appear in withAlerts=true result")
+            assertThat(entry.get("alerts").size())
+                    .as("Entry with no alerts should not appear in withAlerts=true result")
                     .isGreaterThan(0);
         }
 

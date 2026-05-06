@@ -5,11 +5,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import ma.careplus.patient.domain.Patient;
 import ma.careplus.patient.infrastructure.persistence.PatientRepository;
+import ma.careplus.pregnancy.application.PregnancyAlertService.PregnancyAlertView;
 import ma.careplus.pregnancy.domain.Pregnancy;
 import ma.careplus.pregnancy.domain.PregnancyStatus;
 import ma.careplus.pregnancy.domain.PregnancyVisit;
@@ -57,10 +57,6 @@ public class PregnancyQueueServiceImpl implements PregnancyQueueService {
 
         // 2. Build entries
         List<PregnancyQueueEntry> entries = new ArrayList<>();
-        List<UUID> idsForAlertBatch = active.stream().map(Pregnancy::getId).toList();
-
-        // Batch alert count — avoids N individual queries
-        Map<UUID, Integer> alertCounts = alertService.countByPregnancy(idsForAlertBatch);
 
         for (Pregnancy p : active) {
             // Load patient
@@ -78,8 +74,10 @@ public class PregnancyQueueServiceImpl implements PregnancyQueueService {
                 if (!matches) continue;
             }
 
-            // Compute SA
-            int saWeeks = (int) ChronoUnit.WEEKS.between(p.getLmpDate(), today);
+            // Compute SA — semaines + jours dans la semaine courante (frontend affiche "Xs+Yj")
+            int totalDays = (int) ChronoUnit.DAYS.between(p.getLmpDate(), today);
+            int saWeeks = totalDays / 7;
+            int saDays = Math.floorMod(totalDays, 7);
             String trimester = computeTrimester(saWeeks);
 
             // Trimester filter
@@ -90,11 +88,12 @@ public class PregnancyQueueServiceImpl implements PregnancyQueueService {
                     visitRepo.findFirstByPregnancyIdOrderByRecordedAtDesc(p.getId());
             java.time.Instant lastVisitAt = lastVisit.map(v -> v.getRecordedAt().toInstant()).orElse(null);
 
-            // Alert count
-            int alertCount = alertCounts.getOrDefault(p.getId(), 0);
+            // Alerts (full list — frontend lit entry.alerts.length pour le badge + détail au hover)
+            // N+1 acceptable au scope MVP (max ~50 grossesses actives par cabinet GP).
+            List<PregnancyAlertView> alerts = alertService.queryAlertsForPregnancy(p.getId());
 
             // withAlerts filter
-            if (Boolean.TRUE.equals(filters.withAlerts()) && alertCount == 0) continue;
+            if (Boolean.TRUE.equals(filters.withAlerts()) && alerts.isEmpty()) continue;
 
             entries.add(new PregnancyQueueEntry(
                     p.getId(),
@@ -104,9 +103,10 @@ public class PregnancyQueueServiceImpl implements PregnancyQueueService {
                     p.getLmpDate(),
                     p.getDueDate(),
                     saWeeks,
+                    saDays,
                     trimester,
                     lastVisitAt,
-                    alertCount
+                    alerts
             ));
         }
 

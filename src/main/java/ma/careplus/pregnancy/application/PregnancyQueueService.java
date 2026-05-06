@@ -2,7 +2,9 @@ package ma.careplus.pregnancy.application;
 
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import ma.careplus.pregnancy.application.PregnancyAlertService.PregnancyAlertView;
 import ma.careplus.vaccination.infrastructure.web.dto.PageView;
 
 /**
@@ -16,9 +18,10 @@ public interface PregnancyQueueService {
     /**
      * A single row in the worklist.
      *
-     * @param saWeeks   gestational age in weeks at today
+     * @param saWeeks   gestational age — full weeks at today (0–44)
+     * @param saDays    gestational age — days within the current week (0–6); displayed as "Xs+Yj"
      * @param trimester T1 (< 14), T2 (14–27), T3 (≥ 28)
-     * @param alertCount number of active alerts for this pregnancy (0 if none)
+     * @param alerts    active alerts for this pregnancy (empty if none)
      */
     record PregnancyQueueEntry(
             UUID pregnancyId,
@@ -28,9 +31,10 @@ public interface PregnancyQueueService {
             LocalDate lmpDate,
             LocalDate dueDate,
             int saWeeks,
+            int saDays,
             String trimester,
             Instant lastVisitAt,
-            int alertCount
+            List<PregnancyAlertView> alerts
     ) {}
 
     /**

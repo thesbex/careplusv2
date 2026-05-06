@@ -483,8 +483,8 @@ class PregnancyManualQaIT {
 
         JsonNode content = objectMapper.readTree(result.getResponse().getContentAsString()).get("content");
         for (JsonNode entry : content) {
-            assertThat(entry.get("alertCount").asInt())
-                    .as("withAlerts=true: toutes les grossesses doivent avoir alertCount > 0")
+            assertThat(entry.get("alerts").size())
+                    .as("withAlerts=true: toutes les grossesses doivent avoir au moins une alerte")
                     .isGreaterThan(0);
         }
     }

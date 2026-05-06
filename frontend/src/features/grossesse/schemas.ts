@@ -131,8 +131,8 @@ export const RecordUltrasoundSchema = z.object({
   saWeeksAtExam: z
     .number({ invalid_type_error: 'SA semaines requis' })
     .int()
-    .min(4, 'SA hors plage (4-44)')
-    .max(44, 'SA hors plage (4-44)'),
+    .min(6, 'SA hors plage (6-44)')
+    .max(44, 'SA hors plage (6-44)'),
   saDaysAtExam: z
     .number({ invalid_type_error: 'SA jours requis' })
     .int()
