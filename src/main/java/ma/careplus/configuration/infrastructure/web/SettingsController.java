@@ -5,19 +5,28 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+import ma.careplus.shared.error.BusinessException;
 
 /**
  * Cabinet-wide settings — clinic identity (header for ordonnance / facture) and
@@ -220,6 +229,150 @@ public class SettingsController {
             }
         }
         return listRolePermissions();
+    }
+
+    // ── Signature médecin (F16) ───────────────────────────────────────────────
+    //
+    // Stockée dans configuration_clinic_settings.signature_blob (BYTEA), avec son
+    // MIME et son horodatage. Une seule signature par cabinet (table single-row
+    // en v1). L'image est ensuite injectée en base64 dans le contexte Thymeleaf
+    // de chaque PDF (ordonnance, certificat, carnet vaccination).
+
+    /** MIME types autorisés pour la signature scannée. */
+    private static final Set<String> SIGNATURE_ALLOWED_MIMES = Set.of(
+            "image/png", "image/jpeg", "image/webp");
+
+    /** Limite stricte côté backend, indépendante de la limite multipart globale. */
+    private static final long SIGNATURE_MAX_BYTES = 500L * 1024L; // 500 Ko
+
+    public record SignatureMetaView(String mime, OffsetDateTime uploadedAt, int sizeBytes) {}
+
+    /**
+     * GET /api/settings/signature/meta — métadonnées (existence + MIME + date).
+     * Tous rôles auth. 204 si pas de signature configurée.
+     * Sert au frontend pour afficher l'aperçu sans télécharger les bytes
+     * tant qu'il n'en a pas besoin.
+     */
+    @GetMapping("/api/settings/signature/meta")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<SignatureMetaView> getSignatureMeta() {
+        try {
+            SignatureMetaView v = jdbc.queryForObject(
+                    "SELECT signature_mime, signature_uploaded_at, "
+                            + "COALESCE(octet_length(signature_blob), 0) AS sz "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        String mime = rs.getString("signature_mime");
+                        if (mime == null) return null;
+                        OffsetDateTime ts = rs.getObject("signature_uploaded_at", OffsetDateTime.class);
+                        return new SignatureMetaView(mime, ts, rs.getInt("sz"));
+                    });
+            if (v == null) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(v);
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    /**
+     * GET /api/settings/signature — bytes bruts de l'image (image/png|jpeg|webp).
+     * 204 si pas de signature configurée. Tous rôles auth.
+     */
+    @GetMapping("/api/settings/signature")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<byte[]> getSignature() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT signature_blob, signature_mime "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("signature_blob");
+                        String mime = rs.getString("signature_mime");
+                        if (blob == null || mime == null) {
+                            return ResponseEntity.<byte[]>noContent().build();
+                        }
+                        return ResponseEntity.ok()
+                                .contentType(MediaType.parseMediaType(mime))
+                                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                                .body(blob);
+                    });
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    /**
+     * PUT /api/settings/signature — upload (multipart/form-data, champ "file").
+     * ADMIN seul. Validations :
+     *   • MIME ∈ {image/png, image/jpeg, image/webp}
+     *   • taille ≤ 500 Ko
+     */
+    @PutMapping(value = "/api/settings/signature", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SignatureMetaView> uploadSignature(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("SIG-EMPTY", "Fichier vide.", 400);
+        }
+        String mime = file.getContentType();
+        if (mime == null || !SIGNATURE_ALLOWED_MIMES.contains(mime.toLowerCase())) {
+            throw new BusinessException("SIG-MIME",
+                    "Format non autorisé. Utiliser PNG, JPEG ou WEBP.", 400);
+        }
+        if (file.getSize() > SIGNATURE_MAX_BYTES) {
+            throw new BusinessException("SIG-TOO-BIG",
+                    "Image trop volumineuse (max 500 Ko).", 400);
+        }
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessException("SIG-IO",
+                    "Lecture du fichier impossible.", 400);
+        }
+        if (bytes.length > SIGNATURE_MAX_BYTES) {
+            throw new BusinessException("SIG-TOO-BIG",
+                    "Image trop volumineuse (max 500 Ko).", 400);
+        }
+
+        // Upsert : crée la ligne cabinet vide si elle n'existe pas encore (un
+        // cabinet peut configurer sa signature avant d'avoir saisi son identité,
+        // notamment lors d'un onboarding différé).
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
+        if (existing == null || existing == 0) {
+            jdbc.update(
+                    "INSERT INTO configuration_clinic_settings "
+                            + "(id, name, address, city, phone, signature_blob, signature_mime, signature_uploaded_at) "
+                            + "VALUES (?, '', '', '', '', ?, ?, now())",
+                    UUID.randomUUID(), bytes, mime.toLowerCase());
+        } else {
+            jdbc.update(
+                    "UPDATE configuration_clinic_settings "
+                            + "SET signature_blob = ?, signature_mime = ?, "
+                            + "    signature_uploaded_at = now(), updated_at = now()",
+                    bytes, mime.toLowerCase());
+        }
+
+        OffsetDateTime ts = jdbc.queryForObject(
+                "SELECT signature_uploaded_at FROM configuration_clinic_settings LIMIT 1",
+                OffsetDateTime.class);
+        return ResponseEntity.ok(new SignatureMetaView(mime.toLowerCase(), ts, bytes.length));
+    }
+
+    /**
+     * DELETE /api/settings/signature — supprime la signature configurée.
+     * ADMIN seul. 204 même si aucune signature n'existait (idempotent).
+     */
+    @DeleteMapping("/api/settings/signature")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteSignature() {
+        jdbc.update(
+                "UPDATE configuration_clinic_settings "
+                        + "SET signature_blob = NULL, signature_mime = NULL, "
+                        + "    signature_uploaded_at = NULL, updated_at = now()");
+        return ResponseEntity.noContent().build();
     }
 
     private static String nullIfBlank(String s) {

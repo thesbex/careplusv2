@@ -4,6 +4,7 @@ import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import com.openhtmltopdf.util.XRLog;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,10 +104,15 @@ public class PrescriptionPdfService {
         // Practitioner name from identity_user
         String doctorName = fetchDoctorName(consultation.getPractitionerId());
 
+        // F16 — signature médecin (optionnelle ; null si non configurée)
+        SignatureBlob signature = fetchSignatureBlob();
+
         // Build Thymeleaf context
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
         ctx.setVariable("doctor", Map.of("fullName", doctorName));
+        ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
+        ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", patient.getBirthDate() != null
@@ -147,6 +153,31 @@ public class PrescriptionPdfService {
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la génération du PDF de l'ordonnance", e);
+        }
+    }
+
+    /** Holder interne pour la signature médecin lue en base. */
+    private record SignatureBlob(String base64, String mime) {}
+
+    /**
+     * F16 — lit la signature scannée du médecin depuis
+     * {@code configuration_clinic_settings.signature_blob} et l'encode en base64
+     * pour l'embed direct dans le HTML (data URL). Renvoie {@code null} si la
+     * colonne est NULL — le template tombe alors back sur le cachet texte.
+     */
+    private SignatureBlob fetchSignatureBlob() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT signature_blob, signature_mime "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("signature_blob");
+                        String mime = rs.getString("signature_mime");
+                        if (blob == null || mime == null) return null;
+                        return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
+                    });
+        } catch (Exception e) {
+            return null;
         }
     }
 

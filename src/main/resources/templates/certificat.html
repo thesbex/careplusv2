@@ -101,7 +101,13 @@
     <!-- SIGNATURE -->
     <div class="signature-block">
         <div class="signature-line">Cachet et signature du médecin</div>
-        <div class="signature-area">&#160;</div>
+        <!-- F16 — signature scannée si configurée, sinon cadre vide -->
+        <th:block th:if="${signatureBase64 != null}">
+            <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
+                 style="max-width:220px;max-height:80px;display:inline-block;margin-top:6px;"
+                 alt="Signature du médecin"/>
+        </th:block>
+        <div class="signature-area" th:if="${signatureBase64 == null}">&#160;</div>
     </div>
 
     <!-- FOOTER -->

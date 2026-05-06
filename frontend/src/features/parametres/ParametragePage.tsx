@@ -31,11 +31,13 @@ import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
+import { SignatureSettingsSection } from './components/SignatureSettingsSection';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import './parametres.css';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',
@@ -114,6 +116,7 @@ function CabinetTab() {
   }
 
   return (
+    <>
     <Panel>
       <PanelHeader>Identité du cabinet</PanelHeader>
       <form
@@ -196,6 +199,8 @@ function CabinetTab() {
         </div>
       </form>
     </Panel>
+    <SignatureSettingsSection />
+    </>
   );
 }
 

@@ -6,6 +6,7 @@ import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -121,9 +122,14 @@ public class VaccinationBookletPdfService {
         String age = birthDate != null ? computeAgeLabel(birthDate) : "";
         String genderLabel = genderLabel(patient.getGender());
 
+        // F16 — signature médecin (optionnelle)
+        SignatureBlob signature = fetchSignatureBlob();
+
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
         ctx.setVariable("doctor", Map.of("fullName", doctorName));
+        ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
+        ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", birthDate != null ? birthDate.format(DATE_FMT) : "",
@@ -158,6 +164,26 @@ public class VaccinationBookletPdfService {
     // ─────────────────────────────────────────────────────────────────────────
     // Private helpers — strictly aligned with PrescriptionPdfService pattern
     // ─────────────────────────────────────────────────────────────────────────
+
+    /** Holder interne pour la signature médecin lue en base. */
+    private record SignatureBlob(String base64, String mime) {}
+
+    /** F16 — signature scannée du médecin, encodée base64 pour data URL. */
+    private SignatureBlob fetchSignatureBlob() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT signature_blob, signature_mime "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("signature_blob");
+                        String mime = rs.getString("signature_mime");
+                        if (blob == null || mime == null) return null;
+                        return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
+                    });
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     private Map<String, String> fetchCabinetSettings() {
         try {

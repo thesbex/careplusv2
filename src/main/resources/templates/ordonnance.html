@@ -245,7 +245,16 @@
             Document généré par CarePlus &mdash; confidentiel médical
         </div>
         <div class="footer-right">
-            <div class="signature-area">Cachet du médecin</div>
+            <!-- F16 — signature scannée si configurée, sinon cadre "cachet" -->
+            <th:block th:if="${signatureBase64 != null}">
+                <div style="text-align:right;font-size:9pt;color:#555;">
+                    <span th:text="${doctor.fullName}">Dr. Prénom Nom</span>
+                </div>
+                <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
+                     style="max-width:200px;max-height:80px;display:block;margin-left:auto;margin-top:4px;"
+                     alt="Signature du médecin"/>
+            </th:block>
+            <div class="signature-area" th:if="${signatureBase64 == null}">Cachet du médecin</div>
         </div>
     </div>
 
