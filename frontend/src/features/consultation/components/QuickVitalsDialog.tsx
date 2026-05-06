@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import type { VitalsApi } from '../hooks/useLatestVitals';
+import { VitalIcon, type VitalKey } from './VitalIcon';
 
 interface QuickVitalsDialogProps {
   open: boolean;
@@ -246,17 +247,17 @@ export function QuickVitalsDialog({
             padding: 18,
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
           }}>
-            <Field label="Systolique (mmHg)" hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
-            <Field label="Diastolique (mmHg)" hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
-            <Field label="FC (bpm)" hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
-            <Field label="FR (/min)" hint="0 – 100" {...field('respiratoryRateBpm')} placeholder="16" />
-            <Field label="SpO₂ (%)" hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
-            <Field label="T° (°C)" hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
-            <Field label="Poids (kg)" hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
-            <Field label="Taille (cm)" hint="20 – 260" {...field('heightCm')} placeholder="178" />
-            <Field label="Glycémie (g/L)" hint="0,1 – 15,0" {...field('glycemiaGPerL')} placeholder="0,95" />
-            <Field label="Périm. abdo. (cm)" hint="0 – 300" {...field('abdominalPerimeterCm')} placeholder="92" />
-            <Field label="Périm. crânien (cm)" hint="20 – 80" {...field('headCircumferenceCm')} placeholder="44" />
+            <Field vital="ta" label="Systolique (mmHg)" hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
+            <Field vital="ta" label="Diastolique (mmHg)" hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
+            <Field vital="fc" label="FC (bpm)" hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
+            <Field vital="fr" label="FR (/min)" hint="0 – 100" {...field('respiratoryRateBpm')} placeholder="16" />
+            <Field vital="spo2" label="SpO₂ (%)" hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
+            <Field vital="temp" label="T° (°C)" hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
+            <Field vital="poids" label="Poids (kg)" hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
+            <Field vital="taille" label="Taille (cm)" hint="20 – 260" {...field('heightCm')} placeholder="178" />
+            <Field vital="glycemie" label="Glycémie (g/L)" hint="0,1 – 15,0" {...field('glycemiaGPerL')} placeholder="0,95" />
+            <Field vital="abdo" label="Périm. abdo. (cm)" hint="0 – 300" {...field('abdominalPerimeterCm')} placeholder="92" />
+            <Field vital="cranien" label="Périm. crânien (cm)" hint="20 – 80" {...field('headCircumferenceCm')} placeholder="44" />
           </div>
 
           <div style={{
@@ -283,17 +284,29 @@ export function QuickVitalsDialog({
 }
 
 function Field({
-  label, value, onChange, placeholder, hint,
+  label, value, onChange, placeholder, hint, vital,
 }: {
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   hint?: string;
+  vital?: VitalKey;
 }) {
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5 }}>
-      <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{label}</span>
+      <span
+        style={{
+          color: 'var(--ink-3)',
+          fontWeight: 600,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+        }}
+      >
+        {vital && <VitalIcon vital={vital} />}
+        {label}
+      </span>
       <input
         type="text"
         inputMode="decimal"

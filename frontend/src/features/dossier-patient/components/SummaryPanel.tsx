@@ -17,6 +17,7 @@ import { Panel, PanelHeader } from '@/components/ui/Panel';
 import type { PatientSummary } from '../types';
 import { usePatientVitalsHistory } from '../hooks/usePatientVitalsHistory';
 import type { VitalsApi } from '@/features/consultation/hooks/useLatestVitals';
+import { VitalIcon, type VitalKey } from '@/features/consultation/components/VitalIcon';
 
 interface SummaryPanelProps {
   patient: PatientSummary;
@@ -54,6 +55,8 @@ interface SummaryVitalRow {
   k: string;
   v: string;
   warn?: boolean;
+  /** Icône préfixe (F3, 2026-05-06). */
+  vital?: VitalKey;
 }
 
 /**
@@ -95,26 +98,27 @@ function buildLastVitals(history: VitalsApi[]): {
 
   const rows: SummaryVitalRow[] = [];
   if (sys != null && dia != null) {
-    rows.push({ k: 'TA', v: `${sys} / ${dia} mmHg`, warn: sys >= 130 });
+    rows.push({ vital: 'ta', k: 'TA', v: `${sys} / ${dia} mmHg`, warn: sys >= 130 });
   }
-  if (fc != null) rows.push({ k: 'FC', v: `${fc} bpm` });
-  if (fr != null) rows.push({ k: 'FR', v: `${fr} /min` });
-  if (temp != null) rows.push({ k: 'T°', v: `${temp.toFixed(1).replace('.', ',')} °C` });
-  if (spo2 != null) rows.push({ k: 'SpO₂', v: `${spo2}%` });
-  if (weight != null) rows.push({ k: 'Poids', v: `${weight.toFixed(1).replace('.', ',')} kg` });
-  if (height != null) rows.push({ k: 'Taille', v: `${height} cm` });
+  if (fc != null) rows.push({ vital: 'fc', k: 'FC', v: `${fc} bpm` });
+  if (fr != null) rows.push({ vital: 'fr', k: 'FR', v: `${fr} /min` });
+  if (temp != null) rows.push({ vital: 'temp', k: 'T°', v: `${temp.toFixed(1).replace('.', ',')} °C` });
+  if (spo2 != null) rows.push({ vital: 'spo2', k: 'SpO₂', v: `${spo2}%` });
+  if (weight != null) rows.push({ vital: 'poids', k: 'Poids', v: `${weight.toFixed(1).replace('.', ',')} kg` });
+  if (height != null) rows.push({ vital: 'taille', k: 'Taille', v: `${height} cm` });
   if (bmi != null) {
     rows.push({
+      vital: 'imc',
       k: 'IMC',
       v: `${bmi.toFixed(1).replace('.', ',')} kg/m²`,
       warn: bmi >= 25 || bmi < 18.5,
     });
   }
   if (glycemia != null) {
-    rows.push({ k: 'Glycémie', v: `${glycemia.toFixed(2).replace('.', ',')} g/L` });
+    rows.push({ vital: 'glycemie', k: 'Glycémie', v: `${glycemia.toFixed(2).replace('.', ',')} g/L` });
   }
-  if (abdo != null) rows.push({ k: 'Périm. abdo.', v: `${abdo} cm` });
-  if (head != null) rows.push({ k: 'Périm. crânien', v: `${head} cm` });
+  if (abdo != null) rows.push({ vital: 'abdo', k: 'Périm. abdo.', v: `${abdo} cm` });
+  if (head != null) rows.push({ vital: 'cranien', k: 'Périm. crânien', v: `${head} cm` });
 
   // « as of » = la date du dernier enregistrement (peu importe ses champs non-null).
   const last = desc[0]!;
@@ -266,11 +270,22 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
+                alignItems: 'center',
                 padding: '3px 0',
                 fontSize: 12.5,
               }}
             >
-              <span style={{ color: 'var(--ink-3)' }}>{v.k}</span>
+              <span
+                style={{
+                  color: 'var(--ink-3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                {v.vital && <VitalIcon vital={v.vital} />}
+                {v.k}
+              </span>
               <span
                 className="tnum"
                 style={{

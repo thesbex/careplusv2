@@ -184,3 +184,27 @@
   gap: 10px;
   margin-top: 14px;
 }
+
+/* ── Vitals : icône préfixant chaque label de constante ─────────────────
+ * Demande F3 (2026-05-06) — repère visuel pour scanner les constantes
+ * plus vite. L'icône hérite de `currentColor` ; on la teinte ici en
+ * `--ink-3` pour rester sobre et harmonieuse avec le label gris du même
+ * niveau. Côté warn (TA / IMC), la ligne entière est en --amber via le
+ * style inline du composant — l'icône suit grâce à currentColor.
+ */
+.vital-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+/* Variante mobile : alignée au centre dans la cellule cs-m-vital-cell, à côté
+ * du libellé court (TA, FC…). Affichée 12 px pour ne pas déséquilibrer la
+ * grille à 4 colonnes en 390 px. */
+.cs-m-vital-k .vital-icon {
+  width: 11px;
+  height: 11px;
+  vertical-align: -1px;
+  margin-right: 3px;
+}

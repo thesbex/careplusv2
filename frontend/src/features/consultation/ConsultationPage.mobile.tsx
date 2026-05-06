@@ -21,6 +21,7 @@ import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoic
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
+import { VitalIcon } from './components/VitalIcon';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useLatestVitals } from './hooks/useLatestVitals';
@@ -220,25 +221,33 @@ export default function ConsultationMobilePage() {
           <div className="cs-m-vitals-grid" role="region" aria-label="Constantes">
             {vitals.systolicMmhg != null && vitals.diastolicMmhg != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">TA</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="ta" />TA
+                </div>
                 <div className="cs-m-vital-v">{taLabel}</div>
               </div>
             )}
             {vitals.heartRateBpm != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">FC</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="fc" />FC
+                </div>
                 <div className="cs-m-vital-v">{vitals.heartRateBpm}</div>
               </div>
             )}
             {vitals.respiratoryRateBpm != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">FR</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="fr" />FR
+                </div>
                 <div className="cs-m-vital-v">{vitals.respiratoryRateBpm}</div>
               </div>
             )}
             {vitals.temperatureC != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">T°</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="temp" />T°
+                </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.temperatureC).toFixed(1).replace('.', ',')}
                 </div>
@@ -246,13 +255,17 @@ export default function ConsultationMobilePage() {
             )}
             {vitals.spo2Percent != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">SpO₂</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="spo2" />SpO₂
+                </div>
                 <div className="cs-m-vital-v">{vitals.spo2Percent}</div>
               </div>
             )}
             {vitals.weightKg != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">Poids</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="poids" />Poids
+                </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.weightKg).toFixed(1).replace('.', ',')}
                 </div>
@@ -260,13 +273,17 @@ export default function ConsultationMobilePage() {
             )}
             {vitals.heightCm != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">Taille</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="taille" />Taille
+                </div>
                 <div className="cs-m-vital-v">{Number(vitals.heightCm)}</div>
               </div>
             )}
             {vitals.bmi != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">IMC</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="imc" />IMC
+                </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.bmi).toFixed(1).replace('.', ',')}
                 </div>
@@ -274,7 +291,9 @@ export default function ConsultationMobilePage() {
             )}
             {vitals.glycemiaGPerL != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">Glycémie</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="glycemie" />Glycémie
+                </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.glycemiaGPerL).toFixed(2).replace('.', ',')}
                 </div>
@@ -282,13 +301,17 @@ export default function ConsultationMobilePage() {
             )}
             {vitals.abdominalPerimeterCm != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">P. abdo</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="abdo" />P. abdo
+                </div>
                 <div className="cs-m-vital-v">{Number(vitals.abdominalPerimeterCm)}</div>
               </div>
             )}
             {vitals.headCircumferenceCm != null && (
               <div className="cs-m-vital-cell">
-                <div className="cs-m-vital-k">P. crânien</div>
+                <div className="cs-m-vital-k">
+                  <VitalIcon vital="cranien" />P. crânien
+                </div>
                 <div className="cs-m-vital-v">{Number(vitals.headCircumferenceCm)}</div>
               </div>
             )}

@@ -6,6 +6,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Warn, Plus } from '@/components/icons';
 import type { PatientSummary } from '@/features/dossier-patient/types';
 import type { VitalsApi } from '../hooks/useLatestVitals';
+import { VitalIcon, type VitalKey } from './VitalIcon';
 
 interface PatientContextCardProps {
   patient: PatientSummary | null;
@@ -31,10 +32,20 @@ function SectionH({ children }: { children: React.ReactNode }) {
   );
 }
 
-function VitalRow({ k, v, warn }: { k: string; v: string; warn?: boolean }) {
+function VitalRow({
+  k, v, warn, vital,
+}: {
+  k: string;
+  v: string;
+  warn?: boolean;
+  vital?: VitalKey;
+}) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-      <span style={{ color: 'var(--ink-3)' }}>{k}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ color: 'var(--ink-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        {vital && <VitalIcon vital={vital} />}
+        {k}
+      </span>
       <span className="tnum" style={warn ? { color: 'var(--amber)', fontWeight: 600 } : undefined}>
         {v}
       </span>
@@ -221,20 +232,20 @@ export function PatientContextCard({
                   voyait FC mais pas taille, donc croyait à une perte de données.
                   Les valeurs étaient bien persistées — seul le rendu mentait.
                 */}
-                {ta && <VitalRow k="TA" v={`${ta} mmHg`} warn={taWarn} />}
-                {fc != null && <VitalRow k="FC" v={`${fc} bpm`} />}
-                {fr != null && <VitalRow k="FR" v={`${fr} /min`} />}
-                {tempStr && <VitalRow k="T°" v={`${tempStr} °C`} />}
-                {spo2 != null && <VitalRow k="SpO₂" v={`${spo2}%`} />}
-                {weightStr && <VitalRow k="Poids" v={`${weightStr} kg`} />}
-                {heightNum != null && <VitalRow k="Taille" v={`${heightNum} cm`} />}
-                {bmiStr && <VitalRow k="IMC" v={`${bmiStr} kg/m²`} warn={bmiWarn} />}
-                {glycemiaStr && <VitalRow k="Glycémie" v={`${glycemiaStr} g/L`} />}
+                {ta && <VitalRow vital="ta" k="TA" v={`${ta} mmHg`} warn={taWarn} />}
+                {fc != null && <VitalRow vital="fc" k="FC" v={`${fc} bpm`} />}
+                {fr != null && <VitalRow vital="fr" k="FR" v={`${fr} /min`} />}
+                {tempStr && <VitalRow vital="temp" k="T°" v={`${tempStr} °C`} />}
+                {spo2 != null && <VitalRow vital="spo2" k="SpO₂" v={`${spo2}%`} />}
+                {weightStr && <VitalRow vital="poids" k="Poids" v={`${weightStr} kg`} />}
+                {heightNum != null && <VitalRow vital="taille" k="Taille" v={`${heightNum} cm`} />}
+                {bmiStr && <VitalRow vital="imc" k="IMC" v={`${bmiStr} kg/m²`} warn={bmiWarn} />}
+                {glycemiaStr && <VitalRow vital="glycemie" k="Glycémie" v={`${glycemiaStr} g/L`} />}
                 {abdominalNum != null && (
-                  <VitalRow k="Périm. abdo." v={`${abdominalNum} cm`} />
+                  <VitalRow vital="abdo" k="Périm. abdo." v={`${abdominalNum} cm`} />
                 )}
                 {headCircNum != null && (
-                  <VitalRow k="Périm. crânien" v={`${headCircNum} cm`} />
+                  <VitalRow vital="cranien" k="Périm. crânien" v={`${headCircNum} cm`} />
                 )}
               </>
             )}

@@ -324,3 +324,76 @@ export const BarChart = (p: IconProps) => (
     <path d="M11 11V8.5" />
   </Base>
 );
+
+/* ── Vitals icons ─────────────────────────────────────────────────────────
+ * Family added 2026-05-06 (F3) for the per-vital visual prefixes in the
+ * consultation / dossier patient surfaces. Re-drawn (not imported from any
+ * external set) to match the existing 16×16 / stroke 1.5 / currentColor
+ * conventions, per DESIGN_SYSTEM §8.
+ */
+
+/** TA — pulse line (ECG-like) used for blood pressure. */
+export const Activity = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M1.5 8h3l1.5-3 3 6 1.5-3h3.5" />
+  </Base>
+);
+
+/** FR — wind / respiration. */
+export const Wind = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2 5.5h7a1.8 1.8 0 100-3.5" />
+    <path d="M2 8h11a2 2 0 110 4" />
+    <path d="M2 10.5h4.5a1.8 1.8 0 110 3.5" />
+  </Base>
+);
+
+/** SpO₂ / glycémie — droplet. */
+export const Droplet = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M8 1.5s4.5 5 4.5 8a4.5 4.5 0 11-9 0c0-3 4.5-8 4.5-8z" />
+  </Base>
+);
+
+/** Poids — balance / scale. */
+export const Scale = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="2" y="3" width="12" height="11" rx="1.5" />
+    <circle cx="8" cy="7.5" r="2" />
+    <path d="M8 5.5v-1" />
+  </Base>
+);
+
+/** Taille — règle. */
+export const Ruler = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2.5 9.5l7-7 4 4-7 7-4-4z" />
+    <path d="M5 7l1.2 1.2M7 5l1.5 1.5M9 3l1.2 1.2M3.5 8.5l1.2 1.2" />
+  </Base>
+);
+
+/** IMC — calculatrice. */
+export const Calculator = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="3" y="2" width="10" height="12" rx="1.5" />
+    <path d="M5 4.5h6v2h-6z" />
+    <path d="M5.5 9h.01M8 9h.01M10.5 9h.01M5.5 11.5h.01M8 11.5h.01M10.5 11.5h3" />
+  </Base>
+);
+
+/** Périm. abdo / crânien — cercle (placeholder de mesure circonférentielle). */
+export const Circle = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="8" cy="8" r="5.5" />
+  </Base>
+);
+
+/** Périm. crânien — silhouette bébé (tête + corps stylisé). */
+export const Baby = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="8" cy="5" r="3" />
+    <path d="M5.5 5.2h.01M10.5 5.2h.01" />
+    <path d="M6.5 6.5c.4.5 1 .8 1.5.8s1.1-.3 1.5-.8" />
+    <path d="M3.5 14c.6-2.5 2.4-4 4.5-4s3.9 1.5 4.5 4" />
+  </Base>
+);
