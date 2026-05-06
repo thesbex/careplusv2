@@ -19,6 +19,7 @@ import {
   Doc as DocIcon,
   Heart as HeartIcon,
   Box as BoxIcon,
+  BarChart as BarChartIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
@@ -101,6 +102,18 @@ export default function ParametrageMobilePage() {
       </div>
 
       <div className="mb-pad">
+        <div className="m-section-h">
+          <h3>Tableau de bord</h3>
+        </div>
+        <div className="m-card" style={{ marginBottom: 18 }}>
+          <MenuRow
+            Icon={BarChartIcon}
+            label="Dashboard"
+            hint="Indicateurs cabinet — KPIs et activité"
+            onClick={() => navigate('/dashboard')}
+          />
+        </div>
+
         {isAdminOrDoctor ? (
           <>
             <div className="m-section-h">

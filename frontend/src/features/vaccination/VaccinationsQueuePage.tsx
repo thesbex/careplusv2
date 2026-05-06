@@ -20,6 +20,7 @@ import { RecordDoseDrawer } from './components/RecordDoseDrawer';
 import type { VaccinationCalendarEntry } from './types';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

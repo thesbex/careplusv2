@@ -12,6 +12,7 @@ import { useConsultations } from './hooks/useConsultations';
 import type { ConsultationApi } from './hooks/useConsultation';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

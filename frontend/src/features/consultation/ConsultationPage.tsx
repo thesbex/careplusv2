@@ -174,13 +174,14 @@ export default function ConsultationPage() {
   }
 
   const [navigateMap] = useState({
+    dashboard: '/dashboard',
     agenda: '/agenda',
     patients: '/patients',
     salle: '/salle',
     consult: '/consultations',
     factu: '/facturation',
     vaccinations: '/vaccinations',
-  grossesses: '/grossesses',
+    grossesses: '/grossesses',
     stock: '/stock',
     catalogue: '/catalogue',
     params: '/parametres',

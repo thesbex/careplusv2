@@ -225,13 +225,14 @@ export default function AgendaPage() {
         right={<TodayArrivals arrivals={arrivals} />}
         onNavigate={(id) => {
           const map = {
+            dashboard: '/dashboard',
             agenda: '/agenda',
             patients: '/patients',
             salle: '/salle',
             consult: '/consultations',
             factu: '/facturation',
             vaccinations: '/vaccinations',
-  grossesses: '/grossesses',
+            grossesses: '/grossesses',
             stock: '/stock',
             catalogue: '/catalogue',
             params: '/parametres',

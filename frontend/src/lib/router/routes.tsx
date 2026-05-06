@@ -3,6 +3,7 @@ import LandingPage from '@/features/landing/LandingPage';
 import LoginPage from '@/features/login/LoginRoute';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
+import DashboardRoute from '@/features/dashboard/DashboardRoute';
 import DossierRoute from '@/features/dossier-patient';
 import PatientsListPage from '@/features/dossier-patient/PatientsListRoute';
 import SalleAttenteRoute from '@/features/salle-attente';
@@ -73,6 +74,14 @@ export const router = createBrowserRouter(
         <RequireRole roles={['ADMIN', 'MEDECIN']}>
           <OnboardingPage />
         </RequireRole>
+      ),
+    },
+    {
+      path: '/dashboard',
+      element: (
+        <RequireAuth>
+          <DashboardRoute />
+        </RequireAuth>
       ),
     },
     {

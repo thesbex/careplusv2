@@ -35,6 +35,7 @@ interface Form {
 const EMPTY_FORM: Form = { code: '', name: '', category: '' };
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

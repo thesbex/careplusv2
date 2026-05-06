@@ -59,6 +59,7 @@ export default function CongesPage() {
       sub="Congés & absences"
       onNavigate={(id) => {
         const map = {
+          dashboard: '/dashboard',
           agenda: '/agenda', patients: '/patients', salle: '/salle',
           consult: '/consultations', factu: '/facturation', vaccinations: '/vaccinations',
           grossesses: '/grossesses',

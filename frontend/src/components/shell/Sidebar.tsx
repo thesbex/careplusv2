@@ -10,6 +10,7 @@ import {
   Pill,
   Heart,
   Box,
+  BarChart,
 } from '@/components/icons';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -22,6 +23,7 @@ import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesse
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
 export type SidebarScreen =
+  | 'dashboard'
   | 'agenda'
   | 'patients'
   | 'salle'
@@ -45,6 +47,7 @@ interface NavItem {
 }
 
 const ITEMS: NavItem[] = [
+  { id: 'dashboard', label: 'Dashboard', Icon: BarChart, section: 'flux' },
   { id: 'agenda', label: 'Agenda', Icon: Calendar, section: 'flux' },
   { id: 'patients', label: 'Patients', Icon: Users, section: 'flux' },
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },

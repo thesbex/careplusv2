@@ -19,6 +19,7 @@ import {
 import type { Trimester } from './types';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

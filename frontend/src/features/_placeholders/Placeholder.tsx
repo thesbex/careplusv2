@@ -73,13 +73,14 @@ export function Placeholder({ active, mobileTab, title, sub, sprintDay }: Placeh
       {...(sub ? { sub } : {})}
       onNavigate={(id) => {
         const map: Record<SidebarScreen, string> = {
+          dashboard: '/dashboard',
           agenda: '/agenda',
           patients: '/patients',
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
           vaccinations: '/vaccinations',
-  grossesses: '/grossesses',
+          grossesses: '/grossesses',
           stock: '/stock',
           catalogue: '/catalogue',
           params: '/parametres',

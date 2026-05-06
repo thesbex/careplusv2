@@ -53,6 +53,7 @@ const EMPTY_FORM: Form = {
 };
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

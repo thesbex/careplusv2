@@ -23,6 +23,7 @@ import {
 import './facturation.css';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

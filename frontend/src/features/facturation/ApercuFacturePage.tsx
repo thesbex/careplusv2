@@ -11,6 +11,7 @@ import { STATUS_LABEL, PAYMENT_MODE_LABEL } from './types';
 import './facturation.css';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

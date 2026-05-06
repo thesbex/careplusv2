@@ -315,3 +315,12 @@ export const Box = (p: IconProps) => (
     <path d="M8 7.5V14.5" />
   </Base>
 );
+
+export const BarChart = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2.5 13.5h11" />
+    <path d="M4 11V7" />
+    <path d="M7.5 11V4.5" />
+    <path d="M11 11V8.5" />
+  </Base>
+);

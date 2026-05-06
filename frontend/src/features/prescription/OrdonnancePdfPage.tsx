@@ -54,13 +54,14 @@ export default function OrdonnancePdfPage() {
       }
       onNavigate={(navId) => {
         const map = {
+          dashboard: '/dashboard',
           agenda: '/agenda',
           patients: '/patients',
           salle: '/salle',
           consult: '/consultations',
           factu: '/facturation',
           vaccinations: '/vaccinations',
-  grossesses: '/grossesses',
+          grossesses: '/grossesses',
           stock: '/stock',
           catalogue: '/catalogue',
           params: '/parametres',

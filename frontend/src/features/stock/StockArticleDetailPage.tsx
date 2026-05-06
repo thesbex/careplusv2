@@ -19,6 +19,7 @@ import { CATEGORY_LABEL, MOVEMENT_TYPE_LABEL } from './types';
 import type { StockMovementType } from './types';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

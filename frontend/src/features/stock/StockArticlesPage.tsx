@@ -16,6 +16,7 @@ import { CATEGORY_LABEL } from './types';
 import type { StockArticle, StockArticleCategory } from './types';
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

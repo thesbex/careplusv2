@@ -36,6 +36,7 @@ interface Form {
 const EMPTY_FORM: Form = { code: '', name: '', modality: 'RADIO' };
 
 const NAV_MAP = {
+  dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
   salle: '/salle',

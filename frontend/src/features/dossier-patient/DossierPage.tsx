@@ -605,6 +605,7 @@ export default function DossierPage() {
       sub={`${patient.fullName} · Dossier N° ${patient.dossierNo}`}
       onNavigate={(navId) => {
         const map = {
+          dashboard: '/dashboard',
           agenda: '/agenda', patients: '/patients', salle: '/salle',
           consult: '/consultations', factu: '/facturation', vaccinations: '/vaccinations',
           grossesses: '/grossesses',
