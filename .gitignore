@@ -71,3 +71,4 @@ frontend/qa-*.png
 
 # Spring Boot runtime data dir (DocumentStorage at app boot)
 data/
+screenshots/
