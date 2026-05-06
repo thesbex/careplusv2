@@ -24,6 +24,7 @@ import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
+import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import { ConsultationPrestationsPanel } from '@/features/prestation/components/ConsultationPrestationsPanel';
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
@@ -377,19 +378,33 @@ export default function ConsultationPage() {
             {prescriptions.length === 0 && (
               <div style={{ color: 'var(--ink-3)' }}>Aucun document généré.</div>
             )}
-            {prescriptions.map((p) => (
+            {prescriptions.map((p) => {
+              // Le libellé "Documents générés" doit refléter le type réel
+              // (Ordonnance / Certificat / Bon d'analyses / Bon d'imagerie /
+              // Arrêt de travail), pas un libellé "Ordonnance" hardcodé.
+              const docMeta = metaForPrescription(p);
+              const lineCount = p.lines.length;
+              const titleSuffix =
+                p.type === 'CERT' || p.type === 'SICK_LEAVE'
+                  ? '' // un certificat n'a généralement qu'une ligne libellée "corps"
+                  : ` · ${lineCount} ligne${lineCount > 1 ? 's' : ''}`;
+              const subLabel =
+                p.type === 'DRUG'
+                  ? 'Médicaments'
+                  : p.type === 'LAB'
+                  ? 'Analyses'
+                  : p.type === 'IMAGING'
+                  ? 'Imagerie'
+                  : p.type === 'CERT'
+                  ? 'Certificat médical'
+                  : p.type === 'SICK_LEAVE'
+                  ? 'Arrêt de travail'
+                  : (p.type ?? '—');
+              return (
               <div key={p.id}>
                 <DocRow
-                  title={`Ordonnance · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`}
-                  meta={
-                    p.type === 'DRUG'
-                      ? 'Médicaments'
-                      : p.type === 'LAB'
-                      ? 'Analyses'
-                      : p.type === 'IMAGING'
-                      ? 'Imagerie'
-                      : (p.type ?? '—')
-                  }
+                  title={`${docMeta.label}${titleSuffix}`}
+                  meta={subLabel}
                   onClick={() => navigate(`/prescriptions/${p.id}`)}
                 />
                 {/* readOnly=false même quand la consultation est SIGNEE :
@@ -400,7 +415,8 @@ export default function ConsultationPage() {
                     SOAP, alors que le résultat est un évènement post-visite. */}
                 <PrescriptionResultsPanel prescription={p} readOnly={false} />
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {id && <ConsultationPrestationsPanel consultationId={id} readOnly={isSigned} />}

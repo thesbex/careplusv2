@@ -1,13 +1,23 @@
 /**
- * Screen 08 — Aperçu ordonnance (PDF).
- * Loads the server-rendered PDF as a blob and shows it in an iframe.
- * Download + print actions are wired to browser APIs.
+ * Screen 08 — Aperçu document (PDF) — desktop.
+ *
+ * Polyvalent : ce composant est utilisé pour TOUS les types de prescription
+ * (DRUG = ordonnance, LAB = bon d'analyses, IMAGING = bon d'imagerie,
+ * CERT = certificat médical, SICK_LEAVE = arrêt de travail). Le titre, le
+ * préfixe court et le nom de fichier téléchargé sont dérivés du `type`
+ * stocké en DB — pas hardcodés.
+ *
+ * Le PDF est récupéré en blob (auth bearer en mémoire — voir ADR-019), puis
+ * rendu dans un `<iframe>` qui s'appuie sur la `blob:` URL locale (pas de
+ * second appel HTTP, donc pas d'header Authorization à transmettre).
+ *
+ * Boutons Télécharger / Imprimer travaillent sur la même blob URL.
  */
 import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, File as FileIcon, Print } from '@/components/icons';
-import { usePrescriptionPdf } from './hooks/usePrescriptionPdf';
+import { useDocumentPdfController, metaForPrescription } from './components/DocumentPdfViewer';
 import { usePrescription } from './hooks/usePrescriptions';
 import './prescription.css';
 
@@ -15,30 +25,20 @@ export default function OrdonnancePdfPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { prescription } = usePrescription(id);
-  const { url, isLoading, error } = usePrescriptionPdf(id);
+  const { url, isLoading, error, iframeId, download, print } = useDocumentPdfController(id);
+
+  const meta = metaForPrescription(prescription);
+  const shortId = id ? id.slice(0, 8).toUpperCase() : '—';
 
   function handleDownload() {
-    if (!url) return;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ordonnance-${id}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    download(`${meta.fileSlug}-${shortId}.pdf`);
   }
-
-  function handlePrint() {
-    const frame = document.getElementById('ordo-pdf-frame') as HTMLIFrameElement | null;
-    frame?.contentWindow?.print();
-  }
-
-  const shortId = id ? id.slice(0, 8).toUpperCase() : '—';
 
   return (
     <Screen
       active="consult"
-      title="Aperçu — Ordonnance"
-      sub={`ORD-${shortId}${prescription ? ` · ${new Date(prescription.issuedAt).toLocaleDateString('fr-MA')}` : ''}`}
+      title={`Aperçu — ${meta.label}`}
+      sub={`${meta.prefix}-${shortId}${prescription ? ` · ${new Date(prescription.issuedAt).toLocaleDateString('fr-MA')}` : ''}`}
       topbarRight={
         <>
           <Button onClick={() => navigate(-1)}>
@@ -47,7 +47,7 @@ export default function OrdonnancePdfPage() {
           <Button onClick={handleDownload} disabled={!url}>
             <FileIcon /> Télécharger
           </Button>
-          <Button variant="primary" onClick={handlePrint} disabled={!url}>
+          <Button variant="primary" onClick={print} disabled={!url}>
             <Print /> Imprimer
           </Button>
         </>
@@ -79,9 +79,9 @@ export default function OrdonnancePdfPage() {
         )}
         {url && (
           <iframe
-            id="ordo-pdf-frame"
+            id={iframeId}
             className="pr-pdf-viewer"
-            title="Aperçu ordonnance"
+            title={`Aperçu ${meta.label}`}
             src={url}
           />
         )}

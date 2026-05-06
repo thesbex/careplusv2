@@ -15,6 +15,7 @@ import { Warn, Lock, ChevronRight } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
@@ -335,6 +336,9 @@ export default function ConsultationMobilePage() {
         ) : (
           <div className="m-card">
             {prescriptions.map((p, i) => {
+              // Libellés type-aware : un certificat ne doit pas s'afficher
+              // "Ordonnance" en mobile (parité bug B2 desktop).
+              const docMeta = metaForPrescription(p);
               const typeLabel =
                 p.type === 'DRUG'
                   ? 'Médicaments'
@@ -342,7 +346,15 @@ export default function ConsultationMobilePage() {
                   ? 'Analyses'
                   : p.type === 'IMAGING'
                   ? 'Imagerie'
+                  : p.type === 'CERT'
+                  ? 'Certificat médical'
+                  : p.type === 'SICK_LEAVE'
+                  ? 'Arrêt de travail'
                   : (p.type ?? '—');
+              const isLetter = p.type === 'CERT' || p.type === 'SICK_LEAVE';
+              const titleSuffix = isLetter
+                ? ''
+                : ` · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`;
               return (
                 <button
                   key={p.id}
@@ -363,8 +375,7 @@ export default function ConsultationMobilePage() {
                 >
                   <div className="m-row-pri">
                     <div className="m-row-main">
-                      Ordonnance · {p.lines.length} ligne
-                      {p.lines.length > 1 ? 's' : ''}
+                      {docMeta.label}{titleSuffix}
                     </div>
                     <div className="m-row-sub">
                       {typeLabel} ·{' '}

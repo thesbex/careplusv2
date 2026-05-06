@@ -1,0 +1,218 @@
+/**
+ * DocumentPdfViewer — visualiseur de PDF unifié pour TOUS les types de
+ * prescription (DRUG / LAB / IMAGING / CERT / SICK_LEAVE).
+ *
+ * Pourquoi un composant dédié :
+ * Le backend stocke différents types dans `clinical_prescription.type`. Le
+ * frontend en revanche n'avait qu'une seule page hardcodée "Aperçu —
+ * Ordonnance" qui ignorait le type — ce qui faisait apparaître un certificat
+ * comme "ORD-..." en titre. Ce composant lit le type via `usePrescription`
+ * et adapte titre, préfixe, libellé d'archive, et nom du fichier téléchargé.
+ *
+ * Pourquoi un blob :
+ * L'endpoint `/api/prescriptions/{id}/pdf` est protégé par `Authorization:
+ * Bearer …` (ADR-019 — token in-memory, pas de cookie). Une `<iframe src=…>`
+ * directe ne peut pas attacher l'header bearer → 401 silencieux et
+ * "Impossible de charger le PDF". On télécharge donc en arraybuffer via axios
+ * (intercepteur attache le bearer), on enveloppe en Blob, on génère un
+ * `URL.createObjectURL`, et on injecte cette URL dans l'iframe — qui se
+ * contente d'afficher le contenu local sans appel HTTP.
+ *
+ * Boutons Télécharger / Imprimer travaillent sur la même blob URL :
+ *   - Télécharger : <a href={blobUrl} download="…"> programmatique
+ *   - Imprimer : iframe.contentWindow.print()
+ *
+ * Mémoire : `URL.revokeObjectURL` au unmount (ou si la prescription change).
+ */
+import { useEffect, useRef, useState } from 'react';
+import { api } from '@/lib/api/client';
+import type { PrescriptionApi } from '../types';
+
+export interface DocumentTypeMeta {
+  /** Préfixe court affiché en sous-titre (ex. ORD-XXXX, CERT-XXXX). */
+  prefix: string;
+  /** Libellé long pour le titre Aperçu (ex. "Ordonnance", "Certificat"). */
+  label: string;
+  /** Variante téléchargée (ex. "ordonnance", "certificat"). Sert de slug fichier. */
+  fileSlug: string;
+}
+
+/**
+ * Mapping type prescription → libellés UI. Étend ce switch quand un nouveau
+ * type est ajouté côté backend (`PrescriptionType` enum).
+ */
+export function metaForPrescription(p: PrescriptionApi | null | undefined): DocumentTypeMeta {
+  switch (p?.type) {
+    case 'DRUG':
+      return { prefix: 'ORD', label: 'Ordonnance', fileSlug: 'ordonnance' };
+    case 'LAB':
+      return { prefix: 'BON', label: "Bon d'analyses", fileSlug: 'bon-analyses' };
+    case 'IMAGING':
+      return { prefix: 'BON', label: "Bon d'imagerie", fileSlug: 'bon-imagerie' };
+    case 'CERT':
+      return { prefix: 'CERT', label: 'Certificat', fileSlug: 'certificat' };
+    case 'SICK_LEAVE':
+      return { prefix: 'AT', label: 'Arrêt de travail', fileSlug: 'arret-travail' };
+    default:
+      // Fallback : on n'invente pas un label, on reste neutre.
+      return { prefix: 'DOC', label: 'Document', fileSlug: 'document' };
+  }
+}
+
+interface UsePrescriptionPdfBlobResult {
+  url: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * Hook bas-niveau : télécharge le PDF en arraybuffer via axios, retourne une
+ * `blob:` URL stable jusqu'à unmount.
+ *
+ * Note Strict Mode : en dev, React invoque le useEffect deux fois ; chaque
+ * passe a son propre `objectUrl` local — le cleanup de la première passe
+ * révoque uniquement la première URL, la seconde URL reste vivante dans le
+ * state. Pas de fuite, pas de "PDF blanc" en dev.
+ */
+export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
+  const [url, setUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    setIsLoading(true);
+    setError(null);
+
+    api
+      .get<ArrayBuffer>(`/prescriptions/${id}/pdf`, { responseType: 'arraybuffer' })
+      .then((r) => {
+        if (cancelled) return;
+        const blob = new Blob([r.data], { type: 'application/pdf' });
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setError('Impossible de charger le PDF.');
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id]);
+
+  return { url, isLoading, error };
+}
+
+interface DocumentPdfViewerProps {
+  documentId: string | undefined;
+  meta: DocumentTypeMeta;
+  /** Optionnel : id court (8 premiers caractères de l'UUID) pour le filename. */
+  shortId?: string;
+  /** Hauteur CSS du viewer (par défaut 100%). */
+  height?: string;
+  /** Classe CSS supplémentaire pour l'iframe (par défaut "pr-pdf-viewer"). */
+  iframeClassName?: string;
+}
+
+export interface DocumentPdfViewerHandle {
+  download: () => void;
+  print: () => void;
+  blobUrl: string | null;
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * Composant viewer + actions (download / print). Utilisé par les pages
+ * desktop et mobile via la fonction utilitaire `useDocumentPdfController`
+ * ci-dessous (qui expose les actions sans imposer le rendu de l'iframe).
+ */
+export function DocumentPdfViewer({
+  documentId,
+  meta,
+  shortId,
+  height = '100%',
+  iframeClassName = 'pr-pdf-viewer',
+}: DocumentPdfViewerProps) {
+  const { url, isLoading, error } = useDocumentPdfBlob(documentId);
+  const iframeId = `doc-pdf-frame-${documentId ?? 'pending'}`;
+  const filename = `${meta.fileSlug}-${shortId ?? documentId ?? 'document'}.pdf`;
+
+  return (
+    <div style={{ height, background: 'var(--bg-alt)' }}>
+      {isLoading && (
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
+          Chargement du PDF…
+        </div>
+      )}
+      {error && (
+        <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+      )}
+      {url && (
+        <iframe
+          id={iframeId}
+          className={iframeClassName}
+          title={`Aperçu ${meta.label}`}
+          src={url}
+          data-pdf-filename={filename}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Hook de contrôle : retourne {url, isLoading, error, download, print, iframeId}
+ * pour que la page puisse câbler ses propres boutons "Télécharger" /
+ * "Imprimer" tout en partageant la même blob URL et le même <iframe>.
+ *
+ * Le iframeId est exposé pour que la page rendre l'iframe avec ce même id ;
+ * `print()` cherche `document.getElementById(iframeId)` pour appeler son
+ * `contentWindow.print()`.
+ */
+export function useDocumentPdfController(documentId: string | undefined) {
+  const blob = useDocumentPdfBlob(documentId);
+  const iframeIdRef = useRef(`doc-pdf-frame-${documentId ?? 'pending'}`);
+  // Garde l'iframeId stable même si documentId change (ex. drawer rouvert) :
+  // on ne change l'id que si le documentId change, ce qui est cohérent avec
+  // la durée de vie de l'iframe.
+  iframeIdRef.current = `doc-pdf-frame-${documentId ?? 'pending'}`;
+
+  function download(filename: string) {
+    if (!blob.url) return;
+    const a = document.createElement('a');
+    a.href = blob.url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function print() {
+    const frame = document.getElementById(iframeIdRef.current) as HTMLIFrameElement | null;
+    if (!frame) return;
+    // L'iframe doit avoir fini de charger avant qu'on puisse imprimer
+    // sinon contentWindow est null. En pratique le bouton est désactivé
+    // tant que url == null, et l'iframe est rendue avec ce url.
+    frame.contentWindow?.focus();
+    frame.contentWindow?.print();
+  }
+
+  return {
+    ...blob,
+    iframeId: iframeIdRef.current,
+    download,
+    print,
+  };
+}

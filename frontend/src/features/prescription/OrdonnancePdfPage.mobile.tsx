@@ -1,18 +1,19 @@
 /**
- * Aperçu ordonnance — mobile.
+ * Aperçu document — mobile (tous types : ordonnance, certificat, bon
+ * d'analyses, bon d'imagerie, arrêt de travail).
  *
  * Mobile browsers (especially iOS Safari) do not reliably render
- * `application/pdf` inside an <iframe> — the desktop view ends up blank.
- * This variant renders the prescription lines as native HTML and offers a
- * download / print fallback that opens the PDF blob in a new tab where the
- * OS PDF viewer can take over.
+ * `application/pdf` inside an <iframe> — le contenu apparaît blanc. On
+ * affiche donc un récapitulatif HTML natif (lignes lisibles + corps libre)
+ * et on offre des boutons "Aperçu PDF" (open new tab) + "Télécharger" qui
+ * s'appuient sur la blob URL — auth bearer attaché par axios.
  */
 import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { File as FileIcon, Print, Warn } from '@/components/icons';
 import { usePrescription } from './hooks/usePrescriptions';
-import { usePrescriptionPdf } from './hooks/usePrescriptionPdf';
+import { useDocumentPdfBlob, metaForPrescription } from './components/DocumentPdfViewer';
 import type { PrescriptionLineApi } from './types';
 import './prescription.css';
 
@@ -42,8 +43,9 @@ export default function OrdonnancePdfMobilePage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { prescription, isLoading, error } = usePrescription(id);
-  const { url, isLoading: pdfLoading } = usePrescriptionPdf(id);
+  const { url, isLoading: pdfLoading } = useDocumentPdfBlob(id);
 
+  const docMeta = metaForPrescription(prescription);
   const shortId = id ? id.slice(0, 8).toUpperCase() : '—';
   const typeLabel = prescription?.type
     ? TYPE_LABEL[prescription.type] ?? prescription.type
@@ -58,7 +60,7 @@ export default function OrdonnancePdfMobilePage() {
     if (!url) return;
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ordonnance-${id}.pdf`;
+    a.download = `${docMeta.fileSlug}-${shortId}.pdf`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -72,7 +74,7 @@ export default function OrdonnancePdfMobilePage() {
       topbar={
         <MTopbar
           left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
-          title={`ORD-${shortId}`}
+          title={`${docMeta.prefix}-${shortId}`}
           sub={prescription ? typeLabel : 'Aperçu'}
         />
       }
@@ -101,13 +103,13 @@ export default function OrdonnancePdfMobilePage() {
                   letterSpacing: '0.06em',
                 }}
               >
-                Ordonnance
+                {docMeta.label}
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
-                ORD-{shortId}
+                {docMeta.prefix}-{shortId}
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8 }}>
-                {typeLabel} · émise le{' '}
+                {typeLabel} · émis le{' '}
                 {new Date(prescription.issuedAt).toLocaleDateString('fr-MA', {
                   day: '2-digit',
                   month: 'short',
