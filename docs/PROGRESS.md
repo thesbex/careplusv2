@@ -4,10 +4,43 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Grossesse — Étapes 1→5 livrées en 6 commits. Étape 6 (manual QA Playwright + ADR-031 + BACKLOG cleanup) en cours.
-**Last update**: 2026-05-03
-**Build**: Backend `mvn -q clean verify` — 400/400 (370 baseline + 35 Pregnancy*IT). Frontend `npx vitest run features/grossesse` — 23/23 (13 Étape 4 + 10 Étape 5). `npm run build` — succès 4.36 s. Lint grossesse 0 erreurs (139 pré-existants ailleurs).
-**Next action**: rapport manual QA agent (en background). Si vert → docs commit ADR-031 + BACKLOG retrait `Pregnancy vertical`. Si bugs → commits fix dédiés.
+**Phase**: Post-pilote — QA wave 8 (feedback médecin pilote) traitée en 2 jours. Bugs B1-B6 + 4 trouvés en QA = 10 bugs corrigés. Features livrées : F1 Dashboard + F16 Signature PDF + F3 Icônes constantes + F9 Loader PDF + F10 Modale repos.
+**Last update**: 2026-05-06
+**Build**: Pre-push hook sur dernier commit `159eb4f` : `tsc --noEmit` clean + `vite build` OK. Tests session : 26 IT dashboard + 11 IT signature + 6 IT B6 tab counts + 6 IT B1+B5 vitals + 35 IT grossesse Step 4/5 + ~25 Vitest nouveaux. Régression Vitest scope 502/502 puis 513/513. **Pas de `mvn verify` complet relancé après les pushes du jour** — à faire au prochain démarrage si pas de devtools.
+**Next action**: démarrage prochain session — restart `mvn spring-boot:run` (Flyway applique V029+V030+V031 si pas déjà fait) puis QA navigateur des dernières features. Reste backlog QA wave 8 : F2, F4-F8, F11-F12, F13-F15, TD-1.
+
+### 2026-05-06 (soirée) — F3 + F9 + F10 quick-wins parallèles
+
+**Shipped** (commits `fdc8643` + `159eb4f`) :
+- **F3 Icônes constantes** : 8 nouvelles icônes maison (Activity, Wind, Droplet, Scale, Ruler, Calculator, Circle, Baby) — pas d'import lucide-react externe (DESIGN_SYSTEM §8). Composant `<VitalIcon vital />` avec mapping centralisé. Wiré sur PatientContextCard, QuickVitalsDialog, ConsultationPage.mobile vitals grid, dossier patient SummaryPanel. CSS `.vital-icon` 14×14 / 11×11 mobile.
+- **F9 Loader PDF** : `<PdfGenerationOverlay open type />` non bloquant bottom-right + spinner SVG inline + role=status. Wiré sur PrescriptionDrawer (DRUG/LAB/IMAGING) et CertificatDialog (CERT). Bouton disabled + label "Génération…" / "Enregistrement…" pendant mutation. Anti double-clic.
+- **F10 Modale certificat repos** : champs structurés conditionnels (jours requis 1-30, date début default aujourd'hui, sortie autorisée checkbox) avec preview date fin auto-calculée. Approche FE-only : body enrichi côté client, pas de modif DTO/service backend, pas de Flyway. Helpers locaux (todayLocalIso/addDaysIso/formatFr) pour respecter feedback memory local-date-iso.
+
+Cohabitation F9+F10 sur CertificatDialog : F10 = formulaire structure ; F9 = bouton submit + overlay. Merge propre.
+
+**Tests** : 4 VitalIcon + 5 CertificatDialog + 4 PdfGenerationOverlay + régression scope 41-57/41-57 verts.
+
+### 2026-05-06 (après-midi) — F1 Dashboard + F16 Signature PDF (5 agents parallèles)
+
+**Shipped** (commits `14e2eec` + `3bc78b6`) :
+- **F1 Dashboard** : 3 endpoints `/api/dashboard/{clinical|agenda|financial}` (package `ma.careplus.dashboard`, 100 % JdbcTemplate). MEDECIN/ADMIN voient les 3 ; SECRETAIRE/ASSISTANT voient agenda+clinical (financial gated 403). Page `/dashboard` desktop+mobile (4 sections : Aujourd'hui / Activité / Agenda semaine / Performance financière). 3 hooks React Query désactivés selon rôle (évite 403). Sidebar desktop + menu Plus mobile : entrée Dashboard ajoutée. Pas de lib chart en v1 (bars CSS minimales — F1.bis pour Recharts). Migration : aucune. **26 IT verts** (Clinical 7 + Agenda 8 + Financial 11) + 6 Vitest + 513/513 régression FE.
+- **F16 Signature médecin** : V031 ajoute `signature_blob BYTEA` + `signature_mime VARCHAR` + `signature_uploaded_at TIMESTAMPTZ` à `configuration_clinic_settings`. 4 endpoints `/api/settings/signature*` (PUT/DELETE ADMIN-only ; GET /meta + GET tous rôles auth). Validation MIME (png/jpeg/webp) + taille ≤ 500 Ko. Section `SignatureSettingsSection` dans Paramétrage → Cabinet (gated ADMIN). Injection conditionnelle `<img th:src="data:...;base64,...">` au pied des 3 templates Thymeleaf (ordonnance, certificat, vaccination-booklet). Walk QA validé : upload PNG 212 octets → certificat passe de 2493 à 3229 octets (+736), tracé visible dans le PDF. **11 IT verts** + 6 Vitest.
+
+### 2026-05-06 (matinée) — Bugs B1-B6 QA wave 8 + bugs collègue + IT compagnons grossesse
+
+**Shipped** (commits `0d748c6`, `20fa24b`, `4f48f3f`, `becbc76`, `3e89792`, `9d0d2de`, `ce16c39`) :
+- **B1+B5 Constantes** : DTOs backend RecordVitalsRequest/VitalSignsView étendus avec respiratoryRateBpm/abdominalPerimeterCm/headCircumferenceCm. V030 ajoute les 3 colonnes nullable. SummaryPanel passe à `usePatientVitalsHistory` (au lieu de patient.lastVitals hardcoded vide). PatientContextCard étendu pour rendre les 11 constantes conditionnellement.
+- **B2+B3+B4 Documents PDF** : `<DocumentPdfViewer />` factorisé. `metaForPrescription(p)` calcule label/préfixe/filename type-aware. JWT in-memory transmis via axios → blob → URL.createObjectURL → iframe (résout B3). Boutons Télécharger/Imprimer wirés sur le blob (résout B4). **Cause apparente du PDF cassé en prod** : extension IDM Internet Download Manager qui interceptait silencieusement les responses PDF côté browser (504 No Content). User a désinstallé.
+- **B6 Compteurs onglets dossier** : endpoint `/api/patients/{id}/tab-counts` (8 compteurs en 1 query SQL avec sous-COUNT). V029 ajoute index `idx_prescription_patient`. Hook `useTabCounts` (staleTime 30 s) + invalidation câblée sur 7 mutations (consultation, prescription, document upload/remove, vaccination dose, grossesse declare, invoice).
+- **Bugs trouvés collègue/QA** : (1) bouton Certificat top-right consultation desktop ne réagissait plus → `window.open(blobUrl)` bloqué par Chrome popup-blocker → fix : `navigate('/prescriptions/:id')`. (2) onglet Prescriptions du dossier patient affichait "CERT"/"Document" au lieu de "Certificat" → utilisation de `metaForPrescription(p).label` desktop+mobile. (3) Worklist `/grossesses` plantait → `PregnancyQueueEntry` retournait `alertCount:int` au lieu de `alerts:List<PregnancyAlertView>` que le frontend attendait → refactor + ajout `saDays` (qui s'affichait "20+undefinedj"). (4) Zod SA min(4) vs backend min(6) sur écho → aligné min(6).
+- **IT compagnons grossesse** : `PregnancyDossierStep4IT` (18 scénarios) + `PregnancyWorklistStep5IT` (17 scénarios). Couvre la dette QA des commits `1fe5d58` + `9c15c55`.
+
+### Reste à faire (backlog QA wave 8)
+
+**Quick-wins** : F2 Filtre type RDV agenda (~2-3h selon état enum DB).
+**Moyens** (1-3j chacun) : F4 nom+photo cliquables + garde-fou, F5 bouton Enregistrer + autosave, F6 suppression brouillons, F7 facturation conditionnelle CONTROLE, F8 traçabilité documents + Certificat post-clôture, F11 modif facture émise, F12 stock par catégorie.
+**Gros chantiers** : F13 annuaire spécialistes, F14 dépistage préventif âge+facteurs, F15 module suivi diabète + carnet numérique.
+**Tech debt** : TD-1 Jackson `FAIL_ON_UNKNOWN_PROPERTIES = true` (risque cascade IT, à activer en dev d'abord).
 
 ### 2026-05-03 — Grossesse Étape 5 (frontend worklist /grossesses + sidebar badge + bio panel preview)
 
