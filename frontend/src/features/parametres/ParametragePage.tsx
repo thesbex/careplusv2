@@ -18,7 +18,6 @@ import {
   useUpdateTierDiscount,
   type ClinicSettingsForm,
 } from './hooks/useSettings';
-import { useUsers, useCreateUser, useDeactivateUser } from './hooks/useUsers';
 import {
   useRolePermissions,
   useUpdateRolePermissions,
@@ -32,6 +31,9 @@ import { useDeleteLeave } from './hooks/useDeleteLeave';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
 import { SignatureSettingsSection } from './components/SignatureSettingsSection';
+import { RoomsManagementSection } from './components/RoomsManagementSection';
+import { AgendaIsolationToggle } from './components/AgendaIsolationToggle';
+import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import './parametres.css';
@@ -199,7 +201,12 @@ function CabinetTab() {
         </div>
       </form>
     </Panel>
+    <div style={{ height: 16 }} />
     <SignatureSettingsSection />
+    <div style={{ height: 16 }} />
+    <RoomsManagementSection />
+    <div style={{ height: 16 }} />
+    <AgendaIsolationToggle />
     </>
   );
 }
@@ -283,218 +290,6 @@ function TarifsTab() {
   );
 }
 
-// ── Utilisateurs tab ──────────────────────────────────────────────────────────
-
-function UtilisateursTab() {
-  const { users, isLoading, error } = useUsers();
-  const { createUser, isPending } = useCreateUser();
-  const { deactivateUser, isPending: isDeactivating } = useDeactivateUser();
-  const [showForm, setShowForm] = useState(false);
-  const [draft, setDraft] = useState({
-    email: '',
-    password: '',
-    firstName: '',
-    lastName: '',
-    phone: '',
-    role: 'SECRETAIRE' as 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN',
-  });
-
-  async function handleCreate() {
-    if (!draft.email || !draft.password || !draft.firstName || !draft.lastName) {
-      toast.error('Email, mot de passe, prénom et nom requis.');
-      return;
-    }
-    if (draft.password.length < 12) {
-      toast.error('Le mot de passe initial doit faire au moins 12 caractères.');
-      return;
-    }
-    try {
-      await createUser({
-        email: draft.email,
-        password: draft.password,
-        firstName: draft.firstName,
-        lastName: draft.lastName,
-        phone: draft.phone,
-        roles: [draft.role],
-      });
-      toast.success('Utilisateur créé.');
-      setShowForm(false);
-      setDraft({
-        email: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        phone: '',
-        role: 'SECRETAIRE',
-      });
-    } catch (err) {
-      const problem = toProblemDetail(err);
-      if (problem.status === 403) {
-        toast.error("Vous n'avez pas les droits administrateur pour créer un utilisateur.");
-      } else if (problem.violations?.length) {
-        toast.error(problem.violations.map((v) => `${v.field} : ${v.message}`).join(' · '));
-      } else {
-        toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
-      }
-    }
-  }
-
-  return (
-    <Panel>
-      <PanelHeader>
-        <span>Utilisateurs du cabinet</span>
-        <Button
-          size="sm"
-          variant="primary"
-          style={{ marginLeft: 'auto' }}
-          onClick={() => setShowForm((v) => !v)}
-        >
-          {showForm ? 'Fermer' : 'Nouveau'}
-        </Button>
-      </PanelHeader>
-      <div style={{ padding: 16 }}>
-        {showForm && (
-          <div
-            style={{
-              padding: 14,
-              border: '1px solid var(--primary)',
-              background: 'var(--primary-soft)',
-              borderRadius: 8,
-              marginBottom: 14,
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: 10,
-            }}
-          >
-            <Field>
-              <FieldLabel>Email *</FieldLabel>
-              <Input value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
-            </Field>
-            <Field>
-              <FieldLabel>Mot de passe initial *</FieldLabel>
-              <Input
-                type="password"
-                value={draft.password}
-                onChange={(e) => setDraft({ ...draft, password: e.target.value })}
-              />
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                12 caractères minimum.
-              </div>
-            </Field>
-            <Field>
-              <FieldLabel>Rôle</FieldLabel>
-              <select
-                value={draft.role}
-                onChange={(e) =>
-                  setDraft({
-                    ...draft,
-                    role: e.target.value as 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN',
-                  })
-                }
-                style={{
-                  height: 36,
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  padding: '0 10px',
-                  fontSize: 13,
-                  fontFamily: 'inherit',
-                  background: 'var(--surface)',
-                }}
-              >
-                <option value="SECRETAIRE">Secrétaire</option>
-                <option value="ASSISTANT">Assistant(e)</option>
-                <option value="MEDECIN">Médecin</option>
-                <option value="ADMIN">Administrateur</option>
-              </select>
-            </Field>
-            <Field>
-              <FieldLabel>Prénom *</FieldLabel>
-              <Input value={draft.firstName} onChange={(e) => setDraft({ ...draft, firstName: e.target.value })} />
-            </Field>
-            <Field>
-              <FieldLabel>Nom *</FieldLabel>
-              <Input value={draft.lastName} onChange={(e) => setDraft({ ...draft, lastName: e.target.value })} />
-            </Field>
-            <Field>
-              <FieldLabel>Téléphone</FieldLabel>
-              <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
-            </Field>
-            <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Button onClick={() => setShowForm(false)}>Annuler</Button>
-              <Button variant="primary" disabled={isPending} onClick={() => void handleCreate()}>
-                {isPending ? 'Création…' : 'Créer'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>}
-        {users.length === 0 && !isLoading && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Aucun utilisateur.</div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {users.map((u) => (
-            <div
-              key={u.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '10px 12px',
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 6,
-                opacity: u.enabled ? 1 : 0.5,
-              }}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {u.firstName} {u.lastName}
-                </div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-                  {u.email} {u.phone ? `· ${u.phone}` : ''}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                {u.roles.map((r) => (
-                  <span
-                    key={r}
-                    style={{
-                      fontSize: 11,
-                      padding: '2px 8px',
-                      borderRadius: 999,
-                      background: 'var(--primary-soft)',
-                      color: 'var(--primary)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {r}
-                  </span>
-                ))}
-              </div>
-              {u.enabled && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconOnly
-                  aria-label="Désactiver l'utilisateur"
-                  disabled={isDeactivating}
-                  onClick={() => void deactivateUser(u.id)}
-                >
-                  <Trash />
-                </Button>
-              )}
-              {!u.enabled && (
-                <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Désactivé</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </Panel>
-  );
-}
 
 // ── Congés tab (extracted from CongesPage) ────────────────────────────────────
 
