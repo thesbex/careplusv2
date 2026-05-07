@@ -14,6 +14,7 @@ public interface UserMapper {
 
     @Mapping(target = "roles", source = "roles", qualifiedByName = "rolesToStrings")
     @Mapping(target = "permissions", ignore = true)
+    @Mapping(target = "assignedPractitionerIds", ignore = true)
     UserView toView(User user);
 
     @Named("rolesToStrings")

@@ -170,6 +170,12 @@
         <div class="header-right">
             <div class="cabinet-meta">
                 <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <!-- V032 — spécialité du médecin (optionnelle) -->
+                <th:block th:if="${specialty != null and !#strings.isEmpty(specialty)}">
+                    <em class="practitioner-specialty"
+                        th:text="${specialty}"
+                        style="color:#2563eb;">Pédiatre</em><br/>
+                </th:block>
                 <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
                     INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
                 </span>
@@ -249,6 +255,11 @@
             <th:block th:if="${signatureBase64 != null}">
                 <div style="text-align:right;font-size:9pt;color:#555;">
                     <span th:text="${doctor.fullName}">Dr. Prénom Nom</span>
+                    <!-- V032 — spécialité juste sous le nom, au-dessus de la signature scannée -->
+                    <div th:if="${specialty != null and !#strings.isEmpty(specialty)}"
+                         class="practitioner-specialty"
+                         style="font-style:italic;color:#2563eb;font-size:9pt;"
+                         th:text="${specialty}">Pédiatre</div>
                 </div>
                 <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
                      style="max-width:200px;max-height:80px;display:block;margin-left:auto;margin-top:4px;"

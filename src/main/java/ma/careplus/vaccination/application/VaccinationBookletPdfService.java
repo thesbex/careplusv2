@@ -114,8 +114,8 @@ public class VaccinationBookletPdfService {
         // Cabinet settings
         Map<String, String> cabinet = fetchCabinetSettings();
 
-        // Doctor name — try to get practitioner; fallback
-        String doctorName = fetchDoctorName();
+        // Doctor name + specialty (V032) — try to get practitioner; fallback
+        DoctorInfo doctor = fetchDoctorInfo();
 
         // Patient identity
         LocalDate birthDate = patient.getBirthDate();
@@ -127,7 +127,10 @@ public class VaccinationBookletPdfService {
 
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
-        ctx.setVariable("doctor", Map.of("fullName", doctorName));
+        ctx.setVariable("doctor", Map.of("fullName", doctor.fullName()));
+        // V032 — specialty hors du Map (Map.of n'accepte pas null) ; le template la
+        // teste conditionnellement.
+        ctx.setVariable("specialty", doctor.specialty());
         ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("patient", Map.of(
@@ -211,19 +214,24 @@ public class VaccinationBookletPdfService {
         }
     }
 
-    private String fetchDoctorName() {
+    /** V032 — bundle holder for the practitioner full name + specialty. */
+    private record DoctorInfo(String fullName, String specialty) {}
+
+    private DoctorInfo fetchDoctorInfo() {
         try {
-            // Fetch the first MEDECIN user as default doctor name for the booklet header
+            // Fetch the first MEDECIN user as default doctor for the booklet header
             return jdbc.queryForObject(
-                    "SELECT u.first_name || ' ' || u.last_name "
+                    "SELECT u.first_name, u.last_name, u.specialty "
                     + "FROM identity_user u "
                     + "JOIN identity_user_role ur ON ur.user_id = u.id "
                     + "JOIN identity_role r ON r.id = ur.role_id "
-                    + "WHERE r.name = 'MEDECIN' AND u.enabled = TRUE "
+                    + "WHERE r.code = 'MEDECIN' AND u.enabled = TRUE "
                     + "ORDER BY u.created_at LIMIT 1",
-                    String.class);
+                    (rs, i) -> new DoctorInfo(
+                            rs.getString("first_name") + " " + rs.getString("last_name"),
+                            rs.getString("specialty")));
         } catch (Exception e) {
-            return "Dr.";
+            return new DoctorInfo("Dr.", null);
         }
     }
 

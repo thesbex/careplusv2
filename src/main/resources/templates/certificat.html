@@ -57,6 +57,12 @@
         <div class="header-right">
             <div class="cabinet-meta">
                 <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <!-- V032 — spécialité du médecin (optionnelle) -->
+                <th:block th:if="${specialty != null and !#strings.isEmpty(specialty)}">
+                    <em class="practitioner-specialty"
+                        th:text="${specialty}"
+                        style="color:#2563eb;">Pédiatre</em><br/>
+                </th:block>
                 <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
                     INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
                 </span>

@@ -101,8 +101,8 @@ public class PrescriptionPdfService {
         // Cabinet settings — fallback to dev placeholders
         Map<String, String> cabinet = fetchCabinetSettings();
 
-        // Practitioner name from identity_user
-        String doctorName = fetchDoctorName(consultation.getPractitionerId());
+        // Practitioner name + specialty from identity_user
+        DoctorInfo doctor = fetchDoctorInfo(consultation.getPractitionerId());
 
         // F16 — signature médecin (optionnelle ; null si non configurée)
         SignatureBlob signature = fetchSignatureBlob();
@@ -110,7 +110,10 @@ public class PrescriptionPdfService {
         // Build Thymeleaf context
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
-        ctx.setVariable("doctor", Map.of("fullName", doctorName));
+        ctx.setVariable("doctor", Map.of("fullName", doctor.fullName()));
+        // V032 — specialty injectée à part : Map.of n'accepte pas de valeur null,
+        // donc on la pousse comme variable racine et le template la lit conditionnellement.
+        ctx.setVariable("specialty", doctor.specialty());
         ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("patient", Map.of(
@@ -207,13 +210,19 @@ public class PrescriptionPdfService {
         }
     }
 
-    private String fetchDoctorName(UUID practitionerId) {
+    /** V032 — bundle holder for the practitioner full name + specialty. */
+    private record DoctorInfo(String fullName, String specialty) {}
+
+    private DoctorInfo fetchDoctorInfo(UUID practitionerId) {
         try {
             return jdbc.queryForObject(
-                    "SELECT first_name || ' ' || last_name FROM identity_user WHERE id = ?",
-                    String.class, practitionerId);
+                    "SELECT first_name, last_name, specialty FROM identity_user WHERE id = ?",
+                    (rs, i) -> new DoctorInfo(
+                            rs.getString("first_name") + " " + rs.getString("last_name"),
+                            rs.getString("specialty")),
+                    practitionerId);
         } catch (Exception e) {
-            return "Dr.";
+            return new DoctorInfo("Dr.", null);
         }
     }
 

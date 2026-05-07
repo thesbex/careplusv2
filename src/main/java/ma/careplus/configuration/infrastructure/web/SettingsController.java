@@ -56,7 +56,9 @@ public class SettingsController {
             String inpe,
             String cnom,
             String ice,
-            String rib
+            String rib,
+            /** V032 — when true, agendas are filtered per-practitioner via identity_user_assignment. */
+            boolean agendaStrictIsolation
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -68,7 +70,13 @@ public class SettingsController {
             @Size(max = 32) String inpe,
             @Size(max = 32) String cnom,
             @Size(max = 32) String ice,
-            @Size(max = 32) String rib
+            @Size(max = 32) String rib,
+            /**
+             * V032 — toggle the "strict agenda isolation" mode. Optional in the
+             * payload: {@code null} keeps the current value (legacy clients that
+             * only send the identity fields stay unchanged).
+             */
+            Boolean agendaStrictIsolation
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -88,7 +96,8 @@ public class SettingsController {
     public ResponseEntity<ClinicSettingsView> getClinic() {
         try {
             ClinicSettingsView v = jdbc.queryForObject(
-                    "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib "
+                    "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
+                            + "agenda_strict_isolation "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -100,7 +109,8 @@ public class SettingsController {
                             rs.getString("inpe"),
                             rs.getString("cnom"),
                             rs.getString("ice"),
-                            rs.getString("rib")));
+                            rs.getString("rib"),
+                            rs.getBoolean("agenda_strict_isolation")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -115,33 +125,47 @@ public class SettingsController {
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
         UUID id;
+        // Read current agendaStrictIsolation if the field is omitted from the payload —
+        // legacy callers that don't yet know about the toggle don't accidentally reset it.
+        boolean finalAgendaIsolation;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
+            if (req.agendaStrictIsolation() == null) {
+                finalAgendaIsolation = Boolean.TRUE.equals(jdbc.queryForObject(
+                        "SELECT agenda_strict_isolation FROM configuration_clinic_settings WHERE id = ?",
+                        Boolean.class, id));
+            } else {
+                finalAgendaIsolation = req.agendaStrictIsolation();
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
-                            + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, updated_at=now() "
+                            + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
+                            + "agenda_strict_isolation=?, updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                    nullIfBlank(req.rib()), id);
+                    nullIfBlank(req.rib()), finalAgendaIsolation, id);
         } else {
             id = UUID.randomUUID();
+            // First-row insert: respect the caller value if provided, else default false.
+            finalAgendaIsolation = Boolean.TRUE.equals(req.agendaStrictIsolation());
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
-                            + "(id, name, address, city, phone, email, inpe, cnom, ice, rib) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
+                            + " agenda_strict_isolation) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                    nullIfBlank(req.rib()));
+                    nullIfBlank(req.rib()), finalAgendaIsolation);
         }
         return new ClinicSettingsView(
                 id, req.name(), req.address(), req.city(), req.phone(),
                 nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                nullIfBlank(req.rib()));
+                nullIfBlank(req.rib()), finalAgendaIsolation);
     }
 
     // ── Tier discount ─────────────────────────────────────────────────────────

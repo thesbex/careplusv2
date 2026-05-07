@@ -71,6 +71,14 @@ public class User {
     @Column(name = "can_start_consultation", nullable = false)
     private boolean canStartConsultation = false;
 
+    /**
+     * Spécialité clinique du médecin (ex. "Pédiatre", "Cardiologue").
+     * Optional — null = aucun bloc spécialité injecté dans les PDF générés.
+     * V032 : ajout pour le modèle multi-praticien auto-adaptatif (1 doc / N docs / clinique).
+     */
+    @Column(name = "specialty", length = 120)
+    private String specialty;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "identity_user_role",
@@ -131,4 +139,7 @@ public class User {
 
     public boolean isCanStartConsultation() { return canStartConsultation; }
     public void setCanStartConsultation(boolean v) { this.canStartConsultation = v; }
+
+    public String getSpecialty() { return specialty; }
+    public void setSpecialty(String specialty) { this.specialty = specialty; }
 }

@@ -42,6 +42,8 @@ public class UserController {
         Set<String> perms = base.roles().isEmpty()
                 ? Collections.emptySet()
                 : permissionsForRoles(base.roles());
+        // /me does not expose assignment edits — we leave assignedPractitionerIds
+        // out of the response (the dedicated admin listing surfaces it instead).
         return ResponseEntity.ok(new UserView(
                 base.id(), base.email(), base.firstName(), base.lastName(), base.roles(), perms));
     }
