@@ -53,6 +53,9 @@ public class Appointment {
     @Column(name = "origin_consultation_id")
     private UUID originConsultationId;
 
+    @Column(name = "room_id")
+    private UUID roomId;
+
     @Column(name = "cancel_reason", length = 255)
     private String cancelReason;
 
@@ -129,6 +132,8 @@ public class Appointment {
     public void setType(AppointmentType v) { this.type = v; }
     public UUID getOriginConsultationId() { return originConsultationId; }
     public void setOriginConsultationId(UUID v) { this.originConsultationId = v; }
+    public UUID getRoomId() { return roomId; }
+    public void setRoomId(UUID v) { this.roomId = v; }
     public String getCancelReason() { return cancelReason; }
     public void setCancelReason(String v) { this.cancelReason = v; }
     public boolean isWalkIn() { return walkIn; }

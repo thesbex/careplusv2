@@ -23,9 +23,11 @@ import ma.careplus.scheduling.infrastructure.web.dto.AvailabilitySlot;
 import ma.careplus.scheduling.infrastructure.web.dto.CancelAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.MoveAppointmentRequest;
+import ma.careplus.scheduling.infrastructure.web.dto.RoomConflictView;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -111,6 +113,7 @@ public class SchedulingService {
         a.setStatus(AppointmentStatus.PLANIFIE);
         a.setWalkIn(Boolean.TRUE.equals(req.walkIn()));
         a.setUrgency(urgency);
+        a.setRoomId(req.roomId());
         return appointmentRepository.save(a);
     }
 
@@ -172,6 +175,9 @@ public class SchedulingService {
 
         existing.setStartAt(newStart);
         existing.setEndAt(newEnd);
+        if (req.roomId() != null) {
+            existing.setRoomId(req.roomId());
+        }
         return existing;
     }
 
@@ -191,6 +197,51 @@ public class SchedulingService {
         a.setStatus(AppointmentStatus.ANNULE);
         if (req != null && req.reason() != null) a.setCancelReason(req.reason());
         return a;
+    }
+
+    // ── Room conflicts ─────────────────────────────────────────────
+
+    /**
+     * Returns overlapping appointments in the same room as the given appointment.
+     * Always returns an empty list when the appointment has no room assigned.
+     * This is a WARNING endpoint — never blocks booking.
+     * Patient and practitioner names are fetched via JdbcTemplate to avoid
+     * cross-module entity access.
+     */
+    @Transactional(readOnly = true)
+    public List<RoomConflictView> roomConflicts(UUID appointmentId, JdbcTemplate jdbc) {
+        Appointment appt = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NotFoundException("APPT_NOT_FOUND",
+                        "Rendez-vous introuvable : " + appointmentId));
+
+        if (appt.getRoomId() == null) {
+            return List.of();
+        }
+
+        List<Appointment> conflicts = appointmentRepository.findRoomConflicts(
+                appt.getRoomId(), appointmentId, appt.getStartAt(), appt.getEndAt());
+
+        return conflicts.stream().map(c -> {
+            // Fetch patient name (cross-module read via JDBC — no entity reference)
+            String[] patientName = jdbc.queryForObject(
+                    "SELECT last_name, first_name FROM patient_patient WHERE id = ?",
+                    (rs, i) -> new String[]{rs.getString("last_name"), rs.getString("first_name")},
+                    c.getPatientId());
+            // Fetch practitioner name (identity_user — cross-module read via JDBC)
+            String[] practName = jdbc.queryForObject(
+                    "SELECT last_name, first_name FROM identity_user WHERE id = ?",
+                    (rs, i) -> new String[]{rs.getString("last_name"), rs.getString("first_name")},
+                    c.getPractitionerId());
+            return new RoomConflictView(
+                    c.getId(),
+                    patientName != null ? patientName[0] : null,
+                    patientName != null ? patientName[1] : null,
+                    c.getStartAt(),
+                    c.getEndAt(),
+                    c.getPractitionerId(),
+                    practName != null ? practName[0] : null,
+                    practName != null ? practName[1] : null);
+        }).toList();
     }
 
     // ── Availability ───────────────────────────────────────────────

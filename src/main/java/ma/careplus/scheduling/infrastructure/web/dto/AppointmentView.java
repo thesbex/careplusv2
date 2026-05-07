@@ -20,5 +20,9 @@ public record AppointmentView(
         boolean urgency,
         OffsetDateTime arrivedAt,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        /** Salle assignée — null si pas de salle. */
+        UUID roomId,
+        /** Nom de la salle — null si pas de salle. */
+        String roomName
 ) {}

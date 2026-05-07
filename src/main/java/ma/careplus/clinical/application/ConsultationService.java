@@ -212,7 +212,8 @@ public class ConsultationService {
                 null,    // durationMinutes — laisser SchedulingService résoudre via reasonId
                 false,   // walkIn
                 false,   // urgency
-                null);   // notes
+                null,    // notes
+                null);   // roomId — pas de salle assignée pour un suivi
 
         Appointment followUp = schedulingService.create(createReq);
         followUp.setType(AppointmentType.CONTROLE);

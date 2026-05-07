@@ -48,5 +48,26 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     List<Appointment> findByPatientIdOrderByStartAtDesc(UUID patientId);
 
+    /**
+     * Finds all non-cancelled, non-no-show appointments in the same room that
+     * overlap the given time window, excluding the appointment itself.
+     * Used by the room-conflict endpoint (warning only — never blocks).
+     */
+    @Query("""
+            SELECT a FROM Appointment a
+            WHERE a.roomId = :roomId
+              AND a.id <> :excludedId
+              AND a.status NOT IN (ma.careplus.scheduling.domain.AppointmentStatus.ANNULE,
+                                   ma.careplus.scheduling.domain.AppointmentStatus.NO_SHOW)
+              AND a.startAt < :endAt
+              AND a.endAt   > :startAt
+            ORDER BY a.startAt
+            """)
+    List<Appointment> findRoomConflicts(
+            @Param("roomId")     UUID roomId,
+            @Param("excludedId") UUID excludedId,
+            @Param("startAt")    OffsetDateTime startAt,
+            @Param("endAt")      OffsetDateTime endAt);
+
     long countByStatusAndStartAtBetween(AppointmentStatus status, OffsetDateTime from, OffsetDateTime to);
 }

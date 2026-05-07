@@ -16,6 +16,7 @@ import ma.careplus.scheduling.infrastructure.web.dto.CreateAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.CreateLeaveRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.LeaveView;
 import ma.careplus.scheduling.infrastructure.web.dto.MoveAppointmentRequest;
+import ma.careplus.scheduling.infrastructure.web.dto.RoomConflictView;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -73,10 +74,12 @@ public class SchedulingController {
                        a.practitioner_id, a.reason_id, r.label AS reason_label,
                        a.type, a.origin_consultation_id,
                        a.start_at, a.end_at, a.status, a.cancel_reason,
-                       a.walk_in, a.urgency, a.arrived_at, a.created_at, a.updated_at
+                       a.walk_in, a.urgency, a.arrived_at, a.created_at, a.updated_at,
+                       a.room_id, cr.name AS room_name
                 FROM scheduling_appointment a
                 JOIN patient_patient p ON p.id = a.patient_id
                 LEFT JOIN scheduling_appointment_reason r ON r.id = a.reason_id
+                LEFT JOIN clinic_room cr ON cr.id = a.room_id
                 WHERE a.practitioner_id = ?
                   AND a.start_at >= ?
                   AND a.start_at <  ?
@@ -100,7 +103,9 @@ public class SchedulingController {
                         rs.getBoolean("urgency"),
                         rs.getObject("arrived_at", OffsetDateTime.class),
                         rs.getObject("created_at", OffsetDateTime.class),
-                        rs.getObject("updated_at", OffsetDateTime.class)),
+                        rs.getObject("updated_at", OffsetDateTime.class),
+                        (UUID) rs.getObject("room_id"),
+                        rs.getString("room_name")),
                 practitionerId, from, to);
     }
 
@@ -175,7 +180,23 @@ public class SchedulingController {
 
     // ── Mapping ────────────────────────────────────────────────────
 
+    /**
+     * Adds the room-conflicts endpoint. Returns overlapping appointments in the
+     * same room (warning only — never blocks). Empty list if no room assigned.
+     */
+    @GetMapping("/appointments/{id}/room-conflicts")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public List<RoomConflictView> roomConflicts(@PathVariable UUID id) {
+        return service.roomConflicts(id, jdbc);
+    }
+
     private AppointmentView toView(Appointment a) {
+        String roomName = null;
+        if (a.getRoomId() != null) {
+            roomName = jdbc.queryForObject(
+                    "SELECT name FROM clinic_room WHERE id = ?",
+                    String.class, a.getRoomId());
+        }
         return new AppointmentView(
                 a.getId(),
                 a.getPatientId(),
@@ -193,6 +214,8 @@ public class SchedulingController {
                 a.isUrgency(),
                 a.getArrivedAt(),
                 a.getCreatedAt(),
-                a.getUpdatedAt());
+                a.getUpdatedAt(),
+                a.getRoomId(),
+                roomName);
     }
 }

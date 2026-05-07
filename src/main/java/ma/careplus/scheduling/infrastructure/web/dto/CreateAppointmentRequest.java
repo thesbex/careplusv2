@@ -15,5 +15,7 @@ public record CreateAppointmentRequest(
         @Positive Integer durationMinutes,
         Boolean walkIn,
         Boolean urgency,
-        @Size(max = 500) String notes
+        @Size(max = 500) String notes,
+        /** Salle de consultation assignée (nullable). Pas de validation de conflit côté serveur. */
+        UUID roomId
 ) {}
