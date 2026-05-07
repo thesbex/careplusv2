@@ -3,7 +3,7 @@
  * Ported from design/prototype/screens/agenda.jsx, extended with month view
  * and practitioner-leave overlay.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
@@ -14,14 +14,23 @@ import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { MonthGrid } from './components/MonthGrid';
 import { TodayArrivals } from './components/TodayArrivals';
-import { useWeekAppointments, useMonthAppointments } from './hooks/useAppointments';
+import {
+  ALL_PRACTITIONERS,
+  type PractitionerIdFilter,
+  useMonthAppointments,
+  useWeekAppointments,
+} from './hooks/useAppointments';
 import { useMoveAppointment, extractConflictMessage } from './hooks/useAppointmentMutations';
+import { usePractitioners } from './hooks/usePractitioners';
+import { useRooms } from './hooks/useRooms';
 import { useLeaves } from '@/features/parametres/hooks/useLeaves';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
 import { AppointmentDrawer } from './components/AppointmentDrawer';
 import { toast } from 'sonner';
 import type { Appointment, DayKey } from './types';
 import './agenda.css';
+
+const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
 const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
 const MONTHS_FR = [
@@ -43,7 +52,82 @@ export default function AgendaPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [view, setView] = useState<AgendaView>('semaine');
   const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
-  const { days, appointments, arrivals, weekLabel, todayKey, refetch } = useWeekAppointments(weekOffset);
+
+  // ── Multi-doctor + room selectors (Wave 1, 2026-05-07) ──────────────
+  const currentUser = useAuthStore((s) => s.user);
+  const { data: practitioners } = usePractitioners();
+  const { data: rooms } = useRooms();
+  const activePractitioners = useMemo(
+    () => practitioners.filter((p) => p.active),
+    [practitioners],
+  );
+  const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
+  const showPractitionerSelector = activePractitioners.length >= 2;
+  const showRoomSelector = activeRooms.length >= 2;
+
+  // Default per role: MEDECIN → self; SECRETAIRE/ASSISTANT/ADMIN → ALL.
+  const userRoles = currentUser?.roles ?? [];
+  const isMedecin = userRoles.includes('MEDECIN');
+  const defaultPractitionerFilter: PractitionerIdFilter =
+    isMedecin && currentUser?.id ? currentUser.id : ALL_PRACTITIONERS;
+
+  // Read persisted choice on mount (skipping ALL — ALL stays the default
+  // for non-MEDECIN roles even if previously chosen).
+  const [practitionerFilter, setPractitionerFilter] =
+    useState<PractitionerIdFilter>(() => {
+      try {
+        const saved = localStorage.getItem(PRACTITIONER_FILTER_KEY);
+        if (saved && saved !== ALL_PRACTITIONERS) return saved;
+      } catch {
+        // localStorage may be unavailable (private mode, SSR) — ignore.
+      }
+      return defaultPractitionerFilter;
+    });
+
+  // Re-sync once the user object is hydrated post-bootstrap.
+  useEffect(() => {
+    if (!currentUser) return;
+    setPractitionerFilter((prev) => {
+      // Keep an explicit per-doctor selection across reloads. Only fall
+      // back to the role-based default when nothing was persisted.
+      try {
+        const saved = localStorage.getItem(PRACTITIONER_FILTER_KEY);
+        if (saved && saved !== ALL_PRACTITIONERS) return saved;
+      } catch {
+        // ignore
+      }
+      return prev === ALL_PRACTITIONERS ? defaultPractitionerFilter : prev;
+    });
+  }, [currentUser, defaultPractitionerFilter]);
+
+  // Persist explicit selections; clear on ALL.
+  function changePractitionerFilter(next: PractitionerIdFilter): void {
+    setPractitionerFilter(next);
+    try {
+      if (next === ALL_PRACTITIONERS) {
+        localStorage.removeItem(PRACTITIONER_FILTER_KEY);
+      } else {
+        localStorage.setItem(PRACTITIONER_FILTER_KEY, next);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const [roomFilter, setRoomFilter] = useState<string>('ALL'); // 'ALL' | roomId
+
+  const { days, appointments: rawAppointments, arrivals, weekLabel, todayKey, refetch } =
+    useWeekAppointments(weekOffset, { practitionerIdFilter: practitionerFilter });
+
+  // Client-side room filter (rooms come from the appointment payload).
+  const appointments = useMemo(
+    () =>
+      roomFilter === 'ALL'
+        ? rawAppointments
+        : rawAppointments.filter((a) => a.roomId === roomFilter),
+    [rawAppointments, roomFilter],
+  );
+
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [showRDV, setShowRDV] = useState(false);
   const [rdvPrefill, setRdvPrefill] = useState<{ date: string; time: string } | null>(null);
@@ -263,6 +347,90 @@ export default function AgendaPage() {
           days={days}
           onDayChange={setSelectedDay}
         />
+        {(showPractitionerSelector || showRoomSelector) && (
+          <div
+            style={{
+              display: 'flex',
+              gap: 12,
+              padding: '8px 16px',
+              borderBottom: '1px solid var(--border)',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+            }}
+          >
+            {showPractitionerSelector && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  color: 'var(--ink-2)',
+                }}
+              >
+                Médecin
+                <select
+                  aria-label="Filtrer par médecin"
+                  value={practitionerFilter}
+                  onChange={(e) =>
+                    changePractitionerFilter(e.target.value as PractitionerIdFilter)
+                  }
+                  style={{
+                    height: 28,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0 8px',
+                    fontSize: 12.5,
+                    fontFamily: 'inherit',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <option value={ALL_PRACTITIONERS}>Tous les médecins</option>
+                  {activePractitioners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      Dr {p.lastName} {p.firstName}
+                      {p.specialty ? ` — ${p.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {showRoomSelector && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  color: 'var(--ink-2)',
+                }}
+              >
+                Salle
+                <select
+                  aria-label="Filtrer par salle"
+                  value={roomFilter}
+                  onChange={(e) => setRoomFilter(e.target.value)}
+                  style={{
+                    height: 28,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0 8px',
+                    fontSize: 12.5,
+                    fontFamily: 'inherit',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <option value="ALL">Toutes les salles</option>
+                  {activeRooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        )}
         {view === 'mois' ? (
           <MonthGrid
             year={monthYear}

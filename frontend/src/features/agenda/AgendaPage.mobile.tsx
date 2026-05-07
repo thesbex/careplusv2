@@ -2,14 +2,23 @@
  * M01 — Agenda mobile (single-day timeline with a horizontal day-tab strip).
  * Ported from design/prototype/mobile/screens.jsx:MAgenda.
  */
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Plus, Warn } from '@/components/icons';
-import { useWeekAppointments } from './hooks/useAppointments';
+import { useAuthStore } from '@/lib/auth/authStore';
+import {
+  ALL_PRACTITIONERS,
+  type PractitionerIdFilter,
+  useWeekAppointments,
+} from './hooks/useAppointments';
+import { usePractitioners } from './hooks/usePractitioners';
+import { useRooms } from './hooks/useRooms';
 import type { DayKey } from './types';
+
+const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
 const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
 
@@ -29,10 +38,77 @@ const STATUS_LABEL: Record<string, string> = {
 export default function AgendaMobilePage() {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
-  const { days, appointments, weekLabel, isLoading } = useWeekAppointments(weekOffset);
+
+  // Multi-doctor + room (Wave 1, 2026-05-07).
+  const currentUser = useAuthStore((s) => s.user);
+  const { data: practitioners } = usePractitioners();
+  const { data: rooms } = useRooms();
+  const activePractitioners = useMemo(
+    () => practitioners.filter((p) => p.active),
+    [practitioners],
+  );
+  const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
+  const showPractitionerSelector = activePractitioners.length >= 2;
+  const showRoomSelector = activeRooms.length >= 2;
+
+  const userRoles = currentUser?.roles ?? [];
+  const isMedecin = userRoles.includes('MEDECIN');
+  const defaultPractitionerFilter: PractitionerIdFilter =
+    isMedecin && currentUser?.id ? currentUser.id : ALL_PRACTITIONERS;
+
+  const [practitionerFilter, setPractitionerFilter] =
+    useState<PractitionerIdFilter>(() => {
+      try {
+        const saved = localStorage.getItem(PRACTITIONER_FILTER_KEY);
+        if (saved && saved !== ALL_PRACTITIONERS) return saved;
+      } catch {
+        // ignore
+      }
+      return defaultPractitionerFilter;
+    });
+
+  useEffect(() => {
+    if (!currentUser) return;
+    setPractitionerFilter((prev) => {
+      try {
+        const saved = localStorage.getItem(PRACTITIONER_FILTER_KEY);
+        if (saved && saved !== ALL_PRACTITIONERS) return saved;
+      } catch {
+        // ignore
+      }
+      return prev === ALL_PRACTITIONERS ? defaultPractitionerFilter : prev;
+    });
+  }, [currentUser, defaultPractitionerFilter]);
+
+  function changePractitionerFilter(next: PractitionerIdFilter): void {
+    setPractitionerFilter(next);
+    try {
+      if (next === ALL_PRACTITIONERS) {
+        localStorage.removeItem(PRACTITIONER_FILTER_KEY);
+      } else {
+        localStorage.setItem(PRACTITIONER_FILTER_KEY, next);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const [roomFilter, setRoomFilter] = useState<string>('ALL');
+
+  const { days, appointments: rawAppointments, weekLabel, isLoading } = useWeekAppointments(
+    weekOffset,
+    { practitionerIdFilter: practitionerFilter },
+  );
   const [selectedDay, setSelectedDay] = useState<DayKey>(todayKey);
 
-  const dayAppointments = appointments.filter((a) => a.day === selectedDay);
+  const filteredAppointments = useMemo(
+    () =>
+      roomFilter === 'ALL'
+        ? rawAppointments
+        : rawAppointments.filter((a) => a.roomId === roomFilter),
+    [rawAppointments, roomFilter],
+  );
+  const dayAppointments = filteredAppointments.filter((a) => a.day === selectedDay);
   const selectedDayInfo = days.find((d) => d.key === selectedDay);
 
   return (
@@ -140,6 +216,73 @@ export default function AgendaMobilePage() {
           </button>
         </div>
       </div>
+
+      {(showPractitionerSelector || showRoomSelector) && (
+        <div
+          style={{
+            display: 'flex',
+            gap: 8,
+            padding: '8px 16px',
+            background: 'var(--surface)',
+            borderBottom: '1px solid var(--border)',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}
+        >
+          {showPractitionerSelector && (
+            <select
+              aria-label="Filtrer par médecin"
+              value={practitionerFilter}
+              onChange={(e) =>
+                changePractitionerFilter(e.target.value as PractitionerIdFilter)
+              }
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: 32,
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0 8px',
+                fontSize: 12.5,
+                fontFamily: 'inherit',
+                background: 'var(--surface)',
+              }}
+            >
+              <option value={ALL_PRACTITIONERS}>Tous les médecins</option>
+              {activePractitioners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Dr {p.lastName} {p.firstName}
+                </option>
+              ))}
+            </select>
+          )}
+          {showRoomSelector && (
+            <select
+              aria-label="Filtrer par salle"
+              value={roomFilter}
+              onChange={(e) => setRoomFilter(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: 32,
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0 8px',
+                fontSize: 12.5,
+                fontFamily: 'inherit',
+                background: 'var(--surface)',
+              }}
+            >
+              <option value="ALL">Toutes les salles</option>
+              {activeRooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div className="m-daytabs" role="tablist" aria-label="Jour">
         {days.map((d) => (

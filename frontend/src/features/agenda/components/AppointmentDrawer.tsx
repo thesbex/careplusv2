@@ -1,19 +1,29 @@
 /**
  * AppointmentDrawer — opens on click of an agenda block. Shows details,
  * lets the user move (date+time+duration) / cancel (with reason) / check-in.
+ *
+ * Wave 1 (2026-05-07) — auto-adaptive multi-doctor + room:
+ *  - Practitioner dropdown shown only when ≥ 2 active practitioners.
+ *  - Room dropdown shown only when ≥ 2 active rooms.
+ *  - After a successful PUT that includes a roomId, the drawer fetches
+ *    /appointments/{id}/room-conflicts. If non-empty → inline warning
+ *    banner. Backend never blocks; the UI surfaces only.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Close } from '@/components/icons';
+import { Close, Warn } from '@/components/icons';
 import { useCheckIn } from '@/features/salle-attente/hooks/useCheckIn';
 import {
   useMoveAppointment,
   useCancelAppointment,
   extractConflictMessage,
 } from '../hooks/useAppointmentMutations';
+import { usePractitioners } from '../hooks/usePractitioners';
+import { useRooms } from '../hooks/useRooms';
+import { useRoomConflicts, type RoomConflictView } from '../hooks/useRoomConflicts';
 import type { Appointment } from '../types';
 
 interface AppointmentDrawerProps {
@@ -38,6 +48,30 @@ function partsToIso(date: string, time: string): string {
   return local.toISOString();
 }
 
+function formatPractitioner(p: {
+  firstName: string;
+  lastName: string;
+  specialty: string | null;
+}): string {
+  const base = `Dr ${p.lastName} ${p.firstName}`.trim();
+  return p.specialty ? `${base} — ${p.specialty}` : base;
+}
+
+function formatConflictTime(start: string, end: string): string {
+  const s = new Date(start);
+  const e = new Date(end);
+  const hh = String(s.getHours()).padStart(2, '0');
+  const mm = String(s.getMinutes()).padStart(2, '0');
+  const eh = String(e.getHours()).padStart(2, '0');
+  const em = String(e.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}–${eh}:${em}`;
+}
+
+function formatConflictLabel(c: RoomConflictView): string {
+  const drName = `Dr ${c.conflictPractitionerLastName}`.trim();
+  return `${drName} ${formatConflictTime(c.conflictStartAt, c.conflictEndAt)}`;
+}
+
 export function AppointmentDrawer({
   open,
   appointment,
@@ -49,11 +83,35 @@ export function AppointmentDrawer({
   const { cancelAppointment, isPending: isCancelling } = useCancelAppointment();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
 
+  const { data: practitioners } = usePractitioners();
+  const { data: rooms } = useRooms();
+  // Practitioner dropdown only worth showing with ≥ 2 active practitioners.
+  const showPractitionerField =
+    practitioners.filter((p) => p.active).length >= 2;
+  const showRoomField = rooms.filter((r) => r.active).length >= 2;
+  const activePractitioners = useMemo(
+    () => practitioners.filter((p) => p.active),
+    [practitioners],
+  );
+  const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
+
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState<number>(30);
+  const [practitionerId, setPractitionerId] = useState<string>('');
+  const [roomId, setRoomId] = useState<string>(''); // '' === no room
   const [cancelReason, setCancelReason] = useState('');
   const [showCancel, setShowCancel] = useState(false);
+
+  // After-save conflict-warning state. Driven by the room-conflicts query
+  // re-enabled with a key when a new save is committed.
+  const [conflictAppointmentId, setConflictAppointmentId] =
+    useState<string | null>(null);
+  const [conflictRoomId, setConflictRoomId] = useState<string | null>(null);
+  const { data: conflicts } = useRoomConflicts({
+    appointmentId: conflictAppointmentId,
+    roomId: conflictRoomId,
+  });
 
   useEffect(() => {
     if (appointment?.startAt) {
@@ -62,9 +120,14 @@ export function AppointmentDrawer({
       setTime(t);
       setDuration(appointment.durationMinutes ?? appointment.dur);
     }
+    // Pre-fill practitioner + room from the loaded appointment.
+    setPractitionerId(appointment?.practitionerId ?? '');
+    setRoomId(appointment?.roomId ?? '');
     if (!open) {
       setShowCancel(false);
       setCancelReason('');
+      setConflictAppointmentId(null);
+      setConflictRoomId(null);
     }
   }, [appointment, open]);
 
@@ -82,10 +145,21 @@ export function AppointmentDrawer({
         id,
         startAt: partsToIso(date, time),
         durationMinutes: duration,
+        ...(practitionerId ? { practitionerId } : {}),
+        // Send roomId (or null to clear) only if the field is meaningfully
+        // visible — otherwise leave it untouched server-side.
+        ...(showRoomField ? { roomId: roomId || null } : {}),
       });
       toast.success('RDV déplacé.');
+      // Trigger conflict probe only when a room is now assigned.
+      if (roomId) {
+        setConflictAppointmentId(id);
+        setConflictRoomId(roomId);
+      } else {
+        setConflictAppointmentId(null);
+        setConflictRoomId(null);
+      }
       onChanged?.();
-      onOpenChange(false);
     } catch (err) {
       const msg = extractConflictMessage(err);
       if (msg) toast.error(msg);
@@ -189,6 +263,40 @@ export function AppointmentDrawer({
               </div>
             )}
 
+            {/* Conflict warning banner — surfaces room overlaps after a save. */}
+            {conflicts && conflicts.length > 0 && (
+              <div
+                role="alert"
+                aria-label="Conflit salle"
+                style={{
+                  padding: 12,
+                  background: 'var(--amber-soft)',
+                  border: '1px solid #E8CFA9',
+                  color: 'var(--amber)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  marginBottom: 16,
+                  display: 'flex',
+                  gap: 8,
+                  alignItems: 'flex-start',
+                }}
+              >
+                <Warn />
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                    Conflit salle : {conflicts.length} autre
+                    {conflicts.length > 1 ? 's ' : ' '}
+                    RDV partagent cette salle au même créneau.
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 16 }}>
+                    {conflicts.map((c) => (
+                      <li key={c.conflictAppointmentId}>{formatConflictLabel(c)}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <div
               style={{
                 fontSize: 11,
@@ -263,6 +371,84 @@ export function AppointmentDrawer({
                 />
               </label>
             </div>
+
+            {showPractitionerField && (
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  color: 'var(--ink-2)',
+                  marginTop: 12,
+                }}
+              >
+                Médecin
+                <select
+                  value={practitionerId}
+                  disabled={!canMutate}
+                  aria-label="Médecin"
+                  onChange={(e) => setPractitionerId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 34,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0 8px',
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    marginTop: 4,
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <option value="" disabled>
+                    Choisir un médecin…
+                  </option>
+                  {activePractitioners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {formatPractitioner(p)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            {showRoomField && (
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  color: 'var(--ink-2)',
+                  marginTop: 12,
+                }}
+              >
+                Salle
+                <select
+                  value={roomId}
+                  disabled={!canMutate}
+                  aria-label="Salle"
+                  onChange={(e) => setRoomId(e.target.value)}
+                  style={{
+                    width: '100%',
+                    height: 34,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0 8px',
+                    fontSize: 13,
+                    fontFamily: 'inherit',
+                    marginTop: 4,
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <option value="">Aucune</option>
+                  {activeRooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                      {r.capabilityTags.length > 0 ? ` (${r.capabilityTags.join(', ')})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <Button
               variant="primary"
               style={{ marginTop: 10 }}
@@ -358,3 +544,4 @@ export function AppointmentDrawer({
     </Dialog.Root>
   );
 }
+

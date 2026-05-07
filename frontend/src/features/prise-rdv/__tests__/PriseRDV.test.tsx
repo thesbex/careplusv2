@@ -29,6 +29,14 @@ vi.mock('../hooks/useCreateAppointment', () => ({
 vi.mock('../hooks/useMonthAvailability', () => ({
   useMonthAvailability: () => ({ availableDates: new Set<string>(), isLoading: false }),
 }));
+// Multi-doctor / room hooks (Wave 1) — mocked empty so the
+// auto-adaptive selectors stay hidden in legacy single-doctor tests.
+vi.mock('@/features/agenda/hooks/usePractitioners', () => ({
+  usePractitioners: () => ({ data: [], isLoading: false, isError: false }),
+}));
+vi.mock('@/features/agenda/hooks/useRooms', () => ({
+  useRooms: () => ({ data: [], isLoading: false, isError: false }),
+}));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

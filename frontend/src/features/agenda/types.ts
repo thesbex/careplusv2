@@ -13,6 +13,12 @@ export interface Appointment {
   id?: string;
   /** Backend patient id — present when loaded from API. */
   patientId?: string;
+  /** Backend practitioner id — needed for multi-doctor agenda (Wave 1). */
+  practitionerId?: string;
+  /** Backend assigned room id — null/undefined when no room. */
+  roomId?: string;
+  /** Backend assigned room name — display only. */
+  roomName?: string;
   /** ISO start datetime. */
   startAt?: string;
   /** Duration in minutes. */

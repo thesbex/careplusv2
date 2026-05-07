@@ -16,6 +16,15 @@ vi.mock('../hooks/useAppointments', () => ({
     isLoading: false,
     error: null,
   }),
+  ALL_PRACTITIONERS: 'ALL',
+}));
+
+vi.mock('../hooks/usePractitioners', () => ({
+  usePractitioners: () => ({ data: [], isLoading: false, isError: false }),
+}));
+
+vi.mock('../hooks/useRooms', () => ({
+  useRooms: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 function renderMobileAgenda() {

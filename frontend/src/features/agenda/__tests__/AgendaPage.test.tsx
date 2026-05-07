@@ -19,6 +19,15 @@ vi.mock('../hooks/useAppointments', () => ({
     refetch: () => Promise.resolve(),
   }),
   useMonthAppointments: () => ({ appointments: [], isLoading: false }),
+  ALL_PRACTITIONERS: 'ALL',
+}));
+
+vi.mock('../hooks/usePractitioners', () => ({
+  usePractitioners: () => ({ data: [], isLoading: false, isError: false }),
+}));
+
+vi.mock('../hooks/useRooms', () => ({
+  useRooms: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 vi.mock('@/features/parametres/hooks/useLeaves', () => ({

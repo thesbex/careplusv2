@@ -15,12 +15,15 @@ import { Select, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Close, Search, Plus } from '@/components/icons';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { usePatientSearch } from './hooks/usePatientSearch';
 import { useReasons } from './hooks/useReasons';
 import { useAvailability } from './hooks/useAvailability';
 import { useMonthAvailability } from './hooks/useMonthAvailability';
 import { useCreateAppointment } from './hooks/useCreateAppointment';
 import { useCreatePatient } from '@/features/dossier-patient/hooks/useCreatePatient';
+import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
+import { useRooms } from '@/features/agenda/hooks/useRooms';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
@@ -374,6 +377,31 @@ export function PriseRDVDialog({
   const [patientError, setPatientError] = useState<string | null>(null);
   const [showNewPatientForm, setShowNewPatientForm] = useState(false);
 
+  // Wave 1 (2026-05-07): auto-adaptive practitioner + room.
+  const currentUser = useAuthStore((s) => s.user);
+  const { data: practitioners } = usePractitioners();
+  const { data: rooms } = useRooms();
+  const activePractitioners = practitioners.filter((p) => p.active);
+  const activeRooms = rooms.filter((r) => r.active);
+  const showPractitionerField = activePractitioners.length >= 2;
+  const showRoomField = activeRooms.length >= 2;
+
+  // Default practitioner: connected user if MEDECIN, else first active.
+  const isMedecin = currentUser?.roles?.includes('MEDECIN') ?? false;
+  const defaultPractitionerId =
+    isMedecin && currentUser?.id
+      ? currentUser.id
+      : activePractitioners[0]?.id ?? '';
+  const [practitionerId, setPractitionerId] = useState<string>(defaultPractitionerId);
+  const [roomId, setRoomId] = useState<string>(''); // '' = no room
+
+  useEffect(() => {
+    // Re-sync default once practitioners load.
+    if (!practitionerId && defaultPractitionerId) {
+      setPractitionerId(defaultPractitionerId);
+    }
+  }, [defaultPractitionerId, practitionerId]);
+
   const today = new Date();
   const dd = String(today.getDate()).padStart(2, '0');
   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -423,6 +451,49 @@ export function PriseRDVDialog({
 
   const { createAppointment, isPending, error } = useCreateAppointment();
 
+  /**
+   * Probe room-conflicts after a successful create. Backend never blocks;
+   * the warning is surfaced as a toast and the dialog still closes.
+   */
+  async function probeAndWarnRoomConflicts(appointmentId: string): Promise<void> {
+    try {
+      const res = await fetch(`/api/appointments/${appointmentId}/room-conflicts`, {
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...(useAuthStore.getState().accessToken
+            ? { Authorization: `Bearer ${useAuthStore.getState().accessToken}` }
+            : {}),
+        },
+      });
+      if (!res.ok) return;
+      const conflicts = (await res.json()) as Array<{
+        conflictPractitionerLastName: string;
+        conflictStartAt: string;
+        conflictEndAt: string;
+      }>;
+      if (conflicts.length === 0) return;
+      const first = conflicts[0];
+      const time = first
+        ? `${new Date(first.conflictStartAt).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}-${new Date(first.conflictEndAt).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}`
+        : '';
+      const dr = first ? `Dr ${first.conflictPractitionerLastName}` : '';
+      toast.warning(
+        `Conflit salle : ${conflicts.length} autre${conflicts.length > 1 ? 's' : ''} RDV partage${
+          conflicts.length > 1 ? 'nt' : ''
+        } cette salle au même créneau (${dr} ${time}).`,
+      );
+    } catch {
+      // silent — conflict probe failure must not break the create flow.
+    }
+  }
+
   function handlePrevMonth() {
     if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
     else setCalMonth((m) => m - 1);
@@ -445,8 +516,16 @@ export function PriseRDVDialog({
       durationMin: data.durationMin,
       reasonId: selectedReasonId,
       ...(data.notes ? { notes: data.notes } : {}),
+      ...(showPractitionerField && practitionerId ? { practitionerId } : {}),
+      // null roomId = explicit "no room"; only send when field is visible.
+      ...(showRoomField ? { roomId: roomId || null } : {}),
     }).catch(() => null);
     if (result) {
+      // Probe room conflicts after success when a room was assigned. Warning
+      // only — never blocks the close path.
+      if (showRoomField && roomId) {
+        void probeAndWarnRoomConflicts(result.id);
+      }
       onCreated?.();
       onOpenChange(false);
     }
@@ -636,6 +715,70 @@ export function PriseRDVDialog({
                   </div>
                 </div>
               </div>
+
+              {/* Optional auto-adaptive selectors: practitioner + room */}
+              {(showPractitionerField || showRoomField) && (
+                <div style={{ marginBottom: 18 }}>
+                  <div className="prise-rdv-step-label">
+                    {showPractitionerField && showRoomField
+                      ? 'Médecin & salle'
+                      : showPractitionerField
+                        ? 'Médecin'
+                        : 'Salle'}
+                  </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        showPractitionerField && showRoomField ? '1fr 1fr' : '1fr',
+                      gap: 12,
+                    }}
+                  >
+                    {showPractitionerField && (
+                      <Field>
+                        <FieldLabel htmlFor="rdv-practitioner">Médecin</FieldLabel>
+                        <Select
+                          id="rdv-practitioner"
+                          aria-label="Médecin"
+                          value={practitionerId}
+                          onChange={(e) => setPractitionerId(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Choisir un médecin…
+                          </option>
+                          {activePractitioners.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              Dr {p.lastName} {p.firstName}
+                              {p.specialty ? ` — ${p.specialty}` : ''}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    )}
+                    {showRoomField && (
+                      <Field>
+                        <FieldLabel htmlFor="rdv-room">Salle</FieldLabel>
+                        <Select
+                          id="rdv-room"
+                          aria-label="Salle"
+                          value={roomId}
+                          onChange={(e) => setRoomId(e.target.value)}
+                        >
+                          <option value="">Aucune</option>
+                          {activeRooms.map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.name}
+                              {r.capabilityTags.length > 0
+                                ? ` (${r.capabilityTags.join(', ')})`
+                                : ''}
+                            </option>
+                          ))}
+                        </Select>
+                      </Field>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Step 3: Motif */}
               <div>

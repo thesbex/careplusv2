@@ -9,6 +9,12 @@ export interface CreateAppointmentPayload {
   durationMin: number;
   reasonId: string | null;
   notes?: string;
+  /** Optional explicit practitioner — when not provided, falls back to the
+   *  connected user (legacy single-doctor cabinet). */
+  practitionerId?: string;
+  /** Optional room. null = explicit "no room"; undefined = field invisible
+   *  (single-room cabinet). The backend stores null on omission. */
+  roomId?: string | null;
 }
 
 function toIso(date: string, time: string): string {
@@ -18,20 +24,21 @@ function toIso(date: string, time: string): string {
 
 export function useCreateAppointment() {
   const queryClient = useQueryClient();
-  const userId = useAuthStore((s) => s.user?.id);
+  const currentUserId = useAuthStore((s) => s.user?.id);
 
   const mutation = useMutation({
-    mutationFn: (payload: CreateAppointmentPayload) =>
-      api
-        .post<{ id: string }>('/appointments', {
-          patientId: payload.patientId,
-          practitionerId: userId,
-          reasonId: payload.reasonId ?? undefined,
-          startAt: toIso(payload.date, payload.time),
-          durationMinutes: payload.durationMin,
-          notes: payload.notes || undefined,
-        })
-        .then((r) => r.data),
+    mutationFn: (payload: CreateAppointmentPayload) => {
+      const body: Record<string, unknown> = {
+        patientId: payload.patientId,
+        practitionerId: payload.practitionerId ?? currentUserId,
+        reasonId: payload.reasonId ?? undefined,
+        startAt: toIso(payload.date, payload.time),
+        durationMinutes: payload.durationMin,
+        notes: payload.notes ?? undefined,
+        ...(payload.roomId !== undefined ? { roomId: payload.roomId } : {}),
+      };
+      return api.post<{ id: string }>('/appointments', body).then((r) => r.data);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['appointments'] });
     },

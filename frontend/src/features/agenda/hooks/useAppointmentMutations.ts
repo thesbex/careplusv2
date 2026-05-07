@@ -11,13 +11,37 @@ interface MovePayload {
   id: string;
   startAt: string; // ISO
   durationMinutes: number;
+  /** Optional new practitioner id (multi-doctor support, Wave 1). */
+  practitionerId?: string;
+  /** Optional room reassignment. `null` clears the room; undefined leaves it untouched. */
+  roomId?: string | null;
+}
+
+interface MoveResponse {
+  id: string;
+  practitionerId?: string;
+  roomId?: string | null;
 }
 
 export function useMoveAppointment() {
   const qc = useQueryClient();
   const mutation = useMutation({
-    mutationFn: async ({ id, startAt, durationMinutes }: MovePayload): Promise<void> => {
-      await api.put(`/appointments/${id}`, { startAt, durationMinutes });
+    mutationFn: async ({
+      id,
+      startAt,
+      durationMinutes,
+      practitionerId,
+      roomId,
+    }: MovePayload): Promise<MoveResponse> => {
+      const body: Record<string, unknown> = {
+        startAt,
+        durationMinutes,
+        ...(practitionerId !== undefined ? { practitionerId } : {}),
+        // null is meaningful (clear the room); undefined leaves it untouched.
+        ...(roomId !== undefined ? { roomId } : {}),
+      };
+      const res = await api.put<MoveResponse>(`/appointments/${id}`, body);
+      return res.data;
     },
     onSuccess: () => invalidate(qc),
   });
