@@ -58,7 +58,13 @@ public class SettingsController {
             String ice,
             String rib,
             /** V032 — when true, agendas are filtered per-practitioner via identity_user_assignment. */
-            boolean agendaStrictIsolation
+            boolean agendaStrictIsolation,
+            /** V034 — CABINET / CLINIQUE / HOPITAL / CENTRE_MEDICAL / AUTRE. Drives header label in IHM + PDFs. */
+            String establishmentType,
+            /** V034 — true si le service de radiologie est interne (sera utilisé par le routing prescription). */
+            boolean imagingInternal,
+            /** V034 — true si le laboratoire d'analyses est interne. */
+            boolean labInternal
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -76,7 +82,14 @@ public class SettingsController {
              * payload: {@code null} keeps the current value (legacy clients that
              * only send the identity fields stay unchanged).
              */
-            Boolean agendaStrictIsolation
+            Boolean agendaStrictIsolation,
+            /** V034 — type d'établissement. Optional : null = pas de changement. */
+            @Pattern(regexp = "CABINET|CLINIQUE|HOPITAL|CENTRE_MEDICAL|AUTRE")
+            String establishmentType,
+            /** V034 — capacité radiologie interne. Optional : null = pas de changement. */
+            Boolean imagingInternal,
+            /** V034 — capacité laboratoire interne. Optional : null = pas de changement. */
+            Boolean labInternal
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -92,12 +105,12 @@ public class SettingsController {
     // ── Clinic settings ───────────────────────────────────────────────────────
 
     @GetMapping("/api/settings/clinic")
-    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<ClinicSettingsView> getClinic() {
         try {
             ClinicSettingsView v = jdbc.queryForObject(
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
-                            + "agenda_strict_isolation "
+                            + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -110,7 +123,10 @@ public class SettingsController {
                             rs.getString("cnom"),
                             rs.getString("ice"),
                             rs.getString("rib"),
-                            rs.getBoolean("agenda_strict_isolation")));
+                            rs.getBoolean("agenda_strict_isolation"),
+                            rs.getString("establishment_type"),
+                            rs.getBoolean("imaging_internal"),
+                            rs.getBoolean("lab_internal")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -120,14 +136,17 @@ public class SettingsController {
     }
 
     @PutMapping("/api/settings/clinic")
-    @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ClinicSettingsView updateClinic(@Valid @RequestBody UpdateClinicSettingsRequest req) {
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
         UUID id;
-        // Read current agendaStrictIsolation if the field is omitted from the payload —
-        // legacy callers that don't yet know about the toggle don't accidentally reset it.
+        // Read current values if the corresponding field is omitted in the payload —
+        // legacy callers that don't yet know about the new fields don't accidentally reset them.
         boolean finalAgendaIsolation;
+        String finalEstablishmentType;
+        boolean finalImagingInternal;
+        boolean finalLabInternal;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
@@ -138,34 +157,62 @@ public class SettingsController {
             } else {
                 finalAgendaIsolation = req.agendaStrictIsolation();
             }
+            if (req.establishmentType() == null) {
+                finalEstablishmentType = jdbc.queryForObject(
+                        "SELECT establishment_type FROM configuration_clinic_settings WHERE id = ?",
+                        String.class, id);
+            } else {
+                finalEstablishmentType = req.establishmentType();
+            }
+            if (req.imagingInternal() == null) {
+                finalImagingInternal = Boolean.TRUE.equals(jdbc.queryForObject(
+                        "SELECT imaging_internal FROM configuration_clinic_settings WHERE id = ?",
+                        Boolean.class, id));
+            } else {
+                finalImagingInternal = req.imagingInternal();
+            }
+            if (req.labInternal() == null) {
+                finalLabInternal = Boolean.TRUE.equals(jdbc.queryForObject(
+                        "SELECT lab_internal FROM configuration_clinic_settings WHERE id = ?",
+                        Boolean.class, id));
+            } else {
+                finalLabInternal = req.labInternal();
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
-                            + "agenda_strict_isolation=?, updated_at=now() "
+                            + "agenda_strict_isolation=?, establishment_type=?, "
+                            + "imaging_internal=?, lab_internal=?, updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                    nullIfBlank(req.rib()), finalAgendaIsolation, id);
+                    nullIfBlank(req.rib()), finalAgendaIsolation,
+                    finalEstablishmentType, finalImagingInternal, finalLabInternal, id);
         } else {
             id = UUID.randomUUID();
-            // First-row insert: respect the caller value if provided, else default false.
+            // First-row insert: respect the caller value if provided, else defaults.
             finalAgendaIsolation = Boolean.TRUE.equals(req.agendaStrictIsolation());
+            finalEstablishmentType = req.establishmentType() != null ? req.establishmentType() : "CABINET";
+            finalImagingInternal = Boolean.TRUE.equals(req.imagingInternal());
+            finalLabInternal = Boolean.TRUE.equals(req.labInternal());
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
-                            + " agenda_strict_isolation) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                    nullIfBlank(req.rib()), finalAgendaIsolation);
+                    nullIfBlank(req.rib()), finalAgendaIsolation,
+                    finalEstablishmentType, finalImagingInternal, finalLabInternal);
         }
         return new ClinicSettingsView(
                 id, req.name(), req.address(), req.city(), req.phone(),
                 nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
-                nullIfBlank(req.rib()), finalAgendaIsolation);
+                nullIfBlank(req.rib()), finalAgendaIsolation,
+                finalEstablishmentType, finalImagingInternal, finalLabInternal);
     }
 
     // ── Tier discount ─────────────────────────────────────────────────────────

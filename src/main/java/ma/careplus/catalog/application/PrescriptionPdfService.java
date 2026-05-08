@@ -187,27 +187,48 @@ public class PrescriptionPdfService {
     private Map<String, String> fetchCabinetSettings() {
         try {
             return jdbc.queryForObject(
-                    "SELECT name, address, city, phone, COALESCE(inpe,'') AS inpe, COALESCE(cnom,'') AS cnom " +
-                    "FROM configuration_clinic_settings LIMIT 1",
+                    "SELECT name, address, city, phone, COALESCE(inpe,'') AS inpe, COALESCE(cnom,'') AS cnom, "
+                            + "COALESCE(establishment_type,'CABINET') AS etype "
+                            + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, rowNum) -> Map.of(
                             "name", rs.getString("name"),
                             "address", rs.getString("address"),
                             "city", rs.getString("city"),
                             "phone", rs.getString("phone"),
                             "inpe", rs.getString("inpe"),
-                            "cnom", rs.getString("cnom")
+                            "cnom", rs.getString("cnom"),
+                            "establishmentType", rs.getString("etype"),
+                            "establishmentTypeLabel", establishmentTypeLabel(rs.getString("etype"))
                     ));
         } catch (Exception e) {
             // TODO: replace with proper configuration service query post-MVP
             return Map.of(
-                    "name", "Cabinet Médical CarePlus",
+                    "name", "Médical CarePlus",
                     "address", "123 Boulevard Mohamed V",
                     "city", "Casablanca",
                     "phone", "+212 5 22 00 00 00",
                     "inpe", "",
-                    "cnom", ""
+                    "cnom", "",
+                    "establishmentType", "CABINET",
+                    "establishmentTypeLabel", "Cabinet"
             );
         }
+    }
+
+    /**
+     * Affichage humain du type d'établissement, utilisé en préfixe avant le nom
+     * dans l'en-tête du PDF (ex. "Clinique El Amrani"). 'AUTRE' rend chaîne vide
+     * pour ne pas polluer le rendu si l'admin n'a pas su catégoriser.
+     */
+    private static String establishmentTypeLabel(String type) {
+        if (type == null) return "Cabinet";
+        return switch (type) {
+            case "CLINIQUE" -> "Clinique";
+            case "HOPITAL" -> "Hôpital";
+            case "CENTRE_MEDICAL" -> "Centre médical";
+            case "AUTRE" -> "";
+            default -> "Cabinet";
+        };
     }
 
     /** V032 — bundle holder for the practitioner full name + specialty. */

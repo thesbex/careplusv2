@@ -47,7 +47,7 @@
     <!-- HEADER -->
     <div class="header">
         <div class="header-left">
-            <div class="cabinet-name" th:text="${cabinet.name}">Cabinet Médical</div>
+            <div class="cabinet-name" th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">Cabinet Médical</div>
             <div class="cabinet-meta">
                 <span th:text="${cabinet.address}">Adresse</span><br/>
                 <span th:text="${cabinet.city}">Ville</span><br/>

@@ -78,7 +78,18 @@ const EMPTY_FORM: ClinicSettingsForm = {
   cnom: '',
   ice: '',
   rib: '',
+  establishmentType: 'CABINET',
+  imagingInternal: false,
+  labInternal: false,
 };
+
+const ESTABLISHMENT_TYPE_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'HOPITAL' | 'CENTRE_MEDICAL' | 'AUTRE'; label: string }[] = [
+  { value: 'CABINET', label: 'Cabinet' },
+  { value: 'CLINIQUE', label: 'Clinique' },
+  { value: 'HOPITAL', label: 'Hôpital' },
+  { value: 'CENTRE_MEDICAL', label: 'Centre médical' },
+  { value: 'AUTRE', label: 'Autre' },
+];
 
 // ── Cabinet tab ───────────────────────────────────────────────────────────────
 
@@ -100,6 +111,9 @@ function CabinetTab() {
         cnom: settings.cnom ?? '',
         ice: settings.ice ?? '',
         rib: settings.rib ?? '',
+        establishmentType: settings.establishmentType ?? 'CABINET',
+        imagingInternal: settings.imagingInternal ?? false,
+        labInternal: settings.labInternal ?? false,
       });
       setHydrated(true);
     }
@@ -135,12 +149,35 @@ function CabinetTab() {
           </div>
         )}
         <Field>
+          <FieldLabel htmlFor="cab-type">Type d'établissement *</FieldLabel>
+          <select
+            id="cab-type"
+            aria-label="Type d'établissement"
+            value={form.establishmentType ?? 'CABINET'}
+            onChange={(e) => setField('establishmentType', e.target.value as ClinicSettingsForm['establishmentType'])}
+            style={{
+              height: 38,
+              padding: '0 10px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r-md)',
+              background: 'var(--bg)',
+              fontFamily: 'inherit',
+              fontSize: 13,
+              width: '100%',
+            }}
+          >
+            {ESTABLISHMENT_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </Field>
+        <Field>
           <FieldLabel htmlFor="cab-name">Nom *</FieldLabel>
           <Input
             id="cab-name"
             value={form.name}
             onChange={(e) => setField('name', e.target.value)}
-            placeholder="Cabinet Médical El Amrani"
+            placeholder="El Amrani"
           />
         </Field>
         <Field>
@@ -196,6 +233,37 @@ function CabinetTab() {
           <FieldLabel htmlFor="cab-rib">RIB</FieldLabel>
           <Input id="cab-rib" value={form.rib} onChange={(e) => setField('rib', e.target.value)} />
         </Field>
+        <div
+          style={{
+            gridColumn: '1 / -1',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            padding: '12px 14px',
+            background: 'var(--bg-2, #fafafa)',
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Services internes</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
+            Cocher si l'établissement dispose de ces services en interne. Préparation pour le
+            routing futur des prescriptions analyses / radio.
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={!!form.labInternal}
+              onChange={(e) => setField('labInternal', e.target.checked)}
+            />
+            Laboratoire d'analyses interne
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={!!form.imagingInternal}
+              onChange={(e) => setField('imagingInternal', e.target.checked)}
+            />
+            Service de radiologie interne
+          </label>
+        </div>
         <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
           <Button type="submit" variant="primary" disabled={isPending}>
             {isPending ? 'Enregistrement…' : 'Enregistrer'}

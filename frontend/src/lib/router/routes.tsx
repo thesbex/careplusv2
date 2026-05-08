@@ -220,9 +220,9 @@ export const router = createBrowserRouter(
     {
       path: '/parametres',
       element: (
-        <RequireAuth>
+        <RequireRole roles={['ADMIN']}>
           <ParametragePage />
-        </RequireAuth>
+        </RequireRole>
       ),
     },
     {

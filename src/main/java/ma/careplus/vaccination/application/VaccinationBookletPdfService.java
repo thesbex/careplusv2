@@ -192,7 +192,8 @@ public class VaccinationBookletPdfService {
         try {
             return jdbc.queryForObject(
                     "SELECT name, address, city, phone, "
-                    + "COALESCE(inpe,'') AS inpe, COALESCE(cnom,'') AS cnom "
+                    + "COALESCE(inpe,'') AS inpe, COALESCE(cnom,'') AS cnom, "
+                    + "COALESCE(establishment_type,'CABINET') AS etype "
                     + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, rowNum) -> Map.of(
                             "name", rs.getString("name"),
@@ -200,18 +201,34 @@ public class VaccinationBookletPdfService {
                             "city", rs.getString("city"),
                             "phone", rs.getString("phone"),
                             "inpe", rs.getString("inpe"),
-                            "cnom", rs.getString("cnom")
+                            "cnom", rs.getString("cnom"),
+                            "establishmentType", rs.getString("etype"),
+                            "establishmentTypeLabel", establishmentTypeLabel(rs.getString("etype"))
                     ));
         } catch (Exception e) {
             return Map.of(
-                    "name", "Cabinet Médical CarePlus",
+                    "name", "Médical CarePlus",
                     "address", "123 Boulevard Mohamed V",
                     "city", "Casablanca",
                     "phone", "+212 5 22 00 00 00",
                     "inpe", "",
-                    "cnom", ""
+                    "cnom", "",
+                    "establishmentType", "CABINET",
+                    "establishmentTypeLabel", "Cabinet"
             );
         }
+    }
+
+    /** V034 — préfixe humain devant le nom dans l'en-tête PDF (ex. "Clinique El Amrani"). */
+    private static String establishmentTypeLabel(String type) {
+        if (type == null) return "Cabinet";
+        return switch (type) {
+            case "CLINIQUE" -> "Clinique";
+            case "HOPITAL" -> "Hôpital";
+            case "CENTRE_MEDICAL" -> "Centre médical";
+            case "AUTRE" -> "";
+            default -> "Cabinet";
+        };
     }
 
     /** V032 — bundle holder for the practitioner full name + specialty. */

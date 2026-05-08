@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
+export type EstablishmentType =
+  | 'CABINET'
+  | 'CLINIQUE'
+  | 'HOPITAL'
+  | 'CENTRE_MEDICAL'
+  | 'AUTRE';
+
 export interface ClinicSettings {
   id: string;
   name: string;
@@ -12,6 +19,13 @@ export interface ClinicSettings {
   cnom: string | null;
   ice: string | null;
   rib: string | null;
+  agendaStrictIsolation?: boolean;
+  /** V034 — type d'établissement (drives label "Cabinet/Clinique/..." dans IHM + PDFs). */
+  establishmentType?: EstablishmentType;
+  /** V034 — capacité radiologie interne. */
+  imagingInternal?: boolean;
+  /** V034 — capacité laboratoire interne. */
+  labInternal?: boolean;
 }
 
 export interface ClinicSettingsForm {
@@ -24,7 +38,24 @@ export interface ClinicSettingsForm {
   cnom: string;
   ice: string;
   rib: string;
+  /** V034 — optional ; backend laisse la valeur courante si absent. */
+  establishmentType?: EstablishmentType;
+  imagingInternal?: boolean;
+  labInternal?: boolean;
 }
+
+/**
+ * Mapping enum → label humain. Utilisé pour le préfixe sidebar + les drop-
+ * downs UI. 'AUTRE' rend chaîne vide pour ne pas afficher quelque chose
+ * d'incongru si l'admin n'a pas su catégoriser.
+ */
+export const ESTABLISHMENT_TYPE_LABELS: Record<EstablishmentType, string> = {
+  CABINET: 'Cabinet',
+  CLINIQUE: 'Clinique',
+  HOPITAL: 'Hôpital',
+  CENTRE_MEDICAL: 'Centre médical',
+  AUTRE: '',
+};
 
 export interface TierConfig {
   id: string;

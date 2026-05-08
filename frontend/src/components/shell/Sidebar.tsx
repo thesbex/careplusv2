@@ -19,6 +19,11 @@ import { api } from '@/lib/api/client';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
+import {
+  useClinicSettings,
+  ESTABLISHMENT_TYPE_LABELS,
+  type EstablishmentType,
+} from '@/features/parametres/hooks/useSettings';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -57,7 +62,7 @@ const ITEMS: NavItem[] = [
   { id: 'grossesses', label: 'Grossesses', Icon: Heart, section: 'flux' },
   { id: 'stock', label: 'Stock', Icon: Box, section: 'flux' },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
-  { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN', 'MEDECIN'] },
+  { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN'] },
 ];
 
 export interface SidebarProps {
@@ -79,10 +84,17 @@ const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE'];
 export function Sidebar({
   active = 'agenda',
   counts,
-  cabinet = { name: 'careplus', city: 'Cab. El Amrani · Casablanca' },
+  cabinet,
   user,
   onNavigate,
 }: SidebarProps) {
+  // V034 — sidebar reads clinic settings to derive the right "Cabinet/Clinique/Hôpital…
+  // <name> · <city>" sub-label dynamically. Default fallback only when the settings
+  // are unloaded (cold boot, 401, or first install with no row yet) — no more
+  // hardcoded "Cab. El Amrani". If the caller passed an explicit `cabinet` prop
+  // (mostly tests), it wins.
+  const { settings } = useClinicSettings();
+  const resolvedCabinet = cabinet ?? buildCabinetLabel(settings);
   // Sans `counts` explicite on n'affiche aucun badge — c'est <Screen> qui
   // souscrit à useQueue() et nous passe la valeur live.
   const safeCounts = counts ?? {};
@@ -132,8 +144,8 @@ export function Sidebar({
       <div className="cp-brand">
         <BrandMark size="sm" />
         <div style={{ minWidth: 0 }}>
-          <div className="cp-brand-name">{cabinet.name}</div>
-          <div className="cp-brand-cab">{cabinet.city}</div>
+          <div className="cp-brand-name">{resolvedCabinet.name}</div>
+          <div className="cp-brand-cab">{resolvedCabinet.city}</div>
         </div>
       </div>
 
@@ -292,4 +304,26 @@ function NavButton({
       )}
     </button>
   );
+}
+
+/**
+ * Compose le sous-titre de la sidebar à partir des settings cabinet :
+ *   "<Type> <name> · <city>"  → ex. "Clinique El Amrani · Casablanca"
+ * Si le type est 'AUTRE' (label vide) ou inconnu, on n'affiche que le nom.
+ * Le `name` du brand (ligne du dessus) reste toujours "careplus" (l'identité
+ * du produit), seule la ligne secondaire reflète l'établissement.
+ */
+function buildCabinetLabel(settings: { name?: string; city?: string; establishmentType?: EstablishmentType } | null): {
+  name: string;
+  city: string;
+} {
+  if (!settings || !settings.name) {
+    return { name: 'careplus', city: '' };
+  }
+  const typeLabel = settings.establishmentType
+    ? ESTABLISHMENT_TYPE_LABELS[settings.establishmentType] ?? ''
+    : '';
+  const prefixed = typeLabel ? `${typeLabel} ${settings.name}` : settings.name;
+  const city = settings.city ? `${prefixed} · ${settings.city}` : prefixed;
+  return { name: 'careplus', city };
 }
