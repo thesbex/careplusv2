@@ -15,6 +15,8 @@ interface QueueEntryApi {
   practitionerName: string | null;
   durationMinutes: number | null;
   isPremium: boolean;
+  roomId: string | null;
+  roomName: string | null;
 }
 
 const STATUS_MAP: Record<string, QueueEntry['status']> = {
@@ -46,7 +48,9 @@ function adapt(e: QueueEntryApi): QueueEntry {
     arrived: toHHMM(e.arrivedAt),
     status: STATUS_MAP[e.status] ?? 'arrived',
     waited: toWaited(e.arrivedAt),
-    room: '—',
+    room: e.roomName ?? '—',
+    roomId: e.roomId ?? null,
+    roomName: e.roomName ?? null,
     age: e.age ?? 0,
     reason: e.reasonLabel ?? '',
     practitionerName: e.practitionerName ?? null,

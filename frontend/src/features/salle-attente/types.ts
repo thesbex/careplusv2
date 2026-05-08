@@ -24,6 +24,10 @@ export interface QueueEntry {
   waited: string;
   /** Room or station label, "—" if none. */
   room: string;
+  /** Room id (for actions like reassignment). Null when no room is set. */
+  roomId?: string | null;
+  /** Canonical room name from clinic_room. Null when no room is set. */
+  roomName?: string | null;
   /** Allergy name, if any. */
   allergy?: string;
   /** Patient age. */

@@ -186,7 +186,15 @@ export function AppointmentDrawer({
   async function handleCheckIn() {
     if (!id) return;
     try {
-      await checkIn(id);
+      // Send roomId only when the multi-room field is visible AND the user
+      // picked a non-empty value. The backend treats roomId=null as "preserve",
+      // not "clear" — to actually clear a room, use "Déplacer le RDV". So we
+      // simply omit the field when the dropdown shows "Aucune".
+      const args =
+        showRoomField && roomId
+          ? { appointmentId: id, roomId }
+          : { appointmentId: id };
+      await checkIn(args);
       toast.success('Arrivée déclarée.');
       onChanged?.();
       onOpenChange(false);

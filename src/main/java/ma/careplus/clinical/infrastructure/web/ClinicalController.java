@@ -11,6 +11,7 @@ import ma.careplus.clinical.application.VitalsService;
 import ma.careplus.clinical.domain.Consultation;
 import ma.careplus.clinical.domain.VitalSigns;
 import ma.careplus.clinical.infrastructure.web.dto.ConsultationView;
+import ma.careplus.clinical.infrastructure.web.dto.CheckInRequest;
 import ma.careplus.clinical.infrastructure.web.dto.CreateConsultationRequest;
 import ma.careplus.clinical.infrastructure.web.dto.FollowUpRequest;
 import ma.careplus.clinical.infrastructure.web.dto.FollowUpResponse;
@@ -62,8 +63,11 @@ public class ClinicalController {
 
     @PostMapping("/appointments/{id}/check-in")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public ResponseEntity<Void> checkIn(@PathVariable UUID id) {
-        presenceService.checkIn(id);
+    public ResponseEntity<Void> checkIn(
+            @PathVariable UUID id,
+            @RequestBody(required = false) CheckInRequest req) {
+        UUID roomId = req != null ? req.roomId() : null;
+        presenceService.checkIn(id, roomId);
         return ResponseEntity.noContent().build();
     }
 

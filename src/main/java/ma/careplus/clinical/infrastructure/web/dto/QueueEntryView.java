@@ -19,5 +19,7 @@ public record QueueEntryView(
         String reasonLabel,
         String practitionerName,
         Integer durationMinutes,
-        boolean isPremium
+        boolean isPremium,
+        UUID roomId,
+        String roomName
 ) {}

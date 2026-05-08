@@ -116,7 +116,7 @@ export default function SalleAttentePage() {
           <table className="sa-queue-table" aria-label="File d'attente">
             <thead className="sa-queue-thead">
               <tr>
-                {['Patient', 'RDV', 'Arrivé à', 'Attente', 'Motif', 'Statut', 'Box'].map((h, i) => (
+                {['Patient', 'RDV', 'Arrivé à', 'Attente', 'Motif', 'Statut', 'Salle'].map((h, i) => (
                   <th key={i} scope="col">
                     {h}
                   </th>

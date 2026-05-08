@@ -44,6 +44,17 @@ public class PresenceService {
     }
 
     public Appointment checkIn(UUID appointmentId) {
+        return checkIn(appointmentId, null);
+    }
+
+    /**
+     * Check-in with optional room reassignment. When {@code roomId} is non-null
+     * the appointment's room is overwritten before the status transitions —
+     * including for already-checked-in entries (idempotent path). This lets a
+     * secretary reassign a salle on the spot without going through the
+     * "Déplacer le RDV" flow.
+     */
+    public Appointment checkIn(UUID appointmentId, UUID roomId) {
         Appointment a = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NotFoundException(
                         "APPT_NOT_FOUND", "Rendez-vous introuvable : " + appointmentId));
@@ -56,9 +67,12 @@ public class PresenceService {
                     "Impossible d'enregistrer l'arrivée (statut " + a.getStatus() + ").",
                     HttpStatus.CONFLICT.value());
         }
+        if (roomId != null) {
+            a.setRoomId(roomId);
+        }
         if (a.getArrivedAt() != null && a.getStatus() != AppointmentStatus.PLANIFIE
                 && a.getStatus() != AppointmentStatus.CONFIRME) {
-            // already checked in — idempotent
+            // already checked in — idempotent on status, room update above still applies
             return a;
         }
         a.setStatus(AppointmentStatus.ARRIVE);
@@ -78,11 +92,13 @@ public class PresenceService {
                        a.start_at, a.end_at, a.status, a.arrived_at,
                        r.label AS reason_label,
                        u.first_name AS prac_first, u.last_name AS prac_last,
+                       cr.id AS room_id, cr.name AS room_name,
                        EXISTS (SELECT 1 FROM patient_allergy al WHERE al.patient_id = a.patient_id) AS has_allergies
                 FROM scheduling_appointment a
                 JOIN patient_patient p ON p.id = a.patient_id
                 LEFT JOIN scheduling_appointment_reason r ON r.id = a.reason_id
                 LEFT JOIN identity_user u ON u.id = a.practitioner_id
+                LEFT JOIN clinic_room cr ON cr.id = a.room_id
                 WHERE a.start_at >= ?
                   AND a.start_at <  ?
                   AND a.status IN ('ARRIVE','EN_ATTENTE_CONSTANTES','CONSTANTES_PRISES','EN_CONSULTATION')
@@ -102,6 +118,8 @@ public class PresenceService {
                             ? ("Dr. " + pracFirst + " " + pracLast)
                             : null;
                     String tier = rs.getString("tier");
+                    UUID roomId = (UUID) rs.getObject("room_id");
+                    String roomName = rs.getString("room_name");
                     return new QueueEntryView(
                             (UUID) rs.getObject("id"),
                             (UUID) rs.getObject("patient_id"),
@@ -114,7 +132,9 @@ public class PresenceService {
                             rs.getString("reason_label"),
                             pracName,
                             duration,
-                            "PREMIUM".equals(tier));
+                            "PREMIUM".equals(tier),
+                            roomId,
+                            roomName);
                 },
                 from, to);
     }
