@@ -32,7 +32,6 @@ import { usePractitioners } from './hooks/usePractitioners';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
-import { SignatureSettingsSection } from './components/SignatureSettingsSection';
 import { RoomsManagementSection } from './components/RoomsManagementSection';
 import { AgendaIsolationToggle } from './components/AgendaIsolationToggle';
 import { UtilisateursTab } from './components/UtilisateursTab';
@@ -271,8 +270,6 @@ function CabinetTab() {
         </div>
       </form>
     </Panel>
-    <div style={{ height: 16 }} />
-    <SignatureSettingsSection />
     <div style={{ height: 16 }} />
     <RoomsManagementSection />
     <div style={{ height: 16 }} />

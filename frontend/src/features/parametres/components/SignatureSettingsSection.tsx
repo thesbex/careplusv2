@@ -1,9 +1,10 @@
 /**
- * F16 — section "Signature médecin" du paramétrage cabinet (onglet Cabinet).
+ * F16 + V035 — section "Ma signature scannée" (per-médecin depuis 2026-05-08).
  *
- * Affichée uniquement si l'utilisateur courant a le rôle ADMIN. Le médecin
- * pilote a souvent ADMIN+MEDECIN, mais MEDECIN seul ne suffit pas (cohérent
- * avec les autres réglages cabinet — V016, V018, etc.).
+ * Avant : signature cabinet, ADMIN-seul. Maintenant : chaque utilisateur gère
+ * la sienne. Le composant accepte un `practitionerId` optionnel pour qu'un
+ * ADMIN puisse aussi modifier celle d'un autre médecin (utile pour onboarding) ;
+ * sans argument il opère sur l'utilisateur connecté.
  *
  * Workflow :
  *   1. Aperçu de la signature actuelle (ou message vide).
@@ -16,7 +17,6 @@
  */
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/lib/auth/authStore';
 import { Button } from '@/components/ui/Button';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import {
@@ -30,18 +30,18 @@ const MAX_BYTES = 500 * 1024;
 const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp']);
 const ACCEPT_ATTR = '.png,.jpg,.jpeg,.webp';
 
-export function SignatureSettingsSection() {
-  const isAdmin = useAuthStore((s) => s.user?.roles.includes('ADMIN') ?? false);
-  const { meta, isLoading } = useSignatureMeta();
-  const previewUrl = useSignaturePreviewUrl(meta);
-  const { upload, isPending: isUploading } = useUploadSignature();
-  const { remove, isPending: isDeleting } = useDeleteSignature();
+export interface SignatureSettingsSectionProps {
+  /** Optionnel : ADMIN peut éditer la signature d'un autre médecin via cet id. */
+  practitionerId?: string;
+}
+
+export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSectionProps = {}) {
+  const { meta, isLoading } = useSignatureMeta(practitionerId);
+  const previewUrl = useSignaturePreviewUrl(meta, practitionerId);
+  const { upload, isPending: isUploading } = useUploadSignature(practitionerId);
+  const { remove, isPending: isDeleting } = useDeleteSignature(practitionerId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  if (!isAdmin) {
-    return null;
-  }
 
   function handlePick() {
     fileRef.current?.click();
@@ -84,7 +84,7 @@ export function SignatureSettingsSection() {
 
   return (
     <Panel style={{ marginTop: 16 }}>
-      <PanelHeader>Signature du médecin (auto-injectée sur les PDF)</PanelHeader>
+      <PanelHeader>Ma signature scannée (auto-injectée sur mes PDF)</PanelHeader>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.5 }}>
           La signature scannée est automatiquement intégrée au pied de chaque

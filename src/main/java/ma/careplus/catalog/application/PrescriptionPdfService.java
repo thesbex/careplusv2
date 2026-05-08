@@ -104,8 +104,10 @@ public class PrescriptionPdfService {
         // Practitioner name + specialty from identity_user
         DoctorInfo doctor = fetchDoctorInfo(consultation.getPractitionerId());
 
-        // F16 — signature médecin (optionnelle ; null si non configurée)
-        SignatureBlob signature = fetchSignatureBlob();
+        // F16 — signature médecin (optionnelle ; null si non configurée).
+        // V035 : la signature est désormais associée au médecin (pas au cabinet),
+        // donc on la charge à partir de l'ID praticien de la consultation.
+        SignatureBlob signature = fetchSignatureBlob(consultation.getPractitionerId());
 
         // Build Thymeleaf context
         Context ctx = new Context();
@@ -163,22 +165,24 @@ public class PrescriptionPdfService {
     private record SignatureBlob(String base64, String mime) {}
 
     /**
-     * F16 — lit la signature scannée du médecin depuis
-     * {@code configuration_clinic_settings.signature_blob} et l'encode en base64
-     * pour l'embed direct dans le HTML (data URL). Renvoie {@code null} si la
-     * colonne est NULL — le template tombe alors back sur le cachet texte.
+     * F16 + V035 — lit la signature scannée du médecin depuis
+     * {@code identity_user.signature_blob} (per-praticien depuis 2026-05-08)
+     * et l'encode en base64 pour l'embed direct dans le HTML (data URL).
+     * Renvoie {@code null} si la colonne est NULL — le template tombe alors
+     * back sur le cachet texte.
      */
-    private SignatureBlob fetchSignatureBlob() {
+    private SignatureBlob fetchSignatureBlob(UUID practitionerId) {
+        if (practitionerId == null) return null;
         try {
             return jdbc.queryForObject(
-                    "SELECT signature_blob, signature_mime "
-                            + "FROM configuration_clinic_settings LIMIT 1",
+                    "SELECT signature_blob, signature_mime FROM identity_user WHERE id = ?",
                     (rs, i) -> {
                         byte[] blob = rs.getBytes("signature_blob");
                         String mime = rs.getString("signature_mime");
                         if (blob == null || mime == null) return null;
                         return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
-                    });
+                    },
+                    practitionerId);
         } catch (Exception e) {
             return null;
         }

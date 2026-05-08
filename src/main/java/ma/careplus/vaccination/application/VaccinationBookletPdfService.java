@@ -114,16 +114,18 @@ public class VaccinationBookletPdfService {
         // Cabinet settings
         Map<String, String> cabinet = fetchCabinetSettings();
 
-        // Doctor name + specialty (V032) — try to get practitioner; fallback
+        // Doctor name + specialty (V032) — try to get practitioner; fallback.
+        // V035 : on garde l'id pour pouvoir retrouver SA signature (per-praticien).
         DoctorInfo doctor = fetchDoctorInfo();
+        UUID doctorId = doctor.userId();
 
         // Patient identity
         LocalDate birthDate = patient.getBirthDate();
         String age = birthDate != null ? computeAgeLabel(birthDate) : "";
         String genderLabel = genderLabel(patient.getGender());
 
-        // F16 — signature médecin (optionnelle)
-        SignatureBlob signature = fetchSignatureBlob();
+        // F16 + V035 — signature scannée du médecin (optionnelle, per-praticien).
+        SignatureBlob signature = fetchSignatureBlob(doctorId);
 
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
@@ -171,18 +173,23 @@ public class VaccinationBookletPdfService {
     /** Holder interne pour la signature médecin lue en base. */
     private record SignatureBlob(String base64, String mime) {}
 
-    /** F16 — signature scannée du médecin, encodée base64 pour data URL. */
-    private SignatureBlob fetchSignatureBlob() {
+    /**
+     * F16 + V035 — signature scannée du médecin, lue depuis sa ligne identity_user
+     * (per-praticien) et encodée base64 pour data URL. Renvoie null si la signature
+     * n'est pas configurée — le template se rabat sur le cachet texte.
+     */
+    private SignatureBlob fetchSignatureBlob(UUID practitionerId) {
+        if (practitionerId == null) return null;
         try {
             return jdbc.queryForObject(
-                    "SELECT signature_blob, signature_mime "
-                            + "FROM configuration_clinic_settings LIMIT 1",
+                    "SELECT signature_blob, signature_mime FROM identity_user WHERE id = ?",
                     (rs, i) -> {
                         byte[] blob = rs.getBytes("signature_blob");
                         String mime = rs.getString("signature_mime");
                         if (blob == null || mime == null) return null;
                         return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
-                    });
+                    },
+                    practitionerId);
         } catch (Exception e) {
             return null;
         }
@@ -231,24 +238,25 @@ public class VaccinationBookletPdfService {
         };
     }
 
-    /** V032 — bundle holder for the practitioner full name + specialty. */
-    private record DoctorInfo(String fullName, String specialty) {}
+    /** V032/V035 — bundle holder for the practitioner id + full name + specialty. */
+    private record DoctorInfo(UUID userId, String fullName, String specialty) {}
 
     private DoctorInfo fetchDoctorInfo() {
         try {
             // Fetch the first MEDECIN user as default doctor for the booklet header
             return jdbc.queryForObject(
-                    "SELECT u.first_name, u.last_name, u.specialty "
+                    "SELECT u.id, u.first_name, u.last_name, u.specialty "
                     + "FROM identity_user u "
                     + "JOIN identity_user_role ur ON ur.user_id = u.id "
                     + "JOIN identity_role r ON r.id = ur.role_id "
                     + "WHERE r.code = 'MEDECIN' AND u.enabled = TRUE "
                     + "ORDER BY u.created_at LIMIT 1",
                     (rs, i) -> new DoctorInfo(
+                            (UUID) rs.getObject("id"),
                             rs.getString("first_name") + " " + rs.getString("last_name"),
                             rs.getString("specialty")));
         } catch (Exception e) {
-            return new DoctorInfo("Dr.", null);
+            return new DoctorInfo(null, "Dr.", null);
         }
     }
 

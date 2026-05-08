@@ -1,16 +1,16 @@
 /**
- * F16 — gestion de la signature scannée du médecin (Paramétrage cabinet).
+ * F16 + V035 — gestion de la signature scannée par MÉDECIN (per-praticien
+ * depuis 2026-05-08). Sans argument, opère sur l'utilisateur connecté ; avec
+ * un argument, sur le médecin ciblé (ADMIN peut éditer celle de tout le monde).
  *
- * - GET  /api/settings/signature/meta : métadonnées (mime + date + taille)
- * - PUT  /api/settings/signature       : upload multipart, ADMIN seul
- * - DELETE /api/settings/signature     : suppression, ADMIN seul
- *
- * L'aperçu visuel utilise l'URL `/api/settings/signature` (Authorization
- * header attaché par axios via interceptor) chargée comme blob via fetch
- * pour pouvoir mettre la balise <img src=".."> avec un objectURL.
+ * - GET  /api/practitioners/{id}/signature/meta : métadonnées (mime + date + taille)
+ * - GET  /api/practitioners/{id}/signature       : bytes bruts (pour aperçu)
+ * - PUT  /api/practitioners/{id}/signature       : upload multipart (self ou ADMIN)
+ * - DELETE /api/practitioners/{id}/signature     : suppression (self ou ADMIN)
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 export interface SignatureMeta {
   mime: string;
@@ -18,15 +18,19 @@ export interface SignatureMeta {
   sizeBytes: number;
 }
 
-export const SIGNATURE_QUERY_KEY = ['cabinet-signature-meta'] as const;
-export const SIGNATURE_PREVIEW_KEY = ['cabinet-signature-preview'] as const;
+const META_KEY = 'practitioner-signature-meta';
+const PREVIEW_KEY = 'practitioner-signature-preview';
 
-export function useSignatureMeta() {
+export function useSignatureMeta(targetPractitionerId?: string) {
+  const fallbackId = useAuthStore((s) => s.user?.id);
+  const id = targetPractitionerId ?? fallbackId;
+
   const { data, isLoading } = useQuery({
-    queryKey: SIGNATURE_QUERY_KEY,
+    queryKey: [META_KEY, id],
+    enabled: !!id,
     queryFn: () =>
       api
-        .get<SignatureMeta>('/settings/signature/meta')
+        .get<SignatureMeta>(`/practitioners/${id}/signature/meta`)
         .then((r) => (r.status === 204 ? null : r.data))
         .catch(() => null),
     staleTime: 30_000,
@@ -38,12 +42,17 @@ export function useSignatureMeta() {
  * Récupère les bytes en blob et renvoie un object URL utilisable dans `<img src>`.
  * Re-fetch à chaque changement de meta (cache-busting via uploadedAt).
  */
-export function useSignaturePreviewUrl(meta: SignatureMeta | null) {
+export function useSignaturePreviewUrl(meta: SignatureMeta | null, targetPractitionerId?: string) {
+  const fallbackId = useAuthStore((s) => s.user?.id);
+  const id = targetPractitionerId ?? fallbackId;
+
   const { data } = useQuery({
-    queryKey: [...SIGNATURE_PREVIEW_KEY, meta?.uploadedAt ?? null],
-    enabled: !!meta,
+    queryKey: [PREVIEW_KEY, id, meta?.uploadedAt ?? null],
+    enabled: !!meta && !!id,
     queryFn: async () => {
-      const res = await api.get<Blob>('/settings/signature', { responseType: 'blob' });
+      const res = await api.get<Blob>(`/practitioners/${id}/signature`, {
+        responseType: 'blob',
+      });
       if (res.status === 204) return null;
       return URL.createObjectURL(res.data);
     },
@@ -52,33 +61,37 @@ export function useSignaturePreviewUrl(meta: SignatureMeta | null) {
   return data ?? null;
 }
 
-export function useUploadSignature() {
+export function useUploadSignature(targetPractitionerId?: string) {
+  const fallbackId = useAuthStore((s) => s.user?.id);
+  const id = targetPractitionerId ?? fallbackId;
   const qc = useQueryClient();
   const mutation = useMutation({
     mutationFn: async (file: File) => {
       const fd = new FormData();
       fd.append('file', file);
-      const r = await api.put<SignatureMeta>('/settings/signature', fd, {
+      const r = await api.put<SignatureMeta>(`/practitioners/${id}/signature`, fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       return r.data;
     },
     onSuccess: (meta) => {
-      qc.setQueryData(SIGNATURE_QUERY_KEY, meta);
-      // Force the preview blob to be re-fetched on next render.
-      void qc.invalidateQueries({ queryKey: SIGNATURE_PREVIEW_KEY });
+      qc.setQueryData([META_KEY, id], meta);
+      void qc.invalidateQueries({ queryKey: [PREVIEW_KEY, id] });
     },
   });
   return { upload: mutation.mutateAsync, isPending: mutation.isPending };
 }
 
-export function useDeleteSignature() {
+export function useDeleteSignature(targetPractitionerId?: string) {
+  const fallbackId = useAuthStore((s) => s.user?.id);
+  const id = targetPractitionerId ?? fallbackId;
   const qc = useQueryClient();
   const mutation = useMutation({
-    mutationFn: () => api.delete('/settings/signature').then(() => undefined),
+    mutationFn: () =>
+      api.delete(`/practitioners/${id}/signature`).then(() => undefined),
     onSuccess: () => {
-      qc.setQueryData(SIGNATURE_QUERY_KEY, null);
-      void qc.invalidateQueries({ queryKey: SIGNATURE_PREVIEW_KEY });
+      qc.setQueryData([META_KEY, id], null);
+      void qc.invalidateQueries({ queryKey: [PREVIEW_KEY, id] });
     },
   });
   return { remove: mutation.mutateAsync, isPending: mutation.isPending };

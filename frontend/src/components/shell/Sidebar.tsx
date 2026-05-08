@@ -252,6 +252,27 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
           <button
             type="button"
             role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              window.location.href = '/profil';
+            }}
+            style={{
+              width: '100%',
+              padding: '8px 10px',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: 'var(--r-sm)',
+              textAlign: 'left',
+              fontSize: 12,
+              cursor: 'pointer',
+              color: 'var(--ink)',
+            }}
+          >
+            Mon profil
+          </button>
+          <button
+            type="button"
+            role="menuitem"
             onClick={() => void handleLogout()}
             disabled={pending}
             style={{
