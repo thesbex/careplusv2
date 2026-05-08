@@ -59,6 +59,7 @@ node_modules/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
 .claude/state/
+.claude/worktrees/
 
 # Playwright / Chrome DevTools MCP runtime caches
 .playwright-mcp/
