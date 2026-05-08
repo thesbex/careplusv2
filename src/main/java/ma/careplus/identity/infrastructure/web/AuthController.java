@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import ma.careplus.identity.application.AuthService;
 import ma.careplus.identity.application.LoginResult;
 import ma.careplus.identity.application.RefreshResult;
+import ma.careplus.identity.application.RolePermissionResolver;
 import ma.careplus.identity.infrastructure.web.dto.LoginRequest;
 import ma.careplus.identity.infrastructure.web.dto.LoginResponse;
 import ma.careplus.identity.infrastructure.web.dto.RefreshResponse;
@@ -30,13 +31,16 @@ public class AuthController {
     private final AuthService authService;
     private final UserMapper userMapper;
     private final ma.careplus.identity.application.RefreshTokenService refreshTokenService;
+    private final RolePermissionResolver rolePermissionResolver;
 
     public AuthController(AuthService authService,
                           UserMapper userMapper,
-                          ma.careplus.identity.application.RefreshTokenService refreshTokenService) {
+                          ma.careplus.identity.application.RefreshTokenService refreshTokenService,
+                          RolePermissionResolver rolePermissionResolver) {
         this.authService = authService;
         this.userMapper = userMapper;
         this.refreshTokenService = refreshTokenService;
+        this.rolePermissionResolver = rolePermissionResolver;
     }
 
     @PostMapping("/login")
@@ -51,7 +55,9 @@ public class AuthController {
 
         setRefreshCookie(httpResp, result.rawRefreshToken(), (int) refreshTokenService.refreshTtlSeconds());
 
-        UserView userView = userMapper.fromLoginResult(result);
+        java.util.Set<String> permissions = rolePermissionResolver.resolveForRoles(result.roles());
+        UserView userView = new UserView(result.userId(), result.email(), result.firstName(),
+                result.lastName(), result.roles(), permissions);
         LoginResponse response = new LoginResponse(result.accessToken(), result.expiresInSeconds(), userView);
         return ResponseEntity.ok(response);
     }
