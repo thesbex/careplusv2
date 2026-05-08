@@ -146,7 +146,15 @@ export default function AgendaPage() {
   const { appointments: monthAppointments } = useMonthAppointments(monthYear, monthIndex);
 
   // Leaves cover all views; the month grid + week/day overlay both consume them.
-  const { leaves } = useLeaves();
+  // Multi-praticien : si l'utilisateur a sélectionné UN médecin précis dans le
+  // filtre, on charge ses congés à lui plutôt que ceux du user connecté. En
+  // mode "Tous les médecins" (ALL_PRACTITIONERS) on retombe sur les congés du
+  // user connecté — agréger N agendas n'aurait pas de sens visuel et marquer
+  // un jour "Congé" sur l'overlay alors qu'un autre médecin travaille
+  // tromperait la secrétaire.
+  const leavePractitionerId =
+    practitionerFilter === ALL_PRACTITIONERS ? undefined : practitionerFilter;
+  const { leaves } = useLeaves(leavePractitionerId);
 
   // Map week's days -> Set<DayKey> currently in a leave range.
   const leaveDays = useMemo(() => {

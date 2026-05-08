@@ -28,6 +28,8 @@ import { toProblemDetail } from '@/lib/api/problemJson';
 import { useLeaves } from './hooks/useLeaves';
 import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
+import { usePractitioners } from './hooks/usePractitioners';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
 import { SignatureSettingsSection } from './components/SignatureSettingsSection';
@@ -308,9 +310,28 @@ function isFuture(endDate: string): boolean {
 }
 
 function CongesTab() {
-  const { leaves, isLoading, error } = useLeaves();
-  const { createLeave, isPending, error: createError } = useCreateLeave();
-  const { deleteLeave, isDeletingId } = useDeleteLeave();
+  // Multi-praticien : si plusieurs MEDECIN actifs sont visibles, on expose un
+  // selector pour gérer les congés de l'un d'eux. Le MEDECIN connecté est
+  // pré-sélectionné par défaut (donc en mode solo, l'expérience reste la
+  // même qu'avant : tu gères tes propres congés sans rien voir d'extra).
+  const currentUser = useAuthStore((s) => s.user);
+  const { practitioners } = usePractitioners();
+  const activePractitioners = practitioners.filter((p) => p.active);
+  const showPractitionerSelector = activePractitioners.length >= 2;
+  const isMedecin = (currentUser?.roles ?? []).includes('MEDECIN');
+  const defaultPractitionerId =
+    isMedecin && currentUser?.id
+      ? currentUser.id
+      : (activePractitioners[0]?.id ?? '');
+  const [practitionerId, setPractitionerId] = useState<string>(defaultPractitionerId);
+  // Synchroniser dès que la liste arrive (premier rendu = liste vide → fallback)
+  useEffect(() => {
+    if (!practitionerId && defaultPractitionerId) setPractitionerId(defaultPractitionerId);
+  }, [defaultPractitionerId, practitionerId]);
+
+  const { leaves, isLoading, error } = useLeaves(practitionerId || undefined);
+  const { createLeave, isPending, error: createError } = useCreateLeave(practitionerId || undefined);
+  const { deleteLeave, isDeletingId } = useDeleteLeave(practitionerId || undefined);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [reason, setReason] = useState('');
@@ -337,6 +358,34 @@ function CongesTab() {
     <Panel>
       <PanelHeader>Congés &amp; absences</PanelHeader>
       <div style={{ padding: 16 }}>
+        {showPractitionerSelector && (
+          <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <FieldLabel htmlFor="leave-practitioner" style={{ marginBottom: 0 }}>Médecin</FieldLabel>
+            <select
+              id="leave-practitioner"
+              aria-label="Sélectionner le médecin"
+              value={practitionerId}
+              onChange={(e) => setPractitionerId(e.target.value)}
+              style={{
+                height: 36,
+                padding: '0 10px',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                background: 'var(--bg)',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                minWidth: 240,
+              }}
+            >
+              {activePractitioners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Dr {p.lastName} {p.firstName}
+                  {p.specialty ? ` — ${p.specialty}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <form onSubmit={(e) => { void handleSubmit(e); }}>
           <div className="params-leave-form">
             <Field>

@@ -9,17 +9,23 @@ export interface CreateLeavePayload {
   reason?: string;
 }
 
-export function useCreateLeave() {
+/**
+ * Crée un congé pour le praticien indiqué (ou le user connecté si omis).
+ * Multi-praticien : un secrétaire peut planifier un congé pour un médecin
+ * tiers via le selector du tab Congés.
+ */
+export function useCreateLeave(practitionerId?: string) {
   const queryClient = useQueryClient();
-  const userId = useAuthStore((s) => s.user?.id);
+  const fallbackUserId = useAuthStore((s) => s.user?.id);
+  const targetId = practitionerId ?? fallbackUserId;
 
   const mutation = useMutation({
     mutationFn: (payload: CreateLeavePayload) =>
       api
-        .post<Leave>(`/practitioners/${userId}/leaves`, payload)
+        .post<Leave>(`/practitioners/${targetId}/leaves`, payload)
         .then((r) => r.data),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['leaves', userId] });
+      void queryClient.invalidateQueries({ queryKey: ['leaves', targetId] });
       void queryClient.invalidateQueries({ queryKey: ['availability-month'] });
       void queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
