@@ -160,6 +160,11 @@
     <!-- HEADER -->
     <div class="header">
         <div class="header-left">
+            <!-- V037 — logo établissement (optionnel) à gauche, nom + meta à droite -->
+            <img th:if="${cabinetLogoBase64 != null}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;"
+                 alt="Logo"/>
             <div class="cabinet-name" th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">Cabinet Médical</div>
             <div class="cabinet-meta">
                 <span th:text="${cabinet.address}">Adresse</span><br/>

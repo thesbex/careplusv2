@@ -64,7 +64,9 @@ public class SettingsController {
             /** V034 — true si le service de radiologie est interne (sera utilisé par le routing prescription). */
             boolean imagingInternal,
             /** V034 — true si le laboratoire d'analyses est interne. */
-            boolean labInternal
+            boolean labInternal,
+            /** V037 — true si un logo est configuré (bytes accessibles via GET /api/settings/clinic/logo). */
+            boolean hasLogo
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -110,7 +112,8 @@ public class SettingsController {
         try {
             ClinicSettingsView v = jdbc.queryForObject(
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
-                            + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal "
+                            + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
+                            + "(logo_blob IS NOT NULL) AS has_logo "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -126,7 +129,8 @@ public class SettingsController {
                             rs.getBoolean("agenda_strict_isolation"),
                             rs.getString("establishment_type"),
                             rs.getBoolean("imaging_internal"),
-                            rs.getBoolean("lab_internal")));
+                            rs.getBoolean("lab_internal"),
+                            rs.getBoolean("has_logo")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -207,12 +211,16 @@ public class SettingsController {
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal);
         }
+        boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
+                "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
+                Boolean.class, id));
         return new ClinicSettingsView(
                 id, req.name(), req.address(), req.city(), req.phone(),
                 nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                 nullIfBlank(req.rib()), finalAgendaIsolation,
-                finalEstablishmentType, finalImagingInternal, finalLabInternal);
+                finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                hasLogo);
     }
 
     // ── Tier discount ─────────────────────────────────────────────────────────
@@ -443,6 +451,150 @@ public class SettingsController {
                 "UPDATE configuration_clinic_settings "
                         + "SET signature_blob = NULL, signature_mime = NULL, "
                         + "    signature_uploaded_at = NULL, updated_at = now()");
+        return ResponseEntity.noContent().build();
+    }
+
+    // ── Logo établissement (V037) ─────────────────────────────────────────────
+    //
+    // Stocké dans configuration_clinic_settings.logo_blob (BYTEA), avec son MIME
+    // et son horodatage. Pattern identique à la signature médecin (V031/V035) :
+    // bytes en DB, single-row, validation taille + MIME côté backend.
+    //
+    // Le logo est ensuite injecté en base64 dans le contexte Thymeleaf de chaque
+    // PDF (ordonnance, certificat, carnet vaccination) — header gauche.
+
+    /** MIME types autorisés pour le logo. Pas de SVG en v1 (cf. design doc — BACKLOG). */
+    private static final Set<String> LOGO_ALLOWED_MIMES = Set.of(
+            "image/png", "image/jpeg");
+
+    /** Limite stricte côté backend, indépendante de la limite multipart globale. */
+    private static final long LOGO_MAX_BYTES = 500L * 1024L; // 500 Ko
+
+    public record LogoMetaView(String mime, OffsetDateTime uploadedAt, int sizeBytes) {}
+
+    /**
+     * GET /api/settings/clinic/logo/meta — métadonnées (existence + MIME + date).
+     * Tous rôles auth. 204 si pas de logo configuré. Permet au frontend d'afficher
+     * un état "Aucun logo" sans tirer les bytes.
+     */
+    @GetMapping("/api/settings/clinic/logo/meta")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<LogoMetaView> getLogoMeta() {
+        try {
+            LogoMetaView v = jdbc.queryForObject(
+                    "SELECT logo_mime, logo_uploaded_at, "
+                            + "COALESCE(octet_length(logo_blob), 0) AS sz "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        String mime = rs.getString("logo_mime");
+                        if (mime == null) return null;
+                        OffsetDateTime ts = rs.getObject("logo_uploaded_at", OffsetDateTime.class);
+                        return new LogoMetaView(mime, ts, rs.getInt("sz"));
+                    });
+            if (v == null) {
+                return ResponseEntity.noContent().build();
+            }
+            return ResponseEntity.ok(v);
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    /**
+     * GET /api/settings/clinic/logo — bytes bruts (image/png|jpeg).
+     * 204 si pas de logo configuré. Tous rôles auth.
+     */
+    @GetMapping("/api/settings/clinic/logo")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<byte[]> getLogo() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT logo_blob, logo_mime "
+                            + "FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("logo_blob");
+                        String mime = rs.getString("logo_mime");
+                        if (blob == null || mime == null) {
+                            return ResponseEntity.<byte[]>noContent().build();
+                        }
+                        return ResponseEntity.ok()
+                                .contentType(MediaType.parseMediaType(mime))
+                                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                                .body(blob);
+                    });
+        } catch (EmptyResultDataAccessException e) {
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    /**
+     * PUT /api/settings/clinic/logo — upload (multipart/form-data, champ "file").
+     * ADMIN seul. Validations :
+     *   • MIME ∈ {image/png, image/jpeg}
+     *   • taille ≤ 500 Ko
+     */
+    @PutMapping(value = "/api/settings/clinic/logo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<LogoMetaView> uploadLogo(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("LOGO-EMPTY", "Fichier vide.", 400);
+        }
+        String mime = file.getContentType();
+        if (mime == null || !LOGO_ALLOWED_MIMES.contains(mime.toLowerCase())) {
+            throw new BusinessException("LOGO-MIME",
+                    "Format non autorisé. Utiliser PNG ou JPEG.", 400);
+        }
+        if (file.getSize() > LOGO_MAX_BYTES) {
+            throw new BusinessException("LOGO-TOO-BIG",
+                    "Image trop volumineuse (max 500 Ko).", 400);
+        }
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException e) {
+            throw new BusinessException("LOGO-IO",
+                    "Lecture du fichier impossible.", 400);
+        }
+        if (bytes.length > LOGO_MAX_BYTES) {
+            throw new BusinessException("LOGO-TOO-BIG",
+                    "Image trop volumineuse (max 500 Ko).", 400);
+        }
+
+        // Upsert : crée la ligne cabinet vide si elle n'existe pas encore — cas
+        // d'un onboarding où l'admin configure d'abord le logo avant l'identité.
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
+        if (existing == null || existing == 0) {
+            jdbc.update(
+                    "INSERT INTO configuration_clinic_settings "
+                            + "(id, name, address, city, phone, logo_blob, logo_mime, logo_uploaded_at) "
+                            + "VALUES (?, '', '', '', '', ?, ?, now())",
+                    UUID.randomUUID(), bytes, mime.toLowerCase());
+        } else {
+            jdbc.update(
+                    "UPDATE configuration_clinic_settings "
+                            + "SET logo_blob = ?, logo_mime = ?, "
+                            + "    logo_uploaded_at = now(), updated_at = now()",
+                    bytes, mime.toLowerCase());
+        }
+
+        OffsetDateTime ts = jdbc.queryForObject(
+                "SELECT logo_uploaded_at FROM configuration_clinic_settings LIMIT 1",
+                OffsetDateTime.class);
+        return ResponseEntity.ok(new LogoMetaView(mime.toLowerCase(), ts, bytes.length));
+    }
+
+    /**
+     * DELETE /api/settings/clinic/logo — supprime le logo configuré.
+     * ADMIN seul. 204 même si aucun logo n'existait (idempotent).
+     */
+    @DeleteMapping("/api/settings/clinic/logo")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteLogo() {
+        jdbc.update(
+                "UPDATE configuration_clinic_settings "
+                        + "SET logo_blob = NULL, logo_mime = NULL, "
+                        + "    logo_uploaded_at = NULL, updated_at = now()");
         return ResponseEntity.noContent().build();
     }
 

@@ -125,6 +125,11 @@ public class PrescriptionPdfService {
         // donc on la charge à partir de l'ID praticien de la consultation.
         SignatureBlob signature = fetchSignatureBlob(consultation.getPractitionerId());
 
+        // V037 — logo établissement (optionnel). Pattern identique à la signature :
+        // base64 + MIME injectés en variables Thymeleaf, le template fait la
+        // condition (logo absent → fallback texte seul).
+        SignatureBlob logo = fetchClinicLogoBlob();
+
         // Build Thymeleaf context
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
@@ -134,6 +139,8 @@ public class PrescriptionPdfService {
         ctx.setVariable("specialty", doctor.specialty());
         ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
+        ctx.setVariable("cabinetLogoBase64", logo != null ? logo.base64() : null);
+        ctx.setVariable("cabinetLogoMime", logo != null ? logo.mime() : null);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", patient.getBirthDate() != null
@@ -225,6 +232,28 @@ public class PrescriptionPdfService {
                         return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
                     },
                     practitionerId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * V037 — lit le logo de l'établissement depuis
+     * {@code configuration_clinic_settings.logo_blob} et l'encode en base64
+     * pour l'embed direct dans le HTML (data URL). Renvoie {@code null} si
+     * la colonne est NULL — le template tombe alors sur le rendu texte seul.
+     * Réutilise le record {@link SignatureBlob} (juste un container base64+mime).
+     */
+    private SignatureBlob fetchClinicLogoBlob() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT logo_blob, logo_mime FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("logo_blob");
+                        String mime = rs.getString("logo_mime");
+                        if (blob == null || mime == null) return null;
+                        return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
+                    });
         } catch (Exception e) {
             return null;
         }

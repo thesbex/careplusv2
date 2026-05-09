@@ -26,6 +26,8 @@ export interface ClinicSettings {
   imagingInternal?: boolean;
   /** V034 — capacité laboratoire interne. */
   labInternal?: boolean;
+  /** V037 — true si un logo est configuré (bytes via GET /settings/clinic/logo). */
+  hasLogo?: boolean;
 }
 
 export interface ClinicSettingsForm {

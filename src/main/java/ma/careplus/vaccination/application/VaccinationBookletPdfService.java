@@ -127,6 +127,9 @@ public class VaccinationBookletPdfService {
         // F16 + V035 — signature scannée du médecin (optionnelle, per-praticien).
         SignatureBlob signature = fetchSignatureBlob(doctorId);
 
+        // V037 — logo établissement (optionnel) injecté en data URL dans le header.
+        SignatureBlob logo = fetchClinicLogoBlob();
+
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
         ctx.setVariable("doctor", Map.of("fullName", doctor.fullName()));
@@ -135,6 +138,8 @@ public class VaccinationBookletPdfService {
         ctx.setVariable("specialty", doctor.specialty());
         ctx.setVariable("signatureBase64", signature != null ? signature.base64() : null);
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
+        ctx.setVariable("cabinetLogoBase64", logo != null ? logo.base64() : null);
+        ctx.setVariable("cabinetLogoMime", logo != null ? logo.mime() : null);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", birthDate != null ? birthDate.format(DATE_FMT) : "",
@@ -190,6 +195,26 @@ public class VaccinationBookletPdfService {
                         return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
                     },
                     practitionerId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * V037 — logo établissement, encodé base64 pour data URL. Renvoie null si
+     * la colonne est NULL — le template tombe sur le rendu texte seul.
+     * Réutilise le record {@link SignatureBlob} (container générique base64+mime).
+     */
+    private SignatureBlob fetchClinicLogoBlob() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT logo_blob, logo_mime FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        byte[] blob = rs.getBytes("logo_blob");
+                        String mime = rs.getString("logo_mime");
+                        if (blob == null || mime == null) return null;
+                        return new SignatureBlob(Base64.getEncoder().encodeToString(blob), mime);
+                    });
         } catch (Exception e) {
             return null;
         }
