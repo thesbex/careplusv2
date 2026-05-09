@@ -84,6 +84,20 @@ public class PrescriptionLine {
     @Column(name = "result_document_id")
     private UUID resultDocumentId;
 
+    /**
+     * V038 — workflow interne LAB/IMAGING. NULL = ligne externe (bon papier
+     * classique). Sinon transitions PENDING → IN_PROGRESS → DONE/CANCELLED
+     * pilotées par InternalRequestService.
+     */
+    @Column(name = "internal_status", length = 16)
+    private String internalStatus;
+
+    @Column(name = "internal_assigned_at", columnDefinition = "TIMESTAMPTZ")
+    private OffsetDateTime internalAssignedAt;
+
+    @Column(name = "internal_claimed_by")
+    private UUID internalClaimedBy;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -139,6 +153,12 @@ public class PrescriptionLine {
     public void setPosition(int position) { this.position = position; }
     public UUID getResultDocumentId() { return resultDocumentId; }
     public void setResultDocumentId(UUID resultDocumentId) { this.resultDocumentId = resultDocumentId; }
+    public String getInternalStatus() { return internalStatus; }
+    public void setInternalStatus(String internalStatus) { this.internalStatus = internalStatus; }
+    public OffsetDateTime getInternalAssignedAt() { return internalAssignedAt; }
+    public void setInternalAssignedAt(OffsetDateTime internalAssignedAt) { this.internalAssignedAt = internalAssignedAt; }
+    public UUID getInternalClaimedBy() { return internalClaimedBy; }
+    public void setInternalClaimedBy(UUID internalClaimedBy) { this.internalClaimedBy = internalClaimedBy; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

@@ -13,5 +13,7 @@ public record PrescriptionLineRequest(
         String route,
         String timing,
         Integer quantity,
-        String instructions
+        String instructions,
+        /** V038 — true pour router cette ligne LAB/IMAGING en interne (queue technicien). */
+        Boolean internal
 ) {}

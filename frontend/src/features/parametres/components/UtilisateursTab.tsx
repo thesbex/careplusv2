@@ -27,8 +27,9 @@ import {
   type AdminUser,
 } from '../hooks/useUsers';
 import { usePractitioners } from '../hooks/usePractitioners';
+import { useClinicSettings } from '../hooks/useSettings';
 
-type UserRole = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN';
+type UserRole = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN' | 'LAB' | 'RADIO';
 
 interface UserDraft {
   email: string;
@@ -64,6 +65,11 @@ export function UtilisateursTab() {
   const activePractitioners = practitioners.filter((p) => p.active);
   const allActiveIds = activePractitioners.map((p) => p.id);
   const showAssignmentSection = activePractitioners.length >= 2;
+  // V038 — rôles LAB / RADIO disponibles uniquement si le service correspondant
+  // est marqué interne dans paramètres > Cabinet > Services internes.
+  const { settings } = useClinicSettings();
+  const labInternalActive = !!settings?.labInternal;
+  const imagingInternalActive = !!settings?.imagingInternal;
 
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -292,6 +298,12 @@ export function UtilisateursTab() {
                 <option value="ASSISTANT">Assistant(e)</option>
                 <option value="MEDECIN">Médecin</option>
                 <option value="ADMIN">Administrateur</option>
+                {labInternalActive && (
+                  <option value="LAB">Technicien laboratoire</option>
+                )}
+                {imagingInternalActive && (
+                  <option value="RADIO">Technicien radiologie</option>
+                )}
               </select>
             </Field>
             <Field>

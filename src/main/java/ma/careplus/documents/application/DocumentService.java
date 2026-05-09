@@ -235,6 +235,14 @@ public class DocumentService {
                 "UPDATE clinical_prescription_line SET result_document_id = ?, updated_at = now() WHERE id = ?",
                 saved.getId(), lineId);
 
+        // V038 — auto-transition vers DONE si la ligne était dans le workflow
+        // interne (PENDING ou IN_PROGRESS). N'écrase pas un CANCELLED.
+        jdbc.update(
+                "UPDATE clinical_prescription_line "
+                        + "SET internal_status = 'DONE', updated_at = now() "
+                        + "WHERE id = ? AND internal_status IN ('PENDING','IN_PROGRESS')",
+                lineId);
+
         return saved;
     }
 

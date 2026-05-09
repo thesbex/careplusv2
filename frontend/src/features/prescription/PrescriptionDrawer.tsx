@@ -13,6 +13,7 @@ import {
   useCreatePrescription,
   AllergyConflictError,
 } from './hooks/useCreatePrescription';
+import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import { PrescriptionTemplatePicker } from './components/PrescriptionTemplatePicker';
 import { PdfGenerationOverlay } from './components/PdfGenerationOverlay';
 import type {
@@ -63,9 +64,15 @@ export function PrescriptionDrawer({
   const [recommendations, setRecommendations] = useState('');
   const [conflict, setConflict] = useState<{ medication: string; allergy: string } | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  // V038 — toggle "Réaliser en interne" pour LAB/IMAGING.
+  const [internalRouting, setInternalRouting] = useState(false);
   const searchWrapRef = useRef<HTMLDivElement | null>(null);
 
   const { results, isFetching, hasQuery } = useCatalogSearch(type, query);
+  const { settings } = useClinicSettings();
+  const internalToggleVisible =
+    (type === 'LAB' && !!settings?.labInternal)
+    || (type === 'IMAGING' && !!settings?.imagingInternal);
 
   useEffect(() => {
     if (!suggestOpen) return;
@@ -144,6 +151,7 @@ export function PrescriptionDrawer({
         allergyOverride,
       };
       if (allergyOverride) payload.allergyOverrideReason = overrideReason;
+      if (internalToggleVisible && internalRouting) payload.internal = true;
       const created = await createPrescription(payload);
       toast.success('Ordonnance créée.');
       onCreated?.(created.id);
@@ -170,6 +178,7 @@ export function PrescriptionDrawer({
     setRecommendations('');
     setConflict(null);
     setOverrideReason('');
+    setInternalRouting(false);
   }
 
   return (
@@ -298,6 +307,33 @@ export function PrescriptionDrawer({
               </>
             )}
 
+            {/* V038 — toggle "Réaliser en interne" (LAB/IMAGING quand flag actif) */}
+            {internalToggleVisible && (
+              <div
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '10px 12px',
+                  background: internalRouting ? 'var(--primary-soft)' : 'var(--bg-2, #fafafa)',
+                  margin: '12px 0',
+                }}
+              >
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                  <input
+                    type="checkbox"
+                    checked={internalRouting}
+                    onChange={(e) => setInternalRouting(e.target.checked)}
+                    aria-label="Réaliser en interne"
+                  />
+                  <strong>Réaliser en interne</strong>
+                </label>
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
+                  Si coché, la demande part dans la queue du{' '}
+                  {type === 'LAB' ? 'laboratoire' : 'service de radiologie'} interne au lieu
+                  d'imprimer un bon papier pour le patient.
+                </div>
+              </div>
+            )}
             <div className="pr-section-h">
               {type === 'DRUG'
                 ? `Médicaments (${lines.filter((l) => l.item).length})`

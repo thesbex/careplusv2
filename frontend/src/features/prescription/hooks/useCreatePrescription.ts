@@ -14,6 +14,8 @@ interface CreatePrescriptionPayload {
   lines: PrescriptionLineDraft[];
   allergyOverride?: boolean;
   allergyOverrideReason?: string;
+  /** V038 — true pour router toutes les lignes LAB/IMAGING vers la queue interne. */
+  internal?: boolean;
 }
 
 interface AllergyConflictBody {
@@ -34,7 +36,7 @@ export class AllergyConflictError extends Error {
   }
 }
 
-function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[]) {
+function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[], internal: boolean) {
   return lines
     .filter((l) => l.item !== null || l.dosage.length > 0 || l.instructions.length > 0)
     .map((l) => {
@@ -51,6 +53,8 @@ function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[]) {
         timing: null,
         quantity: l.quantity,
         instructions: l.instructions || null,
+        // V038 — only LAB / IMAGING lines participate in internal routing.
+        internal: (type === 'LAB' || type === 'IMAGING') && internal,
       };
     });
 }
@@ -65,7 +69,7 @@ export function useCreatePrescription() {
           `/consultations/${payload.consultationId}/prescriptions`,
           {
             type: payload.type,
-            lines: linesToApi(payload.type, payload.lines),
+            lines: linesToApi(payload.type, payload.lines, !!payload.internal),
             allergyOverride: payload.allergyOverride ?? false,
             allergyOverrideReason: payload.allergyOverrideReason ?? null,
           },

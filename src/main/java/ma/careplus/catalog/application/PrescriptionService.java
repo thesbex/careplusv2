@@ -1,5 +1,6 @@
 package ma.careplus.catalog.application;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.catalog.domain.Medication;
@@ -18,6 +19,7 @@ import ma.careplus.patient.domain.Allergy;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,17 +42,20 @@ public class PrescriptionService {
     private final ConsultationRepository consultationRepository;
     private final CatalogService catalogService;
     private final PatientService patientService;
+    private final JdbcTemplate jdbc;
 
     public PrescriptionService(PrescriptionRepository prescriptionRepository,
                                PrescriptionLineRepository prescriptionLineRepository,
                                ConsultationRepository consultationRepository,
                                CatalogService catalogService,
-                               PatientService patientService) {
+                               PatientService patientService,
+                               JdbcTemplate jdbc) {
         this.prescriptionRepository = prescriptionRepository;
         this.prescriptionLineRepository = prescriptionLineRepository;
         this.consultationRepository = consultationRepository;
         this.catalogService = catalogService;
         this.patientService = patientService;
+        this.jdbc = jdbc;
     }
 
     public Prescription createPrescription(UUID consultationId, PrescriptionRequest req, UUID createdBy) {
@@ -114,6 +119,10 @@ public class PrescriptionService {
         prescription.setCreatedBy(createdBy);
         prescriptionRepository.save(prescription);
 
+        // V038 — flags services internes (lus une fois par requête, single-row).
+        boolean labInternalActive = readBooleanFlag("lab_internal");
+        boolean imagingInternalActive = readBooleanFlag("imaging_internal");
+
         // Save lines
         if (req.lines() != null) {
             int order = 0;
@@ -134,12 +143,35 @@ public class PrescriptionService {
                 line.setInstructions(lineReq.instructions());
                 line.setSortOrder(order);
                 line.setPosition(order);
+                // V038 — routing interne quand le médecin a coché ET que la ligne
+                // est LAB ou IMAGING ET que le flag établissement correspondant
+                // est actif. Sinon ignoré (le bon papier classique sort).
+                if (Boolean.TRUE.equals(lineReq.internal())) {
+                    boolean isLab = lineReq.labTestId() != null;
+                    boolean isImaging = lineReq.imagingExamId() != null;
+                    if ((isLab && labInternalActive) || (isImaging && imagingInternalActive)) {
+                        line.setInternalStatus("PENDING");
+                        line.setInternalAssignedAt(OffsetDateTime.now());
+                    }
+                }
                 prescriptionLineRepository.save(line);
                 order++;
             }
         }
 
         return prescription;
+    }
+
+    /** V038 — lit un drapeau booléen sur configuration_clinic_settings (single-row). */
+    private boolean readBooleanFlag(String column) {
+        try {
+            Boolean v = jdbc.queryForObject(
+                    "SELECT " + column + " FROM configuration_clinic_settings LIMIT 1",
+                    Boolean.class);
+            return Boolean.TRUE.equals(v);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Transactional(readOnly = true)

@@ -126,6 +126,7 @@ public class PrescriptionController {
                 line.getQuantity(),
                 line.getInstructions(),
                 line.getSortOrder(),
-                line.getResultDocumentId());
+                line.getResultDocumentId(),
+                line.getInternalStatus());
     }
 }
