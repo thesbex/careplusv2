@@ -57,7 +57,7 @@ public class SettingsController {
             String cnom,
             String ice,
             String rib,
-            /** V032 — when true, agendas are filtered per-practitioner via identity_user_assignment. */
+            /** V032 — when true, agendas + vaccination queue are filtered per-practitioner. */
             boolean agendaStrictIsolation,
             /** V034 — CABINET / CLINIQUE / HOPITAL / CENTRE_MEDICAL / AUTRE. Drives header label in IHM + PDFs. */
             String establishmentType,
@@ -65,6 +65,8 @@ public class SettingsController {
             boolean imagingInternal,
             /** V034 — true si le laboratoire d'analyses est interne. */
             boolean labInternal,
+            /** V036 — codes de rôle autorisés à voir les patients sans médecin référent vaccination. */
+            List<String> vaccinationOrphanVisibleRoles,
             /** V037 — true si un logo est configuré (bytes accessibles via GET /api/settings/clinic/logo). */
             boolean hasLogo
     ) {}
@@ -91,7 +93,13 @@ public class SettingsController {
             /** V034 — capacité radiologie interne. Optional : null = pas de changement. */
             Boolean imagingInternal,
             /** V034 — capacité laboratoire interne. Optional : null = pas de changement. */
-            Boolean labInternal
+            Boolean labInternal,
+            /**
+             * V036 — codes de rôle autorisés à voir les patients sans médecin référent vaccination
+             * (applicable seulement quand agenda_strict_isolation = TRUE). Valeurs acceptées :
+             * MEDECIN, ADMIN, SECRETAIRE, ASSISTANT. Optional : null = pas de changement.
+             */
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> vaccinationOrphanVisibleRoles
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -113,6 +121,7 @@ public class SettingsController {
             ClinicSettingsView v = jdbc.queryForObject(
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
+                            + "vaccination_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
@@ -130,6 +139,7 @@ public class SettingsController {
                             rs.getString("establishment_type"),
                             rs.getBoolean("imaging_internal"),
                             rs.getBoolean("lab_internal"),
+                            readStringArray(rs, "vaccination_orphan_visible_roles"),
                             rs.getBoolean("has_logo")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
@@ -151,6 +161,7 @@ public class SettingsController {
         String finalEstablishmentType;
         boolean finalImagingInternal;
         boolean finalLabInternal;
+        List<String> finalOrphanRoles;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
@@ -182,17 +193,26 @@ public class SettingsController {
             } else {
                 finalLabInternal = req.labInternal();
             }
+            if (req.vaccinationOrphanVisibleRoles() == null) {
+                finalOrphanRoles = jdbc.queryForObject(
+                        "SELECT vaccination_orphan_visible_roles FROM configuration_clinic_settings WHERE id = ?",
+                        (rs, i) -> readStringArray(rs, "vaccination_orphan_visible_roles"), id);
+            } else {
+                finalOrphanRoles = List.copyOf(req.vaccinationOrphanVisibleRoles());
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
                             + "agenda_strict_isolation=?, establishment_type=?, "
-                            + "imaging_internal=?, lab_internal=?, updated_at=now() "
+                            + "imaging_internal=?, lab_internal=?, "
+                            + "vaccination_orphan_visible_roles=?, updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
-                    finalEstablishmentType, finalImagingInternal, finalLabInternal, id);
+                    finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                    finalOrphanRoles.toArray(String[]::new), id);
         } else {
             id = UUID.randomUUID();
             // First-row insert: respect the caller value if provided, else defaults.
@@ -200,16 +220,21 @@ public class SettingsController {
             finalEstablishmentType = req.establishmentType() != null ? req.establishmentType() : "CABINET";
             finalImagingInternal = Boolean.TRUE.equals(req.imagingInternal());
             finalLabInternal = Boolean.TRUE.equals(req.labInternal());
+            finalOrphanRoles = req.vaccinationOrphanVisibleRoles() != null
+                    ? List.copyOf(req.vaccinationOrphanVisibleRoles())
+                    : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
-                            + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
+                            + " vaccination_orphan_visible_roles) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
-                    finalEstablishmentType, finalImagingInternal, finalLabInternal);
+                    finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                    finalOrphanRoles.toArray(String[]::new));
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
@@ -220,7 +245,16 @@ public class SettingsController {
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                 nullIfBlank(req.rib()), finalAgendaIsolation,
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
-                hasLogo);
+                finalOrphanRoles, hasLogo);
+    }
+
+    /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */
+    private static List<String> readStringArray(java.sql.ResultSet rs, String col) throws java.sql.SQLException {
+        java.sql.Array arr = rs.getArray(col);
+        if (arr == null) return List.of();
+        Object raw = arr.getArray();
+        if (raw instanceof String[] strs) return List.of(strs);
+        return List.of();
     }
 
     // ── Tier discount ─────────────────────────────────────────────────────────

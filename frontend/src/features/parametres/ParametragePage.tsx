@@ -37,6 +37,7 @@ import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab'
 import { LogoSettingsSection } from './components/LogoSettingsSection';
 import { RoomsManagementSection } from './components/RoomsManagementSection';
 import { AgendaIsolationToggle } from './components/AgendaIsolationToggle';
+import { VaccinationOrphanRolesPanel } from './components/VaccinationOrphanRolesPanel';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
@@ -296,6 +297,8 @@ function CabinetTab() {
     <RoomsManagementSection />
     <div style={{ height: 16 }} />
     <AgendaIsolationToggle />
+    <div style={{ height: 16 }} />
+    <VaccinationOrphanRolesPanel />
     </>
   );
 }

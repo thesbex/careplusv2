@@ -10,6 +10,7 @@ import ma.careplus.vaccination.infrastructure.web.dto.QueueFilters;
 import ma.careplus.vaccination.infrastructure.web.dto.VaccinationQueueEntry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -45,7 +46,8 @@ public class VaccinationQueueController {
             @RequestParam(required = false) Integer ageGroupMaxMonths,
             @RequestParam(required = false) Integer upcomingHorizonDays,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "50") int size,
+            Authentication auth) {
 
         QueueFilters filters = new QueueFilters(
                 status,
@@ -57,6 +59,6 @@ public class VaccinationQueueController {
                 page,
                 size);
 
-        return ResponseEntity.ok(queueService.queue(filters));
+        return ResponseEntity.ok(queueService.queue(filters, auth));
     }
 }
