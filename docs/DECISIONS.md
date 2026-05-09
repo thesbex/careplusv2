@@ -271,6 +271,27 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 - Hors scope v1 (tracé BACKLOG `Pregnancy vertical`) : multi-fœtus structuré, carnet maternité PDF bilingue, courbes percentiles Hadlock, score risque Coopland/FMF, monitoring fœtal RCF, seuils paramétrables, sérologies déjà-immunisées, dTcaP mère par grossesse.
 - Pattern "endpoint standalone manquant" (BioPanel Option D) = 1ᵉʳ signal qu'une **prescription hors consultation** sera demandée — à promouvoir Option C au signal terrain.
 
+## ADR-032 — Cloisonnement étendu à grossesse : critère any-action + paramètre dédié, symétrie V036
+**Date**: 2026-05-09
+**Status**: accepted
+**Context**: Le toggle V032 `agenda_strict_isolation` cloisonne les agendas + la queue Vaccination (V036). La queue Grossesse `/api/pregnancies/queue` retournait toutes les grossesses EN_COURS du cabinet à tout MEDECIN connecté — un médecin Y voyait les patientes suivies par le médecin X, ce qui contredit l'attente du pilote (« en aucun cas voir les patients en attente suivi par d'autres médecins »). Brainstorming 2026-05-09 (Q1-Q3) :
+- **Q1 critère de rattachement** : (A) toute action obstétricale (déclaration / visite / écho / plan), (B) seulement visite ou écho enregistrée, (C) seulement consultation typée SUIVI_GROSSESSE.
+- **Q2 patientes orphelines** : (A) paramètre dédié `pregnancy_orphan_visible_roles`, (B) paramètre commun renommé `patient_orphan_visible_roles` partagé avec vaccination, (C) toujours invisible sauf bypass.
+- **Q3 réaffectation Dr A → Dr Z (congés)** : (A) cumulatif implicite (tout médecin qui agit se rattache, parité V036), (B) un seul `lead_practitioner_id` + UI « Transférer », (C) cumulatif + UI « Quitter le suivi ».
+
+**Choice**:
+1. Q1 → **A toute action obstétricale**. Symétrie exacte V036 vaccination (`administered_by` OU `created_by`). Sources : `pregnancy.created_by`, `pregnancy_visit.recorded_by`/`created_by`, `pregnancy_ultrasound.recorded_by`/`created_by`, `pregnancy_visit_plan.created_by`. UNION ALL en une seule requête bulk dédupliquée en mémoire (Map<UUID, Set<UUID>>). Plus inclusif que (B) — un médecin qui ouvre le dossier sans encore visiter voit la patiente. (C) refusé : couplage fort consultation ↔ grossesse contre lequel ADR-031 a déjà tranché (« vaccination découplée v1 » même esprit).
+2. Q2 → **A paramètre dédié** `pregnancy_orphan_visible_roles VARCHAR(32)[]` sur `configuration_clinic_settings` (V039). Default = tous les rôles → comportement historique préservé. (B) cassait le nom V036 et perdait la granularité (un cabinet peut vouloir cacher orphelins vaccination aux secrétaires sans toucher grossesse). (C) bloquait des secrétaires qui ont besoin de voir pour planifier des échos.
+3. Q3 → **A cumulatif implicite**. Pas de `pregnancy.lead_practitioner_id`, pas de UI « Transférer ». Si Dr Z fait une visite pour Dr A absent, Dr Z se rattache automatiquement et continue à voir la patiente. Dr A garde aussi la trace (il a suivi la grossesse). Symétrie V036, zéro dette UI/endpoint supplémentaire.
+
+**Consequence**:
+- V039 : 1 colonne, 1 commentaire, 0 backfill (DEFAULT remplit l'existant).
+- `PregnancyQueueServiceImpl` : injection `AccessScopeService` + `JdbcTemplate`, requête bulk UNION ALL, filtre orphan/scope **avant** le calcul SA + alertes (économise les N+1 alertes coûteuses). Bypass ADMIN + bypass-1-seul-MEDECIN hérités gratuitement de `AccessScopeService`. Aucune logique dupliquée vs V036.
+- `PregnancyQueueIsolationIT` (8 scénarios) calque exact `VaccinationQueueIsolationIT` V036.
+- `SettingsController` : `ClinicSettingsView` + `UpdateClinicSettingsRequest` étendus, GET et PUT préservent `pregnancyOrphanVisibleRoles`. `PregnancyOrphanRolesSettingsIT` (6 scénarios) couvre default + persistance + RBAC + indépendance V036/V039.
+- Frontend : `VaccinationOrphanRolesPanel` refactor en `OrphanRolesPanel<{module: 'vaccination'|'pregnancy'}>` (suppression du composant vaccination-only, deux instances rendues). Hook `useAgendaIsolation` étendu sans casser ses callers.
+- Pattern réutilisable : si un module futur (radiologie interne, demandes LAB, grossesse pathologique…) doit gagner le cloisonnement strict, ajouter (i) une colonne `xxx_orphan_visible_roles` à `configuration_clinic_settings`, (ii) une requête bulk équivalente, (iii) `<OrphanRolesPanel module="xxx" />` paramétré. ADR-032 fige le squelette.
+
 ---
 
 ## How to add an entry

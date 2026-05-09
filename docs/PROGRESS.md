@@ -4,10 +4,26 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — QA wave 8 (feedback médecin pilote) traitée en 2 jours. Bugs B1-B6 + 4 trouvés en QA = 10 bugs corrigés. Features livrées : F1 Dashboard + F16 Signature PDF + F3 Icônes constantes + F9 Loader PDF + F10 Modale repos.
-**Last update**: 2026-05-06
-**Build**: Pre-push hook sur dernier commit `159eb4f` : `tsc --noEmit` clean + `vite build` OK. Tests session : 26 IT dashboard + 11 IT signature + 6 IT B6 tab counts + 6 IT B1+B5 vitals + 35 IT grossesse Step 4/5 + ~25 Vitest nouveaux. Régression Vitest scope 502/502 puis 513/513. **Pas de `mvn verify` complet relancé après les pushes du jour** — à faire au prochain démarrage si pas de devtools.
-**Next action**: démarrage prochain session — restart `mvn spring-boot:run` (Flyway applique V029+V030+V031 si pas déjà fait) puis QA navigateur des dernières features. Reste backlog QA wave 8 : F2, F4-F8, F11-F12, F13-F15, TD-1.
+**Phase**: Post-pilote — extension cloisonnement (V032 → V036 vaccination → V039 grossesse) + dette QA salle d'attente résorbée.
+**Last update**: 2026-05-09
+**Build**: Front `vite build` OK (~3.94s, bundle 1.57 MB / gzip 434 KB). `mvn -o clean compile` + `mvn test-compile` verts (354 + 68 sources). **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN sur salle d'attente, /grossesses, /parametres → onglet Cabinet.
+**Next action**: prochaine session — décider si on continue à étendre le pattern cloisonnement à un autre module (LAB/RADIO ? grossesse pathologique ?) ou si on passe à un autre item du BACKLOG. Si demande terrain remonte, suivre ADR-032 squelette.
+
+### 2026-05-09 — Cloisonnement Grossesse + dette QA salle d'attente
+
+**Shipped** (commits `24770fe`, `599f5d3`, `f42dc87`) :
+
+- **`24770fe` test(salle-attente)** : IT sœur `ConsultationByAppointmentIT` (6 scénarios) couvre `GET /api/consultations/by-appointment/{appointmentId}` ajouté en `8f2c80d` mais sans IT. Happy path + 404 (pas de consult / appointment inexistant) + 403 cloisonnement Dr A → Dr B + bypass ADMIN + 401 sans token. Bottle la walk Playwright manuelle desktop + mobile 390 px du bouton « Ouvrir ».
+- **`599f5d3` feat(grossesse) cloisonnement** : V039 + `PregnancyQueueServiceImpl` refactor (`AccessScopeService` + `JdbcTemplate`, requête bulk UNION ALL `pregnancy_id → set practitioners` sur les 4 sources de rattachement, filtre orphan/scope avant calcul SA + alertes). `PregnancyQueueIsolationIT` 8 scénarios calque V036. ADR-031 inchangé (vaccination découplée v1) — la décision étendue est en ADR-032.
+- **`f42dc87` feat(parametres) panneau orphelins** : refactor `VaccinationOrphanRolesPanel` → `OrphanRolesPanel<{module: 'vaccination'|'pregnancy'}>` paramétrable. Backend `SettingsController` étendu pour porter `pregnancyOrphanVisibleRoles`. `PregnancyOrphanRolesSettingsIT` 6 scénarios (default tous rôles, PUT réduit, PUT sans champ préserve, rôle invalide → 400, MEDECIN PUT → 403, indépendance V036/V039). ADR-032 ajouté à `docs/DECISIONS.md` capturant les 3 décisions du brainstorming.
+
+**State** : 4 commits sur `main`, build front green, IT compilent. Régression côté QA non-jouée (`mvn verify` skip per memory).
+
+**Next action** : voir « Current status — Next action ».
+
+**Blockers** : aucun.
+
+
 
 ### 2026-05-06 (soirée) — F3 + F9 + F10 quick-wins parallèles
 
