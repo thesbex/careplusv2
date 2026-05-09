@@ -853,6 +853,8 @@ export default function PatientsListPage() {
           vaccinations: '/vaccinations',
           grossesses: '/grossesses',
           stock: '/stock',
+          queueLab: '/queue/lab',
+          queueRadio: '/queue/radio',
           catalogue: '/catalogue',
           params: '/parametres',
         } as const;

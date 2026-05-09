@@ -38,7 +38,9 @@ export type SidebarScreen =
   | 'params'
   | 'vaccinations'
   | 'grossesses'
-  | 'stock';
+  | 'stock'
+  | 'queueLab'
+  | 'queueRadio';
 
 interface NavItem {
   id: SidebarScreen;
@@ -61,6 +63,11 @@ const ITEMS: NavItem[] = [
   { id: 'vaccinations', label: 'Vaccinations', Icon: Heart, section: 'flux' },
   { id: 'grossesses', label: 'Grossesses', Icon: Heart, section: 'flux' },
   { id: 'stock', label: 'Stock', Icon: Box, section: 'flux' },
+  // V038 — queue traitements internes : visible uniquement aux utilisateurs
+  // qui ont le rôle correspondant (LAB / RADIO). MEDECIN/ADMIN gardent
+  // l'accès via Paramètres + suivi par consultation.
+  { id: 'queueLab', label: 'Laboratoire', Icon: Stetho, section: 'flux', requiresRoles: ['LAB'] },
+  { id: 'queueRadio', label: 'Radiologie', Icon: Stetho, section: 'flux', requiresRoles: ['RADIO'] },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN'] },
 ];

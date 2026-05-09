@@ -44,6 +44,8 @@ const NAV_MAP = {
   vaccinations: '/vaccinations',
   grossesses: '/grossesses',
   stock: '/stock',
+  queueLab: '/queue/lab',
+  queueRadio: '/queue/radio',
   catalogue: '/catalogue',
   params: '/parametres',
 } as const;

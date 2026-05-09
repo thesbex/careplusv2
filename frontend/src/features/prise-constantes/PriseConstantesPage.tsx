@@ -134,7 +134,9 @@ export default function PriseConstantesPage() {
     factu:        '/facturation',
     vaccinations: '/vaccinations',
     grossesses:   '/grossesses',
-    stock:        '/stock',
+    stock: '/stock',
+    queueLab: '/queue/lab',
+    queueRadio: '/queue/radio',
     catalogue:    '/catalogue',
     params:       '/parametres',
   } as const;
