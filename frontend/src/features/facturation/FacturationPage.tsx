@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
 import { useInvoiceSearch } from './hooks/useInvoiceSearch';
 import { InvoiceDrawer } from './InvoiceDrawer';
@@ -71,6 +72,7 @@ function filtersFromUrl(params: URLSearchParams): InvoiceSearchFilters {
     patientId: params.get('patientId'),
     amountMin: params.get('amountMin') ? Number(params.get('amountMin')) : null,
     amountMax: params.get('amountMax') ? Number(params.get('amountMax')) : null,
+    medecinId: params.get('medecinId'),
   };
 }
 
@@ -84,6 +86,7 @@ function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
   if (f.patientId) p.set('patientId', f.patientId);
   if (f.amountMin !== null) p.set('amountMin', String(f.amountMin));
   if (f.amountMax !== null) p.set('amountMax', String(f.amountMax));
+  if (f.medecinId) p.set('medecinId', f.medecinId);
   return p;
 }
 
@@ -98,11 +101,23 @@ export default function FacturationPage() {
     setUrlParams(filtersToUrl(filters), { replace: true });
   }, [filters, setUrlParams]);
 
+  // Multi-praticien : sélecteur médecin visible dès ≥2 praticiens actifs.
+  const { data: practitioners } = usePractitioners();
+  const activePractitioners = useMemo(
+    () => practitioners.filter((p) => p.active),
+    [practitioners],
+  );
+  const showPractitionerSelector = activePractitioners.length >= 2;
+
   const statusChip: InvoiceStatus | 'ALL' =
     filters.statuses.length === 1 ? (filters.statuses[0] ?? 'ALL') : 'ALL';
 
   function setStatusChip(s: InvoiceStatus | 'ALL') {
     setFilters({ ...filters, statuses: s === 'ALL' ? [] : [s] });
+  }
+
+  function setMedecinFilter(id: string | null) {
+    setFilters({ ...filters, medecinId: id });
   }
 
   const { items, totalCount, totalNet, totalPaid, totalRemaining, isLoading, error } =
@@ -143,6 +158,43 @@ export default function FacturationPage() {
             ))}
           </div>
           <div className="fa-toolbar-end">
+            {showPractitionerSelector && (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  color: 'var(--ink-2)',
+                }}
+              >
+                Médecin
+                <select
+                  aria-label="Filtrer par médecin"
+                  value={filters.medecinId ?? 'ALL'}
+                  onChange={(e) =>
+                    setMedecinFilter(e.target.value === 'ALL' ? null : e.target.value)
+                  }
+                  style={{
+                    height: 28,
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    padding: '0 8px',
+                    fontSize: 12.5,
+                    fontFamily: 'inherit',
+                    background: 'var(--surface)',
+                  }}
+                >
+                  <option value="ALL">Tous les médecins</option>
+                  {activePractitioners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      Dr {p.lastName} {p.firstName}
+                      {p.specialty ? ` — ${p.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <AdvancedFiltersPopover filters={filters} onChange={setFilters} />
             {canExport && <ExportButton filters={filters} />}
           </div>

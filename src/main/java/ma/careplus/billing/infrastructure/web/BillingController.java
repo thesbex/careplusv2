@@ -91,13 +91,14 @@ public class BillingController {
             @RequestParam(required = false) UUID patientId,
             @RequestParam(required = false) BigDecimal amountMin,
             @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false) UUID medecinId,
             @RequestParam(required = false, defaultValue = "0") int page,
             @RequestParam(required = false, defaultValue = "50") int size) {
         InvoiceSearchFilter filter = new InvoiceSearchFilter(
                 dateField, from, to,
                 status == null ? List.of() : status,
                 paymentMode == null ? List.of() : paymentMode,
-                patientId, amountMin, amountMax);
+                patientId, amountMin, amountMax, medecinId);
         return ResponseEntity.ok(billingService.searchInvoices(filter, page, size));
     }
 
@@ -117,12 +118,13 @@ public class BillingController {
             @RequestParam(required = false) UUID patientId,
             @RequestParam(required = false) BigDecimal amountMin,
             @RequestParam(required = false) BigDecimal amountMax,
+            @RequestParam(required = false) UUID medecinId,
             @RequestParam(required = false, defaultValue = "csv") String format) throws IOException {
         InvoiceSearchFilter filter = new InvoiceSearchFilter(
                 dateField, from, to,
                 status == null ? List.of() : status,
                 paymentMode == null ? List.of() : paymentMode,
-                patientId, amountMin, amountMax);
+                patientId, amountMin, amountMax, medecinId);
         List<InvoiceListRow> rows = billingService.exportInvoices(filter, EXPORT_MAX_ROWS);
 
         InvoiceExporter exporter = "xlsx".equalsIgnoreCase(format)

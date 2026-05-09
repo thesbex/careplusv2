@@ -58,6 +58,15 @@ vi.mock('../../prise-rdv/hooks/usePatientSearch', () => ({
   usePatientSearch: () => ({ candidates: [], isLoading: false, error: null }),
 }));
 
+const practitionersMock = vi.fn(() => ({
+  data: [] as Array<{ id: string; firstName: string; lastName: string; specialty: string | null; active: boolean }>,
+  isLoading: false,
+  isError: false,
+}));
+vi.mock('../../agenda/hooks/usePractitioners', () => ({
+  usePractitioners: () => practitionersMock(),
+}));
+
 const exportInvoicesMock = vi.fn();
 const useInvoiceExportState = { isExporting: false, error: null as string | null };
 vi.mock('../hooks/useInvoiceExport', () => ({
@@ -93,6 +102,7 @@ beforeEach(() => {
   exportInvoicesMock.mockClear();
   useInvoiceExportState.isExporting = false;
   useInvoiceExportState.error = null;
+  practitionersMock.mockReturnValue({ data: [], isLoading: false, isError: false });
 });
 
 describe('<FacturationPage /> — advanced filters + export', () => {
@@ -179,5 +189,61 @@ describe('<FacturationPage /> — advanced filters + export', () => {
     useInvoiceExportState.error = "Trop de résultats à exporter. Affinez vos filtres (max 10 000 factures).";
     renderWithRole('MEDECIN');
     expect(screen.getByRole('alert')).toHaveTextContent(/Trop de résultats/i);
+  });
+
+  // ── Multi-praticien (filtre médecin) ────────────────────────────────────
+  describe('médecin selector', () => {
+    it('hides the selector when fewer than 2 active practitioners exist', () => {
+      practitionersMock.mockReturnValue({
+        data: [
+          { id: 'doc-1', firstName: 'A', lastName: 'Solo', specialty: null, active: true },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      renderWithRole('MEDECIN');
+      expect(screen.queryByLabelText('Filtrer par médecin')).not.toBeInTheDocument();
+    });
+
+    it('shows the selector and refetches with medecinId on change when ≥2 active practitioners', () => {
+      practitionersMock.mockReturnValue({
+        data: [
+          { id: 'doc-1', firstName: 'Hassan', lastName: 'Alami',  specialty: 'Généraliste', active: true },
+          { id: 'doc-2', firstName: 'Fatima', lastName: 'Bennani', specialty: null,         active: true },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      renderWithRole('MEDECIN');
+      useInvoiceSearchMock.mockClear();
+
+      const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
+      expect(select).toBeInTheDocument();
+      // Default = ALL (UI value)
+      expect(select.value).toBe('ALL');
+      // Both Drs listed
+      expect(screen.getByRole('option', { name: /Dr Alami Hassan/ })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: /Dr Bennani Fatima/ })).toBeInTheDocument();
+
+      fireEvent.change(select, { target: { value: 'doc-2' } });
+      const last = (useInvoiceSearchMock.mock.calls.at(-1) as unknown[])[0] as { medecinId: string | null };
+      expect(last.medecinId).toBe('doc-2');
+    });
+
+    it('hydrates from URL ?medecinId= and propagates to the hook', async () => {
+      practitionersMock.mockReturnValue({
+        data: [
+          { id: 'doc-1', firstName: 'Hassan', lastName: 'Alami',  specialty: null, active: true },
+          { id: 'doc-2', firstName: 'Fatima', lastName: 'Bennani', specialty: null, active: true },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      renderWithRole('MEDECIN', '/facturation?medecinId=doc-1');
+      await waitFor(() => {
+        const last = (useInvoiceSearchMock.mock.calls.at(-1) as unknown[])[0] as { medecinId: string | null };
+        expect(last.medecinId).toBe('doc-1');
+      });
+    });
   });
 });

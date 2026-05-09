@@ -29,6 +29,7 @@ describe('useInvoiceSearch — query-string contract', () => {
       patientId: null,
       amountMin: null,
       amountMax: null,
+      medecinId: null,
     });
     expect(url).toContain('status=EMISE');
     expect(url).not.toContain('status[]=');
@@ -45,6 +46,7 @@ describe('useInvoiceSearch — query-string contract', () => {
       patientId: null,
       amountMin: null,
       amountMax: null,
+      medecinId: null,
     });
     expect(url).toContain('status=EMISE');
     expect(url).toContain('status=PAYEE_TOTALE');
@@ -62,6 +64,7 @@ describe('useInvoiceSearch — query-string contract', () => {
       patientId: null,
       amountMin: null,
       amountMax: null,
+      medecinId: null,
     });
     expect(url).toContain('paymentMode=ESPECES');
     expect(url).toContain('paymentMode=CB');

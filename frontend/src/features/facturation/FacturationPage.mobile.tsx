@@ -10,6 +10,7 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronRight } from '@/components/icons';
+import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
 import { useInvoiceSearch } from './hooks/useInvoiceSearch';
 import { InvoiceDrawer } from './InvoiceDrawer';
@@ -60,6 +61,7 @@ function filtersFromUrl(params: URLSearchParams): InvoiceSearchFilters {
     patientId: params.get('patientId'),
     amountMin: params.get('amountMin') ? Number(params.get('amountMin')) : null,
     amountMax: params.get('amountMax') ? Number(params.get('amountMax')) : null,
+    medecinId: params.get('medecinId'),
   };
 }
 
@@ -73,6 +75,7 @@ function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
   if (f.patientId) p.set('patientId', f.patientId);
   if (f.amountMin !== null) p.set('amountMin', String(f.amountMin));
   if (f.amountMax !== null) p.set('amountMax', String(f.amountMax));
+  if (f.medecinId) p.set('medecinId', f.medecinId);
   return p;
 }
 
@@ -91,6 +94,14 @@ export default function FacturationMobilePage() {
   function setStatusChip(s: InvoiceStatus | 'ALL') {
     setFilters({ ...filters, statuses: s === 'ALL' ? [] : [s] });
   }
+
+  // Multi-praticien : sélecteur médecin visible dès ≥2 praticiens actifs.
+  const { data: practitioners } = usePractitioners();
+  const activePractitioners = useMemo(
+    () => practitioners.filter((p) => p.active),
+    [practitioners],
+  );
+  const showPractitionerSelector = activePractitioners.length >= 2;
 
   const { items, totalCount, totalPaid, totalRemaining, isLoading, error } =
     useInvoiceSearch(filters);
@@ -123,6 +134,49 @@ export default function FacturationMobilePage() {
             </div>
           </div>
         </div>
+
+        {showPractitionerSelector && (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: 'var(--ink-2)',
+              marginBottom: 8,
+            }}
+          >
+            Médecin
+            <select
+              aria-label="Filtrer par médecin"
+              value={filters.medecinId ?? 'ALL'}
+              onChange={(e) =>
+                setFilters({
+                  ...filters,
+                  medecinId: e.target.value === 'ALL' ? null : e.target.value,
+                })
+              }
+              style={{
+                flex: 1,
+                height: 32,
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0 8px',
+                fontSize: 13,
+                fontFamily: 'inherit',
+                background: 'var(--surface)',
+              }}
+            >
+              <option value="ALL">Tous les médecins</option>
+              {activePractitioners.map((p) => (
+                <option key={p.id} value={p.id}>
+                  Dr {p.lastName} {p.firstName}
+                  {p.specialty ? ` — ${p.specialty}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
 
         <div
           role="tablist"

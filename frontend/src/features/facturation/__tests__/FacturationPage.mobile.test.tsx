@@ -115,6 +115,10 @@ vi.mock('../hooks/useInvoiceSearch', () => ({
   filtersToParams: () => ({}),
 }));
 
+vi.mock('../../agenda/hooks/usePractitioners', () => ({
+  usePractitioners: () => ({ data: [], isLoading: false, isError: false }),
+}));
+
 function renderPage() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },

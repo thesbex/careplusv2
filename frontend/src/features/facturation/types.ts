@@ -74,6 +74,12 @@ export interface InvoiceSearchFilters {
   patientId: string | null;
   amountMin: number | null;
   amountMax: number | null;
+  /**
+   * Filtre multi-praticien — UUID du médecin ou {@code null} pour « tous ».
+   * Sémantique : le médecin de la consultation liée si la facture en a une,
+   * sinon le médecin du RDV lié.
+   */
+  medecinId: string | null;
 }
 
 export const EMPTY_FILTERS: InvoiceSearchFilters = {
@@ -85,6 +91,7 @@ export const EMPTY_FILTERS: InvoiceSearchFilters = {
   patientId: null,
   amountMin: null,
   amountMax: null,
+  medecinId: null,
 };
 
 export interface InvoiceListRow {

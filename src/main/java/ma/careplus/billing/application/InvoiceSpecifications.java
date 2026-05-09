@@ -11,6 +11,8 @@ import java.util.List;
 import ma.careplus.billing.domain.Invoice;
 import ma.careplus.billing.domain.Payment;
 import ma.careplus.billing.domain.PaymentMode;
+import ma.careplus.clinical.domain.Consultation;
+import ma.careplus.scheduling.domain.Appointment;
 import org.springframework.data.jpa.domain.Specification;
 
 /**
@@ -86,6 +88,29 @@ public final class InvoiceSpecifications {
             }
             if (f.amountMax() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("netAmount"), f.amountMax()));
+            }
+
+            // ── Médecin (multi-praticien) ────────────────────────────────────
+            // Sémantique : praticien de la consultation liée, sinon praticien du RDV.
+            // Une facture sans consultation_id ni appointment_id n'est jamais retenue
+            // dès qu'un médecin est sélectionné — c'est attendu pour les ad-hoc
+            // sans rattachement.
+            if (f.medecinId() != null) {
+                Subquery<Long> consultSub = query.subquery(Long.class);
+                Root<Consultation> c = consultSub.from(Consultation.class);
+                consultSub.select(cb.literal(1L)).where(
+                        cb.equal(c.get("id"), root.get("consultationId")),
+                        cb.equal(c.get("practitionerId"), f.medecinId()));
+
+                Subquery<Long> apptSub = query.subquery(Long.class);
+                Root<Appointment> a = apptSub.from(Appointment.class);
+                apptSub.select(cb.literal(1L)).where(
+                        cb.equal(a.get("id"), root.get("appointmentId")),
+                        cb.equal(a.get("practitionerId"), f.medecinId()));
+
+                predicates.add(cb.or(
+                        cb.exists(consultSub),
+                        cb.and(cb.isNull(root.get("consultationId")), cb.exists(apptSub))));
             }
 
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(Predicate[]::new));

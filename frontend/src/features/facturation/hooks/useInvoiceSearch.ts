@@ -44,5 +44,6 @@ export function filtersToParams(filters: InvoiceSearchFilters, page: number, siz
   if (filters.patientId) out.patientId = filters.patientId;
   if (filters.amountMin !== null) out.amountMin = filters.amountMin;
   if (filters.amountMax !== null) out.amountMax = filters.amountMax;
+  if (filters.medecinId) out.medecinId = filters.medecinId;
   return out;
 }
