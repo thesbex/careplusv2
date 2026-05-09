@@ -235,8 +235,29 @@
                 Instructions : <span th:text="${line.instructions}">instructions</span>
             </div>
         </div>
+        <!-- Lab test line (bon d'analyses) -->
+        <div class="rx-line" th:if="${line.labTestName != null}">
+            <span class="rx-line-name">
+                <span th:text="${iterStat.count}">1</span>.
+                <span th:text="${line.labTestName}">Analyse</span>
+            </span>
+            <div class="rx-line-detail" th:if="${line.instructions != null}">
+                Instructions : <span th:text="${line.instructions}">instructions</span>
+            </div>
+        </div>
+        <!-- Imaging exam line (bon d'imagerie) -->
+        <div class="rx-line" th:if="${line.imagingExamName != null}">
+            <span class="rx-line-name">
+                <span th:text="${iterStat.count}">1</span>.
+                <span th:text="${line.imagingExamName}">Examen d'imagerie</span>
+            </span>
+            <div class="rx-line-detail" th:if="${line.instructions != null}">
+                Instructions : <span th:text="${line.instructions}">instructions</span>
+            </div>
+        </div>
         <!-- Free-text line -->
-        <div class="rx-free-text" th:if="${line.medicationName == null and line.freeText != null}">
+        <div class="rx-free-text"
+             th:if="${line.medicationName == null and line.labTestName == null and line.imagingExamName == null and line.freeText != null}">
             <span th:text="${iterStat.count}">1</span>. <span th:text="${line.freeText}">texte libre</span>
         </div>
     </div>

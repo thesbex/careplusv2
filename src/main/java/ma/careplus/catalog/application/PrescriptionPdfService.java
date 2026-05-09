@@ -82,12 +82,28 @@ public class PrescriptionPdfService {
         List<PrescriptionLine> lines = prescriptionLineRepository
                 .findByPrescriptionIdOrderBySortOrderAsc(prescriptionId);
 
-        // Resolve medication names for lines
+        // Resolve medication / lab test / imaging exam names for lines.
+        //
+        // Toutes les clés (medicationName, labTestName, imagingExamName) doivent
+        // toujours être présentes — y compris null — sous peine de faire planter
+        // Thymeleaf : `line.medicationName != null` lève EL1008E quand la clé
+        // n'est pas dans la HashMap (le SpringEL retombe sur ReflectivePropertyAccessor
+        // sur HashMap qui n'expose pas de getter `medicationName`). Symptôme
+        // historique : "Impossible de charger le PDF" pour un bon d'analyses.
         List<Map<String, Object>> lineModels = lines.stream().map(line -> {
             Map<String, Object> m = new HashMap<>();
+            m.put("medicationName", null);
+            m.put("labTestName", null);
+            m.put("imagingExamName", null);
             if (line.getMedicationId() != null) {
                 medicationRepository.findById(line.getMedicationId()).ifPresent(med ->
                         m.put("medicationName", med.getCommercialName()));
+            }
+            if (line.getLabTestId() != null) {
+                m.put("labTestName", fetchLabTestName(line.getLabTestId()));
+            }
+            if (line.getImagingExamId() != null) {
+                m.put("imagingExamName", fetchImagingExamName(line.getImagingExamId()));
             }
             m.put("dosage", line.getDosage() != null ? line.getDosage() : line.getDose());
             m.put("frequency", line.getFrequency());
@@ -158,6 +174,32 @@ public class PrescriptionPdfService {
             return out.toByteArray();
         } catch (Exception e) {
             throw new RuntimeException("Erreur lors de la génération du PDF de l'ordonnance", e);
+        }
+    }
+
+    /**
+     * Résout le nom d'un examen biologique. Les analyses ne sont pas mappées
+     * en JPA (accès brut JdbcTemplate dans CatalogController) — on lit donc
+     * la même table ici. Renvoie null si l'examen a été supprimé / désactivé.
+     */
+    private String fetchLabTestName(UUID labTestId) {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT name FROM catalog_lab_test WHERE id = ?",
+                    String.class, labTestId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Idem pour les examens d'imagerie. */
+    private String fetchImagingExamName(UUID imagingExamId) {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT name FROM catalog_imaging_exam WHERE id = ?",
+                    String.class, imagingExamId);
+        } catch (Exception e) {
+            return null;
         }
     }
 
