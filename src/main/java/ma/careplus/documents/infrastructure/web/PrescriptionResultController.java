@@ -37,7 +37,10 @@ public class PrescriptionResultController {
     @PutMapping(
             value = "/api/prescriptions/lines/{lineId}/result",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    // V038 — LAB et RADIO doivent pouvoir uploader leurs propres résultats
+    // depuis la queue interne. Les autres rôles (SECRETAIRE/ASSISTANT) gardent
+    // l'accès pour les workflows externes (réception d'un résultat papier).
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN','LAB','RADIO')")
     public ResponseEntity<PatientDocumentView> upload(
             @PathVariable UUID lineId,
             @RequestParam("file") MultipartFile file,
