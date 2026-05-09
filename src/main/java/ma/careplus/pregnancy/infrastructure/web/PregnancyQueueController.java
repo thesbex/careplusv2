@@ -8,6 +8,7 @@ import ma.careplus.pregnancy.application.PregnancyQueueService.QueueFilters;
 import ma.careplus.vaccination.infrastructure.web.dto.PageView;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -40,9 +41,10 @@ public class PregnancyQueueController {
             @RequestParam(required = false) Boolean withAlerts,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Authentication auth) {
 
         QueueFilters filters = new QueueFilters(trimester, withAlerts, q, page, size);
-        return ResponseEntity.ok(queueService.queue(filters));
+        return ResponseEntity.ok(queueService.queue(filters, auth));
     }
 }

@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import ma.careplus.pregnancy.application.PregnancyAlertService.PregnancyAlertView;
 import ma.careplus.vaccination.infrastructure.web.dto.PageView;
+import org.springframework.security.core.Authentication;
 
 /**
  * Cross-patient pregnancy worklist (Étape 3).
@@ -60,8 +61,19 @@ public interface PregnancyQueueService {
     /**
      * Returns a paginated, SA-descending list of EN_COURS pregnancies.
      *
+     * <p>V039 — quand le cloisonnement (V032) est activé et qu'au moins
+     * 2 MEDECIN sont actifs, on ne renvoie que les grossesses dont l'un
+     * des médecins rattachés (déclaration, visite, écho ou plan de visite)
+     * appartient au scope du caller. Les grossesses orphelines (jamais
+     * touchées par personne) sont visibles si le rôle du caller appartient
+     * à {@code configuration_clinic_settings.pregnancy_orphan_visible_roles}.
+     *
      * @param filters filters + pagination; never null
+     * @param auth    Spring Security auth — utilisé par {@code AccessScopeService}
+     *                pour dériver le set des practitioners visibles. Peut être
+     *                null en tests unitaires hors HTTP, dans quel cas le
+     *                cloisonnement est bypassé.
      * @return paginated result
      */
-    PageView<PregnancyQueueEntry> queue(QueueFilters filters);
+    PageView<PregnancyQueueEntry> queue(QueueFilters filters, Authentication auth);
 }
