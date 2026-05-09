@@ -22,6 +22,14 @@ spring:
       ddl-auto: none
   flyway:
     locations: classpath:db/migration
+    # V036 a été commité APRÈS V037 (vaccination orphan visibility livré
+    # post-V037 logo). Render avait déjà appliqué V037 au moment du push,
+    # d'où le "Detected resolved migration not applied to database: 036".
+    # En tolérant le rattrapage out-of-order, V036 s'applique au prochain
+    # boot puis l'ordre redevient strictement croissant. À retirer si
+    # l'équipe veut un strict-order garde-fou contre les conflits multi-
+    # contributeurs (rare en mono-équipe).
+    out-of-order: true
 
 careplus:
   deployment-mode: CLOUD

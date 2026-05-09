@@ -15,7 +15,7 @@ import {
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { api } from '@/lib/api/client';
+import { performLogout } from '@/lib/auth/useAuth';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
@@ -187,9 +187,7 @@ export function Sidebar({
 
 function UserChip({ user }: { user: { name: string; role: string; initials: string } }) {
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const clear = useAuthStore((s) => s.clear);
 
   useEffect(() => {
     if (!open) return;
@@ -200,18 +198,9 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [open]);
 
-  async function handleLogout() {
-    setPending(true);
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Even if the server errors, we clear the local session.
-    } finally {
-      clear();
-      setPending(false);
-      setOpen(false);
-      window.location.href = '/login';
-    }
+  function handleLogout() {
+    setOpen(false);
+    performLogout();
   }
 
   return (
@@ -273,8 +262,7 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
           <button
             type="button"
             role="menuitem"
-            onClick={() => void handleLogout()}
-            disabled={pending}
+            onClick={handleLogout}
             style={{
               width: '100%',
               padding: '8px 10px',
@@ -287,7 +275,7 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
               color: 'var(--ink)',
             }}
           >
-            {pending ? 'Déconnexion…' : 'Se déconnecter'}
+            Se déconnecter
           </button>
         </div>
       )}

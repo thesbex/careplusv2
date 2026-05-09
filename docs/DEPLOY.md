@@ -28,7 +28,7 @@ from the repo root automatically on every push to `main`.
    │  - builds from Dockerfile             │
    │  - one container, 512MB, shared vCPU  │
    │  - autosleeps after 15 min idle       │
-   │  - URL: careplus-v2.onrender.com      │
+   │  - URL: careplusv2.onrender.com      │
    └──────────────┬────────────────────────┘
                   │ jdbc + ssl
                   ▼
@@ -99,10 +99,10 @@ openssl rand -hex 32
 Once deployment shows `Live`:
 
 ```bash
-curl https://careplus-v2.onrender.com/actuator/health
+curl https://careplusv2.onrender.com/actuator/health
 # → {"status":"UP"}
 
-curl -X POST https://careplus-v2.onrender.com/api/auth/login \
+curl -X POST https://careplusv2.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"fatima.zahra@careplus.ma","password":"ChangeMe123!"}'
 ```
@@ -189,7 +189,7 @@ When you decide to pay:
 2. Neon → bump from free tier → **Launch ($19/mo)** when the 0.5 GB storage
    cap gets close. Before that, free stays free forever.
 3. Add a custom domain on Render (Starter+ includes TLS): `app.careplus.ma`
-   pointing CNAME to `careplus-v2.onrender.com`.
+   pointing CNAME to `careplusv2.onrender.com`.
 4. Revisit this doc and update the ADR.
 
 Eventual migration to production (OVH Casablanca for data residency) =

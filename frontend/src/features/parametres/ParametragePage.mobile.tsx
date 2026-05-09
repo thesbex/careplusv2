@@ -4,7 +4,6 @@
  * Admin sections (cabinet settings, tariffs, users, etc.) are gated to
  * ADMIN/MEDECIN; non-admin users see only profile + logout.
  */
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
@@ -22,7 +21,7 @@ import {
   BarChart as BarChartIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { api } from '@/lib/api/client';
+import { performLogout } from '@/lib/auth/useAuth';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
@@ -38,8 +37,6 @@ const TAB_MAP: Record<MobileTab, string> = {
 export default function ParametrageMobilePage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const clear = useAuthStore((s) => s.clear);
-  const [pending, setPending] = useState(false);
 
   const isAdminOrDoctor =
     !!user && (user.roles.includes('ADMIN') || user.roles.includes('MEDECIN'));
@@ -47,19 +44,6 @@ export default function ParametrageMobilePage() {
   const vaccinationsBadge = useVaccinationOverdueCount() ?? 0;
   const grossessesBadge = useGrossesseAlertsCount() ?? 0;
   const stockBadge = useStockAlertsCount() ?? 0;
-
-  async function handleLogout() {
-    setPending(true);
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // Local clear even if server errors out.
-    } finally {
-      clear();
-      setPending(false);
-      window.location.href = '/login';
-    }
-  }
 
   const initials =
     user
@@ -206,10 +190,7 @@ export default function ParametrageMobilePage() {
           <button
             type="button"
             className="m-row"
-            disabled={pending}
-            onClick={() => {
-              void handleLogout();
-            }}
+            onClick={performLogout}
             style={{
               width: '100%',
               textAlign: 'left',
@@ -238,7 +219,7 @@ export default function ParametrageMobilePage() {
             </div>
             <div className="m-row-pri">
               <div className="m-row-main" style={{ color: 'var(--danger)' }}>
-                {pending ? 'Déconnexion…' : 'Déconnexion'}
+                Déconnexion
               </div>
             </div>
           </button>

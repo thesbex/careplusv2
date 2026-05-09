@@ -20,6 +20,15 @@ interface RefreshResponse {
 }
 
 /**
+ * sessionStorage flag set by `performLogout` so the very next
+ * `useBootstrapAuth` skips its silent `/auth/refresh` attempt — otherwise the
+ * still-valid `careplus_refresh` cookie (the keepalive logout may not have
+ * landed yet on a sleeping backend) would auto-relog the user back in.
+ * Per-tab + consumed on read.
+ */
+const SUPPRESS_BOOTSTRAP_FLAG = 'careplus.suppressBootstrap';
+
+/**
  * POST /api/auth/login — mirrors the backend DTO (ADR-019): access token in
  * body, refresh in HttpOnly cookie set server-side. `withCredentials: true`
  * in the axios client makes the browser attach the cookie on subsequent calls.
@@ -51,6 +60,37 @@ export function useLogout() {
 }
 
 /**
+ * Imperative logout used by sidebar / mobile menu buttons.
+ *
+ * We do NOT await the server call: on Render free tier the backend may be
+ * asleep, and `await api.post('/auth/logout')` then blocks the click handler
+ * for 30+ s while the user stares at a frozen "Déconnexion…" button. Instead
+ * we fire the request with `keepalive: true` (the browser is allowed to
+ * complete it past the navigation), clear local state, raise the
+ * suppress-bootstrap flag, and hard-redirect immediately.
+ *
+ * The cookie carries the refresh token and is sent same-origin automatically.
+ */
+export function performLogout(): void {
+  try {
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      keepalive: true,
+    }).catch(() => {});
+  } catch {
+    // sendBeacon-style fire-and-forget — any throw here is non-fatal.
+  }
+  try {
+    sessionStorage.setItem(SUPPRESS_BOOTSTRAP_FLAG, '1');
+  } catch {
+    // sessionStorage may throw in privacy modes — accept the rare auto-relogin.
+  }
+  useAuthStore.getState().clear();
+  window.location.href = '/login';
+}
+
+/**
  * On app boot, try once to exchange the HttpOnly refresh cookie for an
  * access token + user. If the user isn't logged in, the refresh call 401s
  * and we stay logged out. No user-visible error either way.
@@ -62,6 +102,23 @@ export function useBootstrapAuth(): { ready: boolean } {
 
   useEffect(() => {
     let cancelled = false;
+    // Skip the silent refresh right after a logout — the `careplus_refresh`
+    // cookie might still be valid server-side (the keepalive POST hasn't
+    // landed yet on a slow backend), in which case refreshing would silently
+    // sign the user back in.
+    let suppressed = false;
+    try {
+      if (sessionStorage.getItem(SUPPRESS_BOOTSTRAP_FLAG) === '1') {
+        sessionStorage.removeItem(SUPPRESS_BOOTSTRAP_FLAG);
+        suppressed = true;
+      }
+    } catch {
+      // sessionStorage unavailable — fall through to the normal refresh path.
+    }
+    if (suppressed) {
+      setReady(true);
+      return;
+    }
     (async () => {
       try {
         const refresh = await api.post<RefreshResponse>('/auth/refresh');
