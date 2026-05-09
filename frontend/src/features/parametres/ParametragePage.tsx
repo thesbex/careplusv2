@@ -16,7 +16,9 @@ import {
   useUpdateClinicSettings,
   useTiers,
   useUpdateTierDiscount,
+  ESTABLISHMENT_TYPE_LABELS,
   type ClinicSettingsForm,
+  type EstablishmentType,
 } from './hooks/useSettings';
 import {
   useRolePermissions,
@@ -55,17 +57,32 @@ const NAV_MAP = {
 
 type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'cabinet', label: 'Cabinet' },
-  { id: 'tarifs', label: 'Tarifs' },
-  { id: 'prestations', label: 'Prestations' },
-  { id: 'modeles', label: 'Modèles d’ordonnance' },
-  { id: 'utilisateurs', label: 'Utilisateurs' },
-  { id: 'conges', label: 'Congés' },
-  { id: 'droits', label: 'Droits d’accès' },
-  { id: 'vaccinations', label: 'Vaccinations' },
-  { id: 'stock', label: 'Stock' },
-];
+function establishmentTabLabel(type: EstablishmentType | undefined): string {
+  if (!type) return 'Cabinet';
+  return ESTABLISHMENT_TYPE_LABELS[type] || 'Établissement';
+}
+
+const IDENTITY_HEADER: Record<EstablishmentType, string> = {
+  CABINET: 'Identité du cabinet',
+  CLINIQUE: 'Identité de la clinique',
+  HOPITAL: 'Identité de l’hôpital',
+  CENTRE_MEDICAL: 'Identité du centre médical',
+  AUTRE: 'Identité de l’établissement',
+};
+
+function buildTabs(type: EstablishmentType | undefined): { id: Tab; label: string }[] {
+  return [
+    { id: 'cabinet', label: establishmentTabLabel(type) },
+    { id: 'tarifs', label: 'Tarifs' },
+    { id: 'prestations', label: 'Prestations' },
+    { id: 'modeles', label: 'Modèles d’ordonnance' },
+    { id: 'utilisateurs', label: 'Utilisateurs' },
+    { id: 'conges', label: 'Congés' },
+    { id: 'droits', label: 'Droits d’accès' },
+    { id: 'vaccinations', label: 'Vaccinations' },
+    { id: 'stock', label: 'Stock' },
+  ];
+}
 
 const EMPTY_FORM: ClinicSettingsForm = {
   name: '',
@@ -126,16 +143,18 @@ function CabinetTab() {
     e.preventDefault();
     try {
       await update(form);
-      toast.success('Paramètres cabinet enregistrés.');
+      toast.success('Paramètres enregistrés.');
     } catch {
       toast.error('Échec de la sauvegarde.');
     }
   }
 
+  const headerLabel = IDENTITY_HEADER[form.establishmentType ?? 'CABINET'];
+
   return (
     <>
     <Panel>
-      <PanelHeader>Identité du cabinet</PanelHeader>
+      <PanelHeader>{headerLabel}</PanelHeader>
       <form
         onSubmit={(e) => {
           void handleSubmit(e);
@@ -651,12 +670,14 @@ function DroitsTab() {
 export default function ParametragePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('cabinet');
+  const { settings } = useClinicSettings();
+  const tabs = buildTabs(settings?.establishmentType);
 
   return (
     <Screen
       active="params"
       title="Paramètres"
-      sub={TABS.find((t) => t.id === tab)?.label ?? ''}
+      sub={tabs.find((t) => t.id === tab)?.label ?? ''}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
       <div
@@ -670,7 +691,7 @@ export default function ParametragePage() {
         role="tablist"
         aria-label="Onglets paramètres"
       >
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
