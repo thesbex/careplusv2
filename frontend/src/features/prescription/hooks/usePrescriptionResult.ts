@@ -36,6 +36,9 @@ export function useAttachPrescriptionResult() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+      // V038 — l'upload déclenche aussi l'auto-transition IN_PROGRESS → DONE
+      // côté backend, donc la queue interne doit se rafraîchir.
+      void queryClient.invalidateQueries({ queryKey: ['internal-requests'] });
     },
   });
 

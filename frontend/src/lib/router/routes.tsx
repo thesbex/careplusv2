@@ -23,6 +23,7 @@ import StockArticleDetailRoute from '@/features/stock/StockArticleDetailRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
+import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
@@ -256,6 +257,14 @@ export const router = createBrowserRouter(
         <RequireAuth>
           <ImagingCatalogueRoute />
         </RequireAuth>
+      ),
+    },
+    {
+      path: '/queue/:service',
+      element: (
+        <RequireRole roles={['LAB', 'RADIO', 'MEDECIN', 'ADMIN']}>
+          <InternalRequestsQueuePage />
+        </RequireRole>
       ),
     },
     { path: '*', element: <Navigate to="/" replace /> },
