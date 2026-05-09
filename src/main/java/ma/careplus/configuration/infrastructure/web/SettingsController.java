@@ -67,6 +67,8 @@ public class SettingsController {
             boolean labInternal,
             /** V036 — codes de rôle autorisés à voir les patients sans médecin référent vaccination. */
             List<String> vaccinationOrphanVisibleRoles,
+            /** V039 — codes de rôle autorisés à voir les grossesses sans médecin référent. */
+            List<String> pregnancyOrphanVisibleRoles,
             /** V037 — true si un logo est configuré (bytes accessibles via GET /api/settings/clinic/logo). */
             boolean hasLogo
     ) {}
@@ -99,7 +101,14 @@ public class SettingsController {
              * (applicable seulement quand agenda_strict_isolation = TRUE). Valeurs acceptées :
              * MEDECIN, ADMIN, SECRETAIRE, ASSISTANT. Optional : null = pas de changement.
              */
-            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> vaccinationOrphanVisibleRoles
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> vaccinationOrphanVisibleRoles,
+
+            /**
+             * V039 — codes de rôle autorisés à voir les grossesses sans médecin référent
+             * (applicable seulement quand agenda_strict_isolation = TRUE). Mêmes valeurs
+             * acceptées que vaccinationOrphanVisibleRoles. Optional : null = pas de changement.
+             */
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> pregnancyOrphanVisibleRoles
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -121,7 +130,7 @@ public class SettingsController {
             ClinicSettingsView v = jdbc.queryForObject(
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
-                            + "vaccination_orphan_visible_roles, "
+                            + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
@@ -140,6 +149,7 @@ public class SettingsController {
                             rs.getBoolean("imaging_internal"),
                             rs.getBoolean("lab_internal"),
                             readStringArray(rs, "vaccination_orphan_visible_roles"),
+                            readStringArray(rs, "pregnancy_orphan_visible_roles"),
                             rs.getBoolean("has_logo")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
@@ -162,6 +172,7 @@ public class SettingsController {
         boolean finalImagingInternal;
         boolean finalLabInternal;
         List<String> finalOrphanRoles;
+        List<String> finalPregnancyOrphanRoles;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
@@ -200,19 +211,28 @@ public class SettingsController {
             } else {
                 finalOrphanRoles = List.copyOf(req.vaccinationOrphanVisibleRoles());
             }
+            if (req.pregnancyOrphanVisibleRoles() == null) {
+                finalPregnancyOrphanRoles = jdbc.queryForObject(
+                        "SELECT pregnancy_orphan_visible_roles FROM configuration_clinic_settings WHERE id = ?",
+                        (rs, i) -> readStringArray(rs, "pregnancy_orphan_visible_roles"), id);
+            } else {
+                finalPregnancyOrphanRoles = List.copyOf(req.pregnancyOrphanVisibleRoles());
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
                             + "agenda_strict_isolation=?, establishment_type=?, "
                             + "imaging_internal=?, lab_internal=?, "
-                            + "vaccination_orphan_visible_roles=?, updated_at=now() "
+                            + "vaccination_orphan_visible_roles=?, "
+                            + "pregnancy_orphan_visible_roles=?, updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
-                    finalOrphanRoles.toArray(String[]::new), id);
+                    finalOrphanRoles.toArray(String[]::new),
+                    finalPregnancyOrphanRoles.toArray(String[]::new), id);
         } else {
             id = UUID.randomUUID();
             // First-row insert: respect the caller value if provided, else defaults.
@@ -223,18 +243,22 @@ public class SettingsController {
             finalOrphanRoles = req.vaccinationOrphanVisibleRoles() != null
                     ? List.copyOf(req.vaccinationOrphanVisibleRoles())
                     : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
+            finalPregnancyOrphanRoles = req.pregnancyOrphanVisibleRoles() != null
+                    ? List.copyOf(req.pregnancyOrphanVisibleRoles())
+                    : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
-                            + " vaccination_orphan_visible_roles) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
-                    finalOrphanRoles.toArray(String[]::new));
+                    finalOrphanRoles.toArray(String[]::new),
+                    finalPregnancyOrphanRoles.toArray(String[]::new));
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
@@ -245,7 +269,7 @@ public class SettingsController {
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                 nullIfBlank(req.rib()), finalAgendaIsolation,
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
-                finalOrphanRoles, hasLogo);
+                finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo);
     }
 
     /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */

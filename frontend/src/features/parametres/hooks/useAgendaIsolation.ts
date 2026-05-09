@@ -1,16 +1,18 @@
 /**
- * Hook minimal pour le toggle "Cloisonnement" (V032 + V036).
+ * Hook minimal pour le toggle "Cloisonnement" (V032 + V036 + V039).
  *
- * Lit `agendaStrictIsolation` + `vaccinationOrphanVisibleRoles` depuis
- * GET /api/settings/clinic ; le PUT préserve les autres champs côté serveur.
- * Le backend impose @NotBlank sur name/address/city/phone — on ne peut pas
- * envoyer un PUT minimal, on renvoie donc l'intégralité de la ligne avec
- * uniquement les flags modifiés.
+ * Lit `agendaStrictIsolation`, `vaccinationOrphanVisibleRoles` et
+ * `pregnancyOrphanVisibleRoles` depuis GET /api/settings/clinic ; le PUT
+ * préserve les autres champs côté serveur. Le backend impose @NotBlank sur
+ * name/address/city/phone — on ne peut pas envoyer un PUT minimal, on renvoie
+ * donc l'intégralité de la ligne avec uniquement les flags modifiés.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
 export type OrphanRole = 'MEDECIN' | 'ADMIN' | 'SECRETAIRE' | 'ASSISTANT';
+
+export type OrphanModule = 'vaccination' | 'pregnancy';
 
 interface ClinicSettingsRaw {
   id: string;
@@ -26,6 +28,8 @@ interface ClinicSettingsRaw {
   agendaStrictIsolation: boolean;
   /** V036 — codes de rôle voyant les patients sans médecin référent vaccination. */
   vaccinationOrphanVisibleRoles: OrphanRole[];
+  /** V039 — codes de rôle voyant les grossesses sans médecin référent. */
+  pregnancyOrphanVisibleRoles: OrphanRole[];
 }
 
 const DEFAULT_ORPHAN_ROLES: OrphanRole[] = ['MEDECIN', 'ADMIN', 'SECRETAIRE', 'ASSISTANT'];
@@ -45,6 +49,8 @@ export function useAgendaIsolation() {
     agendaStrictIsolation: data?.agendaStrictIsolation ?? false,
     vaccinationOrphanVisibleRoles:
       data?.vaccinationOrphanVisibleRoles ?? DEFAULT_ORPHAN_ROLES,
+    pregnancyOrphanVisibleRoles:
+      data?.pregnancyOrphanVisibleRoles ?? DEFAULT_ORPHAN_ROLES,
     isLoading,
   };
 }
@@ -56,10 +62,12 @@ export function useUpdateAgendaIsolation() {
       settings,
       agendaStrictIsolation,
       vaccinationOrphanVisibleRoles,
+      pregnancyOrphanVisibleRoles,
     }: {
       settings: ClinicSettingsRaw;
       agendaStrictIsolation?: boolean;
       vaccinationOrphanVisibleRoles?: OrphanRole[];
+      pregnancyOrphanVisibleRoles?: OrphanRole[];
     }) => {
       const payload: Record<string, unknown> = {
         name: settings.name,
@@ -76,6 +84,9 @@ export function useUpdateAgendaIsolation() {
       };
       if (vaccinationOrphanVisibleRoles !== undefined) {
         payload.vaccinationOrphanVisibleRoles = vaccinationOrphanVisibleRoles;
+      }
+      if (pregnancyOrphanVisibleRoles !== undefined) {
+        payload.pregnancyOrphanVisibleRoles = pregnancyOrphanVisibleRoles;
       }
       const r = await api.put<ClinicSettingsRaw>('/settings/clinic', payload);
       return r.data;
