@@ -6,11 +6,15 @@
  *
  * Quand activé :
  *  - chaque MEDECIN ne voit que son propre agenda + ses créneaux ;
+ *  - chaque SECRETAIRE / ASSISTANT ne voit que les agendas et la file
+ *    d'attente des médecins auxquels l'admin l'a explicitement assignée
+ *    (cf. tab "Utilisateurs") ;
  *  - la queue Vaccination ne montre que les patients qu'il « suit » (au
  *    moins 1 action sur une dose) + les patients orphelins selon la
  *    configuration `vaccinationOrphanVisibleRoles`.
  * Désactivé (par défaut), tout est partagé — le mode pratique pour des
- * cabinets de 2-3 généralistes qui se coordonnent.
+ * cabinets de 2-3 généralistes qui se coordonnent. Le toggle est honoré
+ * côté backend (filtre + 403 sur scheduling/clinical), pas seulement IHM.
  */
 import { toast } from 'sonner';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
@@ -90,9 +94,11 @@ export function AgendaIsolationToggle() {
                 lineHeight: 1.5,
               }}
             >
-              Quand activé, chaque médecin ne voit que son propre agenda et la
-              queue Vaccination filtre sur les patients qu'il suit. Désactivé
-              (par défaut), tout est partagé entre médecins du cabinet.
+              Quand activé, chaque médecin ne voit que son propre agenda, et
+              chaque secrétaire / assistant(e) uniquement les agendas et la
+              file d'attente des médecins auxquels elle est assignée. La
+              queue Vaccination filtre aussi sur les patients suivis.
+              Désactivé (par défaut), tout est partagé.
             </div>
           </div>
         </label>

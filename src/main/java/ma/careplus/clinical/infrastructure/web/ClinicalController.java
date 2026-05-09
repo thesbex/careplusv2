@@ -112,6 +112,7 @@ public class ClinicalController {
             @PathVariable UUID id,
             @Valid @RequestBody RecordVitalsRequest req,
             Authentication auth) {
+        accessScope.requireAccess(auth, consultationService.get(id).getPractitionerId());
         UUID recordedBy = UUID.fromString(auth.getName());
         VitalSigns v = vitalsService.recordForConsultation(id, recordedBy, req);
         return ResponseEntity.created(
@@ -139,8 +140,10 @@ public class ClinicalController {
 
     @GetMapping("/consultations/{id}")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public ConsultationView get(@PathVariable UUID id) {
-        return toView(consultationService.get(id));
+    public ConsultationView get(@PathVariable UUID id, Authentication auth) {
+        Consultation c = consultationService.get(id);
+        accessScope.requireAccess(auth, c.getPractitionerId());
+        return toView(c);
     }
 
     @GetMapping("/consultations")
@@ -156,28 +159,39 @@ public class ClinicalController {
             OffsetDateTime to,
             Authentication auth) {
         if (patientId != null) {
-            return consultationService.listForPatient(patientId).stream().map(this::toView).toList();
+            // Filtre par scope si actif : on ne renvoie que les consultations
+            // dont le practitionerId est autorisé pour ce caller. Sans scope =
+            // pas de restriction (mode ouvert par défaut).
+            Optional<Set<UUID>> scope = accessScope.allowedPractitioners(auth);
+            return consultationService.listForPatient(patientId).stream()
+                    .filter(c -> scope.isEmpty() || scope.get().contains(c.getPractitionerId()))
+                    .map(this::toView).toList();
         }
         UUID pid = practitionerId != null ? practitionerId : UUID.fromString(auth.getName());
+        accessScope.requireAccess(auth, pid);
         return consultationService.listForPractitioner(pid, from, to).stream().map(this::toView).toList();
     }
 
     @PutMapping("/consultations/{id}")
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ConsultationView update(@PathVariable UUID id,
-                                   @Valid @RequestBody UpdateConsultationRequest req) {
+                                   @Valid @RequestBody UpdateConsultationRequest req,
+                                   Authentication auth) {
+        accessScope.requireAccess(auth, consultationService.get(id).getPractitionerId());
         return toView(consultationService.update(id, req));
     }
 
     @PostMapping("/consultations/{id}/sign")
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
-    public ConsultationView sign(@PathVariable UUID id) {
+    public ConsultationView sign(@PathVariable UUID id, Authentication auth) {
+        accessScope.requireAccess(auth, consultationService.get(id).getPractitionerId());
         return toView(consultationService.sign(id));
     }
 
     @PostMapping("/consultations/{id}/suspend")
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
-    public ConsultationView suspend(@PathVariable UUID id) {
+    public ConsultationView suspend(@PathVariable UUID id, Authentication auth) {
+        accessScope.requireAccess(auth, consultationService.get(id).getPractitionerId());
         return toView(consultationService.suspend(id));
     }
 
@@ -187,6 +201,7 @@ public class ClinicalController {
             @PathVariable UUID id,
             @Valid @RequestBody FollowUpRequest req,
             Authentication auth) {
+        accessScope.requireAccess(auth, consultationService.get(id).getPractitionerId());
         UUID practitionerId = UUID.fromString(auth.getName());
         Appointment followUp = consultationService.scheduleFollowUp(id, req, practitionerId);
         return ResponseEntity.created(URI.create("/api/appointments/" + followUp.getId()))
