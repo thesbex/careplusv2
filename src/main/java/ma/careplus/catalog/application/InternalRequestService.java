@@ -59,6 +59,19 @@ public class InternalRequestService {
     }
 
     /**
+     * Lit le service ciblé par une ligne sans la modifier. Utilisé par le
+     * controller pour faire le contrôle de rôle AVANT d'appeler {@link #claim}
+     * (sinon la transaction de claim commit déjà la transition même quand le
+     * controller veut renvoyer 403). Renvoie {@code null} si la ligne ne
+     * référence ni un labTest ni un imagingExam.
+     */
+    @Transactional(readOnly = true)
+    public Service peekService(UUID lineId) {
+        PrescriptionLine line = loadOrThrow(lineId);
+        return serviceOf(line);
+    }
+
+    /**
      * Transition PENDING → IN_PROGRESS. Le technicien doit avoir le rôle
      * correspondant au service de la ligne (vérifié plus haut côté
      * controller). Échoue si la demande a déjà été claim, annulée, ou n'est

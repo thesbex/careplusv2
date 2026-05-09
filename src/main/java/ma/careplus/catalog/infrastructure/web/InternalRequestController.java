@@ -68,20 +68,26 @@ public class InternalRequestController {
     @PreAuthorize("hasAnyRole('LAB','RADIO','MEDECIN','ADMIN')")
     public QueueItemResponse claim(@PathVariable UUID lineId, Authentication auth) {
         UUID userId = UUID.fromString(auth.getName());
-        // Vérification croisée : le rôle de l'appelant doit matcher le service
-        // de la ligne. Un LAB ne peut pas claim une ligne IMAGING (et vice-versa).
-        // MEDECIN/ADMIN sont autorisés sur tout (mode solo / supervision).
-        PrescriptionLine claimed = service.claim(lineId, userId);
-        Service svc = InternalRequestService.serviceOf(claimed);
+        // V038 — IMPORTANT : on vérifie le rôle AVANT d'appeler service.claim,
+        // sinon la transaction `@Transactional` du service commit la transition
+        // de la ligne, et le 403 levé après ne ferait pas rollback (Spring
+        // attache la transaction au service, pas au controller). Bug observé
+        // 2026-05-09 : RADIO réussissait à transitionner une ligne LAB malgré
+        // le 403 retourné côté HTTP.
+        Service svc = service.peekService(lineId);
+        if (svc == null) {
+            throw new BusinessException(
+                    "INT-NOT-INTERNAL",
+                    "Cette ligne n'est pas une demande interne.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
         if (!hasMatchingRoleOrPrivileged(auth, svc)) {
-            // Rollback transactionnel : on lève BusinessException qui sera
-            // mappée 403 PERMISSION_DENIED. La transaction est annulée par
-            // Spring → le claim ne persiste pas.
             throw new BusinessException(
                     "INT-WRONG-SERVICE",
                     "Vous ne pouvez pas prendre en charge une demande de l'autre service.",
                     HttpStatus.FORBIDDEN.value());
         }
+        PrescriptionLine claimed = service.claim(lineId, userId);
         return toResponse(claimed);
     }
 
