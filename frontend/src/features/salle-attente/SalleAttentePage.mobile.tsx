@@ -12,6 +12,7 @@ import { Warn, Stetho, ChevronRight, Heart, Plus, Close } from '@/components/ico
 import { useQueue } from './hooks/useQueue';
 import { useStartConsultation } from './hooks/useStartConsultation';
 import { useCheckIn } from './hooks/useCheckIn';
+import { api } from '@/lib/api/client';
 import { useUpcomingToday } from './hooks/useUpcomingToday';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
 import type { QueueEntry, WaitingPatientStatus } from './types';
@@ -53,7 +54,18 @@ export default function SalleAttenteMobilePage() {
   async function handleRowTap(entry: QueueEntry) {
     if (entry.status === 'done') return;
     if (entry.status === 'consult') {
-      toast.info('Consultation en cours — ouvrez-la depuis l’onglet Consultations.');
+      if (!entry.appointmentId) {
+        toast.error('RDV introuvable pour cette entrée.');
+        return;
+      }
+      try {
+        const consult = await api
+          .get<{ id: string }>(`/consultations/by-appointment/${entry.appointmentId}`)
+          .then((r) => r.data);
+        void navigate(`/consultations/${consult.id}`);
+      } catch {
+        toast.error('Impossible de retrouver la consultation en cours.');
+      }
       return;
     }
     if (entry.status === 'arrived') {

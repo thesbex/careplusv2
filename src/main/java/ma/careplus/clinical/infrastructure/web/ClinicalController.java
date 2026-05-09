@@ -146,6 +146,15 @@ public class ClinicalController {
         return toView(c);
     }
 
+    @GetMapping("/consultations/by-appointment/{appointmentId}")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ConsultationView getByAppointment(@PathVariable UUID appointmentId,
+                                             Authentication auth) {
+        Consultation c = consultationService.getByAppointmentId(appointmentId);
+        accessScope.requireAccess(auth, c.getPractitionerId());
+        return toView(c);
+    }
+
     @GetMapping("/consultations")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public List<ConsultationView> list(

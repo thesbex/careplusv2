@@ -18,6 +18,7 @@ import { useCheckIn } from './hooks/useCheckIn';
 import { useStartConsultation } from './hooks/useStartConsultation';
 import type { QueueEntry } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { api } from '@/lib/api/client';
 import './salle-attente.css';
 
 export default function SalleAttentePage() {
@@ -59,6 +60,21 @@ export default function SalleAttentePage() {
       toast.success('Patient marqué comme arrivé.');
     } catch {
       toast.error("Échec de la déclaration d'arrivée.");
+    }
+  }
+
+  async function handleOpenConsult(entry: QueueEntry) {
+    if (!entry.appointmentId) {
+      toast.error('Rendez-vous introuvable pour cette entrée.');
+      return;
+    }
+    try {
+      const consult = await api
+        .get<{ id: string }>(`/consultations/by-appointment/${entry.appointmentId}`)
+        .then((r) => r.data);
+      void navigate(`/consultations/${consult.id}`);
+    } catch {
+      toast.error('Impossible de retrouver la consultation en cours.');
     }
   }
 
@@ -167,8 +183,8 @@ export default function SalleAttentePage() {
                   onStartConsult={(entry) => {
                     void handleStartConsult(entry);
                   }}
-                  onOpenConsult={() => {
-                    toast.info('Ouvrir la consultation en cours — à câbler (J5 follow-up).');
+                  onOpenConsult={(entry) => {
+                    void handleOpenConsult(entry);
                   }}
                   onCancel={(entry) => setCancelTarget(entry)}
                   busy={isCheckingIn || isStarting}

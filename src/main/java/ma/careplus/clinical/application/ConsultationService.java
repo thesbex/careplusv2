@@ -91,6 +91,20 @@ public class ConsultationService {
                         "CONSULT_NOT_FOUND", "Consultation introuvable : " + id));
     }
 
+    /**
+     * Looks up the consultation linked to an appointment id. Used by the
+     * salle d'attente "Ouvrir" button on EN_CONSULTATION rows : the queue
+     * row only carries the appointmentId, so we resolve the consultation
+     * just-in-time when the user wants to jump in.
+     */
+    @Transactional(readOnly = true)
+    public Consultation getByAppointmentId(UUID appointmentId) {
+        return consultationRepository.findByAppointmentId(appointmentId)
+                .orElseThrow(() -> new NotFoundException(
+                        "CONSULT_NOT_FOUND",
+                        "Aucune consultation pour le rendez-vous : " + appointmentId));
+    }
+
     @Transactional(readOnly = true)
     public java.util.List<Consultation> listForPractitioner(UUID practitionerId,
                                                             OffsetDateTime from,
