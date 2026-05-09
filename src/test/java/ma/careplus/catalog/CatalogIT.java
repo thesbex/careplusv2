@@ -469,4 +469,94 @@ class CatalogIT {
         assertThat(pdfBytes).hasSizeGreaterThan(0);
         assertThat(new String(pdfBytes, 0, 4)).isEqualTo("%PDF");
     }
+
+    // ── Bon d'analyses (type=LAB) / Bon d'imagerie (type=IMAGING) ─────────────
+    //
+    // Bug 2026-05-09 : pour LAB/IMAGING le builder du PDF ne mettait pas la
+    // clé `medicationName` dans la HashMap. SpringEL (via Thymeleaf) tombait
+    // alors sur ReflectivePropertyAccessor pour HashMap → EL1008E "Property
+    // 'medicationName' cannot be found", 500 côté serveur, "Impossible de
+    // charger le PDF" côté UI. Le fix seede toutes les clés (medicationName,
+    // labTestName, imagingExamName) et le template ordonnance.html ajoute des
+    // branches dédiées pour LAB / IMAGING. Ces deux IT verrouillent que le
+    // /pdf renvoie 200 + un PDF valide pour les bons d'analyses et d'imagerie.
+    @Test
+    void createLabBon_then_pdf_returnsValidPdf() throws Exception {
+        String token = bearer(medEmail);
+
+        UUID labTestId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO catalog_lab_test (id, code, name, category, active, created_at, updated_at)
+                VALUES (?, 'NFS', 'Numération formule sanguine', 'Hématologie', TRUE, now(), now())
+                """, labTestId);
+
+        String body = String.format("""
+                {
+                  "type": "LAB",
+                  "allergyOverride": false,
+                  "lines": [
+                    { "labTestId": "%s" }
+                  ]
+                }
+                """, labTestId);
+
+        MvcResult r = mockMvc.perform(post("/api/consultations/" + consultationId + "/prescriptions")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("LAB"))
+                .andReturn();
+
+        String rxId = objectMapper.readTree(r.getResponse().getContentAsString()).get("id").asText();
+
+        byte[] pdfBytes = mockMvc.perform(get("/api/prescriptions/" + rxId + "/pdf")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(pdfBytes).hasSizeGreaterThan(0);
+        assertThat(new String(pdfBytes, 0, 4)).isEqualTo("%PDF");
+    }
+
+    @Test
+    void createImagingBon_then_pdf_returnsValidPdf() throws Exception {
+        String token = bearer(medEmail);
+
+        UUID imagingExamId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO catalog_imaging_exam (id, code, name, modality, active, created_at, updated_at)
+                VALUES (?, 'RX-THORAX', 'Radiographie du thorax', 'RX', TRUE, now(), now())
+                """, imagingExamId);
+
+        String body = String.format("""
+                {
+                  "type": "IMAGING",
+                  "allergyOverride": false,
+                  "lines": [
+                    { "imagingExamId": "%s" }
+                  ]
+                }
+                """, imagingExamId);
+
+        MvcResult r = mockMvc.perform(post("/api/consultations/" + consultationId + "/prescriptions")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("IMAGING"))
+                .andReturn();
+
+        String rxId = objectMapper.readTree(r.getResponse().getContentAsString()).get("id").asText();
+
+        byte[] pdfBytes = mockMvc.perform(get("/api/prescriptions/" + rxId + "/pdf")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andReturn().getResponse().getContentAsByteArray();
+
+        assertThat(pdfBytes).hasSizeGreaterThan(0);
+        assertThat(new String(pdfBytes, 0, 4)).isEqualTo("%PDF");
+    }
 }
