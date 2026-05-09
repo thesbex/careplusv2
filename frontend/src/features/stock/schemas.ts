@@ -65,26 +65,47 @@ export type MovementValues = z.infer<typeof MovementSchema>;
 
 /**
  * Schema for creating/editing a stock article.
+ *
+ * Validation conditionnelle par catégorie (le formulaire rend également les
+ * champs conditionnellement, mais c'est ici qu'on garde la source de vérité) :
+ *  - DOSSIER_PHYSIQUE : seul `location` est obligatoire (en plus de label).
+ *    `code` et `unit` sont auto-pré-remplis par le formulaire (`DOSS-XXXXXXXX`,
+ *    `dossier`) — un dossier patient ne se réapprovisionne pas, n'a pas
+ *    d'unité de mesure parlante et n'a pas de fournisseur.
+ *  - MEDICAMENT_INTERNE / CONSOMMABLE : tous les champs (code, label, unit,
+ *    threshold) restent obligatoires comme avant.
  */
-export const UpsertArticleSchema = z.object({
-  code: z
-    .string()
-    .min(1, 'Code requis')
-    .max(64)
-    .toUpperCase(),
-  label: z.string().min(1, 'Libellé requis').max(200),
-  category: z.enum(['MEDICAMENT_INTERNE', 'DOSSIER_PHYSIQUE', 'CONSOMMABLE'], {
-    required_error: 'Catégorie requise',
-  }),
-  unit: z.string().min(1, 'Unité requise').max(32),
-  minThreshold: z
-    .number({ invalid_type_error: 'Seuil requis' })
-    .int()
-    .min(0, 'Seuil >= 0'),
-  supplierId: z.preprocess(emptyToUndef, z.string().uuid().optional()),
-  location: z.preprocess(emptyToUndef, z.string().max(200).optional()),
-  active: z.boolean(),
-});
+export const UpsertArticleSchema = z
+  .object({
+    code: z
+      .string()
+      .min(1, 'Code requis')
+      .max(64)
+      .toUpperCase(),
+    label: z.string().min(1, 'Libellé requis').max(200),
+    category: z.enum(['MEDICAMENT_INTERNE', 'DOSSIER_PHYSIQUE', 'CONSOMMABLE'], {
+      required_error: 'Catégorie requise',
+    }),
+    unit: z.string().min(1, 'Unité requise').max(32),
+    minThreshold: z
+      .number({ invalid_type_error: 'Seuil requis' })
+      .int()
+      .min(0, 'Seuil >= 0'),
+    supplierId: z.preprocess(emptyToUndef, z.string().uuid().optional()),
+    location: z.preprocess(emptyToUndef, z.string().max(200).optional()),
+    active: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.category === 'DOSSIER_PHYSIQUE') {
+      if (!data.location || data.location.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['location'],
+          message: 'Emplacement requis pour un dossier physique',
+        });
+      }
+    }
+  });
 
 export type UpsertArticleValues = z.infer<typeof UpsertArticleSchema>;
 

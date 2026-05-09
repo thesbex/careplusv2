@@ -457,6 +457,141 @@ describe('StockArticleFormDrawer — edit mode', () => {
   });
 });
 
+// ── StockArticleFormDrawer — DOSSIER_PHYSIQUE ─────────────────────────────────
+//
+// Pinning du fix UX 2026-05-09 : un dossier physique n'a pas de code, d'unité,
+// de seuil de réappro ni de fournisseur — seul l'emplacement compte. Le form
+// doit cacher ces champs et auto-générer code/unit pour satisfaire le backend
+// (NotBlank). Cf. StockArticleFormDrawer.tsx.
+
+describe('StockArticleFormDrawer — DOSSIER_PHYSIQUE create mode', () => {
+  function selectDossier() {
+    const sel = screen.getByLabelText(/Catégorie/) as HTMLSelectElement;
+    fireEvent.change(sel, { target: { value: 'DOSSIER_PHYSIQUE' } });
+  }
+
+  it('hides code/unit/seuil/fournisseur when DOSSIER_PHYSIQUE selected', () => {
+    renderWithAll(
+      <StockArticleFormDrawer mode="create" open={true} onClose={vi.fn()} />,
+    );
+    selectDossier();
+    expect(screen.queryByLabelText(/Code article/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Unité/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Seuil/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Fournisseur/)).not.toBeInTheDocument();
+  });
+
+  it('marks Emplacement as required (label ends with *)', () => {
+    renderWithAll(
+      <StockArticleFormDrawer mode="create" open={true} onClose={vi.fn()} />,
+    );
+    selectDossier();
+    // The label text node contains "Emplacement *" when DOSSIER_PHYSIQUE.
+    const locationLabel = screen.getByLabelText(/Emplacement/);
+    expect(locationLabel).toBeInTheDocument();
+    // The visible label text includes the asterisk.
+    expect(screen.getByText(/Emplacement \*/)).toBeInTheDocument();
+  });
+
+  it('submits with auto-generated code (DOSS-*) + unit="dossier" + threshold=0', async () => {
+    upsertArticleMock.mockResolvedValueOnce({});
+    renderWithAll(
+      <StockArticleFormDrawer mode="create" open={true} onClose={vi.fn()} />,
+    );
+    selectDossier();
+    fireEvent.change(screen.getByLabelText(/Libellé/), {
+      target: { value: 'Dossier famille Bennani' },
+    });
+    fireEvent.change(screen.getByLabelText(/Emplacement/), {
+      target: { value: 'Salle archives, étagère A' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Ajouter$/ }));
+
+    await waitFor(() => expect(upsertArticleMock).toHaveBeenCalled());
+    const lastCall = upsertArticleMock.mock.calls.at(-1) as [string, { body: Record<string, unknown> }];
+    const body = lastCall[1].body;
+    expect(body.label).toBe('Dossier famille Bennani');
+    expect(body.location).toBe('Salle archives, étagère A');
+    expect(body.category).toBe('DOSSIER_PHYSIQUE');
+    expect(typeof body.code).toBe('string');
+    expect((body.code as string).startsWith('DOSS-')).toBe(true);
+    expect(body.unit).toBe('dossier');
+    expect(body.minThreshold).toBe(0);
+    expect(body.supplierId).toBeUndefined();
+  });
+
+  it('blocks submission when emplacement is empty for DOSSIER_PHYSIQUE', async () => {
+    upsertArticleMock.mockClear();
+    renderWithAll(
+      <StockArticleFormDrawer mode="create" open={true} onClose={vi.fn()} />,
+    );
+    selectDossier();
+    fireEvent.change(screen.getByLabelText(/Libellé/), {
+      target: { value: 'Dossier sans emplacement' },
+    });
+    // Pas de saisie d'emplacement.
+    fireEvent.click(screen.getByRole('button', { name: /^Ajouter$/ }));
+
+    // Le validator zod superRefine doit empêcher l'appel.
+    await waitFor(() => {
+      expect(screen.getByText(/Emplacement requis pour un dossier physique/)).toBeInTheDocument();
+    });
+    expect(upsertArticleMock).not.toHaveBeenCalled();
+  });
+
+  it('switching from DOSSIER_PHYSIQUE back to CONSOMMABLE clears DOSS-* code', async () => {
+    renderWithAll(
+      <StockArticleFormDrawer mode="create" open={true} onClose={vi.fn()} />,
+    );
+    selectDossier();
+    // Code field is hidden — value is in form state. Switch back :
+    const sel = screen.getByLabelText(/Catégorie/) as HTMLSelectElement;
+    fireEvent.change(sel, { target: { value: 'CONSOMMABLE' } });
+
+    // Code field reappears, empty (the auto-generated DOSS-* was cleared).
+    const code = screen.getByLabelText(/Code article/) as HTMLInputElement;
+    expect(code.value).toBe('');
+    const unit = screen.getByLabelText(/^Unité/) as HTMLInputElement;
+    expect(unit.value).toBe('');
+  });
+});
+
+describe('StockArticleFormDrawer — DOSSIER_PHYSIQUE edit mode', () => {
+  const dossierArticle = {
+    id: 'art-2',
+    code: 'DOSS-AB12CD34',
+    label: 'Dossier famille Alami',
+    category: 'DOSSIER_PHYSIQUE' as const,
+    unit: 'dossier',
+    minThreshold: 0,
+    supplierId: null,
+    supplierName: null,
+    location: 'Salle archives, A12',
+    active: true,
+    tracksLots: false,
+    currentQuantity: 0,
+    nearestExpiry: null,
+  };
+
+  it('shows code (readonly) but hides unit/seuil/fournisseur', () => {
+    renderWithAll(
+      <StockArticleFormDrawer mode="edit" article={dossierArticle} open={true} onClose={vi.fn()} />,
+    );
+    expect(screen.getByDisplayValue('DOSS-AB12CD34')).toHaveAttribute('readonly');
+    expect(screen.queryByLabelText(/^Unité/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Seuil/)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Fournisseur/)).not.toBeInTheDocument();
+  });
+
+  it('pre-fills label + emplacement + active', () => {
+    renderWithAll(
+      <StockArticleFormDrawer mode="edit" article={dossierArticle} open={true} onClose={vi.fn()} />,
+    );
+    expect(screen.getByDisplayValue('Dossier famille Alami')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Salle archives, A12')).toBeInTheDocument();
+  });
+});
+
 // ── LotInactivateDialog ───────────────────────────────────────────────────────
 
 import { LotInactivateDialog } from '../components/LotInactivateDialog';

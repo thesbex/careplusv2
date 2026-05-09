@@ -1,9 +1,16 @@
 /**
  * StockArticleFormDrawer — slide-over for creating/editing a stock article.
  * Used from the articles list ("Ajouter") and from the article detail ("Éditer").
+ *
+ * Le formulaire est CONDITIONNEL sur la catégorie :
+ *  - DOSSIER_PHYSIQUE : Libellé + Emplacement + Actif. Code auto-généré
+ *    (DOSS-XXXXXXXX), unit fixée à "dossier", seuil/fournisseur masqués.
+ *    Cf. décision UX 2026-05-09 — un dossier patient ne se réapprovisionne pas.
+ *  - MEDICAMENT_INTERNE / CONSOMMABLE : tous les champs (code, libellé,
+ *    catégorie, unité, seuil, fournisseur, emplacement, actif).
  */
 import { useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
@@ -29,6 +36,12 @@ const CATEGORY_OPTIONS = [
   { value: 'CONSOMMABLE', label: 'Consommable' },
 ] as const;
 
+/** Random 8-char hex (uppercase) for auto-generated DOSSIER codes. */
+function randomDossierCode(): string {
+  // crypto.randomUUID() est dispo dans tous les navigateurs ciblés (et JSDOM tests).
+  return 'DOSS-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+}
+
 export function StockArticleFormDrawer({
   mode,
   article,
@@ -43,6 +56,8 @@ export function StockArticleFormDrawer({
     handleSubmit,
     reset,
     control,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<UpsertArticleValues>({
     resolver: zodResolver(UpsertArticleSchema),
@@ -57,6 +72,9 @@ export function StockArticleFormDrawer({
       active: true,
     },
   });
+
+  const watchedCategory = useWatch({ control, name: 'category' });
+  const isDossier = watchedCategory === 'DOSSIER_PHYSIQUE';
 
   useEffect(() => {
     if (open) {
@@ -85,6 +103,32 @@ export function StockArticleFormDrawer({
       }
     }
   }, [open, mode, article, reset]);
+
+  // Quand l'utilisateur bascule sur DOSSIER_PHYSIQUE en CRÉATION, on auto-remplit
+  // code (DOSS-XXXXXXXX) + unit ("dossier") + threshold (0) + supplier (null) pour
+  // satisfaire le backend (NotBlank sur code/unit) sans en demander la saisie. En
+  // mode edit on ne touche pas — l'article existant garde ses valeurs historiques.
+  useEffect(() => {
+    if (mode !== 'create') return;
+    if (isDossier) {
+      setValue('code', randomDossierCode(), { shouldValidate: false });
+      setValue('unit', 'dossier', { shouldValidate: false });
+      setValue('minThreshold', 0, { shouldValidate: false });
+      setValue('supplierId', undefined, { shouldValidate: false });
+    } else {
+      // Bascule vers une catégorie standard : on efface le code auto-généré
+      // s'il a la signature DOSS-* + l'unité "dossier" pour ne pas tromper.
+      const currentCode = getValues('code');
+      if (typeof currentCode === 'string' && currentCode.startsWith('DOSS-')) {
+        setValue('code', '', { shouldValidate: false });
+      }
+      const currentUnit = getValues('unit');
+      if (currentUnit === 'dossier') {
+        setValue('unit', '', { shouldValidate: false });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDossier, mode]);
 
   async function onSubmit(values: UpsertArticleValues) {
     try {
@@ -185,28 +229,30 @@ export function StockArticleFormDrawer({
             gap: 16,
           }}
         >
-          {/* Code */}
-          <div>
-            <label
-              htmlFor="art-code"
-              style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
-            >
-              Code article *
-            </label>
-            <Input
-              id="art-code"
-              placeholder="ex. BETADINE-125"
-              readOnly={mode === 'edit'}
-              {...register('code')}
-              aria-invalid={Boolean(errors.code)}
-              style={mode === 'edit' ? { background: 'var(--surface-2)', color: 'var(--ink-3)' } : {}}
-            />
-            {errors.code && (
-              <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.code.message}
-              </div>
-            )}
-          </div>
+          {/* Code — caché en CRÉATION pour DOSSIER_PHYSIQUE (auto-généré côté form) */}
+          {!(isDossier && mode === 'create') && (
+            <div>
+              <label
+                htmlFor="art-code"
+                style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
+              >
+                Code article *
+              </label>
+              <Input
+                id="art-code"
+                placeholder="ex. BETADINE-125"
+                readOnly={mode === 'edit'}
+                {...register('code')}
+                aria-invalid={Boolean(errors.code)}
+                style={mode === 'edit' ? { background: 'var(--surface-2)', color: 'var(--ink-3)' } : {}}
+              />
+              {errors.code && (
+                <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
+                  {errors.code.message}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Label */}
           <div>
@@ -218,7 +264,11 @@ export function StockArticleFormDrawer({
             </label>
             <Input
               id="art-label"
-              placeholder="ex. Bétadine 10% flacon 125 mL"
+              placeholder={
+                isDossier
+                  ? 'ex. Dossier famille Bennani'
+                  : 'ex. Bétadine 10% flacon 125 mL'
+              }
               {...register('label')}
               aria-invalid={Boolean(errors.label)}
             />
@@ -273,103 +323,119 @@ export function StockArticleFormDrawer({
             )}
           </div>
 
-          {/* Unit */}
-          <div>
-            <label
-              htmlFor="art-unit"
-              style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
-            >
-              Unité *
-            </label>
-            <Input
-              id="art-unit"
-              placeholder="ex. flacon, boîte, unité, mL"
-              {...register('unit')}
-              aria-invalid={Boolean(errors.unit)}
-            />
-            {errors.unit && (
-              <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.unit.message}
-              </div>
-            )}
-          </div>
-
-          {/* Min threshold */}
-          <div>
-            <label
-              htmlFor="art-threshold"
-              style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
-            >
-              Seuil d&apos;alerte stock faible
-            </label>
-            <Input
-              id="art-threshold"
-              type="number"
-              min={0}
-              {...register('minThreshold', { valueAsNumber: true })}
-              aria-invalid={Boolean(errors.minThreshold)}
-            />
-            {errors.minThreshold && (
-              <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.minThreshold.message}
-              </div>
-            )}
-          </div>
-
-          {/* Supplier */}
-          <div>
-            <label
-              htmlFor="art-supplier"
-              style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
-            >
-              Fournisseur
-            </label>
-            <Controller
-              control={control}
-              name="supplierId"
-              render={({ field }) => (
-                <select
-                  id="art-supplier"
-                  value={field.value ?? ''}
-                  onChange={(e) => field.onChange(e.target.value || undefined)}
-                  style={{
-                    width: '100%',
-                    height: 36,
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--r-md)',
-                    padding: '0 10px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    background: 'var(--surface)',
-                    color: 'var(--ink)',
-                  }}
-                >
-                  <option value="">— Aucun fournisseur —</option>
-                  {suppliers
-                    .filter((s) => s.active)
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                </select>
+          {/* Unit — caché pour DOSSIER_PHYSIQUE (auto-fixé à "dossier") */}
+          {!isDossier && (
+            <div>
+              <label
+                htmlFor="art-unit"
+                style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
+              >
+                Unité *
+              </label>
+              <Input
+                id="art-unit"
+                placeholder="ex. flacon, boîte, unité, mL"
+                {...register('unit')}
+                aria-invalid={Boolean(errors.unit)}
+              />
+              {errors.unit && (
+                <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
+                  {errors.unit.message}
+                </div>
               )}
-            />
-          </div>
+            </div>
+          )}
 
-          {/* Location */}
+          {/* Min threshold — caché pour DOSSIER_PHYSIQUE (un dossier ne se réapprovisionne pas) */}
+          {!isDossier && (
+            <div>
+              <label
+                htmlFor="art-threshold"
+                style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
+              >
+                Seuil d&apos;alerte stock faible
+              </label>
+              <Input
+                id="art-threshold"
+                type="number"
+                min={0}
+                {...register('minThreshold', { valueAsNumber: true })}
+                aria-invalid={Boolean(errors.minThreshold)}
+              />
+              {errors.minThreshold && (
+                <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
+                  {errors.minThreshold.message}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Supplier — caché pour DOSSIER_PHYSIQUE (un dossier ne s'achète pas) */}
+          {!isDossier && (
+            <div>
+              <label
+                htmlFor="art-supplier"
+                style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
+              >
+                Fournisseur
+              </label>
+              <Controller
+                control={control}
+                name="supplierId"
+                render={({ field }) => (
+                  <select
+                    id="art-supplier"
+                    value={field.value ?? ''}
+                    onChange={(e) => field.onChange(e.target.value || undefined)}
+                    style={{
+                      width: '100%',
+                      height: 36,
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--r-md)',
+                      padding: '0 10px',
+                      fontSize: 13,
+                      fontFamily: 'inherit',
+                      background: 'var(--surface)',
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    <option value="">— Aucun fournisseur —</option>
+                    {suppliers
+                      .filter((s) => s.active)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              />
+            </div>
+          )}
+
+          {/* Location — requis pour DOSSIER_PHYSIQUE, optionnel sinon */}
           <div>
             <label
               htmlFor="art-location"
               style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
             >
-              Emplacement
+              Emplacement{isDossier ? ' *' : ''}
             </label>
             <Input
               id="art-location"
-              placeholder="ex. Armoire 1, tiroir B"
+              placeholder={
+                isDossier
+                  ? 'ex. Salle archives, étagère A, casier 12'
+                  : 'ex. Armoire 1, tiroir B'
+              }
               {...register('location')}
+              aria-invalid={Boolean(errors.location)}
             />
+            {errors.location && (
+              <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
+                {errors.location.message}
+              </div>
+            )}
           </div>
 
           {/* Active */}
