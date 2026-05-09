@@ -16,6 +16,7 @@
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import type { PatientSummary } from '../types';
 import { usePatientVitalsHistory } from '../hooks/usePatientVitalsHistory';
+import { useInsurances } from '../hooks/useInsurances';
 import type { VitalsApi } from '@/features/consultation/hooks/useLatestVitals';
 import { VitalIcon, type VitalKey } from '@/features/consultation/components/VitalIcon';
 
@@ -131,6 +132,10 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
   const antecedents = patient.antecedentDetails ?? [];
   const { history, isLoading: vitalsLoading } = usePatientVitalsHistory(patient.id);
   const { rows: vitalsRows, asOf: vitalsAsOf } = buildLastVitals(history);
+  const { insurances } = useInsurances();
+  const mutuelleName = patient.mutuelleInsuranceId
+    ? insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? null
+    : null;
   return (
     <div
       className="scroll"
@@ -232,8 +237,8 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
             )}
             {patient.mutuelleInsuranceId && (
               <div style={{ color: 'var(--ink-2)' }}>
-                Mutuelle{' '}
-                {patient.mutuellePolicyNumber ? `· N° ${patient.mutuellePolicyNumber}` : ''}
+                {mutuelleName ?? 'Mutuelle'}
+                {patient.mutuellePolicyNumber ? ` · N° ${patient.mutuellePolicyNumber}` : ''}
               </div>
             )}
           </div>

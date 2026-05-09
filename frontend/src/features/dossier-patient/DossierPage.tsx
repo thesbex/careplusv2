@@ -17,6 +17,7 @@ import {
   type AllergySeverity,
   type AntecedentType,
 } from './hooks/useUpdatePatient';
+import { useInsurances } from './hooks/useInsurances';
 import { useStartConsultation } from '@/features/salle-attente/hooks/useStartConsultation';
 import { useConsultations } from '@/features/consultation/hooks/useConsultations';
 import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
@@ -119,6 +120,7 @@ function EditPatientPanel({
 }) {
   const { update, isPending, error, reset } = useUpdatePatient(patientId);
   const photo = usePatientPhoto(patientId);
+  const { insurances } = useInsurances();
   const [form, setForm] = useState<UpdatePatientForm>(initial);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -365,6 +367,73 @@ function EditPatientPanel({
           <div><Lbl>Ville</Lbl>
             <Input value={form.city} onChange={(e) => setField('city', e.target.value)} placeholder="Casablanca" />
           </div>
+
+          <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+
+          {/* ── Tier patient (Normal / Premium) ──────────────────────────── */}
+          <div>
+            <Lbl>Type de patient</Lbl>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {(['NORMAL', 'PREMIUM'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setField('tier', t)}
+                  style={{
+                    flex: 1,
+                    height: 36,
+                    fontSize: 12.5,
+                    fontWeight: form.tier === t ? 650 : 500,
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    borderRadius: 6,
+                    border: `1px solid ${form.tier === t ? 'var(--primary)' : 'var(--border)'}`,
+                    background: form.tier === t ? 'var(--primary-soft)' : 'var(--surface)',
+                    color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
+                  }}
+                >
+                  {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Mutuelle ────────────────────────────────────────────────── */}
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.hasMutuelle}
+                onChange={(e) => setField('hasMutuelle', e.target.checked)}
+              />
+              <span>A une mutuelle</span>
+            </label>
+          </div>
+          {form.hasMutuelle && (
+            <>
+              <div>
+                <Lbl>Organisme</Lbl>
+                <select
+                  value={form.mutuelleInsuranceId}
+                  onChange={(e) => setField('mutuelleInsuranceId', e.target.value)}
+                  style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+                >
+                  <option value="">— Sélectionner —</option>
+                  {insurances.map((ins) => (
+                    <option key={ins.id} value={ins.id}>{ins.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Lbl>Numéro de police</Lbl>
+                <Input
+                  value={form.mutuellePolicyNumber}
+                  onChange={(e) => setField('mutuellePolicyNumber', e.target.value)}
+                  placeholder="Ex. CNSS-123456"
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {/* ── Onglet Médical ─────────────────────────────────────────────── */}
@@ -571,6 +640,10 @@ export default function DossierPage() {
     );
   }
 
+  const initialTier: 'NORMAL' | 'PREMIUM' = raw.tier === 'PREMIUM' ? 'PREMIUM' : 'NORMAL';
+  const initialHasMutuelle = !!raw.mutuelleInsuranceId;
+  const initialMutuelleInsuranceId = raw.mutuelleInsuranceId ?? '';
+  const initialMutuellePolicyNumber = raw.mutuellePoliceNumber ?? '';
   const editInitial: UpdatePatientForm = {
     firstName: raw.firstName,
     lastName: raw.lastName,
@@ -582,6 +655,14 @@ export default function DossierPage() {
     city: '',
     bloodGroup: raw.bloodGroup ?? '',
     notes: '',
+    tier: initialTier,
+    hasMutuelle: initialHasMutuelle,
+    mutuelleInsuranceId: initialMutuelleInsuranceId,
+    mutuellePolicyNumber: initialMutuellePolicyNumber,
+    initialTier,
+    initialHasMutuelle,
+    initialMutuelleInsuranceId,
+    initialMutuellePolicyNumber,
     existingAllergies: raw.allergies.map((a) => ({
       id: a.id,
       substance: a.substance,

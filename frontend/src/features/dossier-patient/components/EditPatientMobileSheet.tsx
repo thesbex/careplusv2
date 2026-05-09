@@ -348,6 +348,10 @@ export function EditPatientMobileSheet({
 }
 
 function buildInitial(p: PatientViewApi): UpdatePatientForm {
+  const tier: 'NORMAL' | 'PREMIUM' = p.tier === 'PREMIUM' ? 'PREMIUM' : 'NORMAL';
+  const hasMutuelle = !!p.mutuelleInsuranceId;
+  const mutuelleInsuranceId = p.mutuelleInsuranceId ?? '';
+  const mutuellePolicyNumber = p.mutuellePoliceNumber ?? '';
   return {
     firstName: p.firstName,
     lastName: p.lastName,
@@ -359,6 +363,17 @@ function buildInitial(p: PatientViewApi): UpdatePatientForm {
     city: '',
     bloodGroup: p.bloodGroup ?? '',
     notes: '',
+    // Mobile sheet n'expose pas tier/mutuelle (édition desktop pour ces
+    // champs) — on passe l'existant tel quel pour que useUpdatePatient
+    // détecte "rien changé" et n'appelle pas les endpoints dédiés.
+    tier,
+    hasMutuelle,
+    mutuelleInsuranceId,
+    mutuellePolicyNumber,
+    initialTier: tier,
+    initialHasMutuelle: hasMutuelle,
+    initialMutuelleInsuranceId: mutuelleInsuranceId,
+    initialMutuellePolicyNumber: mutuellePolicyNumber,
     // Champs médicaux : on garde l'existant, rien à supprimer ni ajouter via cette
     // sheet (édition desktop pour ces champs denses).
     existingAllergies: p.allergies.map((a) => ({
