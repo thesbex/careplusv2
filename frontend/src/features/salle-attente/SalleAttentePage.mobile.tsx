@@ -104,7 +104,7 @@ export default function SalleAttenteMobilePage() {
   return (
     <MScreen
       tab="salle"
-      badges={{ salle: queue.length }}
+      badges={{ salle: aVoir }}
       topbar={<MTopbar brand />}
       onTabChange={(tab: MobileTab) => {
         const map: Record<MobileTab, string> = {

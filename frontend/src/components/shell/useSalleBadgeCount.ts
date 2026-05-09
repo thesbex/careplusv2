@@ -41,7 +41,7 @@ export function useSalleBadgeCount(enabled = true): number | undefined {
   const { data } = useQuery(
     {
       queryKey: ['queue'],
-      queryFn: () => api.get<unknown[]>('/queue').then((r) => r.data),
+      queryFn: () => api.get<{ status: string }[]>('/queue').then((r) => r.data),
       refetchInterval: 15_000,
       staleTime: 10_000,
       enabled: enabled && !isFallback,
@@ -50,5 +50,8 @@ export function useSalleBadgeCount(enabled = true): number | undefined {
   );
 
   if (!enabled || isFallback) return undefined;
-  return data?.length;
+  // Le badge compte les patients PRÉSENTS en salle d'attente — pas ceux déjà
+  // partis en consultation. Le backend /queue renvoie aussi les EN_CONSULTATION
+  // (la page Salle a besoin de les afficher), donc on filtre côté badge.
+  return data?.filter((e) => e.status !== 'EN_CONSULTATION').length;
 }
