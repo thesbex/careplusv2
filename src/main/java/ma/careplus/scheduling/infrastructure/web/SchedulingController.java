@@ -5,6 +5,7 @@ import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+import ma.careplus.identity.application.AccessScopeService;
 import ma.careplus.scheduling.application.SchedulingService;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentReason;
@@ -21,6 +22,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,25 +43,33 @@ public class SchedulingController {
 
     private final SchedulingService service;
     private final JdbcTemplate jdbc;
+    private final AccessScopeService accessScope;
 
-    public SchedulingController(SchedulingService service, JdbcTemplate jdbc) {
+    public SchedulingController(SchedulingService service, JdbcTemplate jdbc,
+                                AccessScopeService accessScope) {
         this.service = service;
         this.jdbc = jdbc;
+        this.accessScope = accessScope;
     }
 
     // ── Appointments ───────────────────────────────────────────────
 
     @PostMapping("/appointments")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public ResponseEntity<AppointmentView> create(@Valid @RequestBody CreateAppointmentRequest req) {
+    public ResponseEntity<AppointmentView> create(
+            @Valid @RequestBody CreateAppointmentRequest req,
+            Authentication auth) {
+        accessScope.requireAccess(auth, req.practitionerId());
         Appointment a = service.create(req);
         return ResponseEntity.created(URI.create("/api/appointments/" + a.getId())).body(toView(a));
     }
 
     @GetMapping("/appointments/{id}")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public AppointmentView get(@PathVariable UUID id) {
-        return toView(service.get(id));
+    public AppointmentView get(@PathVariable UUID id, Authentication auth) {
+        Appointment a = service.get(id);
+        accessScope.requireAccess(auth, a.getPractitionerId());
+        return toView(a);
     }
 
     @GetMapping("/appointments")
@@ -67,7 +77,9 @@ public class SchedulingController {
     public List<AppointmentView> list(
             @RequestParam UUID practitionerId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            Authentication auth) {
+        accessScope.requireAccess(auth, practitionerId);
         return jdbc.query("""
                 SELECT a.id, a.patient_id,
                        (p.first_name || ' ' || p.last_name) AS patient_full_name,
@@ -111,7 +123,10 @@ public class SchedulingController {
 
     @PutMapping("/appointments/{id}")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public AppointmentView move(@PathVariable UUID id, @Valid @RequestBody MoveAppointmentRequest req) {
+    public AppointmentView move(@PathVariable UUID id,
+                                @Valid @RequestBody MoveAppointmentRequest req,
+                                Authentication auth) {
+        accessScope.requireAccess(auth, service.get(id).getPractitionerId());
         return toView(service.move(id, req));
     }
 
@@ -119,7 +134,9 @@ public class SchedulingController {
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public AppointmentView cancel(
             @PathVariable UUID id,
-            @RequestBody(required = false) CancelAppointmentRequest req) {
+            @RequestBody(required = false) CancelAppointmentRequest req,
+            Authentication auth) {
+        accessScope.requireAccess(auth, service.get(id).getPractitionerId());
         return toView(service.cancel(id, req));
     }
 
@@ -132,7 +149,9 @@ public class SchedulingController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(required = false) UUID reasonId,
-            @RequestParam(required = false) Integer durationMinutes) {
+            @RequestParam(required = false) Integer durationMinutes,
+            Authentication auth) {
+        accessScope.requireAccess(auth, practitionerId);
         return service.availability(practitionerId, from, to, reasonId, durationMinutes);
     }
 
@@ -152,7 +171,8 @@ public class SchedulingController {
 
     @GetMapping("/practitioners/{practitionerId}/leaves")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public List<LeaveView> listLeaves(@PathVariable UUID practitionerId) {
+    public List<LeaveView> listLeaves(@PathVariable UUID practitionerId, Authentication auth) {
+        accessScope.requireAccess(auth, practitionerId);
         return service.listLeaves(practitionerId).stream()
                 .map(l -> new LeaveView(l.getId(), l.getStartDate(), l.getEndDate(), l.getReason()))
                 .toList();
@@ -162,7 +182,9 @@ public class SchedulingController {
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<LeaveView> createLeave(
             @PathVariable UUID practitionerId,
-            @Valid @RequestBody CreateLeaveRequest req) {
+            @Valid @RequestBody CreateLeaveRequest req,
+            Authentication auth) {
+        accessScope.requireAccess(auth, practitionerId);
         var l = service.createLeave(practitionerId, req);
         return ResponseEntity
                 .created(URI.create("/api/practitioners/" + practitionerId + "/leaves/" + l.getId()))
@@ -173,7 +195,9 @@ public class SchedulingController {
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> deleteLeave(
             @PathVariable UUID practitionerId,
-            @PathVariable UUID leaveId) {
+            @PathVariable UUID leaveId,
+            Authentication auth) {
+        accessScope.requireAccess(auth, practitionerId);
         service.deleteLeave(practitionerId, leaveId);
         return ResponseEntity.noContent().build();
     }
@@ -186,7 +210,8 @@ public class SchedulingController {
      */
     @GetMapping("/appointments/{id}/room-conflicts")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public List<RoomConflictView> roomConflicts(@PathVariable UUID id) {
+    public List<RoomConflictView> roomConflicts(@PathVariable UUID id, Authentication auth) {
+        accessScope.requireAccess(auth, service.get(id).getPractitionerId());
         return service.roomConflicts(id, jdbc);
     }
 

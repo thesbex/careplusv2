@@ -4,10 +4,14 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import ma.careplus.clinical.application.ConsultationService;
 import ma.careplus.clinical.application.PresenceService;
 import ma.careplus.clinical.application.VitalsService;
+import ma.careplus.identity.application.AccessScopeService;
+import ma.careplus.scheduling.application.SchedulingService;
 import ma.careplus.clinical.domain.Consultation;
 import ma.careplus.clinical.domain.VitalSigns;
 import ma.careplus.clinical.infrastructure.web.dto.ConsultationView;
@@ -50,13 +54,19 @@ public class ClinicalController {
     private final PresenceService presenceService;
     private final VitalsService vitalsService;
     private final ConsultationService consultationService;
+    private final AccessScopeService accessScope;
+    private final SchedulingService schedulingService;
 
     public ClinicalController(PresenceService presenceService,
                               VitalsService vitalsService,
-                              ConsultationService consultationService) {
+                              ConsultationService consultationService,
+                              AccessScopeService accessScope,
+                              SchedulingService schedulingService) {
         this.presenceService = presenceService;
         this.vitalsService = vitalsService;
         this.consultationService = consultationService;
+        this.accessScope = accessScope;
+        this.schedulingService = schedulingService;
     }
 
     // ── Check-in + queue ───────────────────────────────────────────
@@ -65,7 +75,9 @@ public class ClinicalController {
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> checkIn(
             @PathVariable UUID id,
-            @RequestBody(required = false) CheckInRequest req) {
+            @RequestBody(required = false) CheckInRequest req,
+            Authentication auth) {
+        accessScope.requireAccess(auth, schedulingService.get(id).getPractitionerId());
         UUID roomId = req != null ? req.roomId() : null;
         presenceService.checkIn(id, roomId);
         return ResponseEntity.noContent().build();
@@ -73,8 +85,9 @@ public class ClinicalController {
 
     @GetMapping("/queue")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
-    public List<QueueEntryView> queue() {
-        return presenceService.queueForToday();
+    public List<QueueEntryView> queue(Authentication auth) {
+        Optional<Set<UUID>> scope = accessScope.allowedPractitioners(auth);
+        return presenceService.queueForToday(scope);
     }
 
     // ── Vitals ─────────────────────────────────────────────────────
@@ -85,6 +98,7 @@ public class ClinicalController {
             @PathVariable UUID id,
             @Valid @RequestBody RecordVitalsRequest req,
             Authentication auth) {
+        accessScope.requireAccess(auth, schedulingService.get(id).getPractitionerId());
         UUID recordedBy = UUID.fromString(auth.getName());
         VitalSigns v = vitalsService.record(id, recordedBy, req);
         return ResponseEntity.created(

@@ -5,7 +5,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.Period;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import ma.careplus.clinical.infrastructure.web.dto.QueueEntryView;
 import ma.careplus.scheduling.domain.Appointment;
@@ -82,11 +85,25 @@ public class PresenceService {
 
     @Transactional(readOnly = true)
     public List<QueueEntryView> queueForToday() {
+        return queueForToday(Optional.empty());
+    }
+
+    /**
+     * Same as {@link #queueForToday()} but additionally restricts the result to
+     * the given practitioner scope. {@link Optional#empty()} = no restriction
+     * (admin / cabinet solo / strict isolation off). An empty set returns
+     * nothing — the caller has no assigned practitioner.
+     */
+    @Transactional(readOnly = true)
+    public List<QueueEntryView> queueForToday(Optional<Set<UUID>> scope) {
+        if (scope.isPresent() && scope.get().isEmpty()) {
+            return Collections.emptyList();
+        }
         LocalDate today = LocalDate.now(CABINET_ZONE);
         OffsetDateTime from = today.atStartOfDay(CABINET_ZONE).toOffsetDateTime();
         OffsetDateTime to = today.plusDays(1).atStartOfDay(CABINET_ZONE).toOffsetDateTime();
 
-        return jdbc.query("""
+        StringBuilder sql = new StringBuilder("""
                 SELECT a.id, a.patient_id, p.first_name, p.last_name,
                        p.birth_date, p.tier,
                        a.start_at, a.end_at, a.status, a.arrived_at,
@@ -102,8 +119,19 @@ public class PresenceService {
                 WHERE a.start_at >= ?
                   AND a.start_at <  ?
                   AND a.status IN ('ARRIVE','EN_ATTENTE_CONSTANTES','CONSTANTES_PRISES','EN_CONSULTATION')
-                ORDER BY a.start_at
-                """,
+                """);
+        java.util.List<Object> args = new java.util.ArrayList<>();
+        args.add(from);
+        args.add(to);
+        if (scope.isPresent()) {
+            Set<UUID> allowed = scope.get();
+            String placeholders = String.join(",", Collections.nCopies(allowed.size(), "?"));
+            sql.append("  AND a.practitioner_id IN (").append(placeholders).append(")\n");
+            args.addAll(allowed);
+        }
+        sql.append("ORDER BY a.start_at");
+
+        return jdbc.query(sql.toString(),
                 (rs, i) -> {
                     LocalDate birth = rs.getObject("birth_date", LocalDate.class);
                     Integer age = birth != null ? Period.between(birth, today).getYears() : null;
@@ -136,6 +164,6 @@ public class PresenceService {
                             roomId,
                             roomName);
                 },
-                from, to);
+                args.toArray());
     }
 }
