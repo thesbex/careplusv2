@@ -16,8 +16,12 @@ interface AgendaBlockProps {
  * Ported from design/prototype/screens/agenda.jsx:AgendaBlock.
  */
 export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
-  const top = pxFromMin(toMin(a.start)) + 2;
-  const height = pxFromMin(a.dur) - 4;
+  // 1px inset top + bottom (was 2+2). Borders on the block already provide
+  // visual separation between adjacent slots, so a 2px total gap is enough —
+  // the 4px reservation was eating into the per-block padding budget and
+  // making 30-min slots feel cramped.
+  const top = pxFromMin(toMin(a.start)) + 1;
+  const height = pxFromMin(a.dur) - 2;
   // Block-density tiers based on slot height:
   //   ≤15min  → compact   : time + name inline (one row, ~14px usable)
   //   16-30   → medium    : time + name stacked, no reason (32px usable)

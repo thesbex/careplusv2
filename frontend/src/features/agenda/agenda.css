@@ -247,16 +247,20 @@
  * is hidden because the 32px box can't fit a third line without overflowing
  * into the next time row. Reason re-appears for ≥45-min blocks. */
 .ag-block.ag-medium {
-  padding: 4px 7px;
+  /* 6px top/bottom + 9px sides for breathing room around time/name. */
+  padding: 6px 9px;
 }
 .ag-block.ag-medium .ag-reason {
   display: none;
 }
 .ag-block.ag-medium .ag-name {
-  line-height: 1.15;
+  /* 1.0 line-height keeps the two stacked lines fitting inside the
+   * 34px medium box without trimming descenders. */
+  line-height: 1;
+  margin-top: 2px;
 }
 .ag-block.ag-medium .ag-time {
-  line-height: 1.15;
+  line-height: 1;
 }
 .ag-block.ag-compact .ag-time {
   flex: 0 0 auto;
