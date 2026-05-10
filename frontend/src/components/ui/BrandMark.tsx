@@ -67,7 +67,14 @@ export function BrandMark({
       aria-hidden="true"
       {...rest}
     >
-      <svg viewBox="0 0 64 64" width={box} height={box} fill="none">
+      <svg
+        viewBox="0 0 64 64"
+        width={box}
+        height={box}
+        fill="none"
+        shapeRendering="geometricPrecision"
+        style={{ display: 'block' }}
+      >
         {!inverted && (
           <defs>
             <linearGradient id={cId} x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse">

@@ -151,16 +151,14 @@ export function Sidebar({
     <nav className="cp-sidebar" aria-label="Navigation principale">
       <div className="cp-brand">
         <BrandMark size="md" />
-        <div style={{ minWidth: 0 }}>
-          <div className="cp-brand-name">
-            {resolvedCabinet.name === 'careplus' ? (
-              <BrandWordmark />
-            ) : (
-              resolvedCabinet.name
-            )}
-          </div>
-          <div className="cp-brand-cab">{resolvedCabinet.city}</div>
+        <div className="cp-brand-name">
+          {resolvedCabinet.name === 'careplus' ? (
+            <BrandWordmark />
+          ) : (
+            resolvedCabinet.name
+          )}
         </div>
+        <div className="cp-brand-cab">{resolvedCabinet.city}</div>
       </div>
 
       <div className="cp-nav-section">Flux patient</div>
