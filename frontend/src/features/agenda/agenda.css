@@ -468,6 +468,12 @@
   overflow: auto;
 }
 .ag-month-cell {
+  /* Real cells render as <button> (clickable to drill into the day).
+   * Reset the browser's default 2px-outset-black button border first,
+   * then re-apply the left + bottom hairlines. Without the reset, real
+   * cells were showing a thick black border on top + right because
+   * border shorthand wasn't fully overridden by per-side rules. */
+  border: 0;
   border-left: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 8px 10px;
