@@ -61,7 +61,7 @@ export function AgendaToolbar({
         <span><i style={{ background: '#C9D9EE', boxShadow: 'inset 0 0 0 1px #2A7CE7' }} />Consultation</span>
         <span><i style={{ background: '#FBEFE3', boxShadow: 'inset 0 0 0 1px #C68A2E' }} />En attente</span>
         <span><i style={{ background: '#DEF0E6', boxShadow: 'inset 0 0 0 1px #2F8F6B' }} />Arrivé</span>
-        <span><i style={{ background: '#F2F1EC', boxShadow: 'inset 0 0 0 1px #9B9B9B' }} />Terminé</span>
+        <span><i style={{ background: '#F5E1DC', boxShadow: 'inset 0 0 0 1px #A8321E' }} />Terminé</span>
       </div>
     </div>
   );

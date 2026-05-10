@@ -340,12 +340,12 @@
   background: var(--primary-soft);
 }
 .ag-done {
-  border-left-color: #9b9b9b;
-  background: #f2f1ec;
-  color: var(--ink-3);
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+  color: var(--ink-2);
 }
 .ag-done .ag-name {
-  color: var(--ink-2);
+  color: var(--ink);
 }
 
 /* ── Right panel (today arrivals) ───────────────────────── */

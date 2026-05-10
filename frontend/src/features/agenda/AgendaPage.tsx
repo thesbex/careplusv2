@@ -224,13 +224,22 @@ export default function AgendaPage() {
 
   // For Jour view we surface a friendly "Lundi 4 mai 2026 · N rendez-vous"
   // label in the toolbar (per design-handoff-v2 / `screens/agenda.jsx::
-  // AgendaJour`), not the week range. Reuse the month-year tail of weekLabel.
+  // AgendaJour`). Format from the real Date so weeks that span two months
+  // ("27 avr. – 2 mai") still produce a single-month label per day.
   const jourLabel = (() => {
     if (view !== 'jour') return null;
     const d = visibleDays[0];
     if (!d) return weekLabel;
-    const monthYear = weekLabel.replace(/^\d+\s*[–-]\s*\d+\s*/, '');
-    return `${d.label} ${d.date} ${monthYear} · ${selectedDayRdvCount} rendez-vous`;
+    const iso = isoOfDayKey(d.key);
+    const target = new Date(`${iso}T00:00:00`);
+    const formatted = target.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const cap = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    return `${cap} · ${selectedDayRdvCount} rendez-vous`;
   })();
   // Mois subtitle per maquette : "Avril 2026 · 142 rendez-vous".
   const moisLabel =
