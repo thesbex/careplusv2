@@ -243,6 +243,21 @@
   align-items: center;
   gap: 6px;
 }
+/* Medium variant : 30-min slots show time + name only (2 lines), reason
+ * is hidden because the 32px box can't fit a third line without overflowing
+ * into the next time row. Reason re-appears for ≥45-min blocks. */
+.ag-block.ag-medium {
+  padding: 4px 7px;
+}
+.ag-block.ag-medium .ag-reason {
+  display: none;
+}
+.ag-block.ag-medium .ag-name {
+  line-height: 1.15;
+}
+.ag-block.ag-medium .ag-time {
+  line-height: 1.15;
+}
 .ag-block.ag-compact .ag-time {
   flex: 0 0 auto;
   line-height: 1;

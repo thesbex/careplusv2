@@ -18,11 +18,15 @@ interface AgendaBlockProps {
 export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
   const top = pxFromMin(toMin(a.start)) + 2;
   const height = pxFromMin(a.dur) - 4;
-  // Compact layout (inline time + name) only when the slot is too short for
-  // 3 stacked lines — design-handoff-v2 / `screens/agenda.jsx::AgendaBlock`
-  // uses `dur <= 15`. 30-min slots have room for time + name + reason.
+  // Block-density tiers based on slot height:
+  //   ≤15min  → compact   : time + name inline (one row, ~14px usable)
+  //   16-30   → medium    : time + name stacked, no reason (32px usable)
+  //   >30     → full      : time + name + reason (3 lines, design default)
+  // 30-min blocks (most common) used to render the 3-line layout, which
+  // overflows their 32px box — the reason line crashed into the next slot.
   const compact = a.dur <= 15;
-  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}`;
+  const medium = !compact && a.dur <= 30;
+  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}${medium ? ' ag-medium' : ''}`;
   return (
     <button
       type="button"
