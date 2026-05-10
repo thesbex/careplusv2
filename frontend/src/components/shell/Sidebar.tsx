@@ -12,6 +12,8 @@ import {
   Heart,
   Box,
   BarChart,
+  Logout,
+  Eye,
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -236,58 +238,26 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
         </span>
       </button>
       {open && (
-        <div
-          role="menu"
-          style={{
-            position: 'absolute',
-            bottom: 'calc(100% + 6px)',
-            left: 0,
-            right: 0,
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-md)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            padding: 4,
-            zIndex: 10,
-          }}
-        >
+        <div role="menu" className="cp-user-menu">
           <button
             type="button"
             role="menuitem"
+            className="cp-user-menu-item"
             onClick={() => {
               setOpen(false);
               navigate('/profil');
             }}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              background: 'transparent',
-              border: 'none',
-              borderRadius: 'var(--r-sm)',
-              textAlign: 'left',
-              fontSize: 12,
-              cursor: 'pointer',
-              color: 'var(--ink)',
-            }}
           >
+            <Eye />
             Mon profil
           </button>
           <button
             type="button"
             role="menuitem"
+            className="cp-user-menu-item is-danger"
             onClick={handleLogout}
-            style={{
-              width: '100%',
-              padding: '8px 10px',
-              background: 'transparent',
-              border: 'none',
-              borderRadius: 'var(--r-sm)',
-              textAlign: 'left',
-              fontSize: 12,
-              cursor: 'pointer',
-              color: 'var(--ink)',
-            }}
           >
+            <Logout />
             Se déconnecter
           </button>
         </div>
