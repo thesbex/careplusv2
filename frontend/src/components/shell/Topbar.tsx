@@ -37,7 +37,6 @@ export function Topbar({
         >
           <Search />
           <span>Rechercher un patient par nom, téléphone, CIN…</span>
-          <span className="kbd">⌘ K</span>
         </button>
       )}
 

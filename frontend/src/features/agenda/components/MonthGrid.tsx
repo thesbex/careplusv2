@@ -1,8 +1,14 @@
 /**
- * MonthGrid — 6×7 calendar for the "mois" agenda view.
- * Each cell shows the day number + first 2 appointment time/patient pills,
- * and a "+N" overflow indicator. Leave days are visually striped.
- * Clicking a day inside the displayed month emits onSelectDay.
+ * MonthGrid — month view of the agenda.
+ *
+ * Re-aligned with design-handoff-v2 / `screens/agenda.jsx::AgendaMois` :
+ * each cell shows the day number + a "{count} RDV" line + a thin progress
+ * bar at the bottom (intensity = count). The original "two appointment
+ * pills + +N autres" rendering was rejected as off-design (chat2 user
+ * feedback "agenda mois looks ugly + n'est pas iso maquette").
+ *
+ * The grid renders 5 or 6 weeks dynamically — exactly as many rows as the
+ * month + leading/trailing blanks need, no more.
  */
 import type { AppointmentApi } from '../hooks/useAppointments';
 import type { Leave } from '@/features/parametres/types';
@@ -27,11 +33,6 @@ function isLeaveDay(iso: string, leaves: Leave[]): boolean {
   return leaves.some((l) => iso >= l.startDate && iso <= l.endDate);
 }
 
-function timeOfApt(a: AppointmentApi): string {
-  const d = new Date(a.startAt);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
 function aptIso(a: AppointmentApi): string {
   const d = new Date(a.startAt);
   return isoOfDay(d.getFullYear(), d.getMonth(), d.getDate());
@@ -47,29 +48,31 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
   const dowMon0 = (firstOfMonth.getDay() + 6) % 7; // Mon=0..Sun=6
   const gridStart = new Date(year, month, 1 - dowMon0);
 
-  // 6 rows × 7 cols = 42 cells
-  const cells: { iso: string; day: number; outside: boolean; date: Date }[] = [];
-  for (let i = 0; i < 42; i++) {
+  // Last day of month, then pad to fill the trailing week. Tend toward 5 rows
+  // when possible (5 × 7 = 35), spill to 6 only when the month overflows.
+  const lastOfMonth = new Date(year, month + 1, 0);
+  const totalDays = dowMon0 + lastOfMonth.getDate();
+  const cellCount = Math.ceil(totalDays / 7) * 7;
+
+  const cells: { iso: string; day: number; outside: boolean; date: Date; isWeekend: boolean }[] = [];
+  for (let i = 0; i < cellCount; i++) {
     const d = new Date(gridStart);
     d.setDate(gridStart.getDate() + i);
+    const dow = d.getDay(); // 0 = Sunday, 6 = Saturday
     cells.push({
       iso: isoOfDay(d.getFullYear(), d.getMonth(), d.getDate()),
       day: d.getDate(),
       outside: d.getMonth() !== month,
       date: d,
+      isWeekend: dow === 0 || dow === 6,
     });
   }
 
   // Index appointments by day ISO for quick lookup.
-  const byDay = new Map<string, AppointmentApi[]>();
+  const byDay = new Map<string, number>();
   for (const a of appointments) {
     const k = aptIso(a);
-    if (!byDay.has(k)) byDay.set(k, []);
-    byDay.get(k)!.push(a);
-  }
-  // Sort within each day.
-  for (const list of byDay.values()) {
-    list.sort((a, b) => a.startAt.localeCompare(b.startAt));
+    byDay.set(k, (byDay.get(k) ?? 0) + 1);
   }
 
   return (
@@ -83,13 +86,16 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
       </div>
       <div className="ag-month-grid scroll" role="grid" aria-label="Agenda mensuel">
         {cells.map((cell) => {
-          const apts = byDay.get(cell.iso) ?? [];
+          if (cell.outside) {
+            return <div key={cell.iso} className="ag-month-cell ag-month-blank" aria-hidden="true" />;
+          }
+          const count = byDay.get(cell.iso) ?? 0;
           const onLeave = isLeaveDay(cell.iso, leaves);
           const isToday = cell.iso === todayIso;
           const cls = [
             'ag-month-cell',
-            cell.outside ? 'outside' : '',
             isToday ? 'today' : '',
+            cell.isWeekend ? 'weekend' : '',
             onLeave ? 'leave' : '',
           ]
             .filter(Boolean)
@@ -100,21 +106,19 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
               type="button"
               role="gridcell"
               className={cls}
-              onClick={() => {
-                if (!cell.outside) onSelectDay(cell.iso);
-              }}
-              disabled={cell.outside}
-              aria-label={`${cell.iso}${onLeave ? ' (congé)' : ''}, ${apts.length} rendez-vous`}
+              onClick={() => onSelectDay(cell.iso)}
+              aria-label={`${cell.iso}${onLeave ? ' (congé)' : ''}, ${count} rendez-vous`}
             >
-              <span className="ag-month-day-num">{cell.day}</span>
-              {onLeave && !cell.outside && <span className="ag-month-leave-tag">Congé</span>}
-              {!cell.outside &&
-                apts.slice(0, 2).map((a) => (
-                  <span key={a.id} className="ag-month-apt-pill" title={a.patientFullName ?? ''}>
-                    {timeOfApt(a)} · {a.patientFullName ?? '—'}
+              <span className="ag-month-date tnum">{cell.day}</span>
+              {onLeave && <span className="ag-month-leave-tag">Congé</span>}
+              {count > 0 && (
+                <>
+                  <span className="ag-month-count tnum">{count} RDV</span>
+                  <span className="ag-month-bar" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, count * 8)}%` }} />
                   </span>
-                ))}
-              {apts.length > 2 && <span className="ag-month-more">+{apts.length - 2} autres</span>}
+                </>
+              )}
             </button>
           );
         })}

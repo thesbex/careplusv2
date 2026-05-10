@@ -13,6 +13,7 @@ import { AgendaToolbar } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { MonthGrid } from './components/MonthGrid';
+import { MonthSidebar } from './components/MonthSidebar';
 import { TodayArrivals } from './components/TodayArrivals';
 import {
   ALL_PRACTITIONERS,
@@ -314,7 +315,13 @@ export default function AgendaPage() {
             )}
           </>
         }
-        right={<TodayArrivals arrivals={arrivals} />}
+        right={
+          view === 'mois' ? (
+            <MonthSidebar monthLabel={monthLabel} appointments={monthAppointments} />
+          ) : (
+            <TodayArrivals arrivals={arrivals} />
+          )
+        }
         onNavigate={(id) => {
           const map = {
             dashboard: '/dashboard',
