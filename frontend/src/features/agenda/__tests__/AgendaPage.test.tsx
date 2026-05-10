@@ -34,6 +34,22 @@ vi.mock('@/features/parametres/hooks/useLeaves', () => ({
   useLeaves: () => ({ leaves: [], isLoading: false, error: null }),
 }));
 
+vi.mock('@/features/salle-attente/hooks/useQueue', () => ({
+  useQueue: () => ({
+    // Fixture queue : 3 entries — only those with status arrived/vitals/consult
+    // are surfaced to the agenda right panel as Arrivées.
+    queue: [
+      { name: 'Mohamed Alami',   apt: '09:00', status: 'consult', arrived: '08:55', allergy: 'Pénicilline', age: 58, reason: 'Consultation', isPremium: false, room: '—', waited: '15 min' },
+      { name: 'Youssef Ziani',   apt: '10:00', status: 'vitals',  arrived: '09:51', age: 32, reason: 'Première', isPremium: false, room: '—', waited: '8 min' },
+      { name: 'Ahmed Cherkaoui', apt: '15:00', status: 'arrived', arrived: '14:58', allergy: 'Aspirine', age: 47, reason: 'Suivi HTA', isPremium: false, room: '—', waited: '2 min' },
+    ],
+    kpis: [],
+    upcoming: [],
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 function renderAgenda() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const router = createMemoryRouter(
@@ -122,5 +138,52 @@ describe('<AgendaPage /> (desktop)', () => {
     const { container } = renderAgenda();
     const results = await axe(container);
     expect(results).toHaveNoViolations();
+  });
+
+  // ── Jour view (iso-design from design-handoff-v2 / `screens/agenda.jsx::AgendaJour`) ──
+  describe('Jour view', () => {
+    async function switchToJour(): Promise<void> {
+      const { default: userEvent } = await import('@testing-library/user-event');
+      const u = userEvent.setup();
+      const group = screen.getByRole('group', { name: 'Période' });
+      await u.click(within(group).getByRole('button', { name: 'Jour' }));
+    }
+
+    it('subtitle shows day label + RDV count ("<Day> <N> <month> <YYYY> · <N> rendez-vous")', async () => {
+      const { container } = renderAgenda();
+      await switchToJour();
+      const sub = container.querySelector('.cp-topbar-sub');
+      // The exact day depends on real-system time (the helper uses new Date()
+      // for the displayed week). Just assert the shape: capitalized weekday +
+      // day-of-month + month + year + count suffix.
+      expect(sub?.textContent).toMatch(/^[A-Z][a-zéû]+ \d{1,2} \p{L}+ \d{4} · \d+ rendez-vous$/u);
+    });
+
+    it('header cell carries the `today` class regardless of actual today', async () => {
+      const { container } = renderAgenda();
+      await switchToJour();
+      // After switch, only the selected day's header cell remains (besides the
+      // hour-column placeholder). It must have the today highlight.
+      const headerCells = container.querySelectorAll('.ag-header-cell');
+      const dayCells = Array.from(headerCells).filter((c) => c.textContent?.trim());
+      expect(dayCells).toHaveLength(1);
+      expect(dayCells[0]?.className).toMatch(/\btoday\b/);
+    });
+
+    it('header cell shows "X RDV programmés" right-aligned suffix', async () => {
+      const { container } = renderAgenda();
+      await switchToJour();
+      const count = container.querySelector('.ag-day-count');
+      expect(count).not.toBeNull();
+      expect(count?.textContent).toMatch(/^\d+ RDV programmés$/);
+    });
+
+    it('day column carries the `today` class (gradient timeline tint)', async () => {
+      const { container } = renderAgenda();
+      await switchToJour();
+      const cols = container.querySelectorAll('.ag-daycol');
+      expect(cols).toHaveLength(1);
+      expect(cols[0]?.className).toMatch(/\btoday\b/);
+    });
   });
 });
