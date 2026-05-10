@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Phone, Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { AgendaToolbar } from './components/AgendaToolbar';
@@ -436,31 +437,15 @@ export default function AgendaPage() {
             }}
           >
             {showPractitionerSelector && (
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  color: 'var(--ink-2)',
-                }}
-              >
+              <label className="ag-filter-label">
                 Médecin
-                <select
+                <Select
                   aria-label="Filtrer par médecin"
+                  className="ag-filter-select"
                   value={practitionerFilter}
                   onChange={(e) =>
                     changePractitionerFilter(e.target.value as PractitionerIdFilter)
                   }
-                  style={{
-                    height: 28,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 12.5,
-                    fontFamily: 'inherit',
-                    background: 'var(--surface)',
-                  }}
                 >
                   <option value={ALL_PRACTITIONERS}>Tous les médecins</option>
                   {activePractitioners.map((p) => (
@@ -469,33 +454,17 @@ export default function AgendaPage() {
                       {p.specialty ? ` — ${p.specialty}` : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             {showRoomSelector && (
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  fontSize: 12,
-                  color: 'var(--ink-2)',
-                }}
-              >
+              <label className="ag-filter-label">
                 Salle
-                <select
+                <Select
                   aria-label="Filtrer par salle"
+                  className="ag-filter-select"
                   value={roomFilter}
                   onChange={(e) => setRoomFilter(e.target.value)}
-                  style={{
-                    height: 28,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 12.5,
-                    fontFamily: 'inherit',
-                    background: 'var(--surface)',
-                  }}
                 >
                   <option value="ALL">Toutes les salles</option>
                   {activeRooms.map((r) => (
@@ -503,7 +472,7 @@ export default function AgendaPage() {
                       {r.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
           </div>

@@ -382,6 +382,26 @@
   justify-content: space-between;
   gap: 8px;
 }
+/* Médecin / Salle filter selectors above the agenda grid. Compact (28px)
+ * variant of the global .select class — shares the chevron + appearance
+ * reset, just shorter and tighter. */
+.ag-filter-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+/* Specificity bump (select.ag-filter-select) so this wins the cascade vs
+ * the global `.input, .select, .textarea` rule regardless of CSS load order. */
+select.ag-filter-select {
+  height: 28px;
+  width: auto;
+  font-size: 12.5px;
+  padding: 0 28px 0 8px;
+  background-position: right 8px center;
+}
+
 .ag-arrival-foot {
   display: flex;
   justify-content: space-between;
