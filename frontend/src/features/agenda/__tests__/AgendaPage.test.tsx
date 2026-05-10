@@ -113,11 +113,15 @@ describe('<AgendaPage /> (desktop)', () => {
     expect(screen.getByText('Aspirine')).toBeInTheDocument();
   });
 
-  it('renders the now-line on Jeudi (today) at 09:47', () => {
-    renderAgenda();
-    const nowLabels = screen.getAllByText('09:47');
-    // topbar pageDate + now-line label → at least one occurrence
-    expect(nowLabels.length).toBeGreaterThanOrEqual(1);
+  it('renders the now-line on Jeudi (today) with the wall-clock label', () => {
+    const { container } = renderAgenda();
+    // The now-line label is derived from the real Date — it used to be
+    // hardcoded to "09:47" from the design fixture, which leaked into
+    // production on weekends as a phantom line at 09:47 on Thursday.
+    // Just assert the line is rendered with a HH:MM label.
+    const lbl = container.querySelector('.ag-now-lbl');
+    expect(lbl).not.toBeNull();
+    expect(lbl?.textContent).toMatch(/^\d{2}:\d{2}$/);
   });
 
   it("renders the Today's Arrivals right panel with the 3 fixture patients", () => {

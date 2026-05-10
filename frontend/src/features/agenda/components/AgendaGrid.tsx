@@ -37,8 +37,15 @@ function snapTimeFromY(yPx: number, totalRows: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today = 'jeu', now = '09:47', leaveDays, jourMode = false }: AgendaGridProps) {
-  const nowTop = pxFromMin(toMin(now));
+export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today, now, leaveDays, jourMode = false }: AgendaGridProps) {
+  // Default `now` to the actual wall-clock when the page didn't pass one.
+  // Hardcoding "09:47" (the design fixture) used to leak into production —
+  // today = Sunday at 22h showed a phantom line at 09:47 on Thursday.
+  const effectiveNow = now ?? (() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  })();
+  const nowTop = pxFromMin(toMin(effectiveNow));
   // The base CSS hardcodes `grid-template-columns: 56px repeat(6, 1fr)` for a
   // 6-day week. When the page passes a single day (jour view), the 5 phantom
   // columns showed up as empty space to the right of the only real column.
@@ -108,9 +115,9 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
               {HOURS.map((h) => (
                 <div key={h} className="ag-hour-cell" />
               ))}
-              {d.key === today && (
-                <div className="ag-now" style={{ top: nowTop }} aria-label={`Heure actuelle ${now}`}>
-                  <span className="ag-now-lbl tnum">{now}</span>
+              {today && d.key === today && (
+                <div className="ag-now" style={{ top: nowTop }} aria-label={`Heure actuelle ${effectiveNow}`}>
+                  <span className="ag-now-lbl tnum">{effectiveNow}</span>
                 </div>
               )}
               {appointments
