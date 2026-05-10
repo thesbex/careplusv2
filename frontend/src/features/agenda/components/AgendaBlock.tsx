@@ -18,7 +18,10 @@ interface AgendaBlockProps {
 export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
   const top = pxFromMin(toMin(a.start)) + 2;
   const height = pxFromMin(a.dur) - 4;
-  const compact = a.dur <= 30;
+  // Compact layout (inline time + name) only when the slot is too short for
+  // 3 stacked lines — design-handoff-v2 / `screens/agenda.jsx::AgendaBlock`
+  // uses `dur <= 15`. 30-min slots have room for time + name + reason.
+  const compact = a.dur <= 15;
   const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}`;
   return (
     <button
@@ -38,7 +41,6 @@ export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
       {compact ? (
         <>
           <div className="ag-time tnum">{a.start}</div>
-          <div className="ag-dur tnum">{a.dur}min</div>
           <div className="ag-name">{a.patient}</div>
           {a.allergy && (
             <span className="ag-allergy-dot" title={`Allergie : ${a.allergy}`}>

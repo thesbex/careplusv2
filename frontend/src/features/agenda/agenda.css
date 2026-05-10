@@ -247,14 +247,6 @@
   flex: 0 0 auto;
   line-height: 1;
 }
-.ag-block.ag-compact .ag-dur {
-  flex: 0 0 auto;
-  font-size: 10px;
-  color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-  white-space: nowrap;
-}
 .ag-block.ag-compact .ag-name {
   flex: 1 1 0;
   min-width: 0;
