@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
-import { Warn } from '@/components/icons';
+import { Warn, ChevronRight } from '@/components/icons';
 import type { Arrival } from '../types';
 
 const STATUS_LABEL: Record<Arrival['status'], string> = {
@@ -80,8 +80,9 @@ export function TodayArrivals({
               <span className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
                 {p.status === 'arrived' ? "Vient d'arriver" : `Depuis ${p.since}`}
               </span>
-              <Button size="sm" variant="ghost">
-                Dossier →
+              <Button size="sm" variant="ghost" className="ag-arrival-dossier">
+                Dossier
+                <ChevronRight />
               </Button>
             </div>
           </div>
@@ -95,7 +96,8 @@ export function TodayArrivals({
           style={{ width: '100%', justifyContent: 'center' }}
           onClick={() => navigate('/salle')}
         >
-          Ouvrir la salle d'attente →
+          Ouvrir la salle d'attente
+          <ChevronRight />
         </Button>
       </div>
     </>
