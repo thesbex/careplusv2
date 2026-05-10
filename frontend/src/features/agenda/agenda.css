@@ -446,7 +446,7 @@
 .ag-month-head {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border-bottom: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border);
 }
 .ag-month-head-cell {
   padding: 10px 12px;
@@ -455,7 +455,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 500;
-  border-left: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border);
 }
 .ag-month-head-cell:first-child {
   border-left: 0;
@@ -468,8 +468,8 @@
   overflow: auto;
 }
 .ag-month-cell {
-  border-left: 1px solid var(--border-strong);
-  border-bottom: 1px solid var(--border-strong);
+  border-left: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   padding: 8px 10px;
   background: var(--surface);
   cursor: pointer;
@@ -504,14 +504,12 @@
     rgba(229, 162, 50, 0.12) 12px
   );
 }
+/* Outside-month cells : per the maquette, they are simply bg-coloured
+ * blocks with NO borders (the lattice only paints around real days). */
 .ag-month-blank {
   background: var(--bg);
   cursor: default;
-  border-left: 1px solid var(--border-strong);
-  border-bottom: 1px solid var(--border-strong);
-}
-.ag-month-blank:nth-child(7n + 1) {
-  border-left: 0;
+  border: 0;
 }
 .ag-month-date {
   font-size: 13px;
