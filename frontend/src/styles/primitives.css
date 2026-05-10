@@ -70,14 +70,15 @@
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 7px;
+  gap: 5px;
+  padding: 3px 9px;
   border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 550;
+  font-size: 11px;
+  font-weight: 600;
   background: var(--bg-alt);
   color: var(--ink-2);
-  line-height: 1.4;
+  line-height: 1.35;
+  letter-spacing: 0.005em;
   white-space: nowrap;
 }
 .pill .dot {

@@ -43,17 +43,24 @@
   --success: #3f7a3a;
   --success-soft: #e1ecde;
 
-  /* ── Patient-status palette (pills only) ────── */
-  --status-arrived: #c7dcee;
-  --status-arrived-ink: #1c4b75;
-  --status-waiting: #f1e1a5;
-  --status-waiting-ink: #7a5b10;
-  --status-vitals: #e8d4c3;
-  --status-vitals-ink: #7a3f10;
+  /* ── Patient-status palette (pills + agenda blocks) ──
+   * Synced with the AgendaBlock palette so the legend chip / pill /
+   * block all read the same color for a given status.
+   *   arrived → green   (#DEF0E6 / #2F8F6B)
+   *   waiting → amber   (#FBEFE3 / #C68A2E)
+   *   vitals  → amber   (same — "en attente constantes")
+   *   consult → blue    (--primary)
+   *   done    → red     (--danger / --danger-soft) */
+  --status-arrived: #def0e6;
+  --status-arrived-ink: #2f8f6b;
+  --status-waiting: #fbefe3;
+  --status-waiting-ink: #c68a2e;
+  --status-vitals: #fbefe3;
+  --status-vitals-ink: #c68a2e;
   --status-consult: #c9d9ee;
   --status-consult-ink: #1e5aa8;
-  --status-done: #d8d8d2;
-  --status-done-ink: #4a4a42;
+  --status-done: #f5e1dc;
+  --status-done-ink: #a8321e;
 
   /* ── Typography ─────────────────────────────── */
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
