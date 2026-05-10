@@ -5,6 +5,7 @@ import { PatientSearchSpotlight } from './PatientSearchSpotlight';
 import { useSalleBadgeCount } from './useSalleBadgeCount';
 import { SpotlightContext } from './spotlightContext';
 import { NAV_MAP, pathToSidebarScreen } from '@/lib/router/navMap';
+import '@/styles/shell.css';
 
 /**
  * Persistent application chrome for every authenticated route.
