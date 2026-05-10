@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { api } from '@/lib/api/client';
 import { Search } from '@/components/icons';
@@ -43,6 +44,7 @@ export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
   const [active, setActive] = useState(0);
   const [results, setResults] = useState<PatientHit[]>([]);
   const [isFetching, setIsFetching] = useState(false);
+  const navigate = useNavigate();
 
   // Reset query when the spotlight closes so reopening starts fresh.
   useEffect(() => {
@@ -84,10 +86,7 @@ export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
 
   function pick(p: PatientHit) {
     onOpenChange(false);
-    // Full reload navigation — keeps Spotlight free of Router context so it
-    // can mount inside Screen (which renders inside <Routes>) without test
-    // wrappers. UX cost is minimal: dossier loads from a fresh paint.
-    window.location.assign(`/patients/${p.id}`);
+    navigate(`/patients/${p.id}`);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {

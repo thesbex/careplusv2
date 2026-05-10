@@ -24,23 +24,20 @@ import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
 import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
+import { AppLayout } from '@/components/shell/AppLayout';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
 
 /**
  * careplus route tree.
- * Navigation mapping (mirrors DESIGN_SYSTEM.md §9):
- *   /login         → screen 12
- *   /onboarding    → screen 13
- *   /agenda        → screen 01 (placeholder until J4)
- *   /patients      → screen 03 (placeholder until J3)
- *   /salle         → screen 04 (placeholder until J5)
- *   /consultations → screen 06 (placeholder until J5)
- *   /facturation   → screen 09 (placeholder until J7)
- *   /parametres    → screen 11 (placeholder until J8)
  *
- * Lazy-load is deferred until screens are substantial enough to matter
- * (after J5); for now, all pages are small and splitting them would add
- * more request overhead than it saves.
+ * The authenticated routes are grouped under a pathless <AppLayout> route so
+ * the persistent chrome (Sidebar, ⌘K spotlight) mounts ONCE and survives
+ * navigation between pages — soft router transitions no longer remount the
+ * sidebar / its 4 polling hooks. Pages still call <Screen title=... right=...>
+ * for their per-page Topbar + workspace + right panel.
+ *
+ * Routes that don't need the chrome (landing, login, onboarding) sit at the
+ * top level as siblings.
  */
 /** v7 future flags opt-in — keeps console clean and eases the eventual v7 upgrade. */
 const future = {
@@ -79,193 +76,198 @@ export const router = createBrowserRouter(
       ),
     },
     {
-      path: '/dashboard',
-      element: (
-        <RequireAuth>
-          <DashboardRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/agenda',
-      element: (
-        <RequirePermission permission="APPOINTMENT_READ">
-          <AgendaRoute />
-        </RequirePermission>
-      ),
-    },
-    {
-      path: '/patients',
-      element: (
-        <RequirePermission permission="PATIENT_READ">
-          <PatientsListPage />
-        </RequirePermission>
-      ),
-    },
-    {
-      path: '/patients/:id',
-      element: (
-        <RequirePermission permission="PATIENT_READ">
-          <DossierRoute />
-        </RequirePermission>
-      ),
-    },
-    {
-      path: '/salle',
-      element: (
-        <RequireAuth>
-          <SalleAttenteRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/rdv/new',
-      element: (
-        <RequireAuth>
-          <PriseRDVMobilePage />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/constantes/:appointmentId',
-      element: (
-        <RequireAuth>
-          <PriseConstantesRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/consultations',
-      element: (
-        <RequireAuth>
-          <ConsultationRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/consultations/:id',
-      element: (
-        <RequireAuth>
-          <ConsultationRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/prescriptions/:id',
-      element: (
-        <RequireAuth>
-          <OrdonnancePdfPage />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/_unused_placeholder_consult',
-      element: (
-        <RequireAuth>
-          <Placeholder
-            active="consult"
-            mobileTab="patients"
-            title="Consultations"
-            sprintDay="J5"
-          />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/facturation',
-      element: (
-        <RequirePermission permission="INVOICE_READ">
-          <FacturationPage />
-        </RequirePermission>
-      ),
-    },
-    {
-      path: '/facturation/:id/apercu',
-      element: (
-        <RequirePermission permission="INVOICE_READ">
-          <ApercuFacturePage />
-        </RequirePermission>
-      ),
-    },
-    {
-      path: '/vaccinations',
-      element: (
-        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
-          <VaccinationsQueueRoute />
-        </RequireRole>
-      ),
-    },
-    {
-      path: '/grossesses',
-      element: (
-        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
-          <PregnancesQueueRoute />
-        </RequireRole>
-      ),
-    },
-    {
-      path: '/stock',
-      element: (
-        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
-          <StockArticlesRoute />
-        </RequireRole>
-      ),
-    },
-    {
-      path: '/stock/articles/:id',
-      element: (
-        <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
-          <StockArticleDetailRoute />
-        </RequireRole>
-      ),
-    },
-    {
-      path: '/parametres',
-      element: (
-        <RequireRole roles={['ADMIN']}>
-          <ParametragePage />
-        </RequireRole>
-      ),
-    },
-    {
-      path: '/profil',
-      element: (
-        <RequireAuth>
-          <ProfilPage />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/catalogue',
-      element: (
-        <RequireAuth>
-          <CataloguePage />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/catalogue/analyses',
-      element: (
-        <RequireAuth>
-          <LabCatalogueRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/catalogue/radio',
-      element: (
-        <RequireAuth>
-          <ImagingCatalogueRoute />
-        </RequireAuth>
-      ),
-    },
-    {
-      path: '/queue/:service',
-      element: (
-        <RequireRole roles={['LAB', 'RADIO', 'MEDECIN', 'ADMIN']}>
-          <InternalRequestsQueuePage />
-        </RequireRole>
-      ),
+      element: <AppLayout />,
+      children: [
+        {
+          path: '/dashboard',
+          element: (
+            <RequireAuth>
+              <DashboardRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/agenda',
+          element: (
+            <RequirePermission permission="APPOINTMENT_READ">
+              <AgendaRoute />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: '/patients',
+          element: (
+            <RequirePermission permission="PATIENT_READ">
+              <PatientsListPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: '/patients/:id',
+          element: (
+            <RequirePermission permission="PATIENT_READ">
+              <DossierRoute />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: '/salle',
+          element: (
+            <RequireAuth>
+              <SalleAttenteRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/rdv/new',
+          element: (
+            <RequireAuth>
+              <PriseRDVMobilePage />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/constantes/:appointmentId',
+          element: (
+            <RequireAuth>
+              <PriseConstantesRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/consultations',
+          element: (
+            <RequireAuth>
+              <ConsultationRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/consultations/:id',
+          element: (
+            <RequireAuth>
+              <ConsultationRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/prescriptions/:id',
+          element: (
+            <RequireAuth>
+              <OrdonnancePdfPage />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/_unused_placeholder_consult',
+          element: (
+            <RequireAuth>
+              <Placeholder
+                active="consult"
+                mobileTab="patients"
+                title="Consultations"
+                sprintDay="J5"
+              />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/facturation',
+          element: (
+            <RequirePermission permission="INVOICE_READ">
+              <FacturationPage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: '/facturation/:id/apercu',
+          element: (
+            <RequirePermission permission="INVOICE_READ">
+              <ApercuFacturePage />
+            </RequirePermission>
+          ),
+        },
+        {
+          path: '/vaccinations',
+          element: (
+            <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+              <VaccinationsQueueRoute />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/grossesses',
+          element: (
+            <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+              <PregnancesQueueRoute />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/stock',
+          element: (
+            <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+              <StockArticlesRoute />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/stock/articles/:id',
+          element: (
+            <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
+              <StockArticleDetailRoute />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/parametres',
+          element: (
+            <RequireRole roles={['ADMIN']}>
+              <ParametragePage />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/profil',
+          element: (
+            <RequireAuth>
+              <ProfilPage />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/catalogue',
+          element: (
+            <RequireAuth>
+              <CataloguePage />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/catalogue/analyses',
+          element: (
+            <RequireAuth>
+              <LabCatalogueRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/catalogue/radio',
+          element: (
+            <RequireAuth>
+              <ImagingCatalogueRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/queue/:service',
+          element: (
+            <RequireRole roles={['LAB', 'RADIO', 'MEDECIN', 'ADMIN']}>
+              <InternalRequestsQueuePage />
+            </RequireRole>
+          ),
+        },
+      ],
     },
     { path: '*', element: <Navigate to="/" replace /> },
   ],

@@ -8,6 +8,9 @@ export type { TopbarProps } from './Topbar';
 export { Screen } from './Screen';
 export type { ScreenProps } from './Screen';
 
+export { AppLayout } from './AppLayout';
+export { useSpotlight } from './spotlightContext';
+
 // Mobile shell
 export { MTopbar, MIconBtn } from './MTopbar';
 export type { MTopbarProps } from './MTopbar';

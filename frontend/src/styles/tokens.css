@@ -5,11 +5,11 @@
  * See design/prototype/DESIGN_SYSTEM.md §2–§4 for the full rationale.
  */
 
-@import '@fontsource/inter-tight/300.css';
-@import '@fontsource/inter-tight/400.css';
-@import '@fontsource/inter-tight/500.css';
-@import '@fontsource/inter-tight/600.css';
-@import '@fontsource/inter-tight/700.css';
+@import '@fontsource/plus-jakarta-sans/400.css';
+@import '@fontsource/plus-jakarta-sans/500.css';
+@import '@fontsource/plus-jakarta-sans/600.css';
+@import '@fontsource/plus-jakarta-sans/700.css';
+@import '@fontsource/plus-jakarta-sans/800.css';
 @import '@fontsource/instrument-serif/400.css';
 @import '@fontsource/instrument-serif/400-italic.css';
 @import '@fontsource/jetbrains-mono/400.css';
@@ -29,10 +29,10 @@
   --border-strong: #d6d0c3;
   --border-soft: #efebe3;
 
-  /* ── Brand (Clinical Blue) ──────────────────── */
-  --primary: #1e5aa8;
-  --primary-hover: #174585;
-  --primary-soft: #e4edf8;
+  /* ── Brand (careplus blue) ──────────────────── */
+  --primary: #2a7ce7;
+  --primary-hover: #1b5bc7;
+  --primary-soft: #e4eefa;
   --primary-ink: #ffffff;
 
   /* ── Semantic ───────────────────────────────── */
@@ -56,7 +56,7 @@
   --status-done-ink: #4a4a42;
 
   /* ── Typography ─────────────────────────────── */
-  --font-sans: 'Inter Tight', ui-sans-serif, -apple-system, system-ui, sans-serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
   --font-serif: 'Instrument Serif', Georgia, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 

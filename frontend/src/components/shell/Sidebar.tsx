@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Users,
@@ -195,6 +196,7 @@ export function Sidebar({
 function UserChip({ user }: { user: { name: string; role: string; initials: string } }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -250,7 +252,7 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              window.location.href = '/profil';
+              navigate('/profil');
             }}
             style={{
               width: '100%',
