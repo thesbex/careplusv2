@@ -76,13 +76,19 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
     { l: 'Annulations', v: '—', d: 'connecté à venir' },
   ];
 
+  // Sidebar header per maquette : month name capitalized, no year.
+  // Subline : "Au 23 avril · 7 jours restants" — today's day + days left
+  // until the end of the displayed month (when displayed month = today's
+  // month). Outside the current month, just show the month name.
+  const monthOnly = monthLabel.split(/\s+/)[0] ?? monthLabel;
+  const headerMonth = `${monthOnly.charAt(0).toUpperCase()}${monthOnly.slice(1)}`;
+  const headerSub = buildHeaderSub(monthLabel);
+
   return (
     <>
       <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>Vue d&apos;ensemble — {monthLabel}</div>
-        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
-          {monthLabelToday()}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Vue d&apos;ensemble — {headerMonth}</div>
+        <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{headerSub}</div>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 14 }} className="scroll">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
@@ -184,7 +190,21 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
   );
 }
 
-function monthLabelToday(): string {
-  const d = new Date();
-  return `Au ${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`;
+/**
+ * Builds the sidebar header sub-line per maquette :
+ *   - When the sidebar shows the same month as today  →
+ *     "Au {today.day} {month} · {N} jours restants"
+ *   - Otherwise                                       →
+ *     "{N} jours" or just the month label
+ */
+function buildHeaderSub(monthLabel: string): string {
+  const today = new Date();
+  const todayMonthLower = MONTH_LABELS[today.getMonth()] ?? '';
+  const displayedMonth = monthLabel.split(/\s+/)[0]?.toLowerCase() ?? '';
+  if (displayedMonth.startsWith(todayMonthLower.replace('.', ''))) {
+    const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const remaining = last.getDate() - today.getDate();
+    return `Au ${today.getDate()} ${todayMonthLower} · ${remaining} jours restants`;
+  }
+  return monthLabel;
 }

@@ -190,7 +190,12 @@ export default function AgendaPage() {
     const monthYear = weekLabel.replace(/^\d+\s*[–-]\s*\d+\s*/, '');
     return `${d.label} ${d.date} ${monthYear}`;
   })();
-  const headerLabel = view === 'mois' ? monthLabel : view === 'jour' ? jourLabel ?? weekLabel : weekLabel;
+  // Mois subtitle per maquette : "Avril 2026 · 142 rendez-vous".
+  const moisLabel =
+    view === 'mois'
+      ? `${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)} · ${monthAppointments.length} rendez-vous`
+      : monthLabel;
+  const headerLabel = view === 'mois' ? moisLabel : view === 'jour' ? jourLabel ?? weekLabel : weekLabel;
 
   function handlePrev() {
     if (view === 'mois') {

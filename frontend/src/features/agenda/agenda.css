@@ -504,12 +504,11 @@
     rgba(229, 162, 50, 0.12) 12px
   );
 }
-/* Outside-month cells : per the maquette, they are simply bg-coloured
- * blocks with NO borders (the lattice only paints around real days). */
+/* Outside-month cells : same lattice as real cells (border-left + bottom
+ * inherited from .ag-month-cell) — only bg + cursor differ per maquette. */
 .ag-month-blank {
   background: var(--bg);
   cursor: default;
-  border: 0;
 }
 .ag-month-date {
   font-size: 13px;
