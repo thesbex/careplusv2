@@ -4,10 +4,14 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
+import { MScreen } from '@/components/shell/MScreen';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import type { MobileTab } from '@/components/shell/MTabs';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { ChevronRight, Lock } from '@/components/icons';
+import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useConsultations } from './hooks/useConsultations';
 import type { ConsultationApi } from './hooks/useConsultation';
 
@@ -26,6 +30,14 @@ const NAV_MAP = {
   catalogue: '/catalogue',
   params: '/parametres',
 } as const;
+
+const TAB_MAP: Record<MobileTab, string> = {
+  agenda: '/agenda',
+  salle: '/salle',
+  patients: '/patients',
+  factu: '/facturation',
+  menu: '/parametres',
+};
 
 function fmtDateTime(iso: string): string {
   const d = new Date(iso);
@@ -104,10 +116,107 @@ function Row({
 
 export default function ConsultationsListPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { consultations, isLoading, error } = useConsultations();
 
   const drafts = consultations.filter((c) => c.status === 'BROUILLON');
   const signed = consultations.filter((c) => c.status === 'SIGNEE');
+
+  const body = (
+    <>
+      {isLoading && (
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+      )}
+      {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
+
+      {!isLoading && consultations.length === 0 && !error && (
+        <Panel>
+          <div
+            style={{
+              padding: 32,
+              textAlign: 'center',
+              color: 'var(--ink-3)',
+              fontSize: 13,
+            }}
+          >
+            Aucune consultation pour le moment. Démarrez-en une depuis la salle d'attente
+            ou la fiche patient.
+          </div>
+        </Panel>
+      )}
+
+      {drafts.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <Panel>
+            <PanelHeader>
+              <span>En cours · brouillon ({drafts.length})</span>
+            </PanelHeader>
+            <div style={{ padding: 12 }}>
+              {drafts.map((c) => (
+                <Row key={c.id} c={c} onOpen={(id) => navigate(`/consultations/${id}`)} />
+              ))}
+            </div>
+          </Panel>
+        </div>
+      )}
+
+      {signed.length > 0 && (
+        <Panel>
+          <PanelHeader>
+            <span>Signées ({signed.length})</span>
+          </PanelHeader>
+          <div style={{ padding: 12 }}>
+            {signed.map((c) => (
+              <Row key={c.id} c={c} onOpen={(id) => navigate(`/consultations/${id}`)} />
+            ))}
+          </div>
+        </Panel>
+      )}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <MScreen
+        tab="menu"
+        onTabChange={(t) => navigate(TAB_MAP[t])}
+        topbar={
+          <MTopbar
+            left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
+            title="Mes consultations"
+            sub={`${consultations.length} consultation${consultations.length > 1 ? 's' : ''}`}
+          />
+        }
+        fab={
+          <button
+            type="button"
+            onClick={() => navigate('/patients')}
+            aria-label="Démarrer depuis un patient"
+            style={{
+              position: 'fixed',
+              right: 16,
+              bottom: 76,
+              padding: '10px 16px',
+              borderRadius: 999,
+              background: 'var(--primary)',
+              color: 'white',
+              border: 'none',
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              cursor: 'pointer',
+              zIndex: 5,
+            }}
+          >
+            + Depuis patient
+          </button>
+        }
+      >
+        <div style={{ padding: 12 }}>{body}</div>
+      </MScreen>
+    );
+  }
 
   return (
     <Screen
@@ -122,54 +231,7 @@ export default function ConsultationsListPage() {
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <div style={{ padding: 24, overflow: 'auto' }} className="scroll">
-        {isLoading && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
-        )}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
-
-        {!isLoading && consultations.length === 0 && !error && (
-          <Panel>
-            <div
-              style={{
-                padding: 32,
-                textAlign: 'center',
-                color: 'var(--ink-3)',
-                fontSize: 13,
-              }}
-            >
-              Aucune consultation pour le moment. Démarrez-en une depuis la salle d'attente
-              ou la fiche patient.
-            </div>
-          </Panel>
-        )}
-
-        {drafts.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <Panel>
-              <PanelHeader>
-                <span>En cours · brouillon ({drafts.length})</span>
-              </PanelHeader>
-              <div style={{ padding: 12 }}>
-                {drafts.map((c) => (
-                  <Row key={c.id} c={c} onOpen={(id) => navigate(`/consultations/${id}`)} />
-                ))}
-              </div>
-            </Panel>
-          </div>
-        )}
-
-        {signed.length > 0 && (
-          <Panel>
-            <PanelHeader>
-              <span>Signées ({signed.length})</span>
-            </PanelHeader>
-            <div style={{ padding: 12 }}>
-              {signed.map((c) => (
-                <Row key={c.id} c={c} onOpen={(id) => navigate(`/consultations/${id}`)} />
-              ))}
-            </div>
-          </Panel>
-        )}
+        {body}
       </div>
     </Screen>
   );

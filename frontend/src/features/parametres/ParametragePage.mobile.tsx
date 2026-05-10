@@ -19,6 +19,7 @@ import {
   Heart as HeartIcon,
   Box as BoxIcon,
   BarChart as BarChartIcon,
+  Stetho as StethoIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -136,6 +137,12 @@ export default function ParametrageMobilePage() {
           <h3>Suivi clinique</h3>
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
+          <MenuRow
+            Icon={StethoIcon}
+            label="Consultations"
+            hint="Brouillons + signées"
+            onClick={() => navigate('/consultations')}
+          />
           <MenuRow
             Icon={HeartIcon}
             label="Vaccinations"

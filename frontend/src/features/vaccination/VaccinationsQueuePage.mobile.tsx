@@ -6,7 +6,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar } from '@/components/shell/MTopbar';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import type { MobileTab } from '@/components/shell/MTabs';
+
+const TAB_MAP: Record<MobileTab, string> = {
+  agenda: '/agenda',
+  salle: '/salle',
+  patients: '/patients',
+  factu: '/facturation',
+  menu: '/parametres',
+};
 import { Avatar } from '@/components/ui/Avatar';
 import {
   useVaccinationsQueue,
@@ -249,6 +258,7 @@ function SkeletonCards() {
 }
 
 export default function VaccinationsQueuePageMobile() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabStatus>('OVERDUE');
   const [page, setPage] = useState(0);
 
@@ -281,9 +291,14 @@ export default function VaccinationsQueuePageMobile() {
 
   return (
     <MScreen
-      tab="salle"
+      tab="menu"
+      onTabChange={(t) => navigate(TAB_MAP[t])}
       topbar={
-        <MTopbar title="Vaccinations" sub="Suivi PNI marocain" />
+        <MTopbar
+          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
+          title="Vaccinations"
+          sub="Suivi PNI marocain"
+        />
       }
     >
       {/* Tab bar */}

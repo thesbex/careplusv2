@@ -5,7 +5,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar } from '@/components/shell/MTopbar';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import type { MobileTab } from '@/components/shell/MTabs';
+
+const TAB_MAP: Record<MobileTab, string> = {
+  agenda: '/agenda',
+  salle: '/salle',
+  patients: '/patients',
+  factu: '/facturation',
+  menu: '/parametres',
+};
 import { useAuthStore } from '@/lib/auth/authStore';
 import { useStockArticles } from './hooks/useStockArticles';
 import { useStockSuppliers } from './hooks/useStockSuppliers';
@@ -72,8 +81,11 @@ export default function StockArticlesPageMobile() {
 
   return (
     <MScreen
+      tab="menu"
+      onTabChange={(t) => navigate(TAB_MAP[t])}
       topbar={
         <MTopbar
+          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
           title="Stock interne"
           sub={`${totalElements} article${totalElements !== 1 ? 's' : ''}`}
           right={

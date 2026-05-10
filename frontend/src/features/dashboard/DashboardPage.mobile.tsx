@@ -9,7 +9,7 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar } from '@/components/shell/MTopbar';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { useDashboardClinical } from './hooks/useDashboardClinical';
@@ -166,7 +166,12 @@ export default function DashboardPageMobile() {
   return (
     <MScreen
       tab="menu"
-      topbar={<MTopbar title="Dashboard" />}
+      topbar={
+        <MTopbar
+          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
+          title="Dashboard"
+        />
+      }
       onTabChange={(t) => navigate(TAB_MAP[t])}
     >
       <div className="mb-pad" style={{ paddingTop: 16 }}>

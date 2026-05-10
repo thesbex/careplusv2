@@ -13,8 +13,12 @@ import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
+import { MScreen } from '@/components/shell/MScreen';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import type { MobileTab } from '@/components/shell/MTabs';
 import { Button } from '@/components/ui/Button';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
+import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import {
   useInternalRequests,
   useClaimInternalRequest,
@@ -40,6 +44,14 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
+const TAB_MAP: Record<MobileTab, string> = {
+  agenda: '/agenda',
+  salle: '/salle',
+  patients: '/patients',
+  factu: '/facturation',
+  menu: '/parametres',
+};
+
 const TABS: { id: InternalStatus; label: string }[] = [
   { id: 'PENDING', label: 'En attente' },
   { id: 'IN_PROGRESS', label: 'En cours' },
@@ -59,6 +71,7 @@ function formatDateTime(iso: string | null): string {
 
 export default function QueuePage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const { service: serviceParam } = useParams<{ service: string }>();
   const service: InternalService = serviceParam?.toUpperCase() === 'RADIO' ? 'RADIO' : 'LAB';
   const [tab, setTab] = useState<InternalStatus>('PENDING');
@@ -111,6 +124,155 @@ export default function QueuePage() {
     }
   }
 
+  const tabBar = (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        padding: isMobile ? '10px 12px' : '12px 24px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--surface)',
+        overflowX: 'auto',
+      }}
+      role="tablist"
+      aria-label="Onglets queue"
+    >
+      {TABS.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          role="tab"
+          aria-selected={tab === t.id}
+          onClick={() => setTab(t.id)}
+          style={{
+            padding: '6px 14px',
+            border: '1px solid var(--border)',
+            borderRadius: 999,
+            background: tab === t.id ? 'var(--primary)' : 'var(--surface)',
+            color: tab === t.id ? 'white' : 'var(--ink-2)',
+            fontFamily: 'inherit',
+            fontSize: 12.5,
+            fontWeight: 550,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const list = (
+    <div style={{ padding: isMobile ? 12 : 24, overflow: 'auto', flex: 1 }} className="scroll">
+      {isLoading && (
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+      )}
+      {error && (
+        <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+      )}
+      {!isLoading && !error && rows.length === 0 && (
+        <Panel>
+          <PanelHeader>Rien à afficher</PanelHeader>
+          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
+            Aucune demande {tab === 'PENDING' ? 'en attente' : tab === 'IN_PROGRESS' ? 'en cours' : 'traitée'}.
+          </div>
+        </Panel>
+      )}
+
+      {rows.map((row) => (
+        <div
+          key={row.lineId}
+          style={{
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--surface)',
+            padding: 14,
+            marginBottom: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 14 }}>{row.testName ?? '—'}</strong>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+              Patient : {row.patientName ?? '—'}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+              Demandé par : {row.doctorName ?? '—'}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
+              {formatDateTime(row.assignedAt)}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            {tab === 'PENDING' && (
+              <>
+                <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
+                  Annuler
+                </Button>
+                <Button variant="primary" size="sm" disabled={isClaiming} onClick={() => void handleClaim(row.lineId)}>
+                  {ctaLabel}
+                </Button>
+              </>
+            )}
+            {tab === 'IN_PROGRESS' && (
+              <>
+                <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={isUploading}
+                  onClick={() => pickResult(row.lineId)}
+                >
+                  {isUploading && uploadingLineId === row.lineId ? 'Téléversement…' : 'Téléverser résultat'}
+                </Button>
+              </>
+            )}
+            {tab === 'DONE' && (
+              <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
+                Résultat attaché à la consultation
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg"
+        onChange={(e) => {
+          void handleResultFile(e);
+        }}
+        style={{ display: 'none' }}
+        data-testid="result-file-input"
+      />
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <MScreen
+        tab="menu"
+        onTabChange={(t) => navigate(TAB_MAP[t])}
+        topbar={
+          <MTopbar
+            left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
+            title={title}
+            sub={`${rows.length} demande${rows.length > 1 ? 's' : ''} ${tab.toLowerCase()}`}
+          />
+        }
+      >
+        {tabBar}
+        {list}
+      </MScreen>
+    );
+  }
+
   return (
     <Screen
       // V038 — pas de slot dédié dans la sidebar pour la queue, on n'active rien.
@@ -119,129 +281,8 @@ export default function QueuePage() {
       sub={`${rows.length} demande${rows.length > 1 ? 's' : ''} ${tab.toLowerCase()}`}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          padding: '12px 24px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--surface)',
-        }}
-        role="tablist"
-        aria-label="Onglets queue"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid var(--border)',
-              borderRadius: 999,
-              background: tab === t.id ? 'var(--primary)' : 'var(--surface)',
-              color: tab === t.id ? 'white' : 'var(--ink-2)',
-              fontFamily: 'inherit',
-              fontSize: 12.5,
-              fontWeight: 550,
-              cursor: 'pointer',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ padding: 24, overflow: 'auto', flex: 1 }} className="scroll">
-        {isLoading && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
-        )}
-        {error && (
-          <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
-        )}
-        {!isLoading && !error && rows.length === 0 && (
-          <Panel>
-            <PanelHeader>Rien à afficher</PanelHeader>
-            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-              Aucune demande {tab === 'PENDING' ? 'en attente' : tab === 'IN_PROGRESS' ? 'en cours' : 'traitée'}.
-            </div>
-          </Panel>
-        )}
-
-        {rows.map((row) => (
-          <div
-            key={row.lineId}
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r-md)',
-              background: 'var(--surface)',
-              padding: 14,
-              marginBottom: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: 14 }}>{row.testName ?? '—'}</strong>
-              <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                Patient : {row.patientName ?? '—'}
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                Demandé par : {row.doctorName ?? '—'}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
-                {formatDateTime(row.assignedAt)}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              {tab === 'PENDING' && (
-                <>
-                  <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
-                    Annuler
-                  </Button>
-                  <Button variant="primary" size="sm" disabled={isClaiming} onClick={() => void handleClaim(row.lineId)}>
-                    {ctaLabel}
-                  </Button>
-                </>
-              )}
-              {tab === 'IN_PROGRESS' && (
-                <>
-                  <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
-                    Annuler
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={isUploading}
-                    onClick={() => pickResult(row.lineId)}
-                  >
-                    {isUploading && uploadingLineId === row.lineId ? 'Téléversement…' : 'Téléverser résultat'}
-                  </Button>
-                </>
-              )}
-              {tab === 'DONE' && (
-                <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                  Résultat attaché à la consultation
-                </span>
-              )}
-            </div>
-          </div>
-        ))}
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/pdf,image/png,image/jpeg"
-          onChange={(e) => {
-            void handleResultFile(e);
-          }}
-          style={{ display: 'none' }}
-          data-testid="result-file-input"
-        />
-      </div>
+      {tabBar}
+      {list}
     </Screen>
   );
 }
