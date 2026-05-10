@@ -32,9 +32,14 @@ function snapTimeFromY(yPx: number, totalRows: number): string {
 
 export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
   const nowTop = pxFromMin(toMin(now));
+  // The base CSS hardcodes `grid-template-columns: 56px repeat(6, 1fr)` for a
+  // 6-day week. When the page passes a single day (jour view), the 5 phantom
+  // columns showed up as empty space to the right of the only real column.
+  // Override inline so the day column fills the workspace.
+  const colTemplate = `56px repeat(${Math.max(1, days.length)}, 1fr)`;
   return (
     <div className="ag-grid-wrap">
-      <div className="ag-header">
+      <div className="ag-header" style={{ gridTemplateColumns: colTemplate }}>
         <div className="ag-header-cell" />
         {days.map((d) => (
           <div key={d.key} className={`ag-header-cell ${d.key === today ? 'today' : ''}`}>
@@ -44,7 +49,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
         ))}
       </div>
       <div className="ag-scroll scroll">
-        <div className="ag-grid" style={{ height: HOURS.length * ROW_PX }}>
+        <div className="ag-grid" style={{ height: HOURS.length * ROW_PX, gridTemplateColumns: colTemplate }}>
           <div className="ag-hourcol">
             {HOURS.map((h) => (
               <div key={h} className="ag-hour-label tnum">

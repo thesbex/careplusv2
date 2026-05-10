@@ -180,7 +180,17 @@ export default function AgendaPage() {
   }, [leaves, weekOffset, todayKey]);
 
   const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
-  const headerLabel = view === 'mois' ? monthLabel : weekLabel;
+  // For Jour view we surface a friendly "Lundi 4 mai 2026" label in the
+  // toolbar (per design-handoff-v2 / `screens/agenda.jsx::AgendaJour`),
+  // not the week range. Reuse the month-year tail of weekLabel.
+  const jourLabel = (() => {
+    if (view !== 'jour') return null;
+    const d = visibleDays[0];
+    if (!d) return weekLabel;
+    const monthYear = weekLabel.replace(/^\d+\s*[–-]\s*\d+\s*/, '');
+    return `${d.label} ${d.date} ${monthYear}`;
+  })();
+  const headerLabel = view === 'mois' ? monthLabel : view === 'jour' ? jourLabel ?? weekLabel : weekLabel;
 
   function handlePrev() {
     if (view === 'mois') {
@@ -360,9 +370,6 @@ export default function AgendaPage() {
             setMonthYear(new Date().getFullYear());
             setMonthIndex(new Date().getMonth());
           }}
-          selectedDay={selectedDay}
-          days={days}
-          onDayChange={setSelectedDay}
         />
         {(showPractitionerSelector || showRoomSelector) && (
           <div

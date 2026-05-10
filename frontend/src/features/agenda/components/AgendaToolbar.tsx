@@ -1,5 +1,4 @@
 import { ChevronLeft, ChevronRight } from '@/components/icons';
-import type { DayKey, WeekDay } from '../types';
 
 export type AgendaView = 'jour' | 'semaine' | 'mois';
 
@@ -10,16 +9,10 @@ interface AgendaToolbarProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  /** For Jour view: the currently selected day. */
-  selectedDay: DayKey;
-  /** For Jour view: the week days to switch between. */
-  days: WeekDay[];
-  onDayChange: (k: DayKey) => void;
 }
 
 export function AgendaToolbar({
   view, onViewChange, weekLabel, onPrev, onNext, onToday,
-  selectedDay, days, onDayChange,
 }: AgendaToolbarProps) {
   return (
     <div className="ag-toolbar">
@@ -41,35 +34,9 @@ export function AgendaToolbar({
         </button>
       </div>
 
-      {view === 'jour' ? (
-        <div className="ag-day-tabs" role="group" aria-label="Jour">
-          {days.map((d) => (
-            <button
-              key={d.key}
-              type="button"
-              aria-pressed={d.key === selectedDay}
-              onClick={() => onDayChange(d.key)}
-              style={{
-                padding: '2px 10px',
-                fontSize: 12,
-                fontWeight: d.key === selectedDay ? 600 : 500,
-                borderRadius: 6,
-                border: d.key === selectedDay ? '1px solid var(--primary)' : '1px solid transparent',
-                background: d.key === selectedDay ? 'var(--primary-soft)' : 'transparent',
-                color: d.key === selectedDay ? 'var(--primary)' : 'var(--ink-2)',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              {d.label.slice(0, 3)} {d.date}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.005em' }}>
-          {weekLabel}
-        </div>
-      )}
+      <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.005em' }}>
+        {weekLabel}
+      </div>
 
       <div
         className="ag-view-toggle"
