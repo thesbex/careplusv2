@@ -1,6 +1,6 @@
 import type { ReactNode, MouseEventHandler, ComponentType, SVGProps } from 'react';
 import * as Icons from '@/components/icons';
-import { BrandMark } from '@/components/ui/BrandMark';
+import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 
 export interface MTopbarProps {
   title?: string;
@@ -16,7 +16,7 @@ export function MTopbar({ title, sub, left, right, brand = false }: MTopbarProps
       {brand ? (
         <div className="mt-brand">
           <BrandMark size="sm" />
-          <span className="mt-brand-name">careplus</span>
+          <span className="mt-brand-name"><BrandWordmark /></span>
         </div>
       ) : (
         left

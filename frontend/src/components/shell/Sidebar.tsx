@@ -13,7 +13,7 @@ import {
   Box,
   BarChart,
 } from '@/components/icons';
-import { BrandMark } from '@/components/ui/BrandMark';
+import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -150,9 +150,15 @@ export function Sidebar({
   return (
     <nav className="cp-sidebar" aria-label="Navigation principale">
       <div className="cp-brand">
-        <BrandMark size="sm" />
+        <BrandMark size="md" />
         <div style={{ minWidth: 0 }}>
-          <div className="cp-brand-name">{resolvedCabinet.name}</div>
+          <div className="cp-brand-name">
+            {resolvedCabinet.name === 'careplus' ? (
+              <BrandWordmark />
+            ) : (
+              resolvedCabinet.name
+            )}
+          </div>
           <div className="cp-brand-cab">{resolvedCabinet.city}</div>
         </div>
       </div>
@@ -341,7 +347,13 @@ function buildCabinetLabel(settings: { name?: string; city?: string; establishme
   const typeLabel = settings.establishmentType
     ? ESTABLISHMENT_TYPE_LABELS[settings.establishmentType] ?? ''
     : '';
-  const prefixed = typeLabel ? `${typeLabel} ${settings.name}` : settings.name;
+  // Skip the prefix if the cabinet name already starts with it
+  // (e.g. user named the cabinet "Cabinet test" → don't render "Cabinet Cabinet test").
+  const alreadyPrefixed =
+    typeLabel && settings.name.toLowerCase().startsWith(typeLabel.toLowerCase());
+  const prefixed = typeLabel && !alreadyPrefixed
+    ? `${typeLabel} ${settings.name}`
+    : settings.name;
   const city = settings.city ? `${prefixed} · ${settings.city}` : prefixed;
   return { name: 'careplus', city };
 }

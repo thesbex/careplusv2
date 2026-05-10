@@ -9,5 +9,5 @@ export { Panel, PanelHeader } from './Panel';
 export { Avatar } from './Avatar';
 export type { AvatarSize } from './Avatar';
 
-export { BrandMark } from './BrandMark';
+export { BrandMark, BrandWordmark } from './BrandMark';
 export type { BrandMarkSize, BrandMarkTone } from './BrandMark';

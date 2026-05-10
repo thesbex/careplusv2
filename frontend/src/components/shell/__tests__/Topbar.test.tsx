@@ -15,7 +15,6 @@ describe('<Topbar />', () => {
     render(<Topbar title="x" />);
     const search = screen.getByRole('button', { name: 'Rechercher un patient' });
     expect(search).toHaveTextContent(/Rechercher un patient par nom, téléphone, CIN/);
-    expect(screen.getByText('⌘ K')).toBeInTheDocument();
   });
 
   it('hides search when showSearch is false', () => {

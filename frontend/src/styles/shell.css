@@ -44,19 +44,24 @@
 }
 
 .cp-brand-name {
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-size: 17px;
+  line-height: 1.1;
 }
 
 .cp-brand-cab {
-  font-size: 10.5px;
+  font-size: 11.5px;
   color: var(--ink-3);
-  margin-top: 1px;
-  white-space: nowrap;
+  margin-top: 3px;
+  line-height: 1.3;
+  /* Allow up to 2 lines so long establishment labels ("Cabinet Cabinet
+   * test · Casablanca") still read fully without ellipsizing. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
+  word-break: break-word;
 }
 
 .cp-nav-section {

@@ -27,6 +27,20 @@ const sizePx: Record<BrandMarkSize, number> = {
  * on 2026-05-10. Each instance gets a deterministic gradient id (so multiple
  * BrandMarks on a page don't collide) by suffixing the size+tone.
  */
+/**
+ * "careplus" wordmark — `care` in ink, `plus` in primary blue. Used next
+ * to BrandMark in the sidebar / mobile topbar.
+ */
+export function BrandWordmark({ tone = 'primary' }: { tone?: BrandMarkTone }) {
+  const inverted = tone === 'inverted';
+  return (
+    <>
+      <span style={{ color: inverted ? '#fff' : 'var(--ink)' }}>care</span>
+      <span style={{ color: inverted ? '#fff' : 'var(--primary)' }}>plus</span>
+    </>
+  );
+}
+
 export function BrandMark({
   size = 'md',
   tone = 'primary',
