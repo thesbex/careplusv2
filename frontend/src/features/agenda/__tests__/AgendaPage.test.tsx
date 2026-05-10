@@ -149,14 +149,14 @@ describe('<AgendaPage /> (desktop)', () => {
       await u.click(within(group).getByRole('button', { name: 'Jour' }));
     }
 
-    it('subtitle shows day label + RDV count ("<Day> <N> <month> <YYYY> · <N> rendez-vous")', async () => {
+    it('subtitle shows day label only — count lives in the header cell ("<Day> <N> <month> <YYYY>")', async () => {
       const { container } = renderAgenda();
       await switchToJour();
       const sub = container.querySelector('.cp-topbar-sub');
-      // The exact day depends on real-system time (the helper uses new Date()
-      // for the displayed week). Just assert the shape: capitalized weekday +
-      // day-of-month + month + year + count suffix.
-      expect(sub?.textContent).toMatch(/^[A-Z][a-zéû]+ \d{1,2} \p{L}+ \d{4} · \d+ rendez-vous$/u);
+      // Per design-handoff-v2 / `screens/agenda.jsx::AgendaJourScreen`, the
+      // toolbar subtitle is just "Jeudi 23 avril 2026" — the count lives in
+      // the day header cell ("X RDV programmés"), not duplicated here.
+      expect(sub?.textContent).toMatch(/^[A-Z][a-zéû]+ \d{1,2} \p{L}+ \d{4}$/u);
     });
 
     it('header cell carries the `today` class regardless of actual today', async () => {

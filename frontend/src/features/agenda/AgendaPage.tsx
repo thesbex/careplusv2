@@ -206,13 +206,6 @@ export default function AgendaPage() {
 
   const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
 
-  // Count of RDV for the day shown in Jour view — surfaced both in the header
-  // subtitle ("· N rendez-vous") and as the right-panel "X autres RDV
-  // attendus aujourd'hui" denominator.
-  const selectedDayRdvCount = useMemo(
-    () => appointments.filter((a) => a.day === selectedDay).length,
-    [appointments, selectedDay],
-  );
   // Today's RDV count — used as the right-panel total ("X autres RDV
   // attendus aujourd'hui"). When the displayed week doesn't contain today
   // (offset != 0, or weekend), `todayKey` is null and we fall back to 0
@@ -222,10 +215,12 @@ export default function AgendaPage() {
     return appointments.filter((a) => a.day === todayKey).length;
   }, [appointments, todayKey]);
 
-  // For Jour view we surface a friendly "Lundi 4 mai 2026 · N rendez-vous"
-  // label in the toolbar (per design-handoff-v2 / `screens/agenda.jsx::
-  // AgendaJour`). Format from the real Date so weeks that span two months
-  // ("27 avr. – 2 mai") still produce a single-month label per day.
+  // For Jour view we surface a friendly "Jeudi 23 avril 2026" label in the
+  // toolbar (per design-handoff-v2 / `screens/agenda.jsx::AgendaJourScreen`,
+  // `sub="Jeudi 23 avril 2026"`) — the RDV count lives inside the day header
+  // cell as "X RDV programmés" and isn't duplicated here. Format from the
+  // real Date so weeks that span two months ("27 avr. – 2 mai") still
+  // produce a single-month label per day.
   const jourLabel = (() => {
     if (view !== 'jour') return null;
     const d = visibleDays[0];
@@ -238,8 +233,7 @@ export default function AgendaPage() {
       month: 'long',
       year: 'numeric',
     });
-    const cap = formatted.charAt(0).toUpperCase() + formatted.slice(1);
-    return `${cap} · ${selectedDayRdvCount} rendez-vous`;
+    return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   })();
   // Mois subtitle per maquette : "Avril 2026 · 142 rendez-vous".
   const moisLabel =
