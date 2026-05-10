@@ -138,6 +138,13 @@
 .ag-header-cell.today .d-num {
   color: var(--primary);
 }
+/* Jour view : "X RDV programmés" right-aligned inside the header cell. */
+.ag-header-cell .ag-day-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
 
 .ag-scroll {
   flex: 1;

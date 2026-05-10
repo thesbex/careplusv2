@@ -530,6 +530,7 @@ export default function AgendaPage() {
             onSlotClick={handleSlotClick}
             onMove={(id, dayKey, time) => void handleDragMove(id, dayKey, time)}
             leaveDays={leaveDays}
+            jourMode={view === 'jour'}
             {...(todayKey ? { today: todayKey } : {})}
           />
         )}

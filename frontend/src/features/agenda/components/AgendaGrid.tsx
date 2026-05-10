@@ -16,6 +16,13 @@ interface AgendaGridProps {
   now?: string;
   /** Days that fall in a practitioner-leave range. Painted with a striped overlay. */
   leaveDays?: Set<DayKey>;
+  /**
+   * Jour view mode (one day, full-width). Per design-handoff-v2 / `screens/
+   * agenda.jsx::AgendaJour`, the single header cell carries the `today` class
+   * (gradient highlight regardless of the actual current day) and gets a
+   * right-aligned "X RDV programmés" suffix.
+   */
+  jourMode?: boolean;
 }
 
 const FIRST_HOUR = 8;
@@ -30,7 +37,7 @@ function snapTimeFromY(yPx: number, totalRows: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today = 'jeu', now = '09:47', leaveDays }: AgendaGridProps) {
+export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today = 'jeu', now = '09:47', leaveDays, jourMode = false }: AgendaGridProps) {
   const nowTop = pxFromMin(toMin(now));
   // The base CSS hardcodes `grid-template-columns: 56px repeat(6, 1fr)` for a
   // 6-day week. When the page passes a single day (jour view), the 5 phantom
@@ -41,12 +48,19 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
     <div className="ag-grid-wrap">
       <div className="ag-header" style={{ gridTemplateColumns: colTemplate }}>
         <div className="ag-header-cell" />
-        {days.map((d) => (
-          <div key={d.key} className={`ag-header-cell ${d.key === today ? 'today' : ''}`}>
-            <span className="d-lbl">{d.label}</span>
-            <span className="d-num">{d.date}</span>
-          </div>
-        ))}
+        {days.map((d) => {
+          const isHighlighted = jourMode || d.key === today;
+          const dayItemCount = appointments.filter((a) => a.day === d.key).length;
+          return (
+            <div key={d.key} className={`ag-header-cell ${isHighlighted ? 'today' : ''}`}>
+              <span className="d-lbl">{d.label}</span>
+              <span className="d-num">{d.date}</span>
+              {jourMode && (
+                <span className="ag-day-count">{dayItemCount} RDV programmés</span>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="ag-scroll scroll">
         <div className="ag-grid" style={{ height: HOURS.length * ROW_PX, gridTemplateColumns: colTemplate }}>
@@ -62,7 +76,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
               key={d.key}
               className={[
                 'ag-daycol',
-                d.key === today ? 'today' : '',
+                jourMode || d.key === today ? 'today' : '',
                 leaveDays?.has(d.key) ? 'leave' : '',
                 onSlotClick ? 'clickable' : '',
               ]
