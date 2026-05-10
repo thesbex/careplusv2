@@ -5,7 +5,7 @@
  * `careplus_refresh` cookie.
  */
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/Input';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Eye, Lock } from '@/components/icons';
 import { useLogin } from '@/lib/auth/useAuth';
+import { useAuthStore } from '@/lib/auth/authStore';
+import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { loginSchema, type LoginValues } from './schema';
 import './login.css';
@@ -43,7 +45,12 @@ export default function LoginPage() {
   const onSubmit = handleSubmit(async (values) => {
     try {
       await loginMutation.mutateAsync(values);
-      navigate(redirectTo, { replace: true });
+      // First-login redirect : if the new admin hasn't run the cabinet setup
+      // wizard yet (clinic_settings.name is empty), send them straight there
+      // instead of /agenda. Idempotent — the wizard re-loads existing values
+      // so it's safe to land on it again later.
+      const target = await pickPostLoginPath(redirectTo);
+      navigate(target, { replace: true });
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 401) {
@@ -205,8 +212,45 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
+
+          <div
+            style={{
+              marginTop: 18,
+              textAlign: 'center',
+              fontSize: 12.5,
+              color: 'var(--ink-3)',
+            }}
+          >
+            Pas encore de compte ?{' '}
+            <Link
+              to="/register"
+              style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
+            >
+              Créer mon cabinet
+            </Link>
+          </div>
         </form>
       </div>
     </div>
   );
+}
+
+/**
+ * Resolve where to land after a successful login. Default is the route the
+ * user was originally trying to reach (`from` state) or `/agenda`. The
+ * exception: a brand-new ADMIN whose cabinet has never been configured
+ * (`clinic_settings.name` is empty) is sent to the onboarding wizard.
+ */
+async function pickPostLoginPath(redirectTo: string): Promise<string> {
+  const user = useAuthStore.getState().user;
+  const isAdmin = !!user?.roles?.includes('ADMIN');
+  if (!isAdmin) return redirectTo;
+  // 404 is fine here — old installs may not have the row yet, treated as empty.
+  try {
+    const r = await api.get<{ name?: string | null }>('/settings/clinic');
+    if (!r.data?.name) return '/onboarding';
+  } catch {
+    return '/onboarding';
+  }
+  return redirectTo;
 }

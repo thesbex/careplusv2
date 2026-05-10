@@ -51,7 +51,7 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
           date,
           time,
           a.patientFullName ?? '—',
-          a.reason ?? '',
+          a.reasonLabel ?? '',
           a.status ?? '',
         ];
       }),

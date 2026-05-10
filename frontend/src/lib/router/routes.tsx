@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import LandingPage from '@/features/landing/LandingPage';
 import LoginPage from '@/features/login/LoginRoute';
+import RegisterPage from '@/features/register/RegisterPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import AgendaRoute from '@/features/agenda';
 import DashboardRoute from '@/features/dashboard/DashboardRoute';
@@ -64,6 +65,14 @@ export const router = createBrowserRouter(
       element: (
         <GuestOnly>
           <LoginPage />
+        </GuestOnly>
+      ),
+    },
+    {
+      path: '/register',
+      element: (
+        <GuestOnly>
+          <RegisterPage />
         </GuestOnly>
       ),
     },
