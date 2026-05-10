@@ -25,10 +25,11 @@ import { useMoveAppointment, extractConflictMessage } from './hooks/useAppointme
 import { usePractitioners } from './hooks/usePractitioners';
 import { useRooms } from './hooks/useRooms';
 import { useLeaves } from '@/features/parametres/hooks/useLeaves';
+import { useQueue } from '@/features/salle-attente/hooks/useQueue';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
 import { AppointmentDrawer } from './components/AppointmentDrawer';
 import { toast } from 'sonner';
-import type { Appointment, DayKey } from './types';
+import type { Appointment, Arrival, DayKey } from './types';
 import './agenda.css';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
@@ -117,8 +118,32 @@ export default function AgendaPage() {
 
   const [roomFilter, setRoomFilter] = useState<string>('ALL'); // 'ALL' | roomId
 
-  const { days, appointments: rawAppointments, arrivals, weekLabel, todayKey, refetch } =
+  const { days, appointments: rawAppointments, weekLabel, todayKey, refetch } =
     useWeekAppointments(weekOffset, { practitionerIdFilter: practitionerFilter });
+
+  // Real waiting-room queue (arrived/vitals/consult only — those are the
+  // statuses the right-panel "Arrivées du jour" cards render). Reflects today,
+  // regardless of which day/week the user is browsing in the agenda.
+  const { queue } = useQueue();
+  const arrivals = useMemo<Arrival[]>(
+    () =>
+      queue
+        .filter(
+          (e): e is typeof e & { status: 'arrived' | 'vitals' | 'consult' } =>
+            e.status === 'arrived' || e.status === 'vitals' || e.status === 'consult',
+        )
+        .map((e) => {
+          const a: Arrival = {
+            name: e.name,
+            apt: e.apt,
+            status: e.status,
+            since: e.arrived,
+          };
+          if (e.allergy) a.allergy = e.allergy;
+          return a;
+        }),
+    [queue],
+  );
 
   // Client-side room filter (rooms come from the appointment payload).
   const appointments = useMemo(
@@ -180,15 +205,32 @@ export default function AgendaPage() {
   }, [leaves, weekOffset, todayKey]);
 
   const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
-  // For Jour view we surface a friendly "Lundi 4 mai 2026" label in the
-  // toolbar (per design-handoff-v2 / `screens/agenda.jsx::AgendaJour`),
-  // not the week range. Reuse the month-year tail of weekLabel.
+
+  // Count of RDV for the day shown in Jour view — surfaced both in the header
+  // subtitle ("· N rendez-vous") and as the right-panel "X autres RDV
+  // attendus aujourd'hui" denominator.
+  const selectedDayRdvCount = useMemo(
+    () => appointments.filter((a) => a.day === selectedDay).length,
+    [appointments, selectedDay],
+  );
+  // Today's RDV count — used as the right-panel total ("X autres RDV
+  // attendus aujourd'hui"). When the displayed week doesn't contain today
+  // (offset != 0, or weekend), `todayKey` is null and we fall back to 0
+  // since the message literally says "aujourd'hui".
+  const todayRdvCount = useMemo(() => {
+    if (todayKey === null) return 0;
+    return appointments.filter((a) => a.day === todayKey).length;
+  }, [appointments, todayKey]);
+
+  // For Jour view we surface a friendly "Lundi 4 mai 2026 · N rendez-vous"
+  // label in the toolbar (per design-handoff-v2 / `screens/agenda.jsx::
+  // AgendaJour`), not the week range. Reuse the month-year tail of weekLabel.
   const jourLabel = (() => {
     if (view !== 'jour') return null;
     const d = visibleDays[0];
     if (!d) return weekLabel;
     const monthYear = weekLabel.replace(/^\d+\s*[–-]\s*\d+\s*/, '');
-    return `${d.label} ${d.date} ${monthYear}`;
+    return `${d.label} ${d.date} ${monthYear} · ${selectedDayRdvCount} rendez-vous`;
   })();
   // Mois subtitle per maquette : "Avril 2026 · 142 rendez-vous".
   const moisLabel =
@@ -334,7 +376,10 @@ export default function AgendaPage() {
           view === 'mois' ? (
             <MonthSidebar monthLabel={monthLabel} appointments={monthAppointments} />
           ) : (
-            <TodayArrivals arrivals={arrivals} />
+            <TodayArrivals
+              arrivals={arrivals}
+              remaining={Math.max(0, todayRdvCount - arrivals.length)}
+            />
           )
         }
         onNavigate={(id) => {
