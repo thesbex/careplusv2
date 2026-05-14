@@ -14,6 +14,7 @@ import { KpiTile } from './components/KpiTile';
 import { QueueRow } from './components/QueueRow';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
 import { useQueue } from './hooks/useQueue';
+import { useUpcomingToday } from './hooks/useUpcomingToday';
 import { useCheckIn } from './hooks/useCheckIn';
 import { useStartConsultation } from './hooks/useStartConsultation';
 import type { QueueEntry } from './types';
@@ -23,7 +24,8 @@ import './salle-attente.css';
 
 export default function SalleAttentePage() {
   const navigate = useNavigate();
-  const { queue, kpis, upcoming } = useQueue();
+  const { queue, kpis } = useQueue();
+  const { upcoming } = useUpcomingToday();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
   // QA3-3 v1 — backward-compat: legacy sessions keep all CTAs visible.
@@ -208,9 +210,9 @@ export default function SalleAttentePage() {
             <div className="sa-upcoming-h">RDV prévus — pas encore arrivés</div>
             <Panel className="sa-upcoming-panel">
               {upcoming.map((p) => (
-                <div key={p.name} className="sa-upcoming-row">
+                <div key={p.appointmentId} className="sa-upcoming-row">
                   <Avatar
-                    initials={p.name
+                    initials={p.patientName
                       .split(' ')
                       .map((w) => w[0] ?? '')
                       .slice(0, 2)
@@ -218,7 +220,7 @@ export default function SalleAttentePage() {
                     size="sm"
                     style={{ background: 'var(--border-strong)', color: 'var(--ink-2)' }}
                   />
-                  <span className="sa-upcoming-name">{p.name}</span>
+                  <span className="sa-upcoming-name">{p.patientName}</span>
                   <span className="sa-upcoming-time tnum">
                     {p.time} <span className="sa-upcoming-eta">· {p.eta}</span>
                   </span>
@@ -226,10 +228,9 @@ export default function SalleAttentePage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      disabled={isCheckingIn || !('appointmentId' in p)}
+                      disabled={isCheckingIn}
                       onClick={() => {
-                        const apt = (p as unknown as { appointmentId?: string }).appointmentId;
-                        if (apt) void handleMarkArrived(apt);
+                        void handleMarkArrived(p.appointmentId);
                       }}
                     >
                       Marquer arrivé

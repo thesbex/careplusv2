@@ -19,6 +19,24 @@ vi.mock('../hooks/useQueue', () => ({
   useQueue: () => ({ queue: QUEUE, kpis: KPIS, upcoming: UPCOMING, isLoading: false, error: null }),
 }));
 
+// Desktop now reads upcoming from useUpcomingToday (not useQueue). Map the
+// legacy UPCOMING fixture shape (name/time/eta) to the new entry shape so the
+// existing test assertions on names + "dans 1h 13min" keep matching.
+vi.mock('../hooks/useUpcomingToday', () => ({
+  useUpcomingToday: () => ({
+    upcoming: UPCOMING.map((u, i) => ({
+      appointmentId: `apt-up-${i}`,
+      patientId: `pat-up-${i}`,
+      patientName: u.name,
+      time: u.time,
+      eta: u.eta,
+      reason: '',
+    })),
+    isLoading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('../hooks/useCheckIn', () => ({
   useCheckIn: () => ({ checkIn: vi.fn().mockResolvedValue(undefined), isPending: false, error: null }),
 }));

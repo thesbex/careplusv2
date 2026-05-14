@@ -45,7 +45,9 @@ export function useUpcomingToday(): {
 } {
   const { rawAppointments, isLoading, error } = useWeekAppointments(0);
   const today = new Date();
-  const yyyymmdd = today.toISOString().slice(0, 10);
+  // Use local components — `today.toISOString()` would shift the date by a day
+  // in UTC+1 around midnight local (cf. memory `feedback_local_date_iso`).
+  const yyyymmdd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
   const upcoming = rawAppointments
     .filter((a) => {
