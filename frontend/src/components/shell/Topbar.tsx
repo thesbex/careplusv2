@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { Search, Bell } from '@/components/icons';
+import { Search, Bell, Logout } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 export interface TopbarProps {
   title: string;
@@ -10,6 +11,7 @@ export interface TopbarProps {
   right?: ReactNode;
   onSearchOpen?: () => void;
   onNotifications?: () => void;
+  onLogout?: () => void;
 }
 
 export function Topbar({
@@ -20,7 +22,12 @@ export function Topbar({
   right,
   onSearchOpen,
   onNotifications,
+  onLogout,
 }: TopbarProps) {
+  const sessionUser = useAuthStore((s) => s.user);
+  const sessionLabel = sessionUser
+    ? `Session : Dr. ${sessionUser.firstName ?? ''} ${sessionUser.lastName ?? ''}`.trim()
+    : null;
   return (
     <header className="cp-topbar">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
@@ -53,6 +60,22 @@ export function Topbar({
           <Bell />
         </Button>
         {right}
+        {onLogout && (
+          <>
+            {sessionLabel && <span className="cp-topbar-session">{sessionLabel}</span>}
+            <Button
+              variant="danger"
+              size="sm"
+              className="cp-topbar-logout"
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+              onClick={onLogout}
+            >
+              <Logout />
+              Déconnexion
+            </Button>
+          </>
+        )}
       </div>
     </header>
   );

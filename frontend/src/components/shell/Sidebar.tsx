@@ -10,6 +10,7 @@ import {
   ChevronDown,
   Pill,
   Heart,
+  Needle,
   Box,
   BarChart,
   Logout,
@@ -63,7 +64,7 @@ const ITEMS: NavItem[] = [
   { id: 'salle', label: "Salle d'attente", Icon: Waiting, section: 'flux' },
   { id: 'consult', label: 'Consultations', Icon: Stetho, section: 'flux' },
   { id: 'factu', label: 'Facturation', Icon: Invoice, section: 'flux', requiresPermission: 'INVOICE_READ' },
-  { id: 'vaccinations', label: 'Vaccinations', Icon: Heart, section: 'flux' },
+  { id: 'vaccinations', label: 'Vaccinations', Icon: Needle, section: 'flux' },
   { id: 'grossesses', label: 'Grossesses', Icon: Heart, section: 'flux' },
   { id: 'stock', label: 'Stock', Icon: Box, section: 'flux' },
   // V038 — queue traitements internes : visible uniquement aux utilisateurs

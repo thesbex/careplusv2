@@ -183,6 +183,21 @@ export const Heart = (p: IconProps) => (
   </Base>
 );
 
+/**
+ * Needle / syringe — used for the Vaccinations module sidebar entry.
+ * Horizontal orientation (clearer than diagonal at 16 px) :
+ *  - plunger end-cap (far left)
+ *  - rod into barrel
+ *  - barrel rectangle with 2 graduation ticks
+ *  - tapered chevron tip
+ *  - needle stub on the right
+ */
+export const Needle = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M1.5 6.5V9.5 M2 8H4 M4 6H11V10H4Z M11 7L13 8L11 9 M13 8H15 M6.5 6V10 M8.5 6V10" />
+  </Base>
+);
+
 export const Thermo = (p: IconProps) => (
   <Base {...p}>
     <path d="M7 2.5a1.5 1.5 0 013 0v7a2.5 2.5 0 11-3 0v-7z" />

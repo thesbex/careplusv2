@@ -39,6 +39,19 @@ describe('<Topbar />', () => {
     expect(onNotifications).toHaveBeenCalledOnce();
   });
 
+  it('hides the logout button when onLogout is not provided', () => {
+    render(<Topbar title="x" />);
+    expect(screen.queryByRole('button', { name: 'Se déconnecter' })).not.toBeInTheDocument();
+  });
+
+  it('fires onLogout when the Déconnexion button is clicked', async () => {
+    const onLogout = vi.fn();
+    const user = userEvent.setup();
+    render(<Topbar title="x" onLogout={onLogout} />);
+    await user.click(screen.getByRole('button', { name: 'Se déconnecter' }));
+    expect(onLogout).toHaveBeenCalledOnce();
+  });
+
   it('has no a11y violations', async () => {
     const { container } = render(<Topbar title="Agenda" sub="Semaine" />);
     expect(await axe(container)).toHaveNoViolations();

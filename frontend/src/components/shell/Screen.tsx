@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { type SidebarScreen, type SidebarProps } from './Sidebar';
 import { Topbar, type TopbarProps } from './Topbar';
 import { useSpotlight } from './spotlightContext';
+import { performLogout } from '@/lib/auth/useAuth';
 
 export interface ScreenProps {
   /**
@@ -53,6 +54,7 @@ export function Screen({
         {...(pageDate !== undefined ? { pageDate } : {})}
         {...(topbarRight !== undefined ? { right: topbarRight } : {})}
         onSearchOpen={openSpotlight}
+        onLogout={performLogout}
         {...topbarProps}
       />
       <div className="cp-content">

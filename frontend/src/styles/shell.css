@@ -295,6 +295,34 @@
   gap: 8px;
 }
 
+/* Session label sits just before the Déconnexion button, mirroring the
+ * onboarding header pattern : "Session : Dr. Karim El Amrani · …". Reads
+ * as secondary metadata, not a CTA. */
+.cp-topbar-session {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  padding: 0 4px;
+}
+
+/* Filled "soft danger" logout pill — red ink + red icon on a danger-soft
+ * background. Tripled selector (.cp-topbar .btn.cp-topbar-logout, 0,0,3,0)
+ * so we beat .btn.danger (0,0,2,0) from primitives.css — Vite injects
+ * primitives.css AFTER shell.css in dev mode, so equal specificity loses. */
+.cp-topbar .btn.cp-topbar-logout {
+  background: var(--danger-soft);
+  border-color: var(--danger-soft);
+  color: var(--danger);
+}
+.cp-topbar .btn.cp-topbar-logout:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--primary-ink);
+}
+.cp-topbar .btn.cp-topbar-logout svg {
+  color: inherit;
+}
+
 /* ── Content + right panel ──────────────────────────────── */
 .cp-content {
   flex: 1;
