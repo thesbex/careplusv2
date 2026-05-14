@@ -4,10 +4,29 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — wizard `/onboarding` étendu de 4 → 7 étapes (ADR-033) avec backend complet pour les credentials médecin (V040) + endpoints `working-hours` + `document-templates`.
-**Last update**: 2026-05-14
-**Build**: Front `vite build` OK (~4.65 s, bundle 1.67 MB / gzip 453 KB), `npx tsc --noEmit` vert sur les fichiers touchés. **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN bout-en-bout desktop 1440 + mobile 390 sur les 7 steps du wizard + design-parity-auditor sur OnboardingPage.
-**Next action**: choisir entre (a) attaquer un item différé dans BACKLOG.md → "Onboarding wizard — parité design différée" (sidebar 360 px / Tarifs nomenclature / Documents editor / Médecin team list / Récap banner — chacun ~1 J de travail), ou (b) passer à un autre module post-pilote selon retour terrain.
+**Phase**: Post-pilote — wizard `/onboarding` poussé à parité ~95% prototype (ADR-033 + ADR-034) avec gate first-login + step resume + 4 chantiers polish iso-maquette (Cabinet type-selector/RC/IF, Médecin team-list, Tarifs nomenclature, Documents éditeur, Récap banner+table+cards, sidebar 360 px par step).
+**Last update**: 2026-05-14 (session étendue, 6 commits)
+**Build**: Front `vite build` OK, `npx tsc --noEmit` vert ; tests onboarding 3/3 + routes 7/7 PASS. **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN bout-en-bout : gate bounce sur `/agenda` quand `completed_at IS NULL`, walk 7 steps, complete CTA marque `completed_at`, refresh post-complete reste sur `/agenda` (no bounce), reset state à `horaires` puis reload → wizard reprend direct à l'étape 3. DB inspectée après chaque save (clinic_settings, identity_user, scheduling_working_hours, catalog_act flags).
+**Next action**: prochaine session — soit attaquer les items restants du BACKLOG `Onboarding wizard — parité design différée` (édition flags CNOPS/CNSS/RAMED, currency toggle, tiers-payant / majoration toggles, cachet upload, options filigrane/QR/bilingue), soit migrer vers un autre module post-pilote selon retour terrain.
+
+### 2026-05-14 (session étendue) — Onboarding parité polish ~95% + gate (ADR-034)
+
+**Shipped** (6 commits sur `feat/desktop-refresh-and-brand-refresh`, encore non pushés à l'écriture) :
+
+- **`0cb0eca` feat(onboarding) BE** : V040 practitioner credentials (`inpe/cnom/cnops` sur `identity_user`) + `WorkingHoursController` (GET/PUT replace-all) + `DocumentTemplateController` (GET metadata-only) + `AdminUserController.PUT /{id}` étendu pour les credentials.
+- **`549974d` feat(onboarding) FE** : wizard réécrit en 7 steps (Cabinet/Médecin/Horaires/Équipe/Tarifs/Documents/Prêt), footer `Continuer — <next>`, hooks `useWorkingHours/useDocumentTemplates/useMeProfile/etc.`, tests adaptés. ADR-033 + BACKLOG section parité différée.
+- **`ec2a30d` chore(repo)** : `.gitignore` patterns pour QA screenshots (`audit-*`, `verify-*`, `mob-*`, `post-parity-*`, `onboarding-step*`, `onboarding-mobile`).
+- **`d44b15e` feat(onboarding)** : sidebar 360 px par step (Why-cards Cabinet, tips Médecin, mini-agenda live Horaires, forfait Équipe, facture live Tarifs, A4 preview Documents, prochaines-étapes Récap), médecin team list multi-praticiens avec modal `AddDoctorModal`, Tarifs nomenclature 6 cols (Code/Acte/Prix/CNOPS/CNSS/RAMED). V041 ajoute flags assurance à `catalog_act` avec seed-adjust.
+- **`13fd00b` feat(onboarding)** : gate first-login `<RequireOnboardingComplete>` qui wrappe `<AppLayout>` (ADMIN/MEDECIN seulement) + step resume (chaque `advanceTo` PUT `current_step`) + `OnboardingStateController` (GET state, PUT step, POST complete). V042 ajoute `onboarding_completed_at/current_step` + `rc/if_no/legal_form`. Iso-maquette Cabinet (type-selector + RC/IF + Forme juridique), Récap (banner+table+cards), Documents (tabs + logo upload + en-tête readonly + signature + pied + 3 options visuelles).
+- **`13fd00b`** également ajoute ADR-034 (cette ADR) qui capture les 3 décisions imbriquées (V041, V042 cabinet-level gate, iso polish 4 chantiers parallèles).
+
+**State** : 6 commits sur la branche, working tree clean côté fichiers que j'ai touché. Tests verts. Build green. Pas de push (sera fait dans la foulée).
+
+**Next action** : voir « Current status — Next action ».
+
+**Blockers** : aucun.
+
+
 
 ### 2026-05-14 — Onboarding wizard 7 étapes (ADR-033)
 

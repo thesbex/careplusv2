@@ -315,6 +315,46 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 
 ---
 
+## ADR-034 — Onboarding gate-and-resume + V041 act insurance flags + V042 cabinet mentions + iso-maquette polish
+**Date**: 2026-05-14
+**Status**: accepted
+**Context**: Après ADR-033 (wizard 7 étapes wired), trois besoins sont remontés en série :
+1. Un audit `design-parity-auditor` a chiffré une longue liste d'écarts vs le prototype (sidebar 360 px absente sur les 7 steps, Tarifs sans nomenclature CNOPS/CNSS/RAMED, Médecin en formulaire solo au lieu d'une team list, Récap en `<ul>` à puces au lieu du banner+table+cards, Cabinet sans type-selector / RC / IF / Forme juridique, Documents en table read-only au lieu d'un éditeur logo+en-tête).
+2. Le wizard tournait sur la route `/onboarding` mais aucune logique ne forçait sa complétion : un admin pouvait sauter le wizard et atterrir sur `/agenda` avec un cabinet non-configuré. Demande pilote : « configuration initiale should be done once first login or even if he logged in but never finished it » + « remember step if he stopped in third or fourth ».
+3. Le bouton de fin disait "Aller à l'agenda" sans marquer le wizard comme terminé — pas de signal pour la suite.
+
+Trois décisions imbriquées sont prises :
+
+**Choice**:
+
+1. **V041 — drapeaux d'éligibilité assurance sur `catalog_act`**. Trois colonnes `cnops_eligible`, `cnss_eligible`, `ramed_eligible` BOOLEAN NOT NULL DEFAULT TRUE. Seed corrigé : `CERT_*` + `VISITE_DOM` non éligibles RAMED (actes administratifs, pas de soin clinique), `CONS_URG` éligible uniquement CNOPS (carve-out réglementaire marocain). `ActResponse` exposé via le mapper avec `code` + `defaultPrice` + les 3 flags pour que le wizard ne fasse pas de N+1 sur `GET /api/catalog/acts`. Pourquoi sur `catalog_act` plutôt qu'une table de liaison `act_insurance_eligibility(act_id, insurance_code, eligible)` : on a 3 schémas marocains stables (CNOPS/CNSS/RAMED), les flags ne migrent jamais une fois fixés, et la JOIN à chaque facturation aurait coûté inutilement.
+
+2. **V042 — gate-and-resume + RC/IF/legal_form sur `configuration_clinic_settings`**. Cinq colonnes additives :
+   - `onboarding_completed_at TIMESTAMPTZ NULL` : non-null = clic "Ouvrir mon cabinet" déjà fait, gate désactivé.
+   - `onboarding_current_step VARCHAR(32) NULL` : `cabinet|medecin|horaires|equipe|tarifs|documents|recap` ou NULL = jamais démarré OU terminé.
+   - `rc`, `if_no`, `legal_form` VARCHAR : mentions légales étendues pour parité maquette + injection PDF.
+   
+   Pourquoi cabinet-level et pas user-level (`identity_user.onboarding_*`) : le wizard configure du cabinet-wide state (clinic settings, working hours, tarifs, document templates). Une fois fait par un admin, les autres admins n'ont pas à le refaire. Le gate force `/onboarding` sur `ADMIN`/`MEDECIN` quand `completed_at IS NULL` — les autres rôles (SECRETAIRE, ASSISTANT, LAB, RADIO) passthrough parce que le controller gate déjà `PUT/POST` sur `ADMIN/MEDECIN` et bloquer ces rôles sur un écran qu'ils ne peuvent pas résoudre les enfermerait. Le gate vit dans `<RequireOnboardingComplete>` qui wrappe `<AppLayout>` dans le router.
+   
+   Persistance step : chaque `advanceTo(idx)` côté wizard PUT `onboarding_current_step`. Un refresh/logout au milieu de l'étape 4 ramène l'utilisateur sur l'étape 4, pas l'étape 1. L'`OnboardingStateController` crée un stub-row vide sur la première écriture si nécessaire — l'admin peut PUT sa progression avant même d'avoir sauvegardé l'identité cabinet (cas d'un drop-off prématuré entre l'étape 1 et son save).
+
+3. **Iso-maquette polish — 4 chantiers parallèles**. Tous les écarts haute-priorité de l'audit traités en un cycle :
+   - **Cabinet (step 1)** : 3-card "Type de cabinet" wired à V034 `establishment_type` (CABINET/CLINIQUE/CENTRE_MEDICAL), label "Raison sociale" (vs "Nom du cabinet"), Forme juridique `<select>` parmi 4 valeurs marocaines, RC + IF dans une rangée 3-col avec ICE. `SettingsController.PUT` utilise `COALESCE(?, rc)` pour ne pas écraser les valeurs courantes si un client legacy n'envoie pas les nouveaux champs.
+   - **Médecin (step 2)** : refactor du formulaire solo en team list multi-praticiens. `AdminUserView` étendu avec `specialty/inpe/cnom/cnops/hasSignature` + SQL `listUsers()` enrichi pour rendre tous les MEDECIN en une requête (pas de N+1). Le current admin a un badge "VOUS" et son card est éditable inline ; les autres médecins sont read-only avec la grille credentials. Modal `AddDoctorModal` POST `/api/admin/users` avec les credentials (CreateUserRequest étendu).
+   - **Tarifs (step 5)** : table nomenclature complète Code / Acte / Prix MAD / CNOPS / CNSS / RAMED rendue depuis `GET /api/catalog/acts`. La remise Premium reste éditable en-dessous. L'édition fine des flags est différée à Paramétrage → Catalogue (logged BACKLOG).
+   - **Documents (step 6)** : tab bar Ordonnance/Facture/Certificat/CR (visuel pour l'instant), real logo upload réutilisant `PUT /api/settings/clinic/logo` avec drop-zone 88×88, en-tête READ-ONLY sourçant nom/spécialité/INPE/CNOM/ICE des steps 1+2 (pas de duplication d'édition), signature status reflétant l'upload de l'étape 2, pied-de-page auto-calculé concaténant ICE/RC/IF, et 3 checkboxes options visuelles disabled (filigrane/QR/bilingue) marquées Paramétrage-v1.1.
+   - **Récap (step 7)** : success banner vert + table summary 6 rows avec icon ok/warn dynamique + boutons "Modifier" qui re-route au step concerné (via `onGoToStep` callback) + grille 2×2 "Prochaines étapes". Le sidebar passe à "Votre abonnement" (essai 14j) + "Besoin d'aide ?" + Maroc badge — match prototype lignes 463-507.
+   - **Sidebar transverse** : `OnboardingSidebar` rend un panel contextuel par step (Why-cards, Comment-ça-marche tips, mini-agenda live, forfait usage bar, facture preview live, aperçu A4, abonnement+help). Le CSS `.ob-body grid-template-columns: 1fr 360px` était déjà en place — il fallait juste rendre le 2ᵉ enfant.
+
+**Consequence**:
+- 3 migrations idempotentes (V040 ADR-033 + V041 + V042) ; aucune ne nécessite de backfill stratégique.
+- 4 commits parité polish + 1 commit gate-and-resume sur la branche `feat/desktop-refresh-and-brand-refresh` (cf. PROGRESS.md).
+- Tests onboarding 3/3 + routes 7/7 PASS. Build front green. Validation Playwright bout-en-bout : gate bounce, walk 7 steps, complete CTA, refresh post-complete (no bounce), reset state à step 3 → resume direct.
+- Pattern réutilisable : si une future feature a besoin d'un gate cabinet-level (premier abonnement Premium, mise à jour CGU…), ajouter une colonne `xxx_completed_at` à `configuration_clinic_settings` + `<RequireXxxComplete>` wrapper. ADR-034 fige le squelette.
+- Items différés en BACKLOG `Onboarding wizard — parité design différée` réduits drastiquement (il reste : édition flags CNOPS/CNSS/RAMED inline, currency toggle MAD/EUR, tiers-payant / majoration toggles, cachet officiel upload, options filigrane/QR/bilingue activables, document template body editor Paramétrage).
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).
