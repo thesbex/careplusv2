@@ -294,6 +294,27 @@ One paragraph per decision. Date + status + context + choice + consequence. Appe
 
 ---
 
+## ADR-033 — Onboarding wizard à 7 étapes : V040 practitioner credentials + endpoints settings/working-hours et settings/document-templates
+**Date**: 2026-05-14
+**Status**: accepted
+**Context**: L'onboarding wizard accessible à `/onboarding` après `/register` rendait 4 étapes (Cabinet / Tarifs / Équipe / Récap). Le prototype `design/prototype/screens/onboarding.jsx` en prévoit 7 (ajoute Médecin / Horaires / Documents). Les commentaires dans `OnboardingPage.tsx` justifiaient le drop par « backend pas encore en place pour `config_working_hours` ni les templates ». Mais en réalité (a) `scheduling_working_hours` existait depuis V001 avec seed Mon-Sat dans V002 — seule l'API REST manquait (entité read-only sans controller), (b) `configuration_document_template` existait aussi depuis V001 avec 5 templates seedés — pareil, pas d'API, (c) les credentials par praticien (INPE, CNOM, CNOPS) requis sur les ordonnances n'étaient pas modélisés au niveau utilisateur (seule la spécialité l'était via V032). Décision : compléter le wizard à 7 étapes en livrant en parallèle (ADR-021 parallel-sync) tous les morceaux backend manquants — pas en bouchant côté FE seulement.
+
+**Choice**:
+1. **V040** ajoute trois colonnes nullable à `identity_user` : `inpe VARCHAR(32)`, `cnom VARCHAR(64)`, `cnops VARCHAR(64)`. Pourquoi sur `identity_user` plutôt qu'une table `practitioner_profile` séparée : un cabinet multi-praticien doit pouvoir injecter les credentials du médecin signataire sur chaque PDF, pas ceux du cabinet. Cabinet-level INPE reste sur `configuration_clinic_settings` (fallback PDF si user.inpe NULL). Nullable car solo cabinets pré-pilote n'ont jamais saisi ces données — pas de backfill.
+2. **`WorkingHoursController`** expose `GET /api/settings/working-hours` et `PUT /api/settings/working-hours` en *replace-all* (le body contient les 7 jours, l'endpoint DELETE + INSERT en une transaction). Pourquoi pas un PATCH par jour : la lecture côté agenda (slot availability) profite d'une table cohérente sans branche partielle ; le wizard et la page Paramétrage soumettent toujours la semaine entière. Validation côté contrôleur : `start < end` par slot, pas de chevauchement entre slots d'un même jour. Format `HH:mm` accepté (regex), stocké en `TIME WITHOUT TIME ZONE`.
+3. **`DocumentTemplateController`** expose `GET /api/settings/document-templates` uniquement (lecture seule pour l'onboarding). L'admin peut voir la liste des modèles seedés (5 par défaut : ORDONNANCE / CERTIFICAT / FACTURE / BON_ANALYSE / BON_RADIO) avec leur taille et leur format, mais l'édition du HTML/CSS reste réservée à Paramétrage → Documents (pas dans la portée v1 du wizard). La réponse n'inclut PAS le corps `html_template` pour éviter de transférer ~3 Ko inutiles à un client qui n'affiche qu'un récapitulatif.
+4. **`AdminUserController.PUT /{id}`** et le DTO `UpdateUserRequest` étendus avec `Optional<String> inpe`, `cnom`, `cnops` (sémantique tri-état déjà en place — absent = ne pas toucher, présent = écraser, présent blank = NULL). Le bootstrap admin appelle directement ce endpoint sur son propre UUID lors de l'étape Médecin du wizard (il est ADMIN donc autorisé). Aucun nouveau endpoint « self » créé : on évite la duplication entre `/api/users/me` (déjà étendu pour exposer les nouveaux champs en lecture) et un hypothétique `PUT /api/users/me` (qui aurait dupliqué les règles d'autorisation).
+5. **Frontend** : `OnboardingPage.tsx` réécrit avec 7 entrées dans `STEPS`. Footer dynamique « Continuer — `<next-label>` » fidèle au prototype. Le récap est dynamique (compte des jours ouverts, templates, signature présente, spécialité saisie, équipe ajoutée) — pas de placeholder hardcodé. Hooks dans `useOnboardingApi.ts` centralisent les appels aux 3 nouveaux endpoints.
+
+**Consequence**:
+- Migration `V040__practitioner_credentials.sql` (3 colonnes additives, idempotent via `IF NOT EXISTS`).
+- Backend : 2 nouveaux contrôleurs (`WorkingHoursController` 130 LOC, `DocumentTemplateController` 50 LOC) ; entité `User` + `UserView` + `UpdateUserRequest` + `AdminUserController` étendus pour les 3 champs.
+- Frontend : `OnboardingPage.tsx` passe de 4 → 7 steps (~250 → 700 LOC). Nouveau fichier `hooks/useOnboardingApi.ts`. Test `OnboardingPage.test.tsx` mis à jour pour la nouvelle shape (7 step labels).
+- Validation manuelle Playwright bout-en-bout desktop 1440 px + mobile 390 px (memory `feedback_qa_mobile_parity`). DB inspectée après chaque save (`identity_user`, `scheduling_working_hours`). Pas d'IT BE écrites cette session (memory `feedback_no_mvn_verify_for_now` — IHM only).
+- Pattern réutilisable : si une future étape de wizard a besoin d'un endpoint de configuration cabinet-level, suivre la signature « JdbcTemplate dans `infrastructure/web/`, replace-all si la donnée est consommée comme un set, RBAC `hasRole('ADMIN')` sur PUT et `hasAnyRole` sur GET ». Pas de service application/ ni d'entité JPA pour ce genre de table single-row.
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).

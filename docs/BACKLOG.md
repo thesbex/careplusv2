@@ -29,6 +29,42 @@ Priorité élevée. `mvn verify` actuel ≈ 6-7 min sur 410 IT, manual-qa Playwr
 
 `mvn verify` 6-7 min → **3-4 min** d'ici fin de semaine grâce aux 5 premiers items. Manual-qa 15-30 min → **8-15 min** grâce à `globalSetup` Playwright.
 
+## Onboarding wizard — parité design différée (audit 2026-05-14)
+
+Le wizard `/onboarding` a été livré à 7 étapes (ADR-033). Le `design-parity-auditor` a identifié des écarts substantiels avec `design/prototype/screens/onboarding.jsx` qui dépassent le scope d'un J-day. Les items ci-dessous sont **différés** et à prioriser après retour pilote.
+
+### Côté chrome (transverse)
+
+- [ ] **Sidebar 360 px par étape** — le CSS `.ob-body` définit `1fr 360px` et `.ob-preview*` mais aucune étape ne rend le 2e enfant. Le prototype rend par étape : "Aperçu agenda" mini-grid (Horaires), "Votre forfait" usage bar (Équipe), "Aperçu facture" (Tarifs), preview A4 (Documents), aide subscription (Prêt). Effort : ~1 J pour les 7 sidebars.
+- [ ] **Bouton "Passer cette étape" stylé** — `border: 1px dashed var(--border-strong)` + double-chevron forward SVG. Aujourd'hui ghost variant standard.
+
+### Step 1 — Cabinet
+
+- [ ] **"Type de cabinet" 3-card selector** — cards Individuel / Groupe / Centre médical avant le formulaire (V034 expose déjà `establishment_type`, à brancher).
+- [ ] **Champs "Forme juridique" + "Date de création"** — `<select>` + date input. Demande migration BE ou simple champ texte côté wizard.
+- [ ] **Champs "RC" + "IF"** au lieu de RIB — mentions légales sur factures.
+- [ ] **Label "Raison sociale"** au lieu de "Nom du cabinet" (cosmétique).
+
+### Step 2 — Médecin
+
+- [ ] **Liste multi-praticiens** — le prototype rend une `Panel` par médecin (avatar + grid credentials + ligne signature) avec badge "VOUS" sur l'admin courant. Aujourd'hui : formulaire self uniquement. Doit s'appuyer sur `GET /api/admin/users` filtré sur les MEDECIN actifs + modal "Ajouter un médecin associé".
+
+### Step 3 — Horaires
+
+- [ ] **Bouton edit-row par jour** — `<button className="btn icon ghost sm"><Edit /></button>` en col 5. Aujourd'hui : `<span />` vide.
+
+### Step 5 — Tarifs
+
+- [ ] **Nomenclature complète des actes** — le prototype rend une table 8 actes (CONS / CONS-S / URG / CERT / VAC / ECG / TENS) avec colonnes Code / Acte / Prix MAD / CNOPS / CNSS / RAMED + currency toggle MAD/EUR + checkboxes "Tiers payant" et "Majoration nuit/dimanche". Aujourd'hui : seul le pourcentage remise Premium est éditable. Demande migration BE pour les actes (à valider — peut-être déjà couvert par `catalog_act` / `catalog_tariff`).
+
+### Step 6 — Documents
+
+- [ ] **Éditeur de template par type** — tab bar (Ordonnance / Facture / Certificat / Compte-rendu) + drop zone logo + en-tête éditable + signature + cachet + pied-de-page textarea + options (filigrane, QR, bilingue) + preview A4 live. Aujourd'hui : table read-only des templates seedés. Demande `PUT /api/settings/document-templates/{type}` côté BE.
+
+### Step 7 — Prêt
+
+- [ ] **Banner vert + table 6 rows + cards "Prochaines étapes"** — au lieu du `<ul>` à puces. Banner avec icône check + titre + sub-line, table de 6 rows (chacune avec icône + titre + description + bouton "Modifier"), grille 2×2 de cards "Importer patients / RDV en ligne / Messagerie / Tester une consultation".
+
 ## QA-driven follow-ups (extensions des features livrées dans le sprint MVP-wiring)
 
 Chaque QA item livré a parfois laissé un **prolongement** non-bloquant. Tracé ici pour ne pas être oublié quand un cabinet pilote demandera l'évolution naturelle.

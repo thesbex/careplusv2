@@ -4,10 +4,32 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — extension cloisonnement (V032 → V036 vaccination → V039 grossesse) + dette QA salle d'attente résorbée.
-**Last update**: 2026-05-09
-**Build**: Front `vite build` OK (~3.94s, bundle 1.57 MB / gzip 434 KB). `mvn -o clean compile` + `mvn test-compile` verts (354 + 68 sources). **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN sur salle d'attente, /grossesses, /parametres → onglet Cabinet.
-**Next action**: prochaine session — décider si on continue à étendre le pattern cloisonnement à un autre module (LAB/RADIO ? grossesse pathologique ?) ou si on passe à un autre item du BACKLOG. Si demande terrain remonte, suivre ADR-032 squelette.
+**Phase**: Post-pilote — wizard `/onboarding` étendu de 4 → 7 étapes (ADR-033) avec backend complet pour les credentials médecin (V040) + endpoints `working-hours` + `document-templates`.
+**Last update**: 2026-05-14
+**Build**: Front `vite build` OK (~4.65 s, bundle 1.67 MB / gzip 453 KB), `npx tsc --noEmit` vert sur les fichiers touchés. **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN bout-en-bout desktop 1440 + mobile 390 sur les 7 steps du wizard + design-parity-auditor sur OnboardingPage.
+**Next action**: choisir entre (a) attaquer un item différé dans BACKLOG.md → "Onboarding wizard — parité design différée" (sidebar 360 px / Tarifs nomenclature / Documents editor / Médecin team list / Récap banner — chacun ~1 J de travail), ou (b) passer à un autre module post-pilote selon retour terrain.
+
+### 2026-05-14 — Onboarding wizard 7 étapes (ADR-033)
+
+**Shipped** (non commité encore — uncommitted working tree) :
+
+- **V040 `practitioner_credentials.sql`** : 3 colonnes nullable `inpe`, `cnom`, `cnops` sur `identity_user`. Backfill non requis (DEFAULT NULL). Idempotent via `IF NOT EXISTS`.
+- **`WorkingHoursController`** (`ma.careplus.scheduling.infrastructure.web`) : GET/PUT `/api/settings/working-hours` en replace-all. Valide `start < end` + pas de chevauchement intra-jour. RBAC : tous rôles auth en lecture, ADMIN-only en écriture. Pas de service application/ ni d'entité JPA (JdbcTemplate direct comme `SettingsController`).
+- **`DocumentTemplateController`** (`ma.careplus.configuration.infrastructure.web`) : GET `/api/settings/document-templates` retourne `id, type, page_format, templateBytes, updatedAt` (pas le HTML body — ~3 Ko économisés). Pas de PUT (éditeur déferré à Paramétrage → Documents, BACKLOG).
+- **`AdminUserController` étendu** : `UpdateUserRequest` ajoute `Optional<String> inpe/cnom/cnops` avec la sémantique tri-état déjà en place (absent = ne pas toucher, présent = écraser, blank = NULL). `GET /{id}` + UPDATE SQL mis à jour. `UserView` étendu avec 4 champs (specialty + 3 nouveaux). `/api/users/me` étendu pour les exposer en lecture.
+- **`User` entity (JPA)** étendu avec `inpe`, `cnom`, `cnops` + getters/setters → MapStruct auto-map vers `UserView`.
+- **Frontend `OnboardingPage.tsx`** réécrit pour 7 étapes : Cabinet → Médecin → Horaires → Équipe → Tarifs → Documents → Prêt. Footer dynamique `Continuer — <next-label>`. Récap dynamique (compte jours ouverts, templates, signature, spécialité, équipe). Bouton Déconnexion red destructive + wordmark splittée `care/plus`.
+- **Hooks `useOnboardingApi.ts`** centralise : `useWorkingHours`, `useUpdateWorkingHours`, `useDocumentTemplates`, `useMeProfile`, `useUpdatePractitionerCredentials`, `useUserSignature`, `useUploadUserSignature`.
+- **Test `OnboardingPage.test.tsx`** mis à jour pour 7 step labels (3/3 verts).
+- **ADR-033** ajouté à `docs/DECISIONS.md` (décision sur replace-all, JdbcTemplate single-row, pas de table `practitioner_profile` séparée).
+
+**State** : working tree uncommitted ; build front green ; 3 tests onboarding verts ; design-parity-auditor a remonté des écarts substantiels avec le prototype (sidebar 360 px absente, Step Médecin = solo vs prototype = team list, Step Tarifs = remise simple vs nomenclature complète, Step Documents = read-only table vs éditeur, Step Récap = bullets vs banner+table+cards). Quick fixes appliqués (Déconnexion, wordmark splittée, rail connectors, Dr. prefix, 3 options Horaires, copy alignment titres+intros, max-widths CSS, CTA "Ouvrir mon cabinet"). Le reste ajouté à BACKLOG.md sous section dédiée.
+
+**Next action** : commits scopés (BE module + FE wizard + tests + docs) sans push, puis prioriser parité design différée vs autre item BACKLOG selon retour pilote.
+
+**Blockers** : aucun.
+
+
 
 ### 2026-05-09 — Cloisonnement Grossesse + dette QA salle d'attente
 

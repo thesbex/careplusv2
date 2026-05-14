@@ -36,8 +36,23 @@
 }
 
 .ob-topbar-logout {
-  color: var(--primary);
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #f2c7c2;
+  background: #fbeeec;
+  color: #b0372f;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ob-topbar-logout:hover {
+  background: #f5dad5;
 }
 
 /* ── Progress rail ────────────────────────────────── */
@@ -131,7 +146,7 @@
 }
 
 .ob-content-inner {
-  max-width: 680px;
+  max-width: 760px;
 }
 
 .ob-eyebrow {
@@ -156,7 +171,7 @@
   color: var(--ink-3);
   margin: 0 0 28px;
   line-height: 1.55;
-  max-width: 560px;
+  max-width: 580px;
 }
 
 .ob-section {
@@ -224,7 +239,7 @@
 
 .ob-hours-row {
   display: grid;
-  grid-template-columns: 100px 80px 1fr 1fr 40px;
+  grid-template-columns: 100px 60px 1fr 1fr 40px;
   gap: 10px;
   align-items: center;
   padding: 10px 0;

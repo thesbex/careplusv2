@@ -1,24 +1,27 @@
 /**
- * Screen 13 — Onboarding wizard (first launch).
+ * Screen 13 — Onboarding wizard (first-launch, 7 steps).
  *
- * Wired wizard to the endpoints that already exist (QA backlog "Onboarding 7-step wired"):
- *   1. Cabinet      → PUT /api/settings/clinic
- *   2. Tarifs       → PUT /api/settings/tiers/{NORMAL|PREMIUM}
- *   3. Équipe       → POST /api/admin/users (loop)
- *   4. Récap        → navigate to /agenda
+ * Faithful port of `design/prototype/screens/onboarding.jsx`. Steps mirror
+ * the prototype exactly:
  *
- * Notes (deliberate gaps, tracked in BACKLOG.md):
- *   - "Horaires" + "Documents" steps from the original prototype are dropped because
- *     `config_working_hours` and document templates don't have backends yet.
- *   - First-admin bootstrap (POST /admin/bootstrap) is **not** part of this flow. That
- *     endpoint is for an empty database; once one user exists, it 409s. So the wizard
- *     assumes the user is already signed in (typical post-deploy flow: deploy admin
- *     bootstraps via curl, then logs in and sees this wizard once).
+ *   1. Cabinet     → PUT /api/settings/clinic
+ *   2. Médecin     → PUT /api/admin/users/{id} (specialty + INPE + CNOM + CNOPS)
+ *                   + PUT /api/practitioners/{id}/signature
+ *   3. Horaires    → PUT /api/settings/working-hours (replace-all)
+ *   4. Équipe      → POST /api/admin/users (loop)
+ *   5. Tarifs      → PUT /api/settings/tiers/PREMIUM
+ *   6. Documents   → GET /api/settings/document-templates (read-only preview)
+ *   7. Prêt        → navigate /agenda
+ *
+ * The wizard assumes the admin is already signed in (post-register flow).
+ * Each step's "Continuer" is the commit point — the user can never advance
+ * with un-saved data. "Passer cette étape" exists when the step has a sane
+ * default (Médecin credentials, Horaires, Tarifs, Documents).
  */
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { BrandMark } from '@/components/ui/BrandMark';
+import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
@@ -33,16 +36,40 @@ import {
   type ClinicSettingsForm,
 } from '@/features/parametres/hooks/useSettings';
 import { useCreateUser } from '@/features/parametres/hooks/useUsers';
+import {
+  useWorkingHours,
+  useUpdateWorkingHours,
+  useDocumentTemplates,
+  useMeProfile,
+  useUpdatePractitionerCredentials,
+  useUserSignature,
+  useUploadUserSignature,
+  TEMPLATE_TYPE_LABELS,
+  type WorkingHoursDay,
+  type WorkingHoursView,
+  type PractitionerCredentialsForm,
+} from './hooks/useOnboardingApi';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { api } from '@/lib/api/client';
 import './onboarding.css';
 
-type StepKey = 'cabinet' | 'tarifs' | 'equipe' | 'recap';
+type StepKey =
+  | 'cabinet'
+  | 'medecin'
+  | 'horaires'
+  | 'equipe'
+  | 'tarifs'
+  | 'documents'
+  | 'recap';
 
 const STEPS: { key: StepKey; label: string }[] = [
   { key: 'cabinet', label: 'Cabinet' },
-  { key: 'tarifs', label: 'Tarifs' },
+  { key: 'medecin', label: 'Médecin' },
+  { key: 'horaires', label: 'Horaires' },
   { key: 'equipe', label: 'Équipe' },
+  { key: 'tarifs', label: 'Tarifs' },
+  { key: 'documents', label: 'Documents' },
   { key: 'recap', label: 'Prêt' },
 ];
 
@@ -66,6 +93,56 @@ interface InvitedUser {
   phone: string;
   role: 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN';
 }
+
+const HOUR_TEMPLATES: { key: string; label: string; sub: string; week: WorkingHoursView }[] = [
+  {
+    key: 'classique',
+    label: 'Cabinet classique',
+    sub: 'Lun–Sam, 8:30–19:00',
+    week: {
+      days: [1, 2, 3, 4, 5].map((d) => ({
+        dayOfWeek: d,
+        active: true,
+        slots: [
+          { startTime: '08:30', endTime: '12:30' },
+          { startTime: '14:30', endTime: '19:00' },
+        ],
+      })).concat([
+        { dayOfWeek: 6, active: true, slots: [{ startTime: '09:00', endTime: '13:00' }] },
+        { dayOfWeek: 7, active: false, slots: [] },
+      ]),
+    },
+  },
+  {
+    key: 'continue',
+    label: 'Journée continue',
+    sub: 'Lun–Ven, 9:00–17:00',
+    week: {
+      days: [1, 2, 3, 4, 5].map((d) => ({
+        dayOfWeek: d,
+        active: true,
+        slots: [{ startTime: '09:00', endTime: '17:00' }],
+      })).concat([
+        { dayOfWeek: 6, active: false, slots: [] },
+        { dayOfWeek: 7, active: false, slots: [] },
+      ]),
+    },
+  },
+  {
+    key: 'matinees',
+    label: 'Demi-journées',
+    sub: 'Matins seulement',
+    week: {
+      days: [1, 2, 3, 4, 5, 6].map((d) => ({
+        dayOfWeek: d,
+        active: true,
+        slots: [{ startTime: '08:30', endTime: '13:00' }],
+      })).concat([
+        { dayOfWeek: 7, active: false, slots: [] },
+      ]),
+    },
+  },
+];
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
@@ -93,7 +170,39 @@ export default function OnboardingPage() {
     }
   }, [settings]);
 
-  // Step 2 — Tarifs
+  // Step 2 — Médecin
+  const { me } = useMeProfile();
+  const { updateCredentials, isPending: isSavingMedecin } = useUpdatePractitionerCredentials();
+  const { signatureMeta } = useUserSignature(sessionUser?.id ?? null);
+  const { upload: uploadSignature, isPending: isUploadingSig } = useUploadUserSignature();
+  const [credentials, setCredentials] = useState<PractitionerCredentialsForm>({
+    specialty: '', inpe: '', cnom: '', cnops: '',
+  });
+  useEffect(() => {
+    if (me) {
+      setCredentials({
+        specialty: me.specialty ?? '',
+        inpe: me.inpe ?? '',
+        cnom: me.cnom ?? '',
+        cnops: me.cnops ?? '',
+      });
+    }
+  }, [me]);
+
+  // Step 3 — Horaires
+  const { workingHours } = useWorkingHours();
+  const { updateWorkingHours, isPending: isSavingHours } = useUpdateWorkingHours();
+  const [hours, setHours] = useState<WorkingHoursView>(workingHours);
+  useEffect(() => { setHours(workingHours); }, [workingHours]);
+
+  // Step 4 — Équipe (reuses existing flow)
+  const { createUser, isPending: isCreatingUser } = useCreateUser();
+  const [invited, setInvited] = useState<InvitedUser[]>([]);
+  const [draft, setDraft] = useState<InvitedUser>({
+    email: '', password: '', firstName: '', lastName: '', phone: '', role: 'SECRETAIRE',
+  });
+
+  // Step 5 — Tarifs
   const { tiers } = useTiers();
   const { updateTier, isPending: isSavingTier } = useUpdateTierDiscount();
   const premium = tiers.find((t) => t.tier === 'PREMIUM');
@@ -102,12 +211,8 @@ export default function OnboardingPage() {
     if (premium) setPremiumDiscount(Number(premium.discountPercent));
   }, [premium]);
 
-  // Step 3 — Équipe
-  const { createUser, isPending: isCreatingUser } = useCreateUser();
-  const [invited, setInvited] = useState<InvitedUser[]>([]);
-  const [draft, setDraft] = useState<InvitedUser>({
-    email: '', password: '', firstName: '', lastName: '', phone: '', role: 'SECRETAIRE',
-  });
+  // Step 6 — Documents
+  const { templates } = useDocumentTemplates();
 
   function setClinicField<K extends keyof ClinicSettingsForm>(k: K, v: ClinicSettingsForm[K]) {
     setClinic((c) => ({ ...c, [k]: v }));
@@ -127,6 +232,30 @@ export default function OnboardingPage() {
         const p = toProblemDetail(err);
         toast.error(p.title, p.detail ? { description: p.detail } : undefined);
       }
+    } else if (step.key === 'medecin') {
+      if (!sessionUser?.id) {
+        toast.error('Session invalide — reconnectez-vous.');
+        return;
+      }
+      try {
+        await updateCredentials({ userId: sessionUser.id, form: credentials });
+        toast.success('Profil médecin enregistré.');
+        setStepIdx((i) => i + 1);
+      } catch (err) {
+        const p = toProblemDetail(err);
+        toast.error(p.title, p.detail ? { description: p.detail } : undefined);
+      }
+    } else if (step.key === 'horaires') {
+      try {
+        await updateWorkingHours(hours);
+        toast.success('Horaires enregistrés.');
+        setStepIdx((i) => i + 1);
+      } catch (err) {
+        const p = toProblemDetail(err);
+        toast.error(p.title, p.detail ? { description: p.detail } : undefined);
+      }
+    } else if (step.key === 'equipe') {
+      setStepIdx((i) => i + 1);
     } else if (step.key === 'tarifs') {
       try {
         await updateTier({ tier: 'PREMIUM', discountPercent: premiumDiscount });
@@ -136,8 +265,8 @@ export default function OnboardingPage() {
         const p = toProblemDetail(err);
         toast.error(p.title, p.detail ? { description: p.detail } : undefined);
       }
-    } else if (step.key === 'equipe') {
-      // No required action — invitations are optional.
+    } else if (step.key === 'documents') {
+      // Read-only step — just advance.
       setStepIdx((i) => i + 1);
     } else if (step.key === 'recap') {
       navigate('/agenda');
@@ -167,18 +296,58 @@ export default function OnboardingPage() {
     }
   }
 
+  async function handleSignatureFile(file: File) {
+    if (!sessionUser?.id) return;
+    try {
+      await uploadSignature({ userId: sessionUser.id, file });
+      toast.success('Signature téléversée.');
+    } catch (err) {
+      const p = toProblemDetail(err);
+      toast.error(p.title, p.detail ? { description: p.detail } : undefined);
+    }
+  }
+
   const sessionLabel = sessionUser
-    ? `${sessionUser.firstName} ${sessionUser.lastName}`.trim()
+    ? `Dr. ${sessionUser.firstName} ${sessionUser.lastName}`.trim()
     : '—';
-  const isPending = isSavingClinic || isSavingTier || isCreatingUser;
+
+  async function handleLogout() {
+    try {
+      await api.post('/auth/logout', {});
+    } catch {
+      // swallow — logout should always clear local state even if BE 5xx
+    }
+    useAuthStore.getState().clear();
+    navigate('/login', { replace: true });
+  }
+  const isPending =
+    isSavingClinic || isSavingTier || isCreatingUser || isSavingMedecin || isSavingHours;
+
+  // Compute footer label dynamically — mirrors the prototype "Continuer — <next>"
+  const nextLabel = stepIdx < STEPS.length - 1 ? STEPS[stepIdx + 1]!.label : null;
 
   return (
     <div className="ob-root">
       <header className="ob-topbar">
         <BrandMark size="sm" />
-        <span className="ob-topbar-name">careplus</span>
+        <span className="ob-topbar-name">
+          <BrandWordmark />
+        </span>
         <Pill style={{ marginLeft: 10 }}>Configuration initiale</Pill>
         <span className="ob-topbar-session">Session : {sessionLabel}</span>
+        <button
+          type="button"
+          className="ob-topbar-logout"
+          onClick={() => void handleLogout()}
+          aria-label="Se déconnecter"
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Déconnexion
+        </button>
       </header>
 
       <nav className="ob-rail" aria-label="Étapes de configuration">
@@ -186,15 +355,23 @@ export default function OnboardingPage() {
           {STEPS.map((s, i) => {
             const done = i < stepIdx;
             const active = i === stepIdx;
+            const isLast = i === STEPS.length - 1;
             return (
-              <li
-                key={s.key}
-                className={`ob-step ${done ? 'done' : ''} ${active ? 'active' : ''}`}
-                aria-current={active ? 'step' : undefined}
-              >
-                <span className="ob-step-circle">{done ? <Check /> : i + 1}</span>
-                <span className="ob-step-label">{s.label}</span>
-              </li>
+              <Fragment key={s.key}>
+                <li
+                  className={`ob-step ${done ? 'done' : ''} ${active ? 'active' : ''}`}
+                  aria-current={active ? 'step' : undefined}
+                >
+                  <span className="ob-step-circle">{done ? <Check /> : i + 1}</span>
+                  <span className="ob-step-label">{s.label}</span>
+                </li>
+                {!isLast && (
+                  <li
+                    aria-hidden="true"
+                    className={`ob-step-connector ${done ? 'done' : ''}`}
+                  />
+                )}
+              </Fragment>
             );
           })}
         </ol>
@@ -209,8 +386,19 @@ export default function OnboardingPage() {
               <CabinetStep clinic={clinic} setField={setClinicField} />
             )}
 
-            {step.key === 'tarifs' && (
-              <TarifsStep premiumDiscount={premiumDiscount} setPremiumDiscount={setPremiumDiscount} />
+            {step.key === 'medecin' && (
+              <MedecinStep
+                credentials={credentials}
+                setCredentials={setCredentials}
+                onSignatureFile={(f) => void handleSignatureFile(f)}
+                hasSignature={!!signatureMeta}
+                isUploadingSig={isUploadingSig}
+                fullName={sessionUser ? `${sessionUser.firstName} ${sessionUser.lastName}` : ''}
+              />
+            )}
+
+            {step.key === 'horaires' && (
+              <HorairesStep hours={hours} setHours={setHours} />
             )}
 
             {step.key === 'equipe' && (
@@ -223,8 +411,24 @@ export default function OnboardingPage() {
               />
             )}
 
+            {step.key === 'tarifs' && (
+              <TarifsStep premiumDiscount={premiumDiscount} setPremiumDiscount={setPremiumDiscount} />
+            )}
+
+            {step.key === 'documents' && (
+              <DocumentsStep templates={templates} />
+            )}
+
             {step.key === 'recap' && (
-              <RecapStep clinicName={clinic.name} city={clinic.city} invitedCount={invited.length} />
+              <RecapStep
+                clinicName={clinic.name}
+                city={clinic.city}
+                invitedCount={invited.length}
+                specialty={credentials.specialty}
+                hasSignature={!!signatureMeta}
+                templateCount={templates.length}
+                activeDays={hours.days.filter((d) => d.active).length}
+              />
             )}
           </div>
         </div>
@@ -250,10 +454,12 @@ export default function OnboardingPage() {
             disabled={isPending}
           >
             {step.key === 'recap'
-              ? 'Aller à l’agenda'
+              ? 'Ouvrir mon cabinet'
               : isPending
                 ? 'Enregistrement…'
-                : 'Continuer'}
+                : nextLabel
+                  ? `Continuer — ${nextLabel}`
+                  : 'Continuer'}
             {step.key !== 'recap' && <ChevronRight />}
           </Button>
         </div>
@@ -328,35 +534,284 @@ function CabinetStep({
   );
 }
 
-function TarifsStep({
-  premiumDiscount,
-  setPremiumDiscount,
+function MedecinStep({
+  credentials,
+  setCredentials,
+  onSignatureFile,
+  hasSignature,
+  isUploadingSig,
+  fullName,
 }: {
-  premiumDiscount: number;
-  setPremiumDiscount: (n: number) => void;
+  credentials: PractitionerCredentialsForm;
+  setCredentials: (form: PractitionerCredentialsForm) => void;
+  onSignatureFile: (file: File) => void;
+  hasSignature: boolean;
+  isUploadingSig: boolean;
+  fullName: string;
 }) {
   return (
     <>
-      <h1 className="ob-title">Tarifs et remises</h1>
+      <h1 className="ob-title">Votre profil médecin</h1>
       <p className="ob-sub">
-        Définissez la remise automatique pour vos patients Premium. Modifiable à tout moment dans Paramétrage › Tarifs.
+        Ces informations identifient le praticien sur les ordonnances et certificats. Vous pourrez les modifier
+        plus tard depuis Paramétrage › Profil.
       </p>
       <Panel className="ob-form-panel">
-        <Field>
-          <FieldLabel>Remise patient Premium (%)</FieldLabel>
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            step="0.5"
-            value={premiumDiscount}
-            onChange={(e) => setPremiumDiscount(Number(e.target.value) || 0)}
-          />
-          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 6 }}>
-            La remise s’applique automatiquement à toute facture issue d’une consultation patient Premium.
-          </div>
-        </Field>
+        <h3 className="ob-section-title">{fullName || 'Praticien principal'}</h3>
+        <Grid2>
+          <Field>
+            <FieldLabel>Spécialité</FieldLabel>
+            <Input
+              value={credentials.specialty}
+              onChange={(e) => setCredentials({ ...credentials, specialty: e.target.value })}
+              placeholder="Médecine générale"
+            />
+          </Field>
+          <Field>
+            <FieldLabel>N° INPE</FieldLabel>
+            <Input
+              value={credentials.inpe}
+              onChange={(e) => setCredentials({ ...credentials, inpe: e.target.value })}
+              placeholder="12 / 458 / 21"
+            />
+          </Field>
+        </Grid2>
+        <Grid2>
+          <Field>
+            <FieldLabel>N° Ordre (CNOM)</FieldLabel>
+            <Input
+              value={credentials.cnom}
+              onChange={(e) => setCredentials({ ...credentials, cnom: e.target.value })}
+              placeholder="CNOM-7841-CASA"
+            />
+          </Field>
+          <Field>
+            <FieldLabel>N° conv. CNOPS</FieldLabel>
+            <Input
+              value={credentials.cnops}
+              onChange={(e) => setCredentials({ ...credentials, cnops: e.target.value })}
+              placeholder="2018-MG-4521"
+            />
+          </Field>
+        </Grid2>
       </Panel>
+
+      <Panel className="ob-form-panel" style={{ marginTop: 16 }}>
+        <h3 className="ob-section-title">Signature scannée</h3>
+        <p style={{ fontSize: 12.5, color: 'var(--ink-3)', margin: '0 0 4px', lineHeight: 1.5 }}>
+          Téléversez une image (PNG, JPEG ou WEBP — max 500 Ko) de votre signature. Elle sera apposée sur
+          chaque ordonnance et certificat que vous générerez.
+        </p>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <label
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px',
+              border: '1px dashed var(--border-strong)', borderRadius: 6, cursor: 'pointer',
+              fontSize: 13, color: 'var(--ink-2)', background: 'var(--surface)',
+            }}
+          >
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onSignatureFile(f);
+              }}
+              style={{ display: 'none' }}
+            />
+            {isUploadingSig ? 'Téléversement…' : hasSignature ? 'Remplacer la signature' : 'Choisir un fichier'}
+          </label>
+          {hasSignature && (
+            <span style={{ fontSize: 12, color: 'var(--ok, #2F8F6B)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+              <Check /> Signature enregistrée
+            </span>
+          )}
+        </div>
+      </Panel>
+    </>
+  );
+}
+
+const DAY_LABELS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+function HorairesStep({
+  hours,
+  setHours,
+}: {
+  hours: WorkingHoursView;
+  setHours: (h: WorkingHoursView) => void;
+}) {
+  function setDay(dow: number, mut: (d: WorkingHoursDay) => WorkingHoursDay) {
+    setHours({
+      days: hours.days.map((d) => (d.dayOfWeek === dow ? mut(d) : d)),
+    });
+  }
+
+  function applyTemplate(weekKey: string) {
+    const tpl = HOUR_TEMPLATES.find((t) => t.key === weekKey);
+    if (tpl) setHours(tpl.week);
+  }
+
+  return (
+    <>
+      <h1 className="ob-title">Quand recevez-vous vos patients&nbsp;?</h1>
+      <p className="ob-sub">
+        Ces horaires déterminent les créneaux proposés par l’agenda et les messages envoyés aux patients.
+        Vous pourrez les modifier à tout moment depuis les paramètres.
+      </p>
+
+      <div className="ob-section">
+        <div className="ob-section-label">Démarrer depuis un modèle</div>
+        <div className="ob-templates">
+          {HOUR_TEMPLATES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              className="ob-template"
+              onClick={() => applyTemplate(m.key)}
+            >
+              <span className="ob-template-t">{m.label}</span>
+              <span className="ob-template-sub">{m.sub}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <Panel className="ob-hours">
+        {hours.days.map((d) => {
+          const m = d.slots[0] ?? { startTime: '', endTime: '' };
+          const a = d.slots[1] ?? { startTime: '', endTime: '' };
+          return (
+            <div key={d.dayOfWeek} className="ob-hours-row">
+              <span className="ob-hours-day">{DAY_LABELS[d.dayOfWeek]}</span>
+              <label className="ob-hours-toggle">
+                <input
+                  type="checkbox"
+                  checked={d.active}
+                  onChange={(e) =>
+                    setDay(d.dayOfWeek, (cur) => ({
+                      ...cur,
+                      active: e.target.checked,
+                      slots: e.target.checked && cur.slots.length === 0
+                        ? [{ startTime: '09:00', endTime: '13:00' }]
+                        : cur.slots,
+                    }))
+                  }
+                />
+                {d.active ? 'Ouvert' : 'Fermé'}
+              </label>
+              {d.active ? (
+                <>
+                  <div className="ob-hours-range">
+                    <Input
+                      type="time"
+                      value={m.startTime}
+                      onChange={(e) =>
+                        setDay(d.dayOfWeek, (cur) => ({
+                          ...cur,
+                          slots: [
+                            { startTime: e.target.value, endTime: m.endTime },
+                            ...cur.slots.slice(1),
+                          ],
+                        }))
+                      }
+                      style={{ height: 32 }}
+                    />
+                    <span>–</span>
+                    <Input
+                      type="time"
+                      value={m.endTime}
+                      onChange={(e) =>
+                        setDay(d.dayOfWeek, (cur) => ({
+                          ...cur,
+                          slots: [
+                            { startTime: m.startTime, endTime: e.target.value },
+                            ...cur.slots.slice(1),
+                          ],
+                        }))
+                      }
+                      style={{ height: 32 }}
+                    />
+                  </div>
+                  <div className="ob-hours-range">
+                    {a.startTime || a.endTime ? (
+                      <>
+                        <Input
+                          type="time"
+                          value={a.startTime}
+                          onChange={(e) =>
+                            setDay(d.dayOfWeek, (cur) => {
+                              const slots = [...cur.slots];
+                              slots[1] = { startTime: e.target.value, endTime: a.endTime };
+                              return { ...cur, slots };
+                            })
+                          }
+                          style={{ height: 32 }}
+                        />
+                        <span>–</span>
+                        <Input
+                          type="time"
+                          value={a.endTime}
+                          onChange={(e) =>
+                            setDay(d.dayOfWeek, (cur) => {
+                              const slots = [...cur.slots];
+                              slots[1] = { startTime: a.startTime, endTime: e.target.value };
+                              return { ...cur, slots };
+                            })
+                          }
+                          style={{ height: 32 }}
+                        />
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setDay(d.dayOfWeek, (cur) => ({
+                            ...cur,
+                            slots: [
+                              ...cur.slots,
+                              { startTime: '14:00', endTime: '18:00' },
+                            ],
+                          }))
+                        }
+                        style={{
+                          fontSize: 11.5,
+                          color: 'var(--primary)',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer',
+                          padding: 0,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        + Ajouter après-midi
+                      </button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="ob-hours-empty">—</span>
+                  <span className="ob-hours-empty">—</span>
+                </>
+              )}
+              <span />
+            </div>
+          );
+        })}
+      </Panel>
+
+      <div className="ob-options">
+        <label>
+          <input type="checkbox" defaultChecked /> Pause déjeuner automatique
+        </label>
+        <label>
+          <input type="checkbox" /> Créneau urgences réservé
+        </label>
+        <label>
+          <input type="checkbox" defaultChecked /> Respecter les jours fériés marocains
+        </label>
+      </div>
     </>
   );
 }
@@ -376,9 +831,10 @@ function EquipeStep({
 }) {
   return (
     <>
-      <h1 className="ob-title">Membres de l’équipe</h1>
+      <h1 className="ob-title">Qui travaille avec vous&nbsp;?</h1>
       <p className="ob-sub">
-        Ajoutez les premières secrétaires, assistantes, ou médecins. Vous pourrez en ajouter d’autres plus tard.
+        Ajoutez votre secrétaire, infirmier·e et médecins associés. Chacun reçoit un accès personnel avec ses
+        propres droits — vous restez maître du périmètre exact.
       </p>
       <Panel className="ob-form-panel">
         <Grid2>
@@ -441,27 +897,136 @@ function EquipeStep({
   );
 }
 
+function TarifsStep({
+  premiumDiscount,
+  setPremiumDiscount,
+}: {
+  premiumDiscount: number;
+  setPremiumDiscount: (n: number) => void;
+}) {
+  return (
+    <>
+      <h1 className="ob-title">Vos tarifs et remises</h1>
+      <p className="ob-sub">
+        Définissez la remise automatique pour vos patients Premium. La nomenclature complète des actes
+        (CNOPS / CNSS / RAMED) se gère depuis Paramétrage › Tarifs.
+      </p>
+      <Panel className="ob-form-panel">
+        <Field>
+          <FieldLabel>Remise patient Premium (%)</FieldLabel>
+          <Input
+            type="number"
+            min={0}
+            max={100}
+            step="0.5"
+            value={premiumDiscount}
+            onChange={(e) => setPremiumDiscount(Number(e.target.value) || 0)}
+          />
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 6 }}>
+            La remise s’applique automatiquement à toute facture issue d’une consultation patient Premium.
+          </div>
+        </Field>
+      </Panel>
+    </>
+  );
+}
+
+function DocumentsStep({
+  templates,
+}: {
+  templates: { id: string; type: string; pageFormat: string; templateBytes: number; updatedAt: string }[];
+}) {
+  return (
+    <>
+      <h1 className="ob-title">Vos documents officiels</h1>
+      <p className="ob-sub">
+        Vos modèles de documents sont préconfigurés avec l’en-tête de votre cabinet (nom, adresse, mentions
+        légales). L’édition fine du contenu se fait depuis Paramétrage › Documents.
+      </p>
+      <Panel className="ob-form-panel" style={{ padding: 0 }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1.4fr 60px 1fr 24px',
+          padding: '11px 16px', fontSize: 11, color: 'var(--ink-3)',
+          textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600,
+          background: 'var(--surface-2)', borderBottom: '1px solid var(--border)',
+        }}>
+          <span>Type de document</span>
+          <span>Format</span>
+          <span>Statut</span>
+          <span />
+        </div>
+        {templates.length === 0 && (
+          <div style={{ padding: '20px 16px', fontSize: 12.5, color: 'var(--ink-3)' }}>
+            Aucun modèle configuré pour l’instant.
+          </div>
+        )}
+        {templates.map((t, i) => (
+          <div
+            key={t.id}
+            style={{
+              display: 'grid', gridTemplateColumns: '1.4fr 60px 1fr 24px',
+              padding: '12px 16px', alignItems: 'center',
+              borderBottom: i < templates.length - 1 ? '1px solid var(--border-soft)' : 'none',
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 500 }}>
+              {TEMPLATE_TYPE_LABELS[t.type] ?? t.type}
+            </span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t.pageFormat}</span>
+            <span style={{ fontSize: 12, color: 'var(--ok, #2F8F6B)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <Check /> Modèle par défaut chargé
+            </span>
+            <span />
+          </div>
+        ))}
+      </Panel>
+      <p style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 14, lineHeight: 1.5 }}>
+        Ces modèles utilisent l’identité de votre cabinet (étape 1) et votre signature (étape 2).
+        Aucune action requise pour démarrer.
+      </p>
+    </>
+  );
+}
+
 function RecapStep({
   clinicName,
   city,
   invitedCount,
+  specialty,
+  hasSignature,
+  templateCount,
+  activeDays,
 }: {
   clinicName: string;
   city: string;
   invitedCount: number;
+  specialty: string;
+  hasSignature: boolean;
+  templateCount: number;
+  activeDays: number;
 }) {
   return (
     <>
-      <h1 className="ob-title">🎉 Tout est prêt</h1>
+      <h1 className="ob-title">Bienvenue sur careplus</h1>
       <p className="ob-sub">
         {clinicName ? `${clinicName}${city ? ` (${city})` : ''} ` : 'Votre cabinet '}
-        est configuré. Vous pouvez maintenant recevoir vos premiers patients.
+        est configuré. Vos données sont chiffrées et synchronisées sur les serveurs marocains.
+        Vous pouvez maintenant recevoir vos premiers patients.
       </p>
       <Panel className="ob-form-panel">
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <li>✅ Identité et mentions légales du cabinet</li>
+          <li>
+            {specialty
+              ? `✅ Profil médecin (${specialty})`
+              : '⚠️ Spécialité non renseignée (à compléter depuis Profil)'}
+          </li>
+          <li>{hasSignature ? '✅ Signature scannée téléversée' : '⚠️ Signature non téléversée'}</li>
+          <li>{activeDays > 0 ? `✅ Horaires d’ouverture sur ${activeDays} jour${activeDays > 1 ? 's' : ''}` : '⚠️ Aucun jour ouvert configuré'}</li>
+          <li>{invitedCount > 0 ? `✅ ${invitedCount} membre${invitedCount > 1 ? 's' : ''} ajouté${invitedCount > 1 ? 's' : ''}` : '⚠️ Aucun membre ajouté (à compléter dans Paramétrage)'}</li>
           <li>✅ Remise Premium configurée</li>
-          <li>{invitedCount > 0 ? `✅ ${invitedCount} membre${invitedCount > 1 ? 's' : ''} ajouté${invitedCount > 1 ? 's' : ''}` : '⚠️ Aucun membre ajouté (vous pouvez le faire plus tard depuis Paramétrage)'}</li>
+          <li>{templateCount > 0 ? `✅ ${templateCount} modèles de documents prêts` : '⚠️ Aucun modèle de document configuré'}</li>
         </ul>
       </Panel>
     </>

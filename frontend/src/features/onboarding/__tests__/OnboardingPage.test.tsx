@@ -1,7 +1,8 @@
 /**
  * The original onboarding screen rendered a single static "Horaires" step.
- * The page is now a 4-step wired wizard (Cabinet / Tarifs / Équipe / Récap)
- * that hits real settings endpoints. These tests cover the new shape.
+ * The page is now a 7-step wired wizard (Cabinet / Médecin / Horaires /
+ * Équipe / Tarifs / Documents / Prêt) that hits real settings endpoints.
+ * These tests cover the new shape.
  */
 import type { ReactNode } from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -29,12 +30,12 @@ function renderPage(): ReturnType<typeof render> {
 }
 
 describe('<OnboardingPage />', () => {
-  it('renders a 4-step progress rail with step 1 (Cabinet) active', () => {
+  it('renders a 7-step progress rail with step 1 (Cabinet) active', () => {
     renderPage();
     const nav = screen.getByRole('navigation', { name: 'Étapes de configuration' });
     const items = within(nav).getAllByRole('listitem');
-    expect(items).toHaveLength(4);
-    ['Cabinet', 'Tarifs', 'Équipe', 'Prêt'].forEach((label) =>
+    expect(items).toHaveLength(7);
+    ['Cabinet', 'Médecin', 'Horaires', 'Équipe', 'Tarifs', 'Documents', 'Prêt'].forEach((label) =>
       expect(within(nav).getByText(label)).toBeInTheDocument(),
     );
     const active = within(nav).getByText('Cabinet').closest('li');
@@ -43,7 +44,7 @@ describe('<OnboardingPage />', () => {
 
   it('shows the cabinet identity form on the first step', () => {
     renderPage();
-    expect(screen.getByText('Étape 1 sur 4')).toBeInTheDocument();
+    expect(screen.getByText('Étape 1 sur 7')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Identité du cabinet' })).toBeInTheDocument();
   });
 
@@ -53,5 +54,4 @@ describe('<OnboardingPage />', () => {
     expect(screen.getByRole('button', { name: 'Passer cette étape' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Continuer/ })).toBeInTheDocument();
   });
-
 });
