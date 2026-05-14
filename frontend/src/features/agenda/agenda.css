@@ -451,6 +451,22 @@ select.ag-filter-select {
   background: var(--surface);
 }
 
+/* AppointmentDrawer — section eyebrow above the "Déplacer" group + the
+ * destructive "Annuler ce RDV" group. Mirrors the prototype's section
+ * label rhythm (11px / 600 / uppercase / 0.08em / ink-3). */
+.ag-drawer-section {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+}
+.ag-drawer-section--danger {
+  color: var(--danger);
+  margin-top: 24px;
+}
+
 /* ── Leave overlay (week + day views) ────────────────────────────────────── */
 .ag-daycol.leave {
   background-image: repeating-linear-gradient(

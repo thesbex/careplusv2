@@ -57,6 +57,26 @@ function formatPractitioner(p: {
   return p.specialty ? `${base} — ${p.specialty}` : base;
 }
 
+/** Friendly label for backend appointment statuses — keeps the subtitle readable
+ *  instead of leaking SCREAMING_SNAKE enums into the UI. */
+const RAW_STATUS_LABELS: Record<string, string> = {
+  PLANIFIE: 'Planifié',
+  CONFIRME: 'Confirmé',
+  ARRIVE: 'Arrivé',
+  EN_ATTENTE_CONSTANTES: 'En attente constantes',
+  CONSTANTES_PRISES: 'Constantes prises',
+  EN_CONSULTATION: 'En consultation',
+  CONSULTATION_TERMINEE: 'Consultation terminée',
+  TERMINE: 'Terminé',
+  CLOS: 'Clos',
+  ANNULE: 'Annulé',
+};
+
+function statusLabel(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  return RAW_STATUS_LABELS[raw] ?? raw.replace(/_/g, ' ').toLowerCase();
+}
+
 function formatConflictTime(start: string, end: string): string {
   const s = new Date(start);
   const e = new Date(end);
@@ -229,22 +249,22 @@ export function AppointmentDrawer({
         >
           <div
             style={{
-              padding: '14px 20px',
+              padding: '14px 18px',
               borderBottom: '1px solid var(--border)',
               display: 'flex',
               alignItems: 'center',
               gap: 8,
             }}
           >
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
                 {a.patient}
               </Dialog.Title>
               <Dialog.Description
-                style={{ fontSize: 12, color: 'var(--ink-3)', margin: 0, marginTop: 2 }}
+                style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: 0, marginTop: 2 }}
               >
                 {a.reason} · {a.start} ({a.dur}min)
-                {a.rawStatus ? ` · ${a.rawStatus}` : ''}
+                {statusLabel(a.rawStatus) ? ` · ${statusLabel(a.rawStatus)}` : ''}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
@@ -305,107 +325,56 @@ export function AppointmentDrawer({
               </div>
             )}
 
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: 'var(--ink-3)',
-                marginBottom: 8,
-              }}
-            >
-              Déplacer
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-              <label style={{ fontSize: 11, color: 'var(--ink-2)' }}>
-                Date
+            <div className="ag-drawer-section">Déplacer</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div className="field">
+                <label htmlFor="ag-drawer-date">Date</label>
                 <input
+                  id="ag-drawer-date"
+                  className="input tnum"
                   type="date"
                   value={date}
                   disabled={!canMutate}
                   onChange={(e) => setDate(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    marginTop: 4,
-                  }}
                 />
-              </label>
-              <label style={{ fontSize: 11, color: 'var(--ink-2)' }}>
-                Heure
+              </div>
+              <div className="field">
+                <label htmlFor="ag-drawer-time">Heure</label>
                 <input
+                  id="ag-drawer-time"
+                  className="input tnum"
                   type="time"
                   value={time}
                   step={300}
                   disabled={!canMutate}
                   onChange={(e) => setTime(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    marginTop: 4,
-                  }}
                 />
-              </label>
-              <label style={{ fontSize: 11, color: 'var(--ink-2)' }}>
-                Durée (min)
+              </div>
+              <div className="field">
+                <label htmlFor="ag-drawer-dur">Durée (min)</label>
                 <input
+                  id="ag-drawer-dur"
+                  className="input tnum"
                   type="number"
                   min={5}
                   step={5}
                   value={duration}
                   disabled={!canMutate}
                   onChange={(e) => setDuration(Number(e.target.value) || 0)}
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    marginTop: 4,
-                  }}
                 />
-              </label>
+              </div>
             </div>
 
             {showPractitionerField && (
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 11,
-                  color: 'var(--ink-2)',
-                  marginTop: 12,
-                }}
-              >
-                Médecin
+              <div className="field" style={{ marginTop: 12 }}>
+                <label htmlFor="ag-drawer-practitioner">Médecin</label>
                 <select
+                  id="ag-drawer-practitioner"
+                  className="select"
                   value={practitionerId}
                   disabled={!canMutate}
                   aria-label="Médecin"
                   onChange={(e) => setPractitionerId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    marginTop: 4,
-                    background: 'var(--surface)',
-                  }}
                 >
                   <option value="" disabled>
                     Choisir un médecin…
@@ -416,35 +385,19 @@ export function AppointmentDrawer({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             )}
 
             {showRoomField && (
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: 11,
-                  color: 'var(--ink-2)',
-                  marginTop: 12,
-                }}
-              >
-                Salle
+              <div className="field" style={{ marginTop: 12 }}>
+                <label htmlFor="ag-drawer-room">Salle</label>
                 <select
+                  id="ag-drawer-room"
+                  className="select"
                   value={roomId}
                   disabled={!canMutate}
                   aria-label="Salle"
                   onChange={(e) => setRoomId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    height: 34,
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    padding: '0 8px',
-                    fontSize: 13,
-                    fontFamily: 'inherit',
-                    marginTop: 4,
-                    background: 'var(--surface)',
-                  }}
                 >
                   <option value="">Aucune</option>
                   {activeRooms.map((r) => (
@@ -454,55 +407,36 @@ export function AppointmentDrawer({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             )}
 
-            <Button
-              variant="primary"
-              style={{ marginTop: 10 }}
-              disabled={!canMutate || isMoving}
-              onClick={() => void handleMove()}
-            >
-              {isMoving ? 'Déplacement…' : 'Déplacer le RDV'}
-            </Button>
-
-            {a.patientId && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
               <Button
-                style={{ marginTop: 8, marginLeft: 8 }}
-                onClick={() => navigate(`/patients/${a.patientId}`)}
+                variant="primary"
+                disabled={!canMutate || isMoving}
+                onClick={() => void handleMove()}
               >
-                Voir dossier patient
+                {isMoving ? 'Déplacement…' : 'Déplacer le RDV'}
               </Button>
-            )}
+
+              {a.patientId && (
+                <Button onClick={() => navigate(`/patients/${a.patientId}`)}>
+                  Voir dossier patient
+                </Button>
+              )}
+            </div>
 
             {showCancel && (
               <>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    color: 'var(--danger)',
-                    marginTop: 24,
-                    marginBottom: 8,
-                  }}
-                >
+                <div className="ag-drawer-section ag-drawer-section--danger">
                   Annuler ce RDV
                 </div>
                 <textarea
+                  className="textarea"
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="Raison de l&apos;annulation…"
-                  style={{
-                    width: '100%',
-                    minHeight: 70,
-                    border: '1px solid var(--danger)',
-                    borderRadius: 6,
-                    padding: 8,
-                    fontFamily: 'inherit',
-                    fontSize: 12.5,
-                  }}
+                  style={{ borderColor: 'var(--danger)' }}
                 />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <Button onClick={() => setShowCancel(false)}>Retour</Button>
@@ -521,7 +455,7 @@ export function AppointmentDrawer({
 
           <div
             style={{
-              padding: '12px 20px',
+              padding: '12px 18px',
               borderTop: '1px solid var(--border)',
               background: 'var(--surface-2)',
               display: 'flex',
@@ -540,9 +474,10 @@ export function AppointmentDrawer({
               </Button>
             )}
             <Button
+              variant="danger"
               disabled={!canMutate || showCancel}
               onClick={() => setShowCancel(true)}
-              style={{ marginLeft: 'auto', color: 'var(--danger)' }}
+              style={{ marginLeft: 'auto' }}
             >
               Annuler le RDV
             </Button>
