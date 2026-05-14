@@ -60,6 +60,16 @@ node_modules/
 .claude/scheduled_tasks.lock
 .claude/state/
 .claude/worktrees/
+# Stray .claude dirs that appear under subfolders when a CLI was opened there
+frontend/.claude/
+frontend/src/.claude/
+
+# Design handoff dumps from Anthropic (downloaded locally, not part of source)
+frontend/design-handoff/
+frontend/design-handoff-v2/
+
+# Stray nested duplicate (npm/tar accident — never intentional)
+frontend/frontend/
 
 # Playwright / Chrome DevTools MCP runtime caches
 .playwright-mcp/
