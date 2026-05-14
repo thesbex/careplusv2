@@ -113,17 +113,30 @@ public class AdminUserController {
         String email;
         String firstName;
         String lastName;
+        String specialty;
+        String inpe;
+        String cnom;
+        String cnops;
         try {
             var row = jdbc.queryForObject(
-                    "SELECT email, first_name, last_name FROM identity_user WHERE id = ?",
+                    "SELECT email, first_name, last_name, specialty, inpe, cnom, cnops "
+                            + "FROM identity_user WHERE id = ?",
                     (rs, i) -> new String[] {
                             rs.getString("email"),
                             rs.getString("first_name"),
-                            rs.getString("last_name")
+                            rs.getString("last_name"),
+                            rs.getString("specialty"),
+                            rs.getString("inpe"),
+                            rs.getString("cnom"),
+                            rs.getString("cnops")
                     }, id);
             email = row[0];
             firstName = row[1];
             lastName = row[2];
+            specialty = row[3];
+            inpe = row[4];
+            cnom = row[5];
+            cnops = row[6];
         } catch (EmptyResultDataAccessException e) {
             throw new BusinessException("USER_NOT_FOUND", "Utilisateur introuvable.",
                     HttpStatus.NOT_FOUND.value());
@@ -136,7 +149,8 @@ public class AdminUserController {
         roles = Set.copyOf(roleCodes);
         List<UUID> assignedPractitionerIds = practitionerService.assignmentsFor(id);
         return new UserView(id, email, firstName, lastName, roles,
-                Collections.emptySet(), assignedPractitionerIds);
+                Collections.emptySet(), assignedPractitionerIds,
+                specialty, inpe, cnom, cnops);
     }
 
     @DeleteMapping("/{id}")
@@ -248,13 +262,17 @@ public class AdminUserController {
         String[] current;
         try {
             current = jdbc.queryForObject(
-                    "SELECT email, first_name, last_name, phone, specialty FROM identity_user WHERE id = ?",
+                    "SELECT email, first_name, last_name, phone, specialty, inpe, cnom, cnops "
+                            + "FROM identity_user WHERE id = ?",
                     (rs, i) -> new String[] {
                             rs.getString("email"),
                             rs.getString("first_name"),
                             rs.getString("last_name"),
                             rs.getString("phone"),
                             rs.getString("specialty"),
+                            rs.getString("inpe"),
+                            rs.getString("cnom"),
+                            rs.getString("cnops"),
                     }, id);
         } catch (EmptyResultDataAccessException e) {
             throw new BusinessException("USER_NOT_FOUND", "Utilisateur introuvable.",
@@ -267,6 +285,12 @@ public class AdminUserController {
         String phone = req.phone() == null ? current[3] : req.phone().orElse(null);
         String specialty = req.specialty() == null ? current[4]
                 : req.specialty().map(AdminUserController::blankToNull).orElse(null);
+        String inpe = req.inpe() == null ? current[5]
+                : req.inpe().map(AdminUserController::blankToNull).orElse(null);
+        String cnom = req.cnom() == null ? current[6]
+                : req.cnom().map(AdminUserController::blankToNull).orElse(null);
+        String cnops = req.cnops() == null ? current[7]
+                : req.cnops().map(AdminUserController::blankToNull).orElse(null);
 
         // Email uniqueness if changed
         if (req.email() != null && req.email().isPresent() && !email.equalsIgnoreCase(current[0])) {
@@ -282,8 +306,9 @@ public class AdminUserController {
 
         jdbc.update(
                 "UPDATE identity_user SET email = ?, first_name = ?, last_name = ?, "
-                        + "phone = ?, specialty = ?, updated_at = now() WHERE id = ?",
-                email, firstName, lastName, phone, specialty, id);
+                        + "phone = ?, specialty = ?, inpe = ?, cnom = ?, cnops = ?, "
+                        + "updated_at = now() WHERE id = ?",
+                email, firstName, lastName, phone, specialty, inpe, cnom, cnops, id);
 
         // Enabled flag (separate column update so we don't tangle with the row above)
         if (req.enabled() != null && req.enabled().isPresent()) {
@@ -328,7 +353,7 @@ public class AdminUserController {
         log.info("Admin updated user {} (roles={}, assignments={})", id, finalRoles, assignedIds.size());
 
         return new UserView(id, email, firstName, lastName, finalRoles,
-                Collections.emptySet(), assignedIds);
+                Collections.emptySet(), assignedIds, specialty, inpe, cnom, cnops);
     }
 
     // ─────────────────────────────────────────────────────────────────────────

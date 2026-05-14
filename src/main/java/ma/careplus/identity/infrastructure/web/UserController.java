@@ -41,7 +41,11 @@ public class UserController {
         Set<String> perms = rolePermissionResolver.resolveForRoles(base.roles());
         // /me does not expose assignment edits — we leave assignedPractitionerIds
         // out of the response (the dedicated admin listing surfaces it instead).
+        // V040 — preserve practitioner credentials so the onboarding wizard /
+        // profil page can read them without a second round-trip via /api/admin.
         return ResponseEntity.ok(new UserView(
-                base.id(), base.email(), base.firstName(), base.lastName(), base.roles(), perms));
+                base.id(), base.email(), base.firstName(), base.lastName(), base.roles(),
+                perms, java.util.Collections.emptyList(),
+                base.specialty(), base.inpe(), base.cnom(), base.cnops()));
     }
 }

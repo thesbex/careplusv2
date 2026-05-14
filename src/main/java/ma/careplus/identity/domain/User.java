@@ -79,6 +79,18 @@ public class User {
     @Column(name = "specialty", length = 120)
     private String specialty;
 
+    /** V040 — practitioner INPE (Identifiant National des Professionnels de santé au Maroc). */
+    @Column(name = "inpe", length = 32)
+    private String inpe;
+
+    /** V040 — Conseil National de l'Ordre des Médecins identifier. Optional. */
+    @Column(name = "cnom", length = 64)
+    private String cnom;
+
+    /** V040 — CNOPS conventionnement number (tiers-payant). Optional. */
+    @Column(name = "cnops", length = 64)
+    private String cnops;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "identity_user_role",
@@ -142,4 +154,13 @@ public class User {
 
     public String getSpecialty() { return specialty; }
     public void setSpecialty(String specialty) { this.specialty = specialty; }
+
+    public String getInpe() { return inpe; }
+    public void setInpe(String inpe) { this.inpe = inpe; }
+
+    public String getCnom() { return cnom; }
+    public void setCnom(String cnom) { this.cnom = cnom; }
+
+    public String getCnops() { return cnops; }
+    public void setCnops(String cnops) { this.cnops = cnops; }
 }

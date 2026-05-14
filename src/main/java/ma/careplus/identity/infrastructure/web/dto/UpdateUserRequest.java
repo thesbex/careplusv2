@@ -26,6 +26,8 @@ import java.util.UUID;
  * <p>Password is intentionally NOT here — password reset has its own endpoint
  * (admin-initiated reset flow) and bundling it would tangle two concerns.
  *
+ * <p>V040 — adds {@code inpe}, {@code cnom}, {@code cnops} practitioner credentials.
+ *
  * <p><b>Validation note:</b> bean-validation annotations on the inner Optional
  * type parameter are intentionally omitted — Hibernate Validator's container
  * element validation interacts poorly with absent vs explicit-null differentiation.
@@ -38,6 +40,9 @@ public record UpdateUserRequest(
         Optional<String> lastName,
         Optional<String> phone,
         Optional<String> specialty,
+        Optional<String> inpe,
+        Optional<String> cnom,
+        Optional<String> cnops,
         Optional<Set<String>> roles,
         Optional<List<UUID>> assignedPractitionerIds,
         Optional<Boolean> enabled
