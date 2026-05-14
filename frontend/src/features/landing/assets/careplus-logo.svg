@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" aria-label="careplus">
+  <defs>
+    <linearGradient id="cpC" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#6CB6F6"></stop>
+      <stop offset="0.55" stop-color="#3A8FEB"></stop>
+      <stop offset="1" stop-color="#1B5BC7"></stop>
+    </linearGradient>
+    <linearGradient id="cpP" x1="32" y1="18" x2="32" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#94CBF8"></stop>
+      <stop offset="1" stop-color="#2A7CE7"></stop>
+    </linearGradient>
+  </defs>
+  
+  <path d="M48 12 A24 24 0 1 0 48 52" stroke="url(#cpC)" stroke-width="11" stroke-linecap="round" fill="none"></path>
+  
+  <path d="M30 21 h6 a2.2 2.2 0 0 1 2.2 2.2 V29 h5.8 a2.2 2.2 0 0 1 2.2 2.2 v3.6 a2.2 2.2 0 0 1 -2.2 2.2 H38.2 v5.8 a2.2 2.2 0 0 1 -2.2 2.2 h-6 a2.2 2.2 0 0 1 -2.2 -2.2 V37 h-5.8 a2.2 2.2 0 0 1 -2.2 -2.2 v-3.6 a2.2 2.2 0 0 1 2.2 -2.2 H27.8 V23.2 A2.2 2.2 0 0 1 30 21 Z" fill="url(#cpP)"></path>
+</svg>
