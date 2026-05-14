@@ -313,27 +313,93 @@ function DocumentsSidebar() {
 // ── Récap ───────────────────────────────────────────────────────────────────
 
 function RecapSidebar() {
-  const next = [
-    { t: 'Importer vos patients existants', d: 'CSV / Excel — jusqu’à 5 000 fiches' },
-    { t: 'Activer la prise de RDV en ligne', d: 'Lien partageable patient' },
-    { t: 'Connecter votre messagerie', d: 'Envoyer ordonnances par e-mail signé' },
-    { t: 'Tester une consultation', d: 'Patient fictif pour explorer sans risque' },
-  ];
   return (
-    <SidebarFrame label="Prochaines étapes recommandées">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {next.map((n) => (
-          <div
-            key={n.t}
-            className="panel"
-            style={{ padding: 12, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}
-          >
-            <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 3 }}>{n.t}</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>{n.d}</div>
-          </div>
-        ))}
+    <>
+      <SidebarLabel>Votre abonnement</SidebarLabel>
+      <div
+        className="panel"
+        style={{
+          padding: 16,
+          marginBottom: 18,
+          background: 'linear-gradient(180deg, var(--primary-soft), transparent 80%)',
+          border: '1px solid var(--border)',
+          borderRadius: 6,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--primary)' }}>
+          careplus Cabinet
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 14, lineHeight: 1.5 }}>
+          Essai gratuit — 14 jours restants. Aucune carte requise.
+        </div>
+        <div style={{ height: 4, background: 'var(--bg)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
+          <div style={{ width: '0%', height: '100%', background: 'var(--primary)' }} />
+        </div>
+        <div className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right' }}>
+          Jour 0 sur 14
+        </div>
       </div>
-    </SidebarFrame>
+
+      <SidebarLabel>Besoin d’aide&nbsp;?</SidebarLabel>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.6 }}>
+        <a
+          style={{
+            display: 'flex',
+            gap: 10,
+            padding: '10px 0',
+            borderBottom: '1px dashed var(--border)',
+            color: 'inherit',
+            textDecoration: 'none',
+          }}
+        >
+          <span style={{ color: 'var(--primary)' }}>📚</span>
+          <div>
+            <div style={{ fontWeight: 600 }}>Centre d’aide</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Guides pas à pas en français et arabe</div>
+          </div>
+        </a>
+        <a
+          style={{
+            display: 'flex',
+            gap: 10,
+            padding: '10px 0',
+            borderBottom: '1px dashed var(--border)',
+            color: 'inherit',
+            textDecoration: 'none',
+          }}
+        >
+          <span style={{ color: 'var(--primary)' }}>💬</span>
+          <div>
+            <div style={{ fontWeight: 600 }}>Chat avec un expert</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Lun–Ven 9h–19h · réponse &lt; 5 min</div>
+          </div>
+        </a>
+        <a style={{ display: 'flex', gap: 10, padding: '10px 0', color: 'inherit', textDecoration: 'none' }}>
+          <span style={{ color: 'var(--primary)' }}>📞</span>
+          <div>
+            <div style={{ fontWeight: 600 }}>+212 522 00 11 22</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Hotline dédiée aux nouveaux cabinets</div>
+          </div>
+        </a>
+      </div>
+
+      <div
+        style={{
+          marginTop: 24,
+          padding: 14,
+          background: 'var(--surface-2)',
+          borderRadius: 6,
+          fontSize: 11.5,
+          color: 'var(--ink-3)',
+          lineHeight: 1.55,
+          textAlign: 'center',
+        }}
+      >
+        🇲🇦 Hébergé au Maroc
+        <br />
+        Conforme loi 09-08 · CNDP
+      </div>
+    </>
   );
 }
 

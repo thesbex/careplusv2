@@ -13,6 +13,66 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
+// ── Onboarding gate state ───────────────────────────────────────────────────
+
+export type OnboardingStepKey =
+  | 'cabinet'
+  | 'medecin'
+  | 'horaires'
+  | 'equipe'
+  | 'tarifs'
+  | 'documents'
+  | 'recap';
+
+export interface OnboardingStateView {
+  completed: boolean;
+  completedAt: string | null;
+  currentStep: OnboardingStepKey | null;
+}
+
+const DEFAULT_STATE: OnboardingStateView = {
+  completed: false,
+  completedAt: null,
+  currentStep: null,
+};
+
+export function useOnboardingState() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['onboarding-state'],
+    queryFn: () =>
+      api
+        .get<OnboardingStateView>('/settings/onboarding/state')
+        .then((r) => r.data)
+        .catch(() => DEFAULT_STATE),
+    staleTime: 10_000,
+  });
+  return { state: data ?? DEFAULT_STATE, isLoading };
+}
+
+export function useUpdateOnboardingStep() {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: (step: OnboardingStepKey) =>
+      api
+        .put<OnboardingStateView>('/settings/onboarding/state', { step })
+        .then((r) => r.data),
+    onSuccess: (data) => qc.setQueryData(['onboarding-state'], data),
+  });
+  return { updateStep: mutation.mutateAsync, isPending: mutation.isPending };
+}
+
+export function useCompleteOnboarding() {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: () =>
+      api
+        .post<OnboardingStateView>('/settings/onboarding/complete', {})
+        .then((r) => r.data),
+    onSuccess: (data) => qc.setQueryData(['onboarding-state'], data),
+  });
+  return { complete: mutation.mutateAsync, isPending: mutation.isPending };
+}
+
 // ── Working hours ───────────────────────────────────────────────────────────
 
 export interface WorkingHoursSlot {
@@ -192,6 +252,48 @@ export function useUserSignature(userId: string | null) {
     staleTime: 30_000,
   });
   return { signatureMeta: data ?? null };
+}
+
+// ── Clinic logo ─────────────────────────────────────────────────────────────
+
+export interface LogoMeta {
+  mime: string;
+  uploadedAt: string;
+  sizeBytes: number;
+}
+
+export function useClinicLogoMeta(hasLogo: boolean) {
+  // Only fire the query when the parent flag says the bytes exist — saves a 204
+  // round-trip on first onboarding visits where no logo has ever been set.
+  const { data } = useQuery({
+    queryKey: ['clinic-logo-meta'],
+    queryFn: async () => {
+      const r = await api.get<LogoMeta>('/settings/clinic/logo/meta');
+      return r.status === 204 ? null : r.data;
+    },
+    enabled: hasLogo,
+    staleTime: 30_000,
+  });
+  return { logoMeta: data ?? null };
+}
+
+export function useUploadClinicLogo() {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (file: File) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await api.put<LogoMeta>('/settings/clinic/logo', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return r.data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['clinic-settings'] });
+      void qc.invalidateQueries({ queryKey: ['clinic-logo-meta'] });
+    },
+  });
+  return { upload: mutation.mutateAsync, isPending: mutation.isPending };
 }
 
 export function useUploadUserSignature() {

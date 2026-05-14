@@ -28,6 +28,12 @@ export interface ClinicSettings {
   labInternal?: boolean;
   /** V037 — true si un logo est configuré (bytes via GET /settings/clinic/logo). */
   hasLogo?: boolean;
+  /** V042 — Registre du Commerce. */
+  rc?: string | null;
+  /** V042 — Identifiant Fiscal. Note: clé JSON `ifNo` car `if` est mot réservé. */
+  ifNo?: string | null;
+  /** V042 — Forme juridique. */
+  legalForm?: string | null;
 }
 
 export interface ClinicSettingsForm {
@@ -44,6 +50,10 @@ export interface ClinicSettingsForm {
   establishmentType?: EstablishmentType;
   imagingInternal?: boolean;
   labInternal?: boolean;
+  /** V042 — mentions légales étendues. Optional (null = ne pas toucher). */
+  rc?: string;
+  ifNo?: string;
+  legalForm?: string;
 }
 
 /**

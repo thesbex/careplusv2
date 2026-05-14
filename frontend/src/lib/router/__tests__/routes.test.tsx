@@ -8,6 +8,7 @@ import OnboardingPage from '@/features/onboarding/OnboardingPage';
 import { Placeholder } from '@/features/_placeholders/Placeholder';
 import { RequireAuth, GuestOnly } from '@/lib/auth/RequireAuth';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { AppLayout } from '@/components/shell/AppLayout';
 
 vi.mock('@/lib/api/client', () => ({
   api: {
@@ -41,29 +42,30 @@ function renderAt(path: string) {
         ),
       },
       { path: '/onboarding', element: <OnboardingPage /> },
+      // Authenticated routes share an AppLayout (Sidebar + Outlet) — this is
+      // how prod mounts them (cf. lib/router/routes.tsx). Without it the
+      // Sidebar isn't in the DOM, so getByRole('button', {name: /Salle.../})
+      // can't find any nav buttons to click.
       {
-        path: '/agenda',
         element: (
           <RequireAuth>
-            <Placeholder active="agenda" mobileTab="agenda" title="Agenda" sprintDay="J4" />
+            <AppLayout />
           </RequireAuth>
         ),
-      },
-      {
-        path: '/salle',
-        element: (
-          <RequireAuth>
-            <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />
-          </RequireAuth>
-        ),
-      },
-      {
-        path: '/facturation',
-        element: (
-          <RequireAuth>
-            <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />
-          </RequireAuth>
-        ),
+        children: [
+          {
+            path: '/agenda',
+            element: <Placeholder active="agenda" mobileTab="agenda" title="Agenda" sprintDay="J4" />,
+          },
+          {
+            path: '/salle',
+            element: <Placeholder active="salle" mobileTab="salle" title="Salle d'attente" sprintDay="J5" />,
+          },
+          {
+            path: '/facturation',
+            element: <Placeholder active="factu" mobileTab="factu" title="Facturation" sprintDay="J7" />,
+          },
+        ],
       },
       { path: '*', element: <Navigate to="/login" replace /> },
     ],
@@ -106,7 +108,7 @@ describe('router', () => {
     setAuthed();
     renderAt('/onboarding');
     expect(
-      screen.getByRole('heading', { name: 'Identité du cabinet' }),
+      screen.getByRole('heading', { name: 'Présentez-nous votre cabinet' }),
     ).toBeInTheDocument();
   });
 

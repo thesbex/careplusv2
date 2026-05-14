@@ -75,6 +75,12 @@ mob-*.png
 post-parity-*.png
 onboarding-step*.png
 onboarding-mobile.png
+sidebar-*.png
+cabinet-iso.png
+documents-iso.png
+medecin-team-list.png
+tarifs-nomenclature.png
+add-doctor-modal.png
 
 # Spring Boot runtime data dir (DocumentStorage at app boot)
 data/

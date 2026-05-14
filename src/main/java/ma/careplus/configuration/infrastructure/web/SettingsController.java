@@ -70,7 +70,13 @@ public class SettingsController {
             /** V039 — codes de rôle autorisés à voir les grossesses sans médecin référent. */
             List<String> pregnancyOrphanVisibleRoles,
             /** V037 — true si un logo est configuré (bytes accessibles via GET /api/settings/clinic/logo). */
-            boolean hasLogo
+            boolean hasLogo,
+            /** V042 — Registre du Commerce, mention légale optionnelle sur les factures. */
+            String rc,
+            /** V042 — Identifiant Fiscal (IF). Obligatoire sur toute facture émise au Maroc. */
+            String ifNo,
+            /** V042 — Forme juridique du cabinet (Profession libérale / SCM / SCP / SARL médicale). */
+            String legalForm
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -108,7 +114,13 @@ public class SettingsController {
              * (applicable seulement quand agenda_strict_isolation = TRUE). Mêmes valeurs
              * acceptées que vaccinationOrphanVisibleRoles. Optional : null = pas de changement.
              */
-            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> pregnancyOrphanVisibleRoles
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> pregnancyOrphanVisibleRoles,
+            /** V042 — Registre du Commerce. Optional. */
+            @Size(max = 64) String rc,
+            /** V042 — Identifiant Fiscal. Optional. */
+            @Size(max = 64) String ifNo,
+            /** V042 — Forme juridique. Optional. */
+            @Size(max = 64) String legalForm
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -131,7 +143,8 @@ public class SettingsController {
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
                             + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
-                            + "(logo_blob IS NOT NULL) AS has_logo "
+                            + "(logo_blob IS NOT NULL) AS has_logo, "
+                            + "rc, if_no, legal_form "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -150,7 +163,10 @@ public class SettingsController {
                             rs.getBoolean("lab_internal"),
                             readStringArray(rs, "vaccination_orphan_visible_roles"),
                             readStringArray(rs, "pregnancy_orphan_visible_roles"),
-                            rs.getBoolean("has_logo")));
+                            rs.getBoolean("has_logo"),
+                            rs.getString("rc"),
+                            rs.getString("if_no"),
+                            rs.getString("legal_form")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -224,7 +240,10 @@ public class SettingsController {
                             + "agenda_strict_isolation=?, establishment_type=?, "
                             + "imaging_internal=?, lab_internal=?, "
                             + "vaccination_orphan_visible_roles=?, "
-                            + "pregnancy_orphan_visible_roles=?, updated_at=now() "
+                            + "pregnancy_orphan_visible_roles=?, "
+                            + "rc=COALESCE(?, rc), if_no=COALESCE(?, if_no), "
+                            + "legal_form=COALESCE(?, legal_form), "
+                            + "updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
@@ -232,7 +251,9 @@ public class SettingsController {
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
                     finalOrphanRoles.toArray(String[]::new),
-                    finalPregnancyOrphanRoles.toArray(String[]::new), id);
+                    finalPregnancyOrphanRoles.toArray(String[]::new),
+                    nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
+                    id);
         } else {
             id = UUID.randomUUID();
             // First-row insert: respect the caller value if provided, else defaults.
@@ -250,26 +271,34 @@ public class SettingsController {
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
-                            + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
+                            + " rc, if_no, legal_form) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
                     finalOrphanRoles.toArray(String[]::new),
-                    finalPregnancyOrphanRoles.toArray(String[]::new));
+                    finalPregnancyOrphanRoles.toArray(String[]::new),
+                    nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()));
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
                 Boolean.class, id));
+        // Re-read final RC/IF/legalForm because we used COALESCE on update.
+        String[] finalLegalFields = jdbc.queryForObject(
+                "SELECT rc, if_no, legal_form FROM configuration_clinic_settings WHERE id = ?",
+                (rs, i) -> new String[] { rs.getString("rc"), rs.getString("if_no"), rs.getString("legal_form") },
+                id);
         return new ClinicSettingsView(
                 id, req.name(), req.address(), req.city(), req.phone(),
                 nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                 nullIfBlank(req.rib()), finalAgendaIsolation,
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
-                finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo);
+                finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo,
+                finalLegalFields[0], finalLegalFields[1], finalLegalFields[2]);
     }
 
     /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */

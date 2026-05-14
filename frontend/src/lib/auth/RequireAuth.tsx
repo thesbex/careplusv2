@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from './authStore';
+import { useOnboardingState } from '@/features/onboarding/hooks/useOnboardingApi';
 
 /**
  * Référence stable pour le défaut "rôles non chargés". Sans ça, le selector
@@ -123,5 +124,36 @@ function AccessDenied() {
 export function GuestOnly({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
   if (isAuthenticated) return <Navigate to="/agenda" replace />;
+  return <>{children}</>;
+}
+
+/**
+ * Wraps the authenticated app shell. If the cabinet's onboarding wizard has
+ * not been completed yet AND the current user has the ADMIN or MEDECIN role,
+ * we force a redirect to /onboarding. Other roles (SECRETAIRE, ASSISTANT, LAB,
+ * RADIO) are not gated — they can't run the wizard anyway (the controller
+ * gates POST/PUT on ADMIN/MEDECIN), so blocking them on a screen they cannot
+ * resolve would only lock them out.
+ *
+ * The state lookup is cached for 10 s by react-query so navigation between
+ * pages doesn't re-fetch.
+ */
+export function RequireOnboardingComplete({ children }: { children: ReactNode }) {
+  const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const userRoles = useAuthStore((s) => s.user?.roles) ?? EMPTY_STRING_ARRAY;
+  const { state, isLoading } = useOnboardingState();
+
+  if (!isAuthenticated) return <>{children}</>;
+
+  const isAdminOrMedecin = userRoles.includes('ADMIN') || userRoles.includes('MEDECIN');
+  if (!isAdminOrMedecin) return <>{children}</>;
+
+  // Don't redirect while the state query is in flight — avoids a flash bounce
+  // on the agenda when the state actually says "completed".
+  if (isLoading) return <>{children}</>;
+
+  if (!state.completed) {
+    return <Navigate to="/onboarding" replace />;
+  }
   return <>{children}</>;
 }

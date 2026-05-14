@@ -26,7 +26,7 @@ import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
 import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
 import { AppLayout } from '@/components/shell/AppLayout';
-import { RequireAuth, RequireRole, RequirePermission, GuestOnly } from '@/lib/auth/RequireAuth';
+import { RequireAuth, RequireRole, RequirePermission, GuestOnly, RequireOnboardingComplete } from '@/lib/auth/RequireAuth';
 
 /**
  * careplus route tree.
@@ -85,7 +85,11 @@ export const router = createBrowserRouter(
       ),
     },
     {
-      element: <AppLayout />,
+      element: (
+        <RequireOnboardingComplete>
+          <AppLayout />
+        </RequireOnboardingComplete>
+      ),
       children: [
         {
           path: '/dashboard',

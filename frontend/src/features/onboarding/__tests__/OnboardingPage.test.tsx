@@ -45,7 +45,9 @@ describe('<OnboardingPage />', () => {
   it('shows the cabinet identity form on the first step', () => {
     renderPage();
     expect(screen.getByText('Étape 1 sur 7')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Identité du cabinet' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Présentez-nous votre cabinet' }),
+    ).toBeInTheDocument();
   });
 
   it('exposes Précédent / Passer cette étape / Continuer in the footer', () => {
