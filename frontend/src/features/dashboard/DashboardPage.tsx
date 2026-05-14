@@ -20,6 +20,7 @@ import { useAuthStore } from '@/lib/auth/authStore';
 import { useDashboardClinical } from './hooks/useDashboardClinical';
 import { useDashboardAgenda } from './hooks/useDashboardAgenda';
 import { useDashboardFinancial } from './hooks/useDashboardFinancial';
+import './dashboard.css';
 import type {
   ActivityPoint,
   HourlyLoadPoint,
@@ -82,58 +83,16 @@ interface KpiCardProps {
 
 function KpiCard({ label, value, hint, loading, testId }: KpiCardProps) {
   return (
-    <div
-      data-testid={testId}
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--r-md)',
-        padding: '20px 22px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 6,
-        minHeight: 110,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 11.5,
-          fontWeight: 600,
-          color: 'var(--ink-3)',
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontSize: 30,
-          fontWeight: 600,
-          color: 'var(--ink-1)',
-          lineHeight: 1.1,
-          fontFamily: 'var(--font-sans)',
-        }}
-      >
+    <div data-testid={testId} className="dash-kpi">
+      <div className="dash-kpi-label">{label}</div>
+      <div className="dash-kpi-value">
         {loading ? (
-          <span
-            style={{
-              display: 'inline-block',
-              width: 64,
-              height: 22,
-              borderRadius: 4,
-              background: 'var(--border)',
-              animation: 'pulse 1.5s ease-in-out infinite',
-            }}
-            aria-hidden="true"
-          />
+          <span className="dash-kpi-skeleton" aria-hidden="true" />
         ) : (
           value
         )}
       </div>
-      {hint && (
-        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{hint}</div>
-      )}
+      {hint && <div className="dash-kpi-hint">{hint}</div>}
     </div>
   );
 }
@@ -360,45 +319,19 @@ export default function DashboardPage() {
       }}
       topbarRight={
         lastUpdate > 0 ? (
-          <span
-            style={{ fontSize: 12, color: 'var(--ink-3)' }}
-            data-testid="dash-last-update"
-          >
+          <span className="dash-last-update" data-testid="dash-last-update">
             Mise à jour {formatUpdatedAt(lastUpdate)}
           </span>
         ) : undefined
       }
     >
-      <div
-        style={{
-          padding: '20px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 24,
-        }}
-      >
+      <div className="dash-root">
         {/* ── Section Aujourd'hui ─────────────────────────────────────── */}
         <section data-testid="dash-section-today">
-          <h2
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--ink-2)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              margin: '0 0 12px 0',
-            }}
-          >
-            Aujourd'hui
-          </h2>
+          <h2 className="dash-section-h">Aujourd'hui</h2>
           <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: showFinancial
-                ? 'repeat(4, 1fr)'
-                : 'repeat(3, 1fr)',
-              gap: 12,
-            }}
+            className="dash-grid-today"
+            style={{ ['--cols' as string]: showFinancial ? 4 : 3 }}
           >
             <KpiCard
               testId="kpi-patients-actifs"
@@ -451,31 +384,14 @@ export default function DashboardPage() {
 
         {/* ── Section Activité ────────────────────────────────────────── */}
         <section data-testid="dash-section-activity">
-          <h2
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--ink-2)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              margin: '0 0 12px 0',
-            }}
-          >
-            Activité
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1.4fr 1fr 1fr',
-              gap: 12,
-            }}
-          >
+          <h2 className="dash-section-h">Activité</h2>
+          <div className="dash-grid-activity">
             <Panel style={{ padding: 0 }}>
               <PanelHeader>Activité 30 derniers jours</PanelHeader>
               {clinical.data ? (
                 <MiniSparkline points={clinical.data.activite30j} />
               ) : (
-                <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
+                <div className="dash-empty">
                   {clinical.isLoading ? 'Chargement…' : '—'}
                 </div>
               )}
@@ -486,7 +402,7 @@ export default function DashboardPage() {
               {agenda.data ? (
                 <HourlyBars points={agenda.data.chargeHoraire} />
               ) : (
-                <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
+                <div className="dash-empty">
                   {agenda.isLoading ? 'Chargement…' : '—'}
                 </div>
               )}
@@ -502,7 +418,7 @@ export default function DashboardPage() {
                   }))}
                 />
               ) : (
-                <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
+                <div className="dash-empty">
                   {clinical.isLoading ? 'Chargement…' : '—'}
                 </div>
               )}
@@ -512,25 +428,8 @@ export default function DashboardPage() {
 
         {/* ── Section Agenda ──────────────────────────────────────────── */}
         <section data-testid="dash-section-agenda">
-          <h2
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: 'var(--ink-2)',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              margin: '0 0 12px 0',
-            }}
-          >
-            Agenda — semaine
-          </h2>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 12,
-            }}
-          >
+          <h2 className="dash-section-h">Agenda — semaine</h2>
+          <div className="dash-grid-week">
             <KpiCard
               testId="kpi-rdv-semaine"
               label="RDV semaine"
@@ -566,26 +465,8 @@ export default function DashboardPage() {
         {/* ── Section Performance financière (MEDECIN/ADMIN) ─────────── */}
         {showFinancial && (
           <section data-testid="dash-section-financial">
-            <h2
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: 'var(--ink-2)',
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                margin: '0 0 12px 0',
-              }}
-            >
-              Performance financière
-            </h2>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
+            <h2 className="dash-section-h">Performance financière</h2>
+            <div className="dash-grid-week" style={{ marginBottom: 12 }}>
               <KpiCard
                 testId="kpi-ca-mois"
                 label="CA du mois"
@@ -623,13 +504,13 @@ export default function DashboardPage() {
                 loading={financial.isLoading && financial.isEnabled}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 12 }}>
+            <div className="dash-grid-financial-bottom">
               <Panel style={{ padding: 0 }}>
                 <PanelHeader>CA 12 derniers mois</PanelHeader>
                 {financial.data ? (
                   <MonthlyRevenueList points={financial.data.ca12Mois} />
                 ) : (
-                  <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
+                  <div className="dash-empty">
                     {financial.isLoading ? 'Chargement…' : '—'}
                   </div>
                 )}
@@ -645,7 +526,7 @@ export default function DashboardPage() {
                     }))}
                   />
                 ) : (
-                  <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
+                  <div className="dash-empty">
                     {financial.isLoading ? 'Chargement…' : '—'}
                   </div>
                 )}
@@ -656,17 +537,7 @@ export default function DashboardPage() {
 
         {/* ── Errors (sous-jacents : afficher discrètement) ───────────── */}
         {(clinical.error || agenda.error || (showFinancial && financial.error)) && (
-          <div
-            data-testid="dash-errors"
-            style={{
-              padding: '10px 14px',
-              background: 'var(--danger-soft, #fef2f2)',
-              border: '1px solid var(--danger)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 12,
-              color: 'var(--danger)',
-            }}
-          >
+          <div data-testid="dash-errors" className="dash-error-banner">
             {clinical.error || agenda.error || financial.error}
           </div>
         )}

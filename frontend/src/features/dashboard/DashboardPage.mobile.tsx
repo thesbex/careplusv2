@@ -16,6 +16,7 @@ import { useDashboardClinical } from './hooks/useDashboardClinical';
 import { useDashboardAgenda } from './hooks/useDashboardAgenda';
 import { useDashboardFinancial } from './hooks/useDashboardFinancial';
 import type { ActivityPoint } from './types';
+import './dashboard.css';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda: '/agenda',
@@ -54,34 +55,10 @@ function MKpi({
   testId?: string | undefined;
 }) {
   return (
-    <div
-      data-testid={testId}
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--r-md)',
-        padding: '14px 14px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-        minHeight: 78,
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10.5,
-          fontWeight: 600,
-          color: 'var(--ink-3)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-        }}
-      >
-        {label}
-      </div>
-      <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--ink-1)', lineHeight: 1.1 }}>
-        {value}
-      </div>
-      {hint && <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{hint}</div>}
+    <div data-testid={testId} className="dash-kpi-m">
+      <div className="dash-kpi-label-m">{label}</div>
+      <div className="dash-kpi-value-m">{value}</div>
+      {hint && <div className="dash-kpi-hint-m">{hint}</div>}
     </div>
   );
 }
@@ -89,18 +66,7 @@ function MKpi({
 function MSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section style={{ marginBottom: 16 }}>
-      <h2
-        style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: 'var(--ink-2)',
-          letterSpacing: '0.04em',
-          textTransform: 'uppercase',
-          margin: '0 0 10px 0',
-        }}
-      >
-        {title}
-      </h2>
+      <h2 className="dash-section-h-m">{title}</h2>
       {children}
     </section>
   );
@@ -298,15 +264,8 @@ export default function DashboardPageMobile() {
         {(clinical.error || agenda.error || (showFinancial && financial.error)) && (
           <div
             data-testid="dash-errors"
-            style={{
-              padding: '10px 14px',
-              background: 'var(--danger-soft, #fef2f2)',
-              border: '1px solid var(--danger)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 12,
-              color: 'var(--danger)',
-              marginTop: 8,
-            }}
+            className="dash-error-banner"
+            style={{ marginTop: 8 }}
           >
             {clinical.error || agenda.error || financial.error}
           </div>
