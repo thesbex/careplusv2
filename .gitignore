@@ -69,6 +69,12 @@ qa-*.png
 qa[0-9]*-*.png
 constantes-fixed.png
 frontend/qa-*.png
+audit-*.png
+verify-*.png
+mob-*.png
+post-parity-*.png
+onboarding-step*.png
+onboarding-mobile.png
 
 # Spring Boot runtime data dir (DocumentStorage at app boot)
 data/
