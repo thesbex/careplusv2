@@ -9,12 +9,19 @@
  * pre-session WIP doesn't keep firing the nudge.
  *
  * Logic :
- *   1. Stop if .claude/state/skip-manual-qa exists (per-turn opt-out).
- *   2. Compute new-since-baseline = git diff baseline...HEAD --name-only
+ *   1. Compute new-since-baseline = git diff baseline...HEAD --name-only
  *      ∪ unstaged/untracked files relative to current HEAD that weren't
  *      already modified in the baseline WT.
- *   3. If the resulting set hits Controller.java / features / pages /
+ *   2. Per-turn de-dup: hash that file set into a fingerprint and compare
+ *      against .claude/state/manual-qa-last-fingerprint. Identical = the
+ *      user already saw the nudge, stay quiet (avoids re-firing on no-op
+ *      turns like "what next?" questions).
+ *   3. Stop if .claude/state/skip-manual-qa exists (per-turn opt-out).
+ *   4. If the resulting set hits Controller.java / features / pages /
  *      components AND no *IT.java is in it → emit the nudge.
+ *
+ * Every exit path writes the current fingerprint so the dedup cache
+ * stays in sync with what the user has seen.
  *
  * To opt out for the current turn: `touch .claude/state/skip-manual-qa`.
  */
@@ -24,9 +31,18 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const skipFile = path.join('.claude', 'state', 'skip-manual-qa');
-if (fs.existsSync(skipFile)) {
-  try { fs.unlinkSync(skipFile); } catch {}
-  process.exit(0);
+const fingerprintFile = path.join('.claude', 'state', 'manual-qa-last-fingerprint');
+
+function recordFingerprint(fp) {
+  try {
+    fs.mkdirSync(path.dirname(fingerprintFile), { recursive: true });
+    fs.writeFileSync(fingerprintFile, fp);
+  } catch {}
+}
+
+function readFingerprint() {
+  try { return fs.readFileSync(fingerprintFile, 'utf8').trim(); }
+  catch { return ''; }
 }
 
 function safe(cmd) {
@@ -60,16 +76,45 @@ const wtFiles = wt.map(l => l.slice(3).trim()).filter(Boolean);
 const newDirty = wtFiles.filter(f => !baselineWT.has(f));
 
 const all = [...new Set([...committedThisSession, ...newDirty])];
-if (all.length === 0) process.exit(0);
+const fingerprint = all.sort().join('|');
+
+// Per-turn de-dup: if the touched-file set hasn't changed since our last
+// invocation, we already nudged the user about it — stay quiet. Without
+// this, every no-op turn (e.g. answering a question) re-trips the hook
+// because the cumulative session diff still matches.
+if (fingerprint === readFingerprint()) process.exit(0);
+
+// Honour an explicit skip — but ALSO record the fingerprint so subsequent
+// no-op turns don't re-fire. (Without this, the user has to touch the
+// skip file every turn until they make a new edit.)
+if (fs.existsSync(skipFile)) {
+  try { fs.unlinkSync(skipFile); } catch {}
+  recordFingerprint(fingerprint);
+  process.exit(0);
+}
+
+if (all.length === 0) {
+  recordFingerprint(fingerprint);
+  process.exit(0);
+}
 
 const touchedSurface = all.some(f =>
   /Controller\.java$/.test(f)
   || (/\.tsx?$/.test(f) && /\b(features|pages|components)\b/.test(f))
 );
-if (!touchedSurface) process.exit(0);
+if (!touchedSurface) {
+  recordFingerprint(fingerprint);
+  process.exit(0);
+}
 
 const hasIT = all.some(f => /IT\.java$/.test(f) || /\.test\.(ts|tsx)$/.test(f));
-if (hasIT) process.exit(0);
+if (hasIT) {
+  recordFingerprint(fingerprint);
+  process.exit(0);
+}
+
+// About to fire — record so we don't re-fire next no-op turn.
+recordFingerprint(fingerprint);
 
 const reason = [
   'Cette session a touché un Controller / écran UI sans ajouter d\'IT correspondant.',
