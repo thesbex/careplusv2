@@ -81,6 +81,11 @@ vi.mock('@/components/shell/MScreen', () => ({
 
 vi.mock('@/components/shell/MTopbar', () => ({
   MTopbar: ({ title }: { title?: string }) => <div data-testid="mtopbar">{title}</div>,
+  // Vaccination mobile pages use MIconBtn (back/menu) — without this the mock
+  // import explodes at runtime.
+  MIconBtn: ({ label, onClick }: { label: string; onClick?: () => void }) => (
+    <button type="button" aria-label={label} onClick={onClick}>{label}</button>
+  ),
 }));
 
 // ── Mock hooks ────────────────────────────────────────────────────────────────

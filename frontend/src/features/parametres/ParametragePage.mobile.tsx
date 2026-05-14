@@ -17,6 +17,7 @@ import {
   Flask as FlaskIcon,
   Doc as DocIcon,
   Heart as HeartIcon,
+  Needle as NeedleIcon,
   Box as BoxIcon,
   BarChart as BarChartIcon,
   Stetho as StethoIcon,
@@ -144,7 +145,7 @@ export default function ParametrageMobilePage() {
             onClick={() => navigate('/consultations')}
           />
           <MenuRow
-            Icon={HeartIcon}
+            Icon={NeedleIcon}
             label="Vaccinations"
             hint="Worklist + rappels en retard"
             badge={vaccinationsBadge}

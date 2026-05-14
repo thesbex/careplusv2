@@ -69,6 +69,11 @@ vi.mock('@/components/shell/MTopbar', () => ({
       {sub && <span>{sub}</span>}
     </div>
   ),
+  // Stock pages render <MIconBtn> for back/menu buttons — needs to be stubbed
+  // too or the mock import explodes at runtime ("No 'MIconBtn' export defined").
+  MIconBtn: ({ label, onClick }: { label: string; onClick?: () => void }) => (
+    <button type="button" aria-label={label} onClick={onClick}>{label}</button>
+  ),
 }));
 
 // ── Mock auth ────────────────────────────────────────────────────────────────

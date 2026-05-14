@@ -1,13 +1,16 @@
 /**
- * F16 — SignatureSettingsSection (paramétrage cabinet, onglet Cabinet).
+ * F16 + V035 — SignatureSettingsSection (per-médecin, paramétrage compte).
  *
- * Pin :
- *   1. ADMIN voit la section "vide" quand aucune signature n'est configurée.
- *   2. Non-ADMIN ne voit rien (composant retourne null).
- *   3. Upload PNG → PUT /settings/signature multipart envoyé.
- *   4. Refus client si MIME non autorisé (txt) — pas de PUT.
- *   5. Refus client si taille > 500 Ko — pas de PUT.
- *   6. Bouton Supprimer visible quand meta != null, déclenche DELETE après confirm.
+ * Pin (post-V035, 2026-05-08) :
+ *   1. Tout utilisateur authentifié voit la section vide quand aucune sig.
+ *   2. Upload PNG → PUT /practitioners/{id}/signature multipart envoyé.
+ *   3. Refus client si MIME non autorisé (txt) — pas de PUT.
+ *   4. Refus client si taille > 500 Ko — pas de PUT.
+ *   5. Bouton Supprimer visible quand meta != null, déclenche DELETE après confirm.
+ *
+ * NOTE : avant V035, l'endpoint était /settings/signature et ADMIN-only.
+ * Depuis V035 chaque utilisateur gère SA signature et le composant n'a plus
+ * de role gating (l'autorisation vit côté backend).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -18,11 +21,19 @@ vi.mock('@/lib/api/client', () => ({
 }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@/lib/auth/authStore', () => {
-  const state = { user: { roles: ['ADMIN'] } as { roles: string[] } | null };
+  // V035 : les hooks ont besoin de user.id pour cibler /practitioners/{id}.
+  const state = {
+    user: { id: 'usr-1', roles: ['ADMIN'] } as { id: string; roles: string[] } | null,
+  };
   const useAuthStore = ((selector: (s: typeof state) => unknown) => selector(state)) as unknown as {
     (selector: (s: typeof state) => unknown): unknown;
   };
-  return { useAuthStore, __setUser: (u: { roles: string[] } | null) => { state.user = u; } };
+  return {
+    useAuthStore,
+    __setUser: (u: { id: string; roles: string[] } | null) => {
+      state.user = u;
+    },
+  };
 });
 
 // jsdom n'a pas confirm() — on l'auto-OK.
@@ -57,18 +68,13 @@ beforeEach(() => {
   apiMock.get.mockReset();
   apiMock.put.mockReset();
   apiMock.delete.mockReset();
-  authMod.__setUser({ roles: ['ADMIN'] });
+  authMod.__setUser({ id: 'usr-1', roles: ['ADMIN'] });
   // Default : pas de signature.
-  apiMock.get.mockImplementation((url: string) => {
-    if (url === '/settings/signature/meta') {
-      return Promise.resolve({ status: 204, data: null });
-    }
-    return Promise.resolve({ status: 204, data: null });
-  });
+  apiMock.get.mockImplementation(() => Promise.resolve({ status: 204, data: null }));
 });
 
 describe('SignatureSettingsSection', () => {
-  it('1. ADMIN voit l\'état vide', async () => {
+  it('1. Affiche l\'état vide quand aucune signature', async () => {
     render(withClient(<SignatureSettingsSection />));
     await waitFor(() => {
       expect(screen.getByText(/Aucune signature configurée/i)).toBeInTheDocument();
@@ -76,13 +82,7 @@ describe('SignatureSettingsSection', () => {
     expect(screen.getByRole('button', { name: /Téléverser/i })).toBeInTheDocument();
   });
 
-  it('2. Non-ADMIN ne voit rien', () => {
-    authMod.__setUser({ roles: ['MEDECIN'] });
-    const { container } = render(withClient(<SignatureSettingsSection />));
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('3. Upload PNG envoie PUT /settings/signature multipart', async () => {
+  it('2. Upload PNG envoie PUT /practitioners/{id}/signature multipart', async () => {
     const meta = { mime: 'image/png', uploadedAt: '2026-05-06T10:00:00Z', sizeBytes: 1234 };
     apiMock.put.mockResolvedValue({ data: meta });
 
@@ -94,20 +94,19 @@ describe('SignatureSettingsSection', () => {
       type: 'image/png',
     });
 
-    // Simule la sélection de fichier (jsdom n'a pas File.input nativement)
     Object.defineProperty(input, 'files', { value: [file] });
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
     await waitFor(() => expect(apiMock.put).toHaveBeenCalled());
     const [url, body, opts] = apiMock.put.mock.calls[0]!;
-    expect(url).toBe('/settings/signature');
+    expect(url).toBe('/practitioners/usr-1/signature');
     expect(body).toBeInstanceOf(FormData);
     expect((body as FormData).get('file')).toBeInstanceOf(File);
     expect((opts as { headers: Record<string, string> }).headers['Content-Type'])
       .toBe('multipart/form-data');
   });
 
-  it('4. Refuse côté client un fichier .txt (pas de PUT)', async () => {
+  it('3. Refuse côté client un fichier .txt (pas de PUT)', async () => {
     render(withClient(<SignatureSettingsSection />));
     await screen.findByText(/Aucune signature/i);
 
@@ -122,7 +121,7 @@ describe('SignatureSettingsSection', () => {
     expect(apiMock.put).not.toHaveBeenCalled();
   });
 
-  it('5. Refuse côté client un fichier > 500 Ko', async () => {
+  it('4. Refuse côté client un fichier > 500 Ko', async () => {
     render(withClient(<SignatureSettingsSection />));
     await screen.findByText(/Aucune signature/i);
 
@@ -137,13 +136,13 @@ describe('SignatureSettingsSection', () => {
     expect(apiMock.put).not.toHaveBeenCalled();
   });
 
-  it('6. Bouton Supprimer présent + DELETE envoyé quand meta != null', async () => {
+  it('5. Bouton Supprimer présent + DELETE envoyé quand meta != null', async () => {
     const meta = { mime: 'image/png', uploadedAt: '2026-05-06T10:00:00Z', sizeBytes: 4321 };
     apiMock.get.mockImplementation((url: string) => {
-      if (url === '/settings/signature/meta') {
+      if (url === '/practitioners/usr-1/signature/meta') {
         return Promise.resolve({ status: 200, data: meta });
       }
-      if (url === '/settings/signature') {
+      if (url === '/practitioners/usr-1/signature') {
         return Promise.resolve({ status: 200, data: new Blob([new Uint8Array([1, 2, 3])]) });
       }
       return Promise.resolve({ status: 204, data: null });
@@ -153,6 +152,8 @@ describe('SignatureSettingsSection', () => {
     render(withClient(<SignatureSettingsSection />));
     const removeBtn = await screen.findByRole('button', { name: /Supprimer/i });
     removeBtn.click();
-    await waitFor(() => expect(apiMock.delete).toHaveBeenCalledWith('/settings/signature'));
+    await waitFor(() =>
+      expect(apiMock.delete).toHaveBeenCalledWith('/practitioners/usr-1/signature'),
+    );
   });
 });
