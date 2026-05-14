@@ -97,6 +97,31 @@ export function useDocumentTemplates() {
   return { templates: data ?? EMPTY_TEMPLATES, isLoading };
 }
 
+// ── Catalog acts (nomenclature) ─────────────────────────────────────────────
+
+export interface ActMeta {
+  id: string;
+  code: string | null;
+  name: string;
+  type: string;
+  active: boolean;
+  defaultPrice: number | string | null;
+  cnopsEligible: boolean;
+  cnssEligible: boolean;
+  ramedEligible: boolean;
+}
+
+const EMPTY_ACTS: ActMeta[] = [];
+
+export function useCatalogActs() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['catalog-acts'],
+    queryFn: () => api.get<ActMeta[]>('/catalog/acts').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  return { acts: data ?? EMPTY_ACTS, isLoading };
+}
+
 // ── Practitioner credentials (current admin) ────────────────────────────────
 
 export interface PractitionerCredentialsForm {

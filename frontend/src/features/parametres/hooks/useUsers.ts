@@ -9,6 +9,13 @@ export interface AdminUser {
   phone: string | null;
   enabled: boolean;
   roles: string[];
+  /** V040 — practitioner credentials. Null for non-MEDECIN users. */
+  specialty?: string | null;
+  inpe?: string | null;
+  cnom?: string | null;
+  cnops?: string | null;
+  /** V031/V035 — true if a signature_blob is stored. */
+  hasSignature?: boolean;
 }
 
 /**
@@ -35,6 +42,10 @@ export interface CreateUserForm {
   roles: string[];
   /** V032 — visible UNIQUEMENT si rôle MEDECIN. Omettre = null serveur. */
   specialty?: string;
+  /** V040 — practitioner credentials (MEDECIN only). */
+  inpe?: string;
+  cnom?: string;
+  cnops?: string;
   /**
    * V032 — uniquement quand rôle ∈ {SECRETAIRE, ASSISTANT}. Omettre = auto-assign
    * à tous les médecins actifs côté serveur (sensible pour cabinet 1 médecin).

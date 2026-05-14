@@ -422,7 +422,12 @@ public class CatalogController {
                 null,  // description not in Act entity (not in V001 schema)
                 null,  // defaultDurationMinutes not in Act entity
                 act.getType(),
-                act.isActive());
+                act.isActive(),
+                act.getCode(),
+                act.getDefaultPrice(),
+                act.isCnopsEligible(),
+                act.isCnssEligible(),
+                act.isRamedEligible());
     }
 
     private TariffResponse toTariffResponse(Tariff t) {

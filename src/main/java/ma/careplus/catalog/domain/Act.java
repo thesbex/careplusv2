@@ -41,6 +41,18 @@ public class Act {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    /** V041 — eligible for CNOPS tiers-payant. */
+    @Column(name = "cnops_eligible", nullable = false)
+    private boolean cnopsEligible = true;
+
+    /** V041 — eligible for CNSS. */
+    @Column(name = "cnss_eligible", nullable = false)
+    private boolean cnssEligible = true;
+
+    /** V041 — eligible for RAMED. */
+    @Column(name = "ramed_eligible", nullable = false)
+    private boolean ramedEligible = true;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -74,6 +86,12 @@ public class Act {
     public void setType(String type) { this.type = type; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public boolean isCnopsEligible() { return cnopsEligible; }
+    public void setCnopsEligible(boolean v) { this.cnopsEligible = v; }
+    public boolean isCnssEligible() { return cnssEligible; }
+    public void setCnssEligible(boolean v) { this.cnssEligible = v; }
+    public boolean isRamedEligible() { return ramedEligible; }
+    public void setRamedEligible(boolean v) { this.ramedEligible = v; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

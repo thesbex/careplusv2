@@ -30,6 +30,12 @@ public record CreateUserRequest(
         @NotBlank @Size(max = 64) String lastName,
         @Size(max = 32) String phone,
         @Size(max = 120) String specialty,
+        /** V040 — practitioner INPE. Optional; ignored for non-MEDECIN. */
+        @Size(max = 32) String inpe,
+        /** V040 — Ordre CNOM. Optional. */
+        @Size(max = 64) String cnom,
+        /** V040 — CNOPS conventionnement. Optional. */
+        @Size(max = 64) String cnops,
         /** Role codes: SECRETAIRE / ASSISTANT / MEDECIN / ADMIN. At least one. */
         @NotEmpty Set<@NotBlank String> roles,
         /** Practitioner ids the new user assists (SECRETAIRE/ASSISTANT only). */

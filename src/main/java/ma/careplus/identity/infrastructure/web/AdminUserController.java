@@ -79,8 +79,13 @@ public class AdminUserController {
     public List<AdminUserView> listUsers() {
         // Single query with users + role codes via array_agg, ordered by name.
         // LEFT JOIN so users without any role still appear (defensive).
+        // V040 — includes practitioner credentials (specialty / INPE / CNOM /
+        // CNOPS) and the hasSignature flag so the onboarding wizard's team
+        // list renders without N+1 round-trips.
         String sql = """
                 SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.enabled,
+                       u.specialty, u.inpe, u.cnom, u.cnops,
+                       (u.signature_blob IS NOT NULL) AS has_signature,
                        COALESCE(array_agg(r.code) FILTER (WHERE r.code IS NOT NULL), '{}'::text[]) AS roles
                   FROM identity_user u
              LEFT JOIN identity_user_role ur ON ur.user_id = u.id
@@ -97,7 +102,12 @@ public class AdminUserController {
                     rs.getString("last_name"),
                     rs.getString("phone"),
                     rs.getBoolean("enabled"),
-                    List.of(roles));
+                    List.of(roles),
+                    rs.getString("specialty"),
+                    rs.getString("inpe"),
+                    rs.getString("cnom"),
+                    rs.getString("cnops"),
+                    rs.getBoolean("has_signature"));
         });
     }
 
@@ -214,11 +224,15 @@ public class AdminUserController {
 
         jdbc.update("""
                 INSERT INTO identity_user
-                    (id, email, password_hash, first_name, last_name, phone, specialty, enabled, failed_attempts, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, 0, 0, ?, ?)
+                    (id, email, password_hash, first_name, last_name, phone,
+                     specialty, inpe, cnom, cnops,
+                     enabled, failed_attempts, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, 0, 0, ?, ?)
                 """,
                 userId, req.email(), hash, req.firstName(), req.lastName(), req.phone(),
-                blankToNull(req.specialty()), now, now);
+                blankToNull(req.specialty()), blankToNull(req.inpe()),
+                blankToNull(req.cnom()), blankToNull(req.cnops()),
+                now, now);
 
         // Resolve role codes → role UUIDs. IN (?, ?, ...) with dynamic placeholders
         // — more portable than Postgres ANY(?) + Java String[] which depends on
