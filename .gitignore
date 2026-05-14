@@ -81,6 +81,7 @@ documents-iso.png
 medecin-team-list.png
 tarifs-nomenclature.png
 add-doctor-modal.png
+consult-*.png
 
 # Spring Boot runtime data dir (DocumentStorage at app boot)
 data/
