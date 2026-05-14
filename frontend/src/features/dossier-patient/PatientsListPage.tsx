@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
-import { Search, Users, Plus, Close } from '@/components/icons';
+import { ChevronDown, ChevronLeft, ChevronRight, Close, Filter as FilterIcon, Plus, Warn } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
-import { usePatientList } from './hooks/usePatientList';
+import { usePatientList, type PatientListItem, type Segment } from './hooks/usePatientList';
 import {
   useCreatePatient,
   type CreatePatientForm,
@@ -826,126 +826,412 @@ function NewPatientPanel({
   );
 }
 
+// ─── Segmented control + filter chips + dense table ──────────────────────
+// Design source: design/prototype/screens/liste-patients.jsx (05a). Layout is
+// stacked vertically inside <Screen> with overflow:hidden so the table scrolls
+// independently — the toolbar rows stay pinned at the top.
+const SEG_LABELS: Record<Segment, string> = {
+  tous: 'Tous',
+  recent: 'Vus récemment',
+  chroniques: 'Patients chroniques',
+  nouveaux: 'Nouveaux (30j)',
+};
+
+const SEGMENTS: Segment[] = ['tous', 'recent', 'chroniques', 'nouveaux'];
+
+const PAGE_SIZE = 20;
+
+const AVATAR_PALETTE: readonly string[] = ['#1E5AA8', '#2A7CE7', '#6B6B6B', '#3F7A3A', '#B8500C'];
+function avatarColor(id: string): string {
+  const idx = id.charCodeAt(id.length - 1) % AVATAR_PALETTE.length;
+  return AVATAR_PALETTE[idx] ?? '#2A7CE7';
+}
+
+function initialsOf(p: PatientListItem): string {
+  return `${p.firstName.charAt(0)}${p.lastName.charAt(0)}`.toUpperCase();
+}
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return `${date} · ${time}`;
+}
+
+function relativeDays(iso: string | null | undefined): string {
+  if (!iso) return 'Nouveau';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const days = Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
+  if (days < 0) return '';
+  if (days < 1) return "aujourd'hui";
+  if (days === 1) return 'hier';
+  if (days < 14) return `il y a ${days} j`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 9) return `il y a ${weeks} sem`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `il y a ${months} mois`;
+  return '';
+}
+
+function FilterChip({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <button
+      type="button"
+      style={{
+        height: 28, padding: '0 10px', border: '1px solid var(--border)', borderRadius: 14,
+        background: 'var(--surface)', display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 11.5, cursor: 'pointer', color: muted ? 'var(--ink-3)' : 'var(--ink)',
+        fontFamily: 'inherit',
+      }}
+    >
+      <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>{label}</span>
+      <span style={{ fontWeight: 600 }}>{value}</span>
+      <ChevronDown />
+    </button>
+  );
+}
+
+const ROW_GRID = '1.4fr 100px 150px 1.3fr 150px 170px';
+
+function PatientRow({
+  p,
+  selected,
+  onSelect,
+  onOpen,
+}: {
+  p: PatientListItem;
+  selected: boolean;
+  onSelect: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      onDoubleClick={onOpen}
+      style={{
+        display: 'grid', gridTemplateColumns: ROW_GRID,
+        padding: '12px 16px', gap: 14, alignItems: 'center',
+        borderBottom: '1px solid var(--border-soft)',
+        background: selected ? 'var(--primary-soft)' : 'transparent',
+        cursor: 'pointer',
+        transition: 'background 0.08s',
+      }}
+    >
+      {/* Patient */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+        <PatientAvatar
+          initials={initialsOf(p)}
+          documentId={p.photoDocumentId ?? null}
+          size="md"
+          bg={avatarColor(p.id)}
+          style={{ flexShrink: 0 }}
+        />
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              style={{
+                fontWeight: 600, fontSize: 13.5, color: 'var(--ink)',
+                background: 'none', border: 0, padding: 0, fontFamily: 'inherit', cursor: 'pointer',
+                textAlign: 'left',
+              }}
+            >
+              {p.tier === 'PREMIUM' && (
+                <span aria-label="Patient Premium" title="Patient Premium" style={{ marginRight: 4 }}>🌟</span>
+              )}
+              {p.firstName} {p.lastName}
+            </button>
+            {p.allergy && (
+              <span
+                className="pill allergy"
+                title="Allergie connue"
+                aria-label="Allergie connue"
+                style={{ paddingInline: 4 }}
+              >
+                <Warn />
+              </span>
+            )}
+            {p.pregnant && (
+              <span className="pill" style={{ background: '#FDE6EE', color: '#9A2A52' }}>Grossesse</span>
+            )}
+            {p.isNew && (
+              <span className="pill" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>Nouveau</span>
+            )}
+          </div>
+          <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>
+            {p.id.slice(0, 8)} · {p.cin ? `CIN ${p.cin}` : 'CIN —'}
+          </div>
+        </div>
+      </div>
+
+      {/* Démo */}
+      <div style={{ fontSize: 12.5 }}>
+        <div className="tnum" style={{ fontWeight: 600 }}>
+          {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}
+        </div>
+        <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
+          {p.gender === 'M' ? 'Homme' : p.gender === 'F' ? 'Femme' : '—'}
+        </div>
+      </div>
+
+      {/* Téléphone */}
+      <div className="tnum" style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
+        {p.phone || <span style={{ color: 'var(--ink-4)' }}>—</span>}
+      </div>
+
+      {/* Tags */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {!p.tags || p.tags.length === 0
+          ? <span style={{ fontSize: 11.5, color: 'var(--ink-4)' }}>—</span>
+          : p.tags.map((t) => <span key={t} className="pill">{t}</span>)}
+      </div>
+
+      {/* Dernière visite */}
+      <div className="tnum" style={{ fontSize: 12.5 }}>
+        <div style={{ fontWeight: 550, color: p.lastVisitAt ? 'var(--ink-2)' : 'var(--ink-4)' }}>
+          {formatDate(p.lastVisitAt)}
+        </div>
+        {p.lastVisitAt && (
+          <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
+            {relativeDays(p.lastVisitAt)}
+          </div>
+        )}
+      </div>
+
+      {/* Prochain RDV */}
+      <div className="tnum" style={{ fontSize: 12.5 }}>
+        {p.nextAppointmentAt
+          ? <span style={{ fontWeight: 550, color: 'var(--primary)' }}>{formatDateTime(p.nextAppointmentAt)}</span>
+          : <span style={{ color: 'var(--ink-4)' }}>—</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function PatientsListPage() {
   const navigate = useNavigate();
-  const [q, setQ] = useState('');
+  const [seg, setSeg] = useState<Segment>('tous');
+  const [page, setPage] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
-  const { patients, total, isLoading, error } = usePatientList(q);
-  // QA3-3 v1 — backward-compat: legacy sessions without `permissions` keep
-  // the previous behaviour. Once the backend populates the field, the gate
-  // engages.
+
+  const { patients, total, totalPages, counts, isLoading, error } = usePatientList({
+    segment: seg,
+    page,
+    size: PAGE_SIZE,
+  });
+
+  // QA3-3 v1 — back-compat gate on PATIENT_CREATE.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
+
+  const segItems = useMemo(
+    () => SEGMENTS.map((id) => ({ id, label: SEG_LABELS[id], count: counts[id] })),
+    [counts],
+  );
+
+  const topRight = (
+    <>
+      <button className="btn" type="button">
+        <FilterIcon /> Filtres
+      </button>
+      {canCreatePatient && (
+        <button
+          className="btn primary"
+          type="button"
+          onClick={() => setShowNew((v) => !v)}
+          aria-pressed={showNew}
+        >
+          <Plus /> Nouveau patient
+        </button>
+      )}
+    </>
+  );
 
   return (
     <Screen
       active="patients"
       title="Patients"
-      sub={isLoading ? 'Chargement…' : `${total} patient${total !== 1 ? 's' : ''}`}
-      onNavigate={(id) => {
-        const map = {
-          dashboard: '/dashboard',
-          agenda: '/agenda',
-          patients: '/patients',
-          salle: '/salle',
-          consult: '/consultations',
-          factu: '/facturation',
-          vaccinations: '/vaccinations',
-          grossesses: '/grossesses',
-          stock: '/stock',
-          queueLab: '/queue/lab',
-          queueRadio: '/queue/radio',
-          catalogue: '/catalogue',
-          params: '/parametres',
-        } as const;
-        navigate(map[id]);
-      }}
+      sub={`Annuaire du cabinet · ${counts.tous} dossier${counts.tous !== 1 ? 's' : ''}`}
+      topbarRight={topRight}
     >
-      <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 16, padding: '16px 24px' }}>
-        {/* Left: search + list */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, gap: 16 }}>
-          {/* Toolbar */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1, maxWidth: 440 }}>
-              <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)', pointerEvents: 'none' }}>
-                <Search aria-hidden="true" />
-              </span>
-              <Input
-                placeholder="Rechercher par nom, prénom ou CIN…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                style={{ paddingLeft: 34 }}
-                aria-label="Rechercher un patient"
-              />
-            </div>
-            {canCreatePatient && (
-              <Button onClick={() => setShowNew((v) => !v)} style={{ flexShrink: 0 }} aria-pressed={showNew}>
-                <Plus /> Nouveau patient
-              </Button>
-            )}
+      <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
+        {/* Toolbar row 1: segmented + sort */}
+        <div
+          style={{
+            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
+            background: 'var(--surface)', borderBottom: '1px solid var(--border-soft)',
+          }}
+        >
+          <div
+            role="tablist"
+            aria-label="Filtres patients"
+            style={{
+              display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 6, height: 30,
+            }}
+          >
+            {segItems.map((s) => {
+              const active = seg === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => { setSeg(s.id); setPage(0); }}
+                  style={{
+                    padding: '0 11px', border: 'none', borderRadius: 4, cursor: 'pointer',
+                    background: active ? 'var(--surface)' : 'transparent',
+                    color: active ? 'var(--ink)' : 'var(--ink-3)',
+                    fontWeight: active ? 600 : 500, fontSize: 12.5, fontFamily: 'inherit',
+                    boxShadow: active ? '0 0 0 1px var(--border)' : 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: 6, height: 26,
+                  }}
+                >
+                  {s.label}
+                  <span
+                    className="tnum"
+                    style={{
+                      fontSize: 10.5, fontWeight: 600,
+                      color: active ? 'var(--ink-3)' : 'var(--ink-4)',
+                    }}
+                  >
+                    {s.count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {error && (
-            <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
-          )}
-
-          {/* List */}
-          <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-            {isLoading ? (
-              <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>Chargement…</div>
-            ) : patients.length === 0 ? (
-              <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>
-                {q ? 'Aucun patient trouvé.' : 'Aucun patient enregistré.'}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                {patients.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => navigate(`/patients/${p.id}`)}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8,
-                      background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-alt)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--surface)')}
-                  >
-                    <PatientAvatar
-                      initials={`${p.firstName.charAt(0)}${p.lastName.charAt(0)}`}
-                      documentId={p.photoDocumentId ?? null}
-                      size="md"
-                      style={{ flexShrink: 0 }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        {p.tier === 'PREMIUM' && (
-                          <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
-                            🌟
-                          </span>
-                        )}
-                        {p.firstName} {p.lastName}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 1 }}>
-                        {p.gender === 'M' ? 'H' : p.gender === 'F' ? 'F' : p.gender}
-                        {p.birthDate ? ` · ${toAge(p.birthDate)} ans` : ''}
-                        {p.cin ? ` · ${p.cin}` : ''}
-                        {p.city ? ` · ${p.city}` : ''}
-                      </div>
-                    </div>
-                    <span style={{ color: 'var(--ink-3)', flexShrink: 0 }}>
-                      <Users aria-hidden="true" />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 12, height: 30 }}>
+            <span>Trier par</span>
+            <button
+              type="button"
+              style={{
+                height: 28, padding: '0 10px', border: '1px solid var(--border)', borderRadius: 14,
+                background: 'var(--surface)', display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 11.5, cursor: 'pointer', color: 'var(--ink)', fontWeight: 600, fontFamily: 'inherit',
+              }}
+            >
+              Dernière visite
+              <ChevronDown />
+            </button>
           </div>
         </div>
 
-        {/* Right: new patient panel */}
-        {showNew && (
+        {/* Toolbar row 2: filter chips */}
+        <div
+          style={{
+            padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+            background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+          }}
+        >
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
+            color: 'var(--ink-4)', marginRight: 4,
+          }}>
+            Filtres
+          </span>
+          <FilterChip label="Médecin" value="Tous" />
+          <FilterChip label="Sexe" value="Tous" />
+          <FilterChip label="Tranche d'âge" value="Toutes" />
+          <FilterChip label="Tags" value="—" muted />
+          <button className="btn sm ghost" type="button" style={{ marginLeft: 4, color: 'var(--ink-3)' }}>
+            <Plus /> Ajouter un filtre
+          </button>
+        </div>
+
+        {/* Table */}
+        <div className="scroll" style={{ flex: 1, overflow: 'auto', background: 'var(--bg)' }}>
+          <div style={{ padding: '0 20px' }}>
+            <div className="panel" style={{ margin: '14px 0', overflow: 'hidden' }}>
+              <div
+                style={{
+                  display: 'grid', gridTemplateColumns: ROW_GRID,
+                  padding: '10px 16px', gap: 14,
+                  fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
+                  color: 'var(--ink-3)', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)',
+                }}
+              >
+                <span>Patient</span>
+                <span>Démo.</span>
+                <span>Téléphone</span>
+                <span>Tags · Antécédents</span>
+                <span>Dernière visite</span>
+                <span>Prochain RDV</span>
+              </div>
+
+              {isLoading ? (
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>Chargement…</div>
+              ) : error ? (
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--danger)' }}>{error}</div>
+              ) : patients.length === 0 ? (
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>
+                  Aucun patient ne correspond à ce filtre.
+                </div>
+              ) : (
+                patients.map((p) => (
+                  <PatientRow
+                    key={p.id}
+                    p={p}
+                    selected={selected === p.id}
+                    onSelect={() => setSelected(p.id)}
+                    onOpen={() => navigate(`/patients/${p.id}`)}
+                  />
+                ))
+              )}
+            </div>
+
+            <div
+              style={{
+                padding: '8px 4px 18px', display: 'flex', alignItems: 'center',
+                justifyContent: 'space-between', fontSize: 11.5, color: 'var(--ink-3)',
+              }}
+            >
+              <span>
+                Affichage de <strong style={{ color: 'var(--ink-2)' }}>{patients.length}</strong> patient{patients.length !== 1 ? 's' : ''} sur {total}
+              </span>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  className="btn sm ghost"
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  aria-label="Page précédente"
+                >
+                  <ChevronLeft />
+                </button>
+                <span className="tnum">
+                  Page {page + 1} / {Math.max(1, totalPages)}
+                </span>
+                <button
+                  className="btn sm ghost"
+                  type="button"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= totalPages - 1}
+                  aria-label="Page suivante"
+                >
+                  <ChevronRight />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {showNew && (
+        <div style={{ padding: 16, display: 'flex', minWidth: 0 }}>
           <NewPatientPanel
             onClose={() => setShowNew(false)}
             onCreated={(id) => {
@@ -953,7 +1239,8 @@ export default function PatientsListPage() {
               navigate(`/patients/${id}`);
             }}
           />
-        )}
+        </div>
+      )}
       </div>
     </Screen>
   );

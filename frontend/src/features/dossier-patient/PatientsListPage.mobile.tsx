@@ -1,22 +1,28 @@
 /**
- * Patients list — mobile.
- * Search-and-tap + bouton flottant « + » pour créer un dossier.
+ * Patients list — mobile (refonte 2026-05-10).
  *
- * Avant 2026-05-01, la création était désactivée sur mobile (« le formulaire
- * est trop dense pour un téléphone »). Les secrétaires sur tablette en salle
- * d'attente n'avaient donc aucun moyen de créer un nouveau patient sans
- * basculer sur PC. NewPatientMobileSheet propose une variante condensée des
- * champs essentiels (état civil + contact + photo), les sections denses
+ * Design source: design/prototype/mobile/liste-patients.jsx (M05a). Layout:
+ * - Topbar Patients · N dossiers + Filter icon
+ * - Inline search (Nom, téléphone, CIN…)
+ * - Pill segmented control [Tous | Chroniques | Nouveaux] (horizontal scroll)
+ * - Result count + Trier dropdown
+ * - List grouped by first letter (sticky-like headers)
+ * - Row: avatar + name + amber allergy badge + Grossesse / Nouveau pills,
+ *   age · gender · top-2 chronic tags, "Vu:" rel + "→ next" if any
+ * - FAB bottom-right for création (NewPatientMobileSheet)
+ *
+ * NewPatientMobileSheet (créé 2026-05-01) reste la voie de création sur mobile —
+ * version condensée des champs essentiels. Les sections denses
  * (allergies/antécédents/mutuelle/historique) restent côté desktop.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar } from '@/components/shell/MTopbar';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Search, ChevronRight, Plus } from '@/components/icons';
+import { ChevronDown, ChevronRight, Plus, Search, Warn } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { usePatientList } from './hooks/usePatientList';
+import { usePatientList, type PatientListItem, type Segment } from './hooks/usePatientList';
 import { NewPatientMobileSheet } from './components/NewPatientMobileSheet';
 
 function toAge(birthDate: string): number {
@@ -36,21 +42,249 @@ const TAB_MAP: Record<MobileTab, string> = {
   menu:     '/parametres',
 };
 
+const AVATAR_PALETTE: readonly string[] = ['#1E5AA8', '#2A7CE7', '#6B6B6B', '#3F7A3A', '#B8500C'];
+function avatarColor(id: string): string {
+  const idx = id.charCodeAt(id.length - 1) % AVATAR_PALETTE.length;
+  return AVATAR_PALETTE[idx] ?? '#2A7CE7';
+}
+
+function relativeShort(iso: string | null | undefined): string {
+  if (!iso) return 'Nouveau';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const days = Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
+  if (days < 0) return '';
+  if (days < 1) return "auj.";
+  if (days === 1) return 'hier';
+  if (days < 14) return `il y a ${days} j`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 9) return `il y a ${weeks} sem`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `il y a ${months} mois`;
+  return '';
+}
+
+function shortDateTime(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  return `${date} · ${time}`;
+}
+
+function MPatientRow({
+  p,
+  isFirst,
+  onOpen,
+}: {
+  p: PatientListItem;
+  isFirst: boolean;
+  onOpen: () => void;
+}) {
+  const initials = `${p.firstName.charAt(0)}${p.lastName.charAt(0)}`.toUpperCase();
+  const nextLabel = shortDateTime(p.nextAppointmentAt);
+  const lastLabel = relativeShort(p.lastVisitAt);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="m-row"
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        background: 'var(--surface)',
+        border: 0,
+        borderTop: isFirst ? 'none' : '1px solid var(--border-soft)',
+        fontFamily: 'inherit',
+        font: 'inherit',
+        cursor: 'pointer',
+        WebkitTapHighlightColor: 'transparent',
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      <div
+        className="cp-avatar"
+        aria-hidden="true"
+        style={{
+          background: avatarColor(p.id),
+          width: 40,
+          height: 40,
+          borderRadius: 10,
+          fontSize: 13,
+          flexShrink: 0,
+        }}
+      >
+        {initials}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Line 1 — name + badges */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--ink)' }}>
+            {p.firstName} {p.lastName}
+          </span>
+          {p.allergy && (
+            <span
+              title="Allergie connue"
+              aria-label="Allergie connue"
+              style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'var(--amber-soft)', color: 'var(--amber)',
+                display: 'grid', placeItems: 'center', flexShrink: 0,
+              }}
+            >
+              <span style={{ transform: 'scale(0.7)', display: 'inline-flex' }}>
+                <Warn />
+              </span>
+            </span>
+          )}
+          {p.pregnant && (
+            <span
+              className="m-pill"
+              style={{
+                fontSize: 10,
+                padding: '1px 6px',
+                background: '#FDE6EE',
+                color: '#9A2A52',
+              }}
+            >
+              Grossesse
+            </span>
+          )}
+          {p.isNew && (
+            <span
+              className="m-pill"
+              style={{
+                fontSize: 10,
+                padding: '1px 6px',
+                background: 'var(--primary-soft)',
+                color: 'var(--primary)',
+              }}
+            >
+              Nouveau
+            </span>
+          )}
+          {p.tier === 'PREMIUM' && (
+            <span
+              className="m-pill"
+              aria-label="Patient Premium"
+              style={{
+                fontSize: 10,
+                padding: '1px 6px',
+                background: 'var(--amber-soft)',
+                color: 'var(--amber)',
+              }}
+            >
+              Premium
+            </span>
+          )}
+        </div>
+        {/* Line 2 — age · gender + top tags */}
+        <div
+          style={{
+            fontSize: 11.5,
+            color: 'var(--ink-3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <span className="tnum">
+            {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}
+            {' · '}
+            {p.gender === 'M' ? 'Homme' : p.gender === 'F' ? 'Femme' : '—'}
+          </span>
+          {p.tags && p.tags.length > 0 && (
+            <>
+              <span style={{ color: 'var(--ink-4)' }}>·</span>
+              <span
+                style={{
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  color: 'var(--ink-2)',
+                  fontWeight: 500,
+                  minWidth: 0,
+                }}
+              >
+                {p.tags.slice(0, 2).join(', ')}
+              </span>
+            </>
+          )}
+        </div>
+        {/* Line 3 — last visit + next RDV */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+            <span style={{ color: 'var(--ink-4)' }}>Vu : </span>
+            <span className="tnum" style={{ color: 'var(--ink-2)', fontWeight: 500 }}>
+              {lastLabel}
+            </span>
+          </span>
+          {nextLabel && (
+            <span
+              className="tnum"
+              style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}
+            >
+              → {nextLabel}
+            </span>
+          )}
+        </div>
+      </div>
+      <span style={{ color: 'var(--ink-4)', flexShrink: 0 }}>
+        <ChevronRight aria-hidden="true" />
+      </span>
+    </button>
+  );
+}
+
 export default function PatientsListMobilePage() {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
+  const [seg, setSeg] = useState<Segment>('tous');
   const [showNew, setShowNew] = useState(false);
-  const { patients, total, isLoading, error } = usePatientList(q);
-  // QA3-3 — backward-compat: legacy sessions sans `permissions` gardent
-  // l'ancien comportement (création autorisée). Le gate s'engage dès que
-  // le backend remonte la liste.
+
+  const { patients, total, counts, isLoading, error } = usePatientList({
+    q,
+    segment: seg,
+    size: 100,
+  });
+
+  // QA3-3 — back-compat gate on PATIENT_CREATE.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
+
+  // Group rows by first letter of last name (FR locale uppercase).
+  const groups = useMemo(() => {
+    const map = new Map<string, PatientListItem[]>();
+    patients.forEach((p) => {
+      const letter = (p.lastName || '?').charAt(0).toLocaleUpperCase('fr-FR');
+      const arr = map.get(letter) ?? [];
+      arr.push(p);
+      map.set(letter, arr);
+    });
+    return Array.from(map.entries()).sort(([a], [b]) => a.localeCompare(b, 'fr'));
+  }, [patients]);
+
+  const segMobile = [
+    { id: 'tous' as Segment,        label: 'Tous',       count: counts.tous },
+    { id: 'chroniques' as Segment,  label: 'Chroniques', count: counts.chroniques },
+    { id: 'nouveaux' as Segment,    label: 'Nouveaux',   count: counts.nouveaux },
+  ];
 
   return (
     <MScreen
       tab="patients"
-      topbar={<MTopbar brand title="Patients" />}
+      topbar={
+        <MTopbar
+          title="Patients"
+          sub={`${counts.tous} dossier${counts.tous !== 1 ? 's' : ''}`}
+          right={<MIconBtn icon="Filter" label="Filtres" />}
+        />
+      }
       onTabChange={(t) => navigate(TAB_MAP[t])}
       fab={
         canCreatePatient ? (
@@ -68,7 +302,7 @@ export default function PatientsListMobilePage() {
               border: 0,
               background: 'var(--primary)',
               color: 'var(--on-primary, #fff)',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
+              boxShadow: '0 6px 20px rgba(42,124,231,0.4), 0 2px 4px rgba(0,0,0,0.08)',
               display: 'grid',
               placeItems: 'center',
               cursor: 'pointer',
@@ -80,136 +314,199 @@ export default function PatientsListMobilePage() {
         ) : undefined
       }
     >
-      <div className="mb-pad">
-        {/* Search — uses .m-search token for visual consistency. */}
-        <label className="m-search">
+      {/* Search bar — m-search class kept so tests + token visual stay aligned. */}
+      <div
+        style={{
+          padding: '12px 16px 8px',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border-soft)',
+        }}
+      >
+        <label
+          className="m-search"
+          style={{
+            height: 38,
+            background: 'var(--bg-alt)',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 12px',
+            gap: 8,
+            color: 'var(--ink-3)',
+          }}
+        >
           <Search aria-hidden="true" />
           <input
             type="search"
-            placeholder="Rechercher par nom, prénom ou CIN…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            placeholder="Nom, téléphone, CIN…"
             aria-label="Rechercher un patient"
             style={{
               flex: 1,
               border: 0,
               outline: 'none',
               background: 'transparent',
-              fontFamily: 'inherit',
               fontSize: 14,
+              fontFamily: 'inherit',
               color: 'var(--ink)',
             }}
           />
         </label>
+      </div>
 
-        <div
-          style={{
-            fontSize: 12,
-            color: 'var(--ink-3)',
-            marginBottom: 8,
-          }}
-        >
-          {isLoading ? 'Chargement…' : `${total} patient${total !== 1 ? 's' : ''}`}
-        </div>
-
-        {error && (
-          <div style={{ color: 'var(--danger)', fontSize: 13, marginBottom: 8 }}>
-            {error}
-          </div>
-        )}
-
-        <div className="m-card">
-          {!isLoading && patients.length === 0 ? (
-            <div
+      {/* Segmented pills — horizontal scroll if it overflows. */}
+      <div
+        role="tablist"
+        aria-label="Filtres patients"
+        style={{
+          padding: '10px 16px',
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          display: 'flex',
+          gap: 8,
+          overflow: 'auto',
+        }}
+      >
+        {segMobile.map((s) => {
+          const active = seg === s.id;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setSeg(s.id)}
               style={{
-                padding: '32px 16px',
-                textAlign: 'center',
-                color: 'var(--ink-3)',
-                fontSize: 13,
+                height: 30,
+                padding: '0 12px',
+                borderRadius: 15,
+                border: '1px solid ' + (active ? 'var(--primary)' : 'var(--border)'),
+                background: active ? 'var(--primary)' : 'var(--surface)',
+                color: active ? '#fff' : 'var(--ink-2)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12.5,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                flexShrink: 0,
+                fontFamily: 'inherit',
               }}
             >
-              {q ? 'Aucun patient trouvé.' : 'Aucun patient enregistré.'}
-            </div>
-          ) : (
-            patients.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => navigate(`/patients/${p.id}`)}
-                className="m-row"
+              {s.label}
+              <span
+                className="tnum"
                 style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  background: 'transparent',
-                  border: 0,
-                  borderTop: i === 0 ? 'none' : '1px solid var(--border-soft)',
-                  fontFamily: 'inherit',
-                  font: 'inherit',
-                  cursor: 'pointer',
-                  WebkitTapHighlightColor: 'transparent',
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  color: active ? 'rgba(255,255,255,0.75)' : 'var(--ink-4)',
                 }}
               >
-                <div
-                  className="cp-avatar"
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
-                    fontSize: 13,
-                    background: 'var(--primary)',
-                  }}
-                  aria-hidden="true"
-                >
-                  {p.firstName.charAt(0)}
-                  {p.lastName.charAt(0)}
-                </div>
-                <div className="m-row-pri">
-                  <div className="m-row-main">
-                    {p.firstName} {p.lastName}
-                    {p.tier === 'PREMIUM' && (
-                      <span
-                        className="m-pill"
-                        aria-label="Patient Premium"
-                        style={{
-                          marginLeft: 6,
-                          fontSize: 10,
-                          padding: '2px 6px',
-                          background: 'var(--amber-soft)',
-                          color: 'var(--amber)',
-                        }}
-                      >
-                        Premium
-                      </span>
-                    )}
-                  </div>
-                  <div className="m-row-sub">
-                    {p.gender === 'M' ? 'H' : p.gender === 'F' ? 'F' : p.gender}
-                    {p.birthDate ? ` · ${toAge(p.birthDate)} ans` : ''}
-                    {p.cin ? ` · ${p.cin}` : ''}
-                    {p.city ? ` · ${p.city}` : ''}
-                  </div>
-                </div>
-                <ChevronRight aria-hidden="true" />
-              </button>
-            ))
-          )}
-        </div>
+                {s.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
-        <div
+      {/* Result count + sort placeholder */}
+      <div
+        style={{
+          padding: '10px 16px 4px',
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          color: 'var(--ink-3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span>
+          {isLoading ? 'Chargement…' : `${total} résultat${total > 1 ? 's' : ''}`}
+        </span>
+        <span
           style={{
-            marginTop: 16,
-            padding: 12,
-            background: 'var(--bg-alt)',
-            borderRadius: 'var(--r-lg)',
-            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            fontWeight: 500,
+            textTransform: 'none',
+            letterSpacing: 0,
+            fontSize: 11.5,
             color: 'var(--ink-3)',
-            lineHeight: 1.5,
           }}
         >
-          Astuce : appuyez sur le bouton « + » pour créer un nouveau patient.
-          Pour saisir allergies, antécédents, mutuelle ou documents historiques,
-          utilisez la version desktop (formulaire complet à onglets).
-        </div>
+          Trier <ChevronDown />
+        </span>
+      </div>
+
+      {error && (
+        <div style={{ padding: '12px 16px', color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+      )}
+
+      {/* Grouped list */}
+      <div className="m-card" style={{ background: 'transparent', boxShadow: 'none' }}>
+        {!isLoading && patients.length === 0 ? (
+          <div
+            style={{
+              padding: '60px 24px',
+              textAlign: 'center',
+              color: 'var(--ink-3)',
+              fontSize: 13,
+            }}
+          >
+            {q
+              ? 'Aucun patient ne correspond à votre recherche.'
+              : 'Aucun patient enregistré.'}
+          </div>
+        ) : (
+          groups.map(([letter, rows]) => (
+            <div key={letter}>
+              <div
+                style={{
+                  padding: '8px 16px',
+                  background: 'var(--bg)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: 'var(--ink-3)',
+                  letterSpacing: '0.08em',
+                  borderTop: '1px solid var(--border-soft)',
+                  borderBottom: '1px solid var(--border-soft)',
+                }}
+              >
+                {letter}
+              </div>
+              {rows.map((p, i) => (
+                <MPatientRow
+                  key={p.id}
+                  p={p}
+                  isFirst={i === 0}
+                  onOpen={() => navigate(`/patients/${p.id}`)}
+                />
+              ))}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div
+        style={{
+          margin: '16px 16px 24px',
+          padding: 12,
+          background: 'var(--bg-alt)',
+          borderRadius: 'var(--r-lg)',
+          fontSize: 12,
+          color: 'var(--ink-3)',
+          lineHeight: 1.5,
+        }}
+      >
+        Astuce : appuyez sur le bouton « + » pour créer un nouveau patient.
+        Pour saisir allergies, antécédents, mutuelle ou documents historiques,
+        utilisez la version desktop (formulaire complet à onglets).
       </div>
 
       <NewPatientMobileSheet

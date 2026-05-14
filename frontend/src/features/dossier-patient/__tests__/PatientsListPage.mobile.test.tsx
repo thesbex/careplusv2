@@ -16,6 +16,9 @@ const PATIENTS = [
     city: 'Casablanca',
     status: 'ACTIVE',
     tier: 'PREMIUM',
+    allergy: true,
+    chronic: true,
+    tags: ['HTA'],
   },
   {
     id: 'p2',
@@ -28,6 +31,8 @@ const PATIENTS = [
     city: null,
     status: 'ACTIVE',
     tier: 'NORMAL',
+    isNew: true,
+    tags: [],
   },
 ];
 
@@ -35,6 +40,10 @@ vi.mock('../hooks/usePatientList', () => ({
   usePatientList: () => ({
     patients: PATIENTS,
     total: PATIENTS.length,
+    totalPages: 1,
+    page: 0,
+    size: 100,
+    counts: { tous: 2, recent: 0, chroniques: 1, nouveaux: 1 },
     isLoading: false,
     error: null,
   }),
@@ -60,16 +69,31 @@ function renderPage() {
 }
 
 describe('<PatientsListMobilePage /> — NRG', () => {
-  it('renders the brand topbar and bottom tabs', () => {
+  it('renders the Patients topbar with the dossier count and bottom tabs', () => {
     const { container } = renderPage();
-    expect(container.querySelector('.mt-brand-name')).toHaveTextContent('careplus');
+    // Title "Patients" + sub "2 dossiers" come from MTopbar — the brand
+    // chip is gone since the M05a refonte (2026-05-10).
+    const title = container.querySelector('.mt-title');
+    expect(title).toHaveTextContent('Patients');
+    expect(container.querySelector('.mt-sub')).toHaveTextContent(/2 dossiers/i);
     expect(screen.getByRole('navigation', { name: 'Navigation mobile' })).toBeInTheDocument();
   });
 
-  it('uses the .m-search class for search input (no hand-rolled icon overlay)', () => {
+  it('uses the .m-search class for search input', () => {
     const { container } = renderPage();
     expect(container.querySelector('label.m-search')).toBeInTheDocument();
     expect(screen.getByLabelText('Rechercher un patient')).toBeInTheDocument();
+  });
+
+  it('renders the segmented filter [Tous / Chroniques / Nouveaux] with counts', () => {
+    renderPage();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      'Tous2',
+      'Chroniques1',
+      'Nouveaux1',
+    ]);
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
   });
 
   it('renders patient rows inside an .m-card with .m-row tappable buttons', () => {
@@ -84,10 +108,21 @@ describe('<PatientsListMobilePage /> — NRG', () => {
     renderPage();
     expect(screen.getByText('Mohamed Alami')).toBeInTheDocument();
     expect(screen.getByText('Fatima Lahlou')).toBeInTheDocument();
-    // Premium badge is a text pill, NOT an emoji.
     const premium = screen.getByLabelText('Patient Premium');
     expect(premium).toHaveTextContent('Premium');
     expect(premium.textContent).not.toMatch(/🌟|⭐/);
+  });
+
+  it('renders the amber allergy indicator on patients with allergies', () => {
+    renderPage();
+    expect(screen.getByLabelText('Allergie connue')).toBeInTheDocument();
+  });
+
+  it('renders the "Nouveau" pill on new patients', () => {
+    renderPage();
+    // The "Vu : Nouveau" line on patients with no visit history also reads
+    // "Nouveau", so we scope the assertion to the .m-pill bubble.
+    expect(screen.getByText('Nouveau', { selector: '.m-pill' })).toBeInTheDocument();
   });
 
   it('navigates to patient dossier on row tap', () => {
@@ -97,9 +132,6 @@ describe('<PatientsListMobilePage /> — NRG', () => {
   });
 
   it('exposes the « Nouveau patient » FAB to authorised users', () => {
-    // Avant 2026-05-01 la création n'était pas faisable depuis mobile :
-    // seul un message « la création se fait sur desktop » était rendu. Avec
-    // NewPatientMobileSheet la création est désormais possible via le FAB +.
     renderPage();
     expect(screen.getByRole('button', { name: /Nouveau patient/i })).toBeInTheDocument();
   });
@@ -112,8 +144,6 @@ describe('<PatientsListMobilePage /> — NRG', () => {
   it('opens the NewPatientMobileSheet when the FAB is tapped', () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: /Nouveau patient/i }));
-    // La sheet est portal'ed via radix Dialog. Le rôle dialog + les champs
-    // requis suffisent à prouver qu'elle s'est bien montée.
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByLabelText('Prénom *')).toBeInTheDocument();
     expect(screen.getByLabelText('Téléphone *')).toBeInTheDocument();

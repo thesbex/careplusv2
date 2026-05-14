@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import ma.careplus.patient.application.PatientListService;
 import ma.careplus.patient.application.PatientService;
 import ma.careplus.patient.application.PatientTabCountsService;
 import ma.careplus.patient.domain.Allergy;
@@ -15,6 +16,7 @@ import ma.careplus.patient.infrastructure.web.dto.CreateAllergyRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreateAntecedentRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreatePatientNoteRequest;
 import ma.careplus.patient.infrastructure.web.dto.CreatePatientRequest;
+import ma.careplus.patient.infrastructure.web.dto.PatientListPageView;
 import ma.careplus.patient.infrastructure.web.dto.PatientNoteResponse;
 import ma.careplus.patient.infrastructure.web.dto.PatientSummary;
 import ma.careplus.patient.infrastructure.web.dto.PatientTabCountsView;
@@ -58,13 +60,16 @@ public class PatientController {
     private final PatientService service;
     private final PatientMapper mapper;
     private final PatientTabCountsService tabCountsService;
+    private final PatientListService listService;
 
     public PatientController(PatientService service,
                              PatientMapper mapper,
-                             PatientTabCountsService tabCountsService) {
+                             PatientTabCountsService tabCountsService,
+                             PatientListService listService) {
         this.service = service;
         this.mapper = mapper;
         this.tabCountsService = tabCountsService;
+        this.listService = listService;
     }
 
     // ── Patient endpoints ─────────────────────────────────────────
@@ -90,6 +95,25 @@ public class PatientController {
             @RequestParam(required = false) String q,
             @PageableDefault(size = 20) Pageable pageable) {
         return service.search(q, pageable).map(mapper::toSummary);
+    }
+
+    /**
+     * Rich list endpoint for the 05a patients screen. Bundles patients +
+     * segment counts (tous / recent / chroniques / nouveaux) in one round-trip.
+     * Filters: free-text q, segment, gender, age range. Distinct from the
+     * `GET /` search above, which is reused by the prise-RDV spotlight and
+     * must stay lean.
+     */
+    @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public PatientListPageView listForScreen(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false, defaultValue = "tous") String segment,
+            @RequestParam(required = false) String gender,
+            @RequestParam(required = false) Integer ageMin,
+            @RequestParam(required = false) Integer ageMax,
+            @PageableDefault(size = 20) Pageable pageable) {
+        return listService.list(q, segment, gender, ageMin, ageMax, pageable);
     }
 
     @PutMapping("/{id}")
