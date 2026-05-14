@@ -16,6 +16,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Input, Select } from '@/components/ui/Input';
 import { Trash } from '@/components/icons';
 import {
   useAddPrestation,
@@ -108,13 +109,12 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
             marginBottom: 8,
           }}
         >
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 2, minWidth: 220 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Prestation</span>
-            <select
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 2, minWidth: 220 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Prestation</span>
+            <Select
               value={pickedId}
               onChange={(e) => onPick(e.target.value)}
               aria-label="Choisir une prestation"
-              style={{ padding: '6px 8px' }}
             >
               <option value="">— choisir —</option>
               {catalog.map((p) => (
@@ -122,22 +122,22 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
                   {p.label} ({p.defaultPrice} MAD)
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, width: 90 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Qté</span>
-            <input
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 90 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Qté</span>
+            <Input
               type="number"
               min={1}
               value={qty}
               onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
               aria-label="Quantité"
-              style={{ padding: '6px 8px' }}
+              className="tnum"
             />
           </label>
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 2, width: 120 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Prix unitaire (MAD)</span>
-            <input
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 130 }}>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Prix unitaire (MAD)</span>
+            <Input
               type="number"
               min={0}
               step="0.01"
@@ -145,7 +145,7 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
               placeholder={picked ? String(picked.defaultPrice) : ''}
               onChange={(e) => setUnitPriceOverride(e.target.value)}
               aria-label="Prix unitaire"
-              style={{ padding: '6px 8px' }}
+              className="tnum"
             />
           </label>
           <Button
