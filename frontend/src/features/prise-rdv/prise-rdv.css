@@ -52,12 +52,30 @@
   margin-top: 2px;
 }
 
+/* ── Form wrapper ────────────────────────────────────────────────────────── */
+/*
+ * The <form> sits between Dialog.Content (flex column, max-height 88vh) and
+ * the body/footer children. Without `display: flex` on the form itself, the
+ * body's `flex: 1; overflow: auto;` is ignored — the form just grows to its
+ * intrinsic height, the body never scrolls, and the footer is pushed off
+ * screen (user had to zoom the browser out to reach the "Confirmer" button).
+ * `min-height: 0` is required for the body's overflow to be respected in a
+ * nested flex layout (standard flex-shrink edge case).
+ */
+.prise-rdv-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 /* ── Dialog scrollable body ──────────────────────────────────────────────── */
 
 .prise-rdv-body {
   padding: 20px;
   overflow: auto;
   flex: 1;
+  min-height: 0;
 }
 
 /* ── Step eyebrows ───────────────────────────────────────────────────────── */

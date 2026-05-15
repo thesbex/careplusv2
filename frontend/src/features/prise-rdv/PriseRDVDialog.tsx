@@ -559,7 +559,10 @@ export function PriseRDVDialog({
           </div>
 
           {/* Scrollable body */}
-          <form onSubmit={(e) => { void handleSubmit(onSubmit)(e); }}>
+          <form
+            className="prise-rdv-form"
+            onSubmit={(e) => { void handleSubmit(onSubmit)(e); }}
+          >
             <div className="prise-rdv-body scroll">
 
               {/* Step 1: Patient */}
