@@ -76,7 +76,9 @@ public class SettingsController {
             /** V042 — Identifiant Fiscal (IF). Obligatoire sur toute facture émise au Maroc. */
             String ifNo,
             /** V042 — Forme juridique du cabinet (Profession libérale / SCM / SCP / SARL médicale). */
-            String legalForm
+            String legalForm,
+            /** V043 — Logo placement on PDFs: HEADER | FOOTER | WATERMARK | NONE. */
+            String logoPosition
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -144,7 +146,7 @@ public class SettingsController {
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
                             + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo, "
-                            + "rc, if_no, legal_form "
+                            + "rc, if_no, legal_form, logo_position "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -166,7 +168,8 @@ public class SettingsController {
                             rs.getBoolean("has_logo"),
                             rs.getString("rc"),
                             rs.getString("if_no"),
-                            rs.getString("legal_form")));
+                            rs.getString("legal_form"),
+                            rs.getString("logo_position")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -286,10 +289,15 @@ public class SettingsController {
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
                 Boolean.class, id));
-        // Re-read final RC/IF/legalForm because we used COALESCE on update.
-        String[] finalLegalFields = jdbc.queryForObject(
-                "SELECT rc, if_no, legal_form FROM configuration_clinic_settings WHERE id = ?",
-                (rs, i) -> new String[] { rs.getString("rc"), rs.getString("if_no"), rs.getString("legal_form") },
+        // Re-read final RC/IF/legalForm/logoPosition because we used COALESCE on update.
+        String[] finalReadback = jdbc.queryForObject(
+                "SELECT rc, if_no, legal_form, logo_position FROM configuration_clinic_settings WHERE id = ?",
+                (rs, i) -> new String[] {
+                        rs.getString("rc"),
+                        rs.getString("if_no"),
+                        rs.getString("legal_form"),
+                        rs.getString("logo_position"),
+                },
                 id);
         return new ClinicSettingsView(
                 id, req.name(), req.address(), req.city(), req.phone(),
@@ -298,7 +306,7 @@ public class SettingsController {
                 nullIfBlank(req.rib()), finalAgendaIsolation,
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
                 finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo,
-                finalLegalFields[0], finalLegalFields[1], finalLegalFields[2]);
+                finalReadback[0], finalReadback[1], finalReadback[2], finalReadback[3]);
     }
 
     /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */
@@ -557,7 +565,20 @@ public class SettingsController {
     /** Limite stricte côté backend, indépendante de la limite multipart globale. */
     private static final long LOGO_MAX_BYTES = 500L * 1024L; // 500 Ko
 
-    public record LogoMetaView(String mime, OffsetDateTime uploadedAt, int sizeBytes) {}
+    public record LogoMetaView(
+            String mime,
+            OffsetDateTime uploadedAt,
+            int sizeBytes,
+            /** V043 — HEADER | FOOTER | WATERMARK | NONE. Default HEADER. */
+            String position
+    ) {}
+
+    public record UpdateLogoPositionRequest(
+            @NotBlank
+            @Pattern(regexp = "HEADER|FOOTER|WATERMARK|NONE",
+                    message = "must be HEADER, FOOTER, WATERMARK, or NONE")
+            String position
+    ) {}
 
     /**
      * GET /api/settings/clinic/logo/meta — métadonnées (existence + MIME + date).
@@ -569,14 +590,15 @@ public class SettingsController {
     public ResponseEntity<LogoMetaView> getLogoMeta() {
         try {
             LogoMetaView v = jdbc.queryForObject(
-                    "SELECT logo_mime, logo_uploaded_at, "
+                    "SELECT logo_mime, logo_uploaded_at, logo_position, "
                             + "COALESCE(octet_length(logo_blob), 0) AS sz "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> {
                         String mime = rs.getString("logo_mime");
                         if (mime == null) return null;
                         OffsetDateTime ts = rs.getObject("logo_uploaded_at", OffsetDateTime.class);
-                        return new LogoMetaView(mime, ts, rs.getInt("sz"));
+                        return new LogoMetaView(mime, ts, rs.getInt("sz"),
+                                rs.getString("logo_position"));
                     });
             if (v == null) {
                 return ResponseEntity.noContent().build();
@@ -665,10 +687,19 @@ public class SettingsController {
                     bytes, mime.toLowerCase());
         }
 
-        OffsetDateTime ts = jdbc.queryForObject(
-                "SELECT logo_uploaded_at FROM configuration_clinic_settings LIMIT 1",
-                OffsetDateTime.class);
-        return ResponseEntity.ok(new LogoMetaView(mime.toLowerCase(), ts, bytes.length));
+        // Re-read both uploadedAt and the existing position — the upload only
+        // touches the blob/mime, leaving the position field untouched.
+        var meta = jdbc.queryForObject(
+                "SELECT logo_uploaded_at, logo_position FROM configuration_clinic_settings LIMIT 1",
+                (rs, i) -> new Object[] {
+                        rs.getObject("logo_uploaded_at", OffsetDateTime.class),
+                        rs.getString("logo_position"),
+                });
+        return ResponseEntity.ok(new LogoMetaView(
+                mime.toLowerCase(),
+                (OffsetDateTime) meta[0],
+                bytes.length,
+                (String) meta[1]));
     }
 
     /**
@@ -683,6 +714,36 @@ public class SettingsController {
                         + "SET logo_blob = NULL, logo_mime = NULL, "
                         + "    logo_uploaded_at = NULL, updated_at = now()");
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * PUT /api/settings/clinic/logo/position — change où le logo apparaît sur
+     * les PDFs (HEADER / FOOTER / WATERMARK / NONE). Indépendant de l'upload :
+     * permet à l'admin de pré-régler le placement avant d'avoir chargé le
+     * logo, ou de le déplacer après coup sans re-téléverser.
+     * ADMIN seul.
+     */
+    @PutMapping("/api/settings/clinic/logo/position")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UpdateLogoPositionRequest> updateLogoPosition(
+            @Valid @RequestBody UpdateLogoPositionRequest req) {
+        // Upsert : crée la ligne cabinet si elle n'existe pas, pour le même
+        // motif que l'upload logo (admin peut configurer avant l'identité).
+        Integer existing = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM configuration_clinic_settings", Integer.class);
+        if (existing == null || existing == 0) {
+            jdbc.update(
+                    "INSERT INTO configuration_clinic_settings "
+                            + "(id, name, address, city, phone, logo_position) "
+                            + "VALUES (?, '', '', '', '', ?)",
+                    UUID.randomUUID(), req.position());
+        } else {
+            jdbc.update(
+                    "UPDATE configuration_clinic_settings "
+                            + "SET logo_position = ?, updated_at = now()",
+                    req.position());
+        }
+        return ResponseEntity.ok(req);
     }
 
     private static String nullIfBlank(String s) {

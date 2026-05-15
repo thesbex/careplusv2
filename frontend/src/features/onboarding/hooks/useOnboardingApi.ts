@@ -256,10 +256,14 @@ export function useUserSignature(userId: string | null) {
 
 // ── Clinic logo ─────────────────────────────────────────────────────────────
 
+export type LogoPosition = 'HEADER' | 'FOOTER' | 'WATERMARK' | 'NONE';
+
 export interface LogoMeta {
   mime: string;
   uploadedAt: string;
   sizeBytes: number;
+  /** V043 — placement on generated documents. */
+  position: LogoPosition;
 }
 
 export function useClinicLogoMeta(hasLogo: boolean) {

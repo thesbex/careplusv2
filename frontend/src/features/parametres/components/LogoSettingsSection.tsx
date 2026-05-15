@@ -23,7 +23,16 @@ import {
   useClinicLogoPreviewUrl,
   useUploadClinicLogo,
   useDeleteClinicLogo,
+  useUpdateLogoPosition,
+  type LogoPosition,
 } from '../hooks/useClinicLogo';
+
+const POSITION_OPTIONS: { value: LogoPosition; label: string; hint: string }[] = [
+  { value: 'HEADER', label: 'En-tête', hint: 'En haut à gauche du document (défaut)' },
+  { value: 'FOOTER', label: 'Pied de page', hint: 'En bas du document, au-dessus de la mention CarePlus' },
+  { value: 'WATERMARK', label: 'Fond de page (filigrane)', hint: 'Centré sur la page, transparent (~8 %), derrière le contenu' },
+  { value: 'NONE', label: 'Aucun', hint: 'Ne pas afficher le logo sur les documents' },
+];
 
 const MAX_BYTES = 500 * 1024;
 const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg']);
@@ -34,8 +43,22 @@ export function LogoSettingsSection() {
   const previewUrl = useClinicLogoPreviewUrl(meta);
   const { upload, isPending: isUploading } = useUploadClinicLogo();
   const { remove, isPending: isDeleting } = useDeleteClinicLogo();
+  const { updatePosition, isPending: isUpdatingPos } = useUpdateLogoPosition();
   const fileRef = useRef<HTMLInputElement>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Default to HEADER until the meta load lands so the selector renders even
+  // before the very first upload (the BE may not yet have a settings row).
+  const currentPosition: LogoPosition = meta?.position ?? 'HEADER';
+
+  async function handlePositionChange(next: LogoPosition) {
+    if (next === currentPosition) return;
+    try {
+      await updatePosition(next);
+      toast.success('Emplacement du logo mis à jour.');
+    } catch {
+      toast.error('Échec de la mise à jour de l\'emplacement.');
+    }
+  }
 
   function handlePick() {
     fileRef.current?.click();
@@ -130,6 +153,51 @@ export function LogoSettingsSection() {
             Format : {meta.mime} · Taille : {(meta.sizeBytes / 1024).toFixed(1)} Ko
           </div>
         )}
+
+        {/* V043 — emplacement du logo sur les PDFs. Toujours visible (même
+            avant le premier upload) pour que l'admin pré-règle la position. */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>
+            Emplacement du logo sur les documents
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            {POSITION_OPTIONS.map((opt) => {
+              const active = opt.value === currentPosition;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={isUpdatingPos}
+                  onClick={() => { void handlePositionChange(opt.value); }}
+                  aria-pressed={active}
+                  style={{
+                    textAlign: 'left',
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    border: active
+                      ? '1px solid var(--primary)'
+                      : '1px solid var(--border)',
+                    background: active ? 'var(--primary-soft, #eff6ff)' : 'var(--surface)',
+                    cursor: isUpdatingPos ? 'wait' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  <div style={{
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    color: active ? 'var(--primary)' : 'var(--ink-1)',
+                  }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>
+                    {opt.hint}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
 
         <input
           ref={fileRef}

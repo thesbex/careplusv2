@@ -128,7 +128,11 @@ public class PrescriptionPdfService {
         // V037 — logo établissement (optionnel). Pattern identique à la signature :
         // base64 + MIME injectés en variables Thymeleaf, le template fait la
         // condition (logo absent → fallback texte seul).
+        // V043 — la position du logo (HEADER/FOOTER/WATERMARK/NONE) est lue
+        // séparément : elle existe même quand aucun blob n'est encore configuré
+        // (defaut DB = HEADER).
         SignatureBlob logo = fetchClinicLogoBlob();
+        String logoPosition = fetchLogoPosition();
 
         // Build Thymeleaf context
         Context ctx = new Context();
@@ -141,6 +145,7 @@ public class PrescriptionPdfService {
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("cabinetLogoBase64", logo != null ? logo.base64() : null);
         ctx.setVariable("cabinetLogoMime", logo != null ? logo.mime() : null);
+        ctx.setVariable("cabinetLogoPosition", logoPosition);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", patient.getBirthDate() != null
@@ -256,6 +261,24 @@ public class PrescriptionPdfService {
                     });
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /**
+     * V043 — placement du logo sur les documents PDF (HEADER / FOOTER /
+     * WATERMARK / NONE). Lu séparément du blob parce qu'il a sa propre
+     * sémantique : un admin peut pré-régler la position avant même d'avoir
+     * uploadé le logo. Retombe sur "HEADER" si la ligne settings n'existe
+     * pas encore (premier onboarding).
+     */
+    private String fetchLogoPosition() {
+        try {
+            String pos = jdbc.queryForObject(
+                    "SELECT logo_position FROM configuration_clinic_settings LIMIT 1",
+                    String.class);
+            return pos != null ? pos : "HEADER";
+        } catch (Exception e) {
+            return "HEADER";
         }
     }
 

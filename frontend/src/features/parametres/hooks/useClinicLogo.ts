@@ -12,10 +12,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
+export type LogoPosition = 'HEADER' | 'FOOTER' | 'WATERMARK' | 'NONE';
+
 export interface LogoMeta {
   mime: string;
   uploadedAt: string;
   sizeBytes: number;
+  /** V043 — placement on generated documents. Always returned by GET /meta. */
+  position: LogoPosition;
 }
 
 const META_KEY = 'clinic-logo-meta';
@@ -73,6 +77,25 @@ export function useUploadClinicLogo() {
     },
   });
   return { upload: mutation.mutateAsync, isPending: mutation.isPending };
+}
+
+export function useUpdateLogoPosition() {
+  const qc = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: async (position: LogoPosition) => {
+      await api.put('/settings/clinic/logo/position', { position });
+      return position;
+    },
+    onSuccess: (position) => {
+      // Patch the cached meta in place so the UI updates without a roundtrip,
+      // even before the BE 204 response is consumed.
+      const cached = qc.getQueryData<LogoMeta | null>([META_KEY]);
+      if (cached) qc.setQueryData([META_KEY], { ...cached, position });
+      void qc.invalidateQueries({ queryKey: [META_KEY] });
+      void qc.invalidateQueries({ queryKey: ['clinic-settings'] });
+    },
+  });
+  return { updatePosition: mutation.mutateAsync, isPending: mutation.isPending };
 }
 
 export function useDeleteClinicLogo() {

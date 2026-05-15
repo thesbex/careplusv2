@@ -128,7 +128,9 @@ public class VaccinationBookletPdfService {
         SignatureBlob signature = fetchSignatureBlob(doctorId);
 
         // V037 — logo établissement (optionnel) injecté en data URL dans le header.
+        // V043 — placement (HEADER/FOOTER/WATERMARK/NONE) lu séparément.
         SignatureBlob logo = fetchClinicLogoBlob();
+        String logoPosition = fetchLogoPosition();
 
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
@@ -140,6 +142,7 @@ public class VaccinationBookletPdfService {
         ctx.setVariable("signatureMime", signature != null ? signature.mime() : null);
         ctx.setVariable("cabinetLogoBase64", logo != null ? logo.base64() : null);
         ctx.setVariable("cabinetLogoMime", logo != null ? logo.mime() : null);
+        ctx.setVariable("cabinetLogoPosition", logoPosition);
         ctx.setVariable("patient", Map.of(
                 "fullName", patient.getFirstName() + " " + patient.getLastName().toUpperCase(),
                 "birthDate", birthDate != null ? birthDate.format(DATE_FMT) : "",
@@ -217,6 +220,18 @@ public class VaccinationBookletPdfService {
                     });
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    /** V043 — voir {@code PrescriptionPdfService#fetchLogoPosition}. */
+    private String fetchLogoPosition() {
+        try {
+            String pos = jdbc.queryForObject(
+                    "SELECT logo_position FROM configuration_clinic_settings LIMIT 1",
+                    String.class);
+            return pos != null ? pos : "HEADER";
+        } catch (Exception e) {
+            return "HEADER";
         }
     }
 

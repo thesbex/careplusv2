@@ -157,11 +157,22 @@
 <body>
 <div class="page">
 
+    <!-- V043 — Watermark variant : logo centered behind the content, faint. -->
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:absolute;top:0;left:0;width:100%;height:100%;
+                display:flex;align-items:center;justify-content:center;
+                opacity:0.08;pointer-events:none;z-index:0;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="max-width:60%;max-height:60%;"
+             alt=""/>
+    </div>
+
     <!-- HEADER -->
     <div class="header">
         <div class="header-left">
-            <!-- V037 — logo établissement (optionnel) à gauche, nom + meta à droite -->
-            <img th:if="${cabinetLogoBase64 != null}"
+            <!-- V037 — logo établissement (optionnel) à gauche, nom + meta à droite.
+                 V043 — n'apparaît ici que si position == HEADER. -->
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
                  th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
                  style="max-height:80px;max-width:160px;float:left;margin-right:14px;"
                  alt="Logo"/>
@@ -274,6 +285,12 @@
     <!-- FOOTER -->
     <div class="footer">
         <div class="footer-left">
+            <!-- V043 — logo en pied de page (variant FOOTER) — à gauche au-dessus
+                 de la mention "Document généré par CarePlus". -->
+            <img th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'FOOTER'}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:42px;max-width:120px;display:block;margin-bottom:4px;"
+                 alt="Logo"/>
             Document généré par CarePlus &mdash; confidentiel médical
         </div>
         <div class="footer-right">
