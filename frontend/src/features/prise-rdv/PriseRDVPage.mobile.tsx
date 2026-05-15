@@ -13,6 +13,8 @@ import { ChevronRight } from '@/components/icons';
 import { useAvailability } from './hooks/useAvailability';
 import { useReasons } from './hooks/useReasons';
 import { useCreateAppointment } from './hooks/useCreateAppointment';
+import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
@@ -51,7 +53,19 @@ export default function PriseRDVMobilePage() {
   const [patientError, setPatientError] = useState<string | null>(null);
   const [slotError, setSlotError] = useState<string | null>(null);
 
-  const { slots } = useAvailability(selectedDateDmy, selectedDuration);
+  // Resolve the practitioner whose slots we should display: the connected
+  // medecin when applicable, otherwise the first active one. Without this,
+  // a secrétaire would see her own (empty) availability.
+  const currentUser = useAuthStore((s) => s.user);
+  const isMedecin = currentUser?.roles?.includes('MEDECIN') ?? false;
+  const { data: practitioners } = usePractitioners();
+  const activePractitioners = practitioners.filter((p) => p.active);
+  const effectivePractitionerId =
+    isMedecin && currentUser?.id
+      ? currentUser.id
+      : activePractitioners[0]?.id ?? null;
+
+  const { slots } = useAvailability(selectedDateDmy, selectedDuration, effectivePractitionerId);
   const { reasons } = useReasons();
   const { createAppointment, isPending, error } = useCreateAppointment();
 

@@ -440,8 +440,13 @@ export function PriseRDVDialog({
 
   const { candidates } = usePatientSearch(patientQuery);
   const { reasons } = useReasons();
-  const { availableDates, isLoading: isLoadingDates } = useMonthAvailability(calYear, calMonth, durationMin);
-  const { slots, isLoading: isLoadingSlots } = useAvailability(dateValue, durationMin);
+  // Pass the form's selected practitioner explicitly. Without this, a
+  // secrétaire's mini-agenda was greyed out (the hook fell back to her own
+  // user id, which has no slots).
+  const { availableDates, isLoading: isLoadingDates } =
+    useMonthAvailability(calYear, calMonth, durationMin, practitionerId);
+  const { slots, isLoading: isLoadingSlots } =
+    useAvailability(dateValue, durationMin, practitionerId);
 
   useEffect(() => {
     if (reasons.length > 0 && selectedReasonId === null) {

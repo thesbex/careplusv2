@@ -23,27 +23,34 @@ function toIsoDate(date: string): string {
   return date;
 }
 
-export function useAvailability(date?: string, durationMinutes = 30): {
+export function useAvailability(
+  date?: string,
+  durationMinutes = 30,
+  practitionerId?: string | null,
+): {
   slots: SlotOption[];
   hintText: string;
   isLoading: boolean;
   error: string | null;
 } {
-  const userId = useAuthStore((s) => s.user?.id);
+  // Fall back to the logged-in user for medecin self-booking. Secrétaire flows
+  // MUST pass the selected practitioner explicitly — see useMonthAvailability.
+  const selfId = useAuthStore((s) => s.user?.id);
+  const effectiveId = practitionerId ?? selfId;
   const isoDate = date ? toIsoDate(date) : undefined;
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['availability', userId, isoDate, durationMinutes],
+    queryKey: ['availability', effectiveId, isoDate, durationMinutes],
     queryFn: () => {
       const from = new Date(`${isoDate}T00:00:00`).toISOString();
       const to = new Date(`${isoDate}T23:59:59`).toISOString();
       return api
         .get<SlotApi[]>(
-          `/availability?practitionerId=${userId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&durationMinutes=${durationMinutes}`,
+          `/availability?practitionerId=${effectiveId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&durationMinutes=${durationMinutes}`,
         )
         .then((r) => r.data);
     },
-    enabled: !!userId && !!isoDate,
+    enabled: !!effectiveId && !!isoDate,
     staleTime: 60_000,
   });
 
