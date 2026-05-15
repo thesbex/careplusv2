@@ -6,6 +6,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Warn, Plus } from '@/components/icons';
 import type { PatientSummary } from '@/features/dossier-patient/types';
 import type { VitalsApi } from '../hooks/useLatestVitals';
+import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
 import { VitalIcon, type VitalKey } from './VitalIcon';
 
 interface PatientContextCardProps {
@@ -77,6 +78,15 @@ function formatDecimal(v: unknown, digits: number): string | null {
 export function PatientContextCard({
   patient, vitals, onRecordVitals, canRecordVitals = true,
 }: PatientContextCardProps) {
+  // Hook calls must precede the early `if (!patient)` return — React rules of
+  // hooks. Insurance catalogue is small and cached, so the extra fetch when
+  // the patient is null is harmless (it primes the query for when data lands).
+  const { insurances } = useInsurances();
+  const mutuelleName =
+    patient?.mutuelleInsuranceId
+      ? insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? null
+      : null;
+
   if (!patient) {
     return (
       <div
@@ -163,6 +173,20 @@ export function PatientContextCard({
           </span>
         </div>
       )}
+
+      {/* Couverture (mutuelle) — always shown so the praticien knows if the
+          patient is covered without opening the edit form. */}
+      <div style={{ marginTop: 10, fontSize: 11.5 }}>
+        <span style={{ color: 'var(--ink-3)' }}>Couverture : </span>
+        {patient.mutuelleInsuranceId ? (
+          <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>
+            {mutuelleName ?? 'Mutuelle'}
+            {patient.mutuellePolicyNumber ? ` · ${patient.mutuellePolicyNumber}` : ''}
+          </span>
+        ) : (
+          <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>aucune mutuelle</span>
+        )}
+      </div>
 
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

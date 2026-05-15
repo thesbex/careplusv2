@@ -7,11 +7,27 @@
  * Après le fix, TOUTES les constantes non-null sont affichées, et celles
  * jamais saisies (null) ne génèrent pas de ligne (pas de "—" parasite).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactElement } from 'react';
 import { PatientContextCard } from '../PatientContextCard';
 import type { VitalsApi } from '../../hooks/useLatestVitals';
 import type { PatientSummary } from '@/features/dossier-patient/types';
+
+// The card now reads the insurance catalogue to label the mutuelle. The
+// existing B1 vitals scenarios don't care about coverage, so we stub the
+// hook with an empty list and skip the network call.
+vi.mock('@/features/dossier-patient/hooks/useInsurances', () => ({
+  useInsurances: () => ({ insurances: [], isLoading: false }),
+}));
+
+function renderWithQc(ui: ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const PATIENT: PatientSummary = {
   id: 'pat-1',
@@ -67,7 +83,7 @@ function makeVitals(over: Partial<VitalsApi> = {}): VitalsApi {
 
 describe('<PatientContextCard /> — bug B1 régression guard', () => {
   it("scénario exact du bug : taille + FC saisis → les DEUX s'affichent", () => {
-    render(
+    renderWithQc(
       <PatientContextCard
         patient={PATIENT}
         vitals={makeVitals({ heartRateBpm: 72, heightCm: 170 })}
@@ -81,7 +97,7 @@ describe('<PatientContextCard /> — bug B1 régression guard', () => {
   });
 
   it('affiche les 11 constantes quand toutes sont renseignées', () => {
-    render(
+    renderWithQc(
       <PatientContextCard
         patient={PATIENT}
         vitals={makeVitals({
@@ -114,7 +130,7 @@ describe('<PatientContextCard /> — bug B1 régression guard', () => {
   });
 
   it('n\'affiche PAS de ligne pour une constante null (cas le plus courant)', () => {
-    render(
+    renderWithQc(
       <PatientContextCard
         patient={PATIENT}
         vitals={makeVitals({ heartRateBpm: 72 })}
@@ -131,7 +147,7 @@ describe('<PatientContextCard /> — bug B1 régression guard', () => {
   });
 
   it('tolère les BigDecimal sérialisés en string par Jackson', () => {
-    render(
+    renderWithQc(
       <PatientContextCard
         patient={PATIENT}
         vitals={makeVitals({
@@ -151,10 +167,19 @@ describe('<PatientContextCard /> — bug B1 régression guard', () => {
   });
 
   it('quand vitals=null, affiche le CTA « Saisir les constantes »', () => {
-    render(<PatientContextCard patient={PATIENT} vitals={null} onRecordVitals={() => {}} />);
+    renderWithQc(<PatientContextCard patient={PATIENT} vitals={null} onRecordVitals={() => {}} />);
     expect(
       screen.getByText('Aucune constante prise pour cette consultation.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Saisir les constantes/i })).toBeInTheDocument();
+  });
+
+  // Couverture line — always visible, with explicit "aucune mutuelle" wording
+  // when none is declared. Regression guard for the user-reported bug where
+  // the only way to know coverage status was to open the edit form.
+  it('affiche « aucune mutuelle » quand le patient n\'a pas de couverture', () => {
+    renderWithQc(<PatientContextCard patient={PATIENT} vitals={null} />);
+    expect(screen.getByText(/Couverture/)).toBeInTheDocument();
+    expect(screen.getByText(/aucune mutuelle/i)).toBeInTheDocument();
   });
 });

@@ -123,7 +123,6 @@ function EditPatientPanel({
   const { insurances } = useInsurances();
   const [form, setForm] = useState<UpdatePatientForm>(initial);
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'personnel' | 'medical'>('personnel');
 
   async function handlePhotoFile(file: File) {
@@ -146,7 +145,6 @@ function EditPatientPanel({
   function setField<K extends keyof UpdatePatientForm>(key: K, value: UpdatePatientForm[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setValidationError(null);
-    setSaved(false);
     reset();
   }
 
@@ -214,8 +212,17 @@ function EditPatientPanel({
       setValidationError('Numéro de téléphone invalide.');
       return;
     }
-    await update(form).catch(() => null);
-    if (!error) setSaved(true);
+    // mutateAsync resolves on success, rejects on failure. Closing the panel
+    // on success matches the pre-regression behavior the user expects — and
+    // useUpdatePatient already invalidates ['patient', id] so the parent
+    // dossier reflects the new state immediately.
+    try {
+      await update(form);
+      onClose();
+    } catch {
+      // The mutation's error state (returned as `error`) is rendered below the
+      // form — no extra surfacing needed here.
+    }
   }
 
   return (
@@ -575,9 +582,6 @@ function EditPatientPanel({
 
         {(validationError ?? error) && (
           <div style={{ color: 'var(--danger)', fontSize: 12 }}>{validationError ?? error}</div>
-        )}
-        {saved && !error && (
-          <div style={{ color: '#2E7D32', fontSize: 12 }}>Modifications enregistrées.</div>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>

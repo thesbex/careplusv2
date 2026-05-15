@@ -226,23 +226,25 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
         </div>
       </Panel>
 
-      {/* Mutuelle */}
-      {(patient.mutuelleInsuranceId || patient.tier === 'PREMIUM') && (
-        <Panel style={{ marginBottom: 12 }}>
-          <PanelHeader>Couverture</PanelHeader>
-          <div style={{ padding: '10px 14px', fontSize: 12.5 }}>
-            {patient.tier === 'PREMIUM' && (
-              <div style={{ marginBottom: 4 }}>🌟 Patient Premium (remise auto)</div>
-            )}
-            {patient.mutuelleInsuranceId && (
-              <div style={{ color: 'var(--ink-2)' }}>
-                {mutuelleName ?? 'Mutuelle'}
-                {patient.mutuellePolicyNumber ? ` · N° ${patient.mutuellePolicyNumber}` : ''}
-              </div>
-            )}
-          </div>
-        </Panel>
-      )}
+      {/* Couverture — always visible. Pre-fix the panel was conditional on a
+          mutuelle being set, so a patient with no coverage showed nothing at
+          all and the user had to open the edit form to confirm. */}
+      <Panel style={{ marginBottom: 12 }}>
+        <PanelHeader>Couverture</PanelHeader>
+        <div style={{ padding: '10px 14px', fontSize: 12.5 }}>
+          {patient.tier === 'PREMIUM' && (
+            <div style={{ marginBottom: 4 }}>🌟 Patient Premium (remise auto)</div>
+          )}
+          {patient.mutuelleInsuranceId ? (
+            <div style={{ color: 'var(--ink-2)' }}>
+              {mutuelleName ?? 'Mutuelle'}
+              {patient.mutuellePolicyNumber ? ` · N° ${patient.mutuellePolicyNumber}` : ''}
+            </div>
+          ) : (
+            <div style={{ color: 'var(--ink-3)' }}>Aucune mutuelle déclarée</div>
+          )}
+        </div>
+      </Panel>
 
       {/* Constantes card — alimentée par usePatientVitalsHistory (B5 fix). */}
       <Panel style={{ marginBottom: 12 }}>
