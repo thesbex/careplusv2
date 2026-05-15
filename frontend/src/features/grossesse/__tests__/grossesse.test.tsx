@@ -185,6 +185,31 @@ describe('PregnancyTab — EN_COURS', () => {
     const chips = screen.getAllByText(/^SA \d+$/);
     expect(chips.length).toBe(8);
   });
+
+  // Regression guard : the note saved at declaration was stored in BE +
+  // exposed by the DTO + typed on the FE, but never rendered. The user
+  // reported "j'ai ajouté une grossesse avec une note, mais elle n'apparaît
+  // pas dans le dossier" — fix surfaces it as a "Note" block on the tab.
+  it('renders the pregnancy note when one is set', () => {
+    vi.mocked(useCurrentPregnancy).mockReturnValue({
+      pregnancy: makePregnancy({ notes: 'Patiente sous Spasfon depuis SA8.' }),
+      isLoading: false,
+      error: null,
+    });
+    renderWithQC(<PregnancyTab patientId="p-1" />);
+    expect(screen.getByText('Note')).toBeInTheDocument();
+    expect(screen.getByText(/Spasfon depuis SA8/)).toBeInTheDocument();
+  });
+
+  it('does not render an empty Note block when notes are null', () => {
+    vi.mocked(useCurrentPregnancy).mockReturnValue({
+      pregnancy: makePregnancy({ notes: null }),
+      isLoading: false,
+      error: null,
+    });
+    renderWithQC(<PregnancyTab patientId="p-1" />);
+    expect(screen.queryByText('Note')).not.toBeInTheDocument();
+  });
 });
 
 describe('PregnancyVisitDrawer — contextual fields', () => {

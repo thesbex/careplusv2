@@ -298,6 +298,39 @@ function CurrentPregnancySection({
           <PlanTimeline pregnancyId={pregnancy.id} />
         </div>
 
+        {/* Notes saisies à la déclaration / mise à jour de la grossesse —
+            invisibles avant ce fix : le champ existait en BE + DTO + type FE
+            mais n'était rendu nulle part dans le dossier. */}
+        {pregnancy.notes && pregnancy.notes.trim().length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.08em',
+                color: 'var(--ink-3)',
+                marginBottom: 6,
+              }}
+            >
+              Note
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: 'var(--ink-2)',
+                whiteSpace: 'pre-line',
+                padding: '8px 12px',
+                background: 'var(--surface-2, var(--bg-alt))',
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+              }}
+            >
+              {pregnancy.notes}
+            </div>
+          </div>
+        )}
+
         <div className="gr-actions" style={{ marginTop: 14 }}>
           {canRecordVisit && (
             <Button variant="primary" size="sm" onClick={onOpenVisit}>
