@@ -17,7 +17,7 @@ interface PatientViewApi {
   mutuellePoliceNumber?: string | null;
   photoDocumentId?: string | null;
   allergies: { id: string; substance: string; severity: string; notes: string | null }[];
-  antecedents: { id: string; type: string; description: string }[];
+  antecedents: { id: string; type: string; description: string; category?: string | null }[];
   createdAt: string;
 }
 
@@ -56,12 +56,16 @@ function adapt(v: PatientViewApi): PatientSummary {
       description: a.description,
     })),
     allergyNotes: v.allergies.map((a) => a.notes).filter(Boolean).join('; '),
+    // "Traitement en cours" = AntecedentCategory.MEDICAMENTEUX_EN_COURS (ADR-023).
+    // Pre-fix the filter was `type === 'TRAITEMENT_CHRONIQUE'` — a value that
+    // never exists in the backend enum (MEDICAL/CHIRURGICAL/FAMILIAL/
+    // GYNECO_OBSTETRIQUE/HABITUS), so the section never rendered.
     antecedents: v.antecedents
-      .filter((a) => a.type !== 'TRAITEMENT_CHRONIQUE')
+      .filter((a) => a.category !== 'MEDICAMENTEUX_EN_COURS')
       .map((a) => a.description)
       .join('\n'),
     chronicTreatment: v.antecedents
-      .filter((a) => a.type === 'TRAITEMENT_CHRONIQUE')
+      .filter((a) => a.category === 'MEDICAMENTEUX_EN_COURS')
       .map((a) => a.description)
       .join('\n'),
     timeline: [],

@@ -36,7 +36,6 @@ const ANTECEDENT_LABELS: Record<string, string> = {
   FAMILIAL: 'Familial',
   GYNECO_OBSTETRIQUE: 'Gynéco',
   HABITUS: 'Habitudes',
-  TRAITEMENT_CHRONIQUE: 'Traitement',
 };
 
 /**
