@@ -505,9 +505,25 @@ export default function AgendaPage() {
             setShowRDV(o);
             if (!o) setRdvPrefill(null);
           }}
-          onCreated={() => {
+          onCreated={(createdDate) => {
             setRdvPrefill(null);
-            setWeekOffset(0);
+            // Navigate to the week (and month) that actually contains the new
+            // RDV. Without this, a booking made for next week silently lands
+            // off-screen and the user thinks creation failed.
+            if (createdDate) {
+              const target = new Date(`${createdDate}T00:00:00`);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const dowToday = today.getDay() === 0 ? 7 : today.getDay();
+              const mondayThisWeek = new Date(today);
+              mondayThisWeek.setDate(today.getDate() - (dowToday - 1));
+              const diffDays = Math.round(
+                (target.getTime() - mondayThisWeek.getTime()) / (24 * 60 * 60 * 1000),
+              );
+              setWeekOffset(Math.floor(diffDays / 7));
+              setMonthYear(target.getFullYear());
+              setMonthIndex(target.getMonth());
+            }
             void refetch();
           }}
           {...(rdvPrefill ? { prefilledDate: rdvPrefill.date, prefilledTime: rdvPrefill.time } : {})}

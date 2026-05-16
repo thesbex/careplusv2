@@ -357,7 +357,10 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
 export interface PriseRDVDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated?: () => void;
+  /** Called after a successful create. `createdDate` is the booked day in
+   *  ISO yyyy-MM-dd so the caller can navigate to the right week (otherwise
+   *  a RDV booked outside the visible week silently appears off-screen). */
+  onCreated?: (createdDate?: string) => void;
   /** ISO yyyy-MM-dd to pre-select in the calendar (e.g. when opened from an empty agenda slot). */
   prefilledDate?: string;
   /** "HH:mm" to pre-select as the time (used together with prefilledDate). */
@@ -531,7 +534,10 @@ export function PriseRDVDialog({
       if (showRoomField && roomId) {
         void probeAndWarnRoomConflicts(result.id);
       }
-      onCreated?.();
+      // Convert JJ/MM/AAAA → yyyy-MM-dd for the parent's week-nav math.
+      const [dd, mm, yyyy] = data.date.split('/');
+      const isoDate = yyyy && mm && dd ? `${yyyy}-${mm}-${dd}` : undefined;
+      onCreated?.(isoDate);
       onOpenChange(false);
     }
   }

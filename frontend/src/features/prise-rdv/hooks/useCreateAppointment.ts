@@ -41,6 +41,8 @@ export function useCreateAppointment() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      void queryClient.invalidateQueries({ queryKey: ['appointments-month'] });
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
     },
   });
 
@@ -48,8 +50,11 @@ export function useCreateAppointment() {
     createAppointment: mutation.mutateAsync,
     isPending: mutation.isPending,
     error: mutation.error
-      ? (mutation.error as { response?: { data?: { message?: string } } })
-          .response?.data?.message ?? 'Erreur lors de la création du RDV.'
+      ? (mutation.error as { response?: { data?: { detail?: string; message?: string } } })
+          .response?.data?.detail ??
+        (mutation.error as { response?: { data?: { message?: string } } })
+          .response?.data?.message ??
+        'Erreur lors de la création du RDV.'
       : null,
   };
 }
