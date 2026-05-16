@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close } from '@/components/icons';
@@ -60,6 +60,7 @@ function fmtTime(iso: string): string {
 
 export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }: FollowUpDialogProps) {
   const userId = useAuthStore((s) => s.user?.id);
+  const queryClient = useQueryClient();
   const [date, setDate] = useState<string>('');
   const [time, setTime] = useState<string>('09:00');
   const [reasonId, setReasonId] = useState<string>('');
@@ -156,6 +157,16 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
         reasonId: reasonId || null,
         notes: notes || null,
       }),
+    onSuccess: () => {
+      // Same invalidation set as useCreateAppointment — without this, the
+      // freshly-booked follow-up doesn't surface in the agenda's week / month
+      // views nor refresh the slot picker, and the user sees "the count went
+      // up but I can't find the RDV".
+      void queryClient.invalidateQueries({ queryKey: ['appointments'] });
+      void queryClient.invalidateQueries({ queryKey: ['appointments-month'] });
+      void queryClient.invalidateQueries({ queryKey: ['availability'] });
+      void queryClient.invalidateQueries({ queryKey: ['day-appointments'] });
+    },
   });
 
   async function submit() {
