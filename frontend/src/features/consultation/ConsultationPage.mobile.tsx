@@ -13,6 +13,8 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Warn, Lock, ChevronRight } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
+import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
+import { formatCoverage } from '@/features/dossier-patient/components/PatientHeader';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
@@ -66,6 +68,7 @@ export default function ConsultationMobilePage() {
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, update, isSaving } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
+  const { insurances } = useInsurances();
   const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
@@ -204,6 +207,19 @@ export default function ConsultationMobilePage() {
             {patient ? `${patient.sex} · ${patient.age} ans` : ''}
             {vitals?.systolicMmhg ? ` · TA ${taLabel}` : ''}
           </div>
+          {patient && (
+            // V044/coverage-fix — show mutuelle inline so the praticien knows
+            // if the patient is covered without opening the dossier.
+            <div
+              style={{
+                fontSize: 11,
+                color: patient.mutuelleInsuranceId ? 'var(--ink-2)' : 'var(--ink-3)',
+                marginTop: 2,
+              }}
+            >
+              {formatCoverage(patient, insurances)}
+            </div>
+          )}
         </div>
         {allergyLabel && (
           <span className="m-pill allergy">

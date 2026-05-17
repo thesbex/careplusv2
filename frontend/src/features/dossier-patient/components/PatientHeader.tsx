@@ -7,6 +7,7 @@ import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Print, Edit, Plus, Warn } from '@/components/icons';
 import type { PatientSummary } from '../types';
+import { useInsurances } from '../hooks/useInsurances';
 
 interface PatientHeaderProps {
   patient: PatientSummary;
@@ -21,6 +22,12 @@ export function PatientHeader({
   onNewConsultation,
   isStartingConsult,
 }: PatientHeaderProps) {
+  // V044/coverage-fix — render the actual mutuelle name + policy number from
+  // the canonical fields instead of the legacy hard-coded `insurance: '—'`
+  // string. Pre-fix this row always read "—" even when the patient had a
+  // mutuelle on file (user report 2026-05-17).
+  const { insurances } = useInsurances();
+  const coverageLabel = formatCoverage(patient, insurances);
   return (
     <div
       style={{
@@ -71,7 +78,7 @@ export function PatientHeader({
           <span>{patient.phone}</span>
           <span>{patient.email}</span>
           <span>Groupe {patient.bloodGroup}</span>
-          <span>{patient.insurance}</span>
+          <span>{coverageLabel}</span>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -103,6 +110,23 @@ export function PatientHeader({
       />
     </div>
   );
+}
+
+/**
+ * Pretty-print a patient's mutuelle coverage. Returns "Aucune mutuelle" if
+ * the patient has no mutuelleInsuranceId on file. Used by the dossier header
+ * and shared with mobile surfaces (export below).
+ */
+export function formatCoverage(
+  patient: Pick<PatientSummary, 'mutuelleInsuranceId' | 'mutuellePolicyNumber'>,
+  insurances: { id: string; name: string }[],
+): string {
+  if (!patient.mutuelleInsuranceId) return 'Aucune mutuelle';
+  const name =
+    insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? 'Mutuelle';
+  return patient.mutuellePolicyNumber
+    ? `${name} · N° ${patient.mutuellePolicyNumber}`
+    : name;
 }
 
 interface AllergyStripProps {

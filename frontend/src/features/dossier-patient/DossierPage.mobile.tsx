@@ -18,8 +18,10 @@ import { metaForPrescription } from '@/features/prescription/components/Document
 import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { usePatient } from './hooks/usePatient';
+import { useInsurances } from './hooks/useInsurances';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { EditPatientMobileSheet } from './components/EditPatientMobileSheet';
+import { formatCoverage } from './components/PatientHeader';
 import { VaccinationCalendarTabMobile } from '@/features/vaccination/components/VaccinationCalendarTab.mobile';
 import { PregnancyTabMobile } from '@/features/grossesse/components/PregnancyTab.mobile';
 import type { MobileDossierTab } from './types';
@@ -28,6 +30,7 @@ export default function DossierMobilePage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { patient, raw, isLoading } = usePatient(id);
+  const { insurances } = useInsurances();
   const [tab, setTab] = useState<MobileDossierTab>('historique');
   const [showEdit, setShowEdit] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
@@ -572,6 +575,43 @@ export default function DossierMobilePage() {
 
         {tab === 'admin' && (
           <div className="m-card">
+            {/* V044/coverage-fix — mutuelle was previously only editable, never
+                read-visible on mobile. User report 2026-05-17. */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                padding: '12px 14px',
+                borderBottom: '1px solid var(--border-soft)',
+                fontSize: 13,
+                gap: 8,
+              }}
+            >
+              <span style={{ color: 'var(--ink-3)', flexShrink: 0 }}>Couverture</span>
+              <span
+                style={{
+                  fontWeight: 550,
+                  textAlign: 'right',
+                  color: patient.mutuelleInsuranceId ? 'var(--ink)' : 'var(--ink-3)',
+                }}
+              >
+                {formatCoverage(patient, insurances)}
+              </span>
+            </div>
+            {patient.tier === 'PREMIUM' && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  padding: '12px 14px',
+                  borderBottom: '1px solid var(--border-soft)',
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: 'var(--ink-3)' }}>Type</span>
+                <span style={{ fontWeight: 550 }}>🌟 Premium</span>
+              </div>
+            )}
             {patient.admin.map((a) => (
               <div
                 key={a.k}
