@@ -15,6 +15,7 @@ import java.util.UUID;
 import ma.careplus.patient.domain.Patient;
 import ma.careplus.patient.infrastructure.persistence.PatientRepository;
 import ma.careplus.shared.error.NotFoundException;
+import ma.careplus.shared.pdf.LogoWatermarkRenderer;
 import ma.careplus.vaccination.domain.VaccinationDose;
 import ma.careplus.vaccination.domain.VaccinationStatus;
 import ma.careplus.vaccination.domain.VaccineCatalog;
@@ -131,6 +132,11 @@ public class VaccinationBookletPdfService {
         // V043 — placement (HEADER/FOOTER/WATERMARK/NONE) lu séparément.
         SignatureBlob logo = fetchClinicLogoBlob();
         String logoPosition = fetchLogoPosition();
+        // V043 watermark : openhtmltopdf ignores CSS opacity on raster images
+        // so we bake the alpha into the PNG bytes server-side.
+        if (logo != null && "WATERMARK".equals(logoPosition)) {
+            logo = applyWatermarkAlpha(logo);
+        }
 
         Context ctx = new Context();
         ctx.setVariable("cabinet", cabinet);
@@ -221,6 +227,16 @@ public class VaccinationBookletPdfService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /** V043 watermark : voir {@code PrescriptionPdfService#applyWatermarkAlpha}. */
+    private SignatureBlob applyWatermarkAlpha(SignatureBlob source) {
+        byte[] raw = Base64.getDecoder().decode(source.base64());
+        byte[] processed = LogoWatermarkRenderer.applyTransparency(raw, 0.10f);
+        if (processed == null) return source;
+        return new SignatureBlob(
+                Base64.getEncoder().encodeToString(processed),
+                LogoWatermarkRenderer.WATERMARK_MIME);
     }
 
     /** V043 — voir {@code PrescriptionPdfService#fetchLogoPosition}. */

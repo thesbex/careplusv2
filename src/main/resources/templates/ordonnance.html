@@ -157,13 +157,22 @@
 <body>
 <div class="page">
 
-    <!-- V043 — Watermark variant : logo centered behind the content, faint. -->
+    <!-- V043 — Watermark variant : logo centered behind the content, faint.
+         openhtmltopdf 1.0.10 quirks worth bottling here :
+           - `display:flex` is unsupported, so we centre horizontally with
+             `text-align:center` on a fixed positioned wrapper.
+           - `opacity` is supported on inline images but does NOT cascade
+             from a parent block, so the alpha is applied directly on <img>.
+           - `position:fixed` repeats the block on every page in openhtmltopdf
+             (the use-case we want for a watermark).
+           - Percent-based `top` doesn't reliably compute against the page
+             box in PDF context — we use absolute mm to land near the
+             vertical middle of an A4 sheet (297 mm tall). -->
     <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
-         style="position:absolute;top:0;left:0;width:100%;height:100%;
-                display:flex;align-items:center;justify-content:center;
-                opacity:0.08;pointer-events:none;z-index:0;">
+         style="position:fixed;left:0;right:0;top:90mm;
+                text-align:center;pointer-events:none;">
         <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
-             style="max-width:60%;max-height:60%;"
+             style="width:110mm;max-height:90mm;opacity:0.1;"
              alt=""/>
     </div>
 

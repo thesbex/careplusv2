@@ -20,6 +20,7 @@ import ma.careplus.clinical.infrastructure.persistence.ConsultationRepository;
 import ma.careplus.patient.application.PatientService;
 import ma.careplus.patient.domain.Patient;
 import ma.careplus.shared.error.NotFoundException;
+import ma.careplus.shared.pdf.LogoWatermarkRenderer;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -133,6 +134,11 @@ public class PrescriptionPdfService {
         // (defaut DB = HEADER).
         SignatureBlob logo = fetchClinicLogoBlob();
         String logoPosition = fetchLogoPosition();
+        // V043 watermark : openhtmltopdf ignores CSS opacity on raster images,
+        // so we bake the alpha into the PNG bytes server-side.
+        if (logo != null && "WATERMARK".equals(logoPosition)) {
+            logo = applyWatermarkAlpha(logo);
+        }
 
         // Build Thymeleaf context
         Context ctx = new Context();
@@ -271,6 +277,20 @@ public class PrescriptionPdfService {
      * uploadé le logo. Retombe sur "HEADER" si la ligne settings n'existe
      * pas encore (premier onboarding).
      */
+    /**
+     * V043 — bake transparency into the logo bytes for the WATERMARK variant.
+     * Falls back silently to the opaque source if decoding fails, so a broken
+     * upload never breaks the PDF generation pipeline.
+     */
+    private SignatureBlob applyWatermarkAlpha(SignatureBlob source) {
+        byte[] raw = Base64.getDecoder().decode(source.base64());
+        byte[] processed = LogoWatermarkRenderer.applyTransparency(raw, 0.10f);
+        if (processed == null) return source;
+        return new SignatureBlob(
+                Base64.getEncoder().encodeToString(processed),
+                LogoWatermarkRenderer.WATERMARK_MIME);
+    }
+
     private String fetchLogoPosition() {
         try {
             String pos = jdbc.queryForObject(

@@ -44,13 +44,14 @@
 <body>
 <div class="page">
 
-    <!-- V043 — Watermark variant : logo centré en filigrane, derrière le contenu. -->
+    <!-- V043 — Watermark variant : logo centré en filigrane, derrière le contenu.
+         Voir ordonnance.html pour les détails sur les quirks openhtmltopdf
+         (display:flex non supporté, opacity ne cascade pas, top en mm). -->
     <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
-         style="position:absolute;top:0;left:0;width:100%;height:100%;
-                display:flex;align-items:center;justify-content:center;
-                opacity:0.08;pointer-events:none;z-index:0;">
+         style="position:fixed;left:0;right:0;top:90mm;
+                text-align:center;pointer-events:none;">
         <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
-             style="max-width:60%;max-height:60%;"
+             style="width:110mm;max-height:90mm;opacity:0.1;"
              alt=""/>
     </div>
 
