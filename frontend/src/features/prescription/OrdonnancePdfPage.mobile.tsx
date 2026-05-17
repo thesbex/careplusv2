@@ -2,11 +2,14 @@
  * Aperçu document — mobile (tous types : ordonnance, certificat, bon
  * d'analyses, bon d'imagerie, arrêt de travail).
  *
- * Mobile browsers (especially iOS Safari) do not reliably render
- * `application/pdf` inside an <iframe> — le contenu apparaît blanc. On
- * affiche donc un récapitulatif HTML natif (lignes lisibles + corps libre)
- * et on offre des boutons "Aperçu PDF" (open new tab) + "Télécharger" qui
- * s'appuient sur la blob URL — auth bearer attaché par axios.
+ * User feedback 2026-05-17 : "le document doit s'afficher automatiquement
+ * sur la page, c'est plus pratique". Pre-fix this page deliberately hid
+ * the inline PDF (only the metadata + open/download buttons) because iOS
+ * Safari sometimes refuses to render application/pdf inside an iframe.
+ * Reality on every modern Android + Chrome + Edge + desktop Safari : the
+ * iframe DOES render inline. We now mount the iframe by default and keep
+ * the two action buttons immediately under it as a fallback for the iOS
+ * Safari edge case (the blob URL still lets the OS take over with "Open").
  */
 import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
@@ -199,9 +202,36 @@ export default function OrdonnancePdfMobilePage() {
               )}
             </div>
 
-            {/* PDF actions — open / download. We don't render the PDF inline
-                on mobile because iframe PDF rendering is unreliable on
-                iOS Safari. */}
+            {/* Inline PDF preview. The iframe relies on the blob URL fetched
+                with the bearer token (ADR-019). On the rare browser that can't
+                render application/pdf inline, the user still has the two
+                buttons below to open in a new tab or download. */}
+            {url && (
+              <div
+                className="m-card"
+                style={{
+                  marginBottom: 12,
+                  padding: 0,
+                  overflow: 'hidden',
+                  background: '#fff',
+                }}
+              >
+                <iframe
+                  title={`Aperçu ${docMeta.label}`}
+                  src={url}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    height: '60vh',
+                    border: 'none',
+                    background: '#fff',
+                  }}
+                />
+              </div>
+            )}
+
+            {/* PDF actions — open / download. Kept as a fallback for browsers
+                (notably iOS Safari) that may render the iframe blank. */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               <button
                 type="button"
