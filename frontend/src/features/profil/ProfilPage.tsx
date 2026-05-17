@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
+import { PasswordChangeSection } from './components/PasswordChangeSection';
 
 const NAV_MAP = {
   dashboard: '/dashboard',
@@ -88,6 +89,8 @@ export default function ProfilPage() {
             ordonnances, certificats et carnets de vaccination qu'ils génèrent).
           </div>
         )}
+
+        <PasswordChangeSection />
       </div>
     </Screen>
   );

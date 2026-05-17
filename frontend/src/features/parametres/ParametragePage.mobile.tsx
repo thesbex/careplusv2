@@ -21,6 +21,7 @@ import {
   Box as BoxIcon,
   BarChart as BarChartIcon,
   Stetho as StethoIcon,
+  Users,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -195,6 +196,12 @@ export default function ParametrageMobilePage() {
           <h3>Compte</h3>
         </div>
         <div className="m-card">
+          <MenuRow
+            Icon={Users}
+            label="Mon profil"
+            hint="Identité, signature, mot de passe"
+            onClick={() => navigate('/profil')}
+          />
           <button
             type="button"
             className="m-row"
