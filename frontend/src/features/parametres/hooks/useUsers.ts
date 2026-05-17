@@ -129,3 +129,41 @@ export function useDeactivateUser() {
     isPending: mutation.isPending,
   };
 }
+
+/**
+ * V044 — Admin resets a user's password.
+ *
+ * <p>The backend BCrypts the new password, flips
+ * {@code password_change_required = TRUE} on the target user (forcing them
+ * to pick a new password at next login) and revokes their active refresh
+ * tokens. The 12-character minimum mirrors {@link useCreateUser}.
+ */
+export function useResetUserPassword() {
+  const mutation = useMutation({
+    mutationFn: async (vars: { id: string; password: string }): Promise<void> => {
+      await api.post(`/admin/users/${vars.id}/reset-password`, {
+        password: vars.password,
+      });
+    },
+  });
+  return {
+    resetPassword: mutation.mutateAsync,
+    isPending: mutation.isPending,
+  };
+}
+
+/**
+ * V044 — Self-service password change. Used by ForceChangePasswordPage (when
+ * the admin force-flagged the account) and by future "Mon profil" surfaces.
+ */
+export function useChangeOwnPassword() {
+  const mutation = useMutation({
+    mutationFn: async (vars: { currentPassword: string; newPassword: string }): Promise<void> => {
+      await api.post(`/users/me/change-password`, vars);
+    },
+  });
+  return {
+    changePassword: mutation.mutateAsync,
+    isPending: mutation.isPending,
+  };
+}

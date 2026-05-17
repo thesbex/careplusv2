@@ -23,6 +23,10 @@ function renderLogin(initialPath = '/login') {
     [
       { path: '/login', element: <LoginPage /> },
       { path: '/agenda', element: <div data-testid="agenda-page">Agenda</div> },
+      {
+        path: '/force-change-password',
+        element: <div data-testid="force-change-page">Force change</div>,
+      },
     ],
     { initialEntries: [initialPath] },
   );
@@ -104,6 +108,35 @@ describe('<LoginPage />', () => {
     expect(useAuthStore.getState().accessToken).toBe('eyJ-fake-token');
     expect(useAuthStore.getState().user?.firstName).toBe('Fatima');
     expect(useAuthStore.getState().hasRole('SECRETAIRE')).toBe(true);
+  });
+
+  it('redirects to /force-change-password when the user must change pwd (V044)', async () => {
+    const user = userEvent.setup();
+    mockPost.mockResolvedValueOnce({
+      data: {
+        accessToken: 'eyJ-fake-token',
+        expiresInSeconds: 900,
+        user: {
+          id: 'u2',
+          email: 'reset.me@cabinet.ma',
+          firstName: 'Reset',
+          lastName: 'Me',
+          roles: ['MEDECIN'],
+          passwordChangeRequired: true,
+        },
+      },
+    });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Adresse email'), 'reset.me@cabinet.ma');
+    await user.type(screen.getByLabelText('Mot de passe'), 'ChangeMe123!');
+    await user.click(screen.getByRole('button', { name: /Se connecter/ }));
+
+    await waitFor(() => expect(mockPost).toHaveBeenCalled());
+    expect(await screen.findByTestId('force-change-page')).toBeInTheDocument();
+    // pickPostLoginPath would have called /settings/clinic for an admin —
+    // we skip that path entirely, so /auth/login is the only POST.
+    expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
   it('renders an inline error on 401 without clearing fields', async () => {

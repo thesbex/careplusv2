@@ -11,6 +11,7 @@ interface LoginBody {
 interface LoginResponse {
   accessToken: string;
   expiresInSeconds: number;
+  /** AuthUser shape — V044 adds `passwordChangeRequired`. */
   user: AuthUser;
 }
 

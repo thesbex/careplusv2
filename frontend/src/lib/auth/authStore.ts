@@ -14,6 +14,8 @@ export interface AuthUser {
   roles: string[];
   /** Granted permission codes (QA3-3). Empty array on legacy backends. */
   permissions?: string[];
+  /** V044 — TRUE when an admin reset this user's password; the SPA must route to /force-change-password. */
+  passwordChangeRequired?: boolean;
 }
 
 interface AuthState {

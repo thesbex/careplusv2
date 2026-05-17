@@ -17,6 +17,8 @@ export interface ProblemDetail {
   status: number;
   detail?: string;
   instance?: string;
+  /** Stable error code (e.g. PAT-001, EMAIL_ALREADY_EXISTS, PASSWORD_CHANGE_REQUIRED). */
+  code?: string;
   /** Field-level errors emitted by bean-validation failures (422). */
   violations?: Violation[];
 }

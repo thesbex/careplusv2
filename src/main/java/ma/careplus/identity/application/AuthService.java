@@ -79,7 +79,8 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
-                rolesSet
+                rolesSet,
+                user.isPasswordChangeRequired()
         );
     }
 

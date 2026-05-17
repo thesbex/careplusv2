@@ -57,7 +57,8 @@ public class AuthController {
 
         java.util.Set<String> permissions = rolePermissionResolver.resolveForRoles(result.roles());
         UserView userView = new UserView(result.userId(), result.email(), result.firstName(),
-                result.lastName(), result.roles(), permissions);
+                result.lastName(), result.roles(), permissions, java.util.Collections.emptyList(),
+                null, null, null, null, result.passwordChangeRequired());
         LoginResponse response = new LoginResponse(result.accessToken(), result.expiresInSeconds(), userView);
         return ResponseEntity.ok(response);
     }

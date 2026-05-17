@@ -91,6 +91,15 @@ public class User {
     @Column(name = "cnops", length = 64)
     private String cnops;
 
+    /**
+     * V044 — set TRUE when an admin resets the password ; the next successful
+     * login redirects to /force-change-password and the back-end filter blocks
+     * every other route until the user picks a new password via
+     * POST /api/me/change-password.
+     */
+    @Column(name = "password_change_required", nullable = false)
+    private boolean passwordChangeRequired = false;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "identity_user_role",
@@ -163,4 +172,7 @@ public class User {
 
     public String getCnops() { return cnops; }
     public void setCnops(String cnops) { this.cnops = cnops; }
+
+    public boolean isPasswordChangeRequired() { return passwordChangeRequired; }
+    public void setPasswordChangeRequired(boolean v) { this.passwordChangeRequired = v; }
 }

@@ -29,22 +29,31 @@ public record UserView(
         /** V040 — practitioner CNOM. */
         String cnom,
         /** V040 — practitioner CNOPS. */
-        String cnops
+        String cnops,
+        /** V044 — TRUE when an admin reset the password and the user must pick a new one. */
+        boolean passwordChangeRequired
 ) {
     public UserView(UUID id, String email, String firstName, String lastName, Set<String> roles) {
         this(id, email, firstName, lastName, roles, Collections.emptySet(), Collections.emptyList(),
-                null, null, null, null);
+                null, null, null, null, false);
     }
 
     public UserView(UUID id, String email, String firstName, String lastName,
                     Set<String> roles, Set<String> permissions) {
         this(id, email, firstName, lastName, roles, permissions, Collections.emptyList(),
-                null, null, null, null);
+                null, null, null, null, false);
     }
 
     public UserView(UUID id, String email, String firstName, String lastName,
                     Set<String> roles, Set<String> permissions, List<UUID> assignedPractitionerIds) {
         this(id, email, firstName, lastName, roles, permissions, assignedPractitionerIds,
-                null, null, null, null);
+                null, null, null, null, false);
+    }
+
+    public UserView(UUID id, String email, String firstName, String lastName,
+                    Set<String> roles, Set<String> permissions, List<UUID> assignedPractitionerIds,
+                    String specialty, String inpe, String cnom, String cnops) {
+        this(id, email, firstName, lastName, roles, permissions, assignedPractitionerIds,
+                specialty, inpe, cnom, cnops, false);
     }
 }

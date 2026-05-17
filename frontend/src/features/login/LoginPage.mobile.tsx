@@ -33,7 +33,11 @@ export default function LoginMobilePage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await loginMutation.mutateAsync(values);
+      const result = await loginMutation.mutateAsync(values);
+      if (result.user?.passwordChangeRequired) {
+        navigate('/force-change-password', { replace: true });
+        return;
+      }
       navigate(redirectTo, { replace: true });
     } catch (err) {
       const problem = toProblemDetail(err);

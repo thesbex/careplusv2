@@ -87,6 +87,20 @@ api.interceptors.response.use(
       }
     }
 
+    // V044 — server says the user must change their password before doing
+    // anything else. Flip the store flag so the route guards bounce to
+    // /force-change-password on next render. Cheaper than a hard navigation
+    // and keeps the SPA reactive.
+    if (status === 403) {
+      const body = error.response?.data as { code?: string } | undefined;
+      if (body?.code === 'PASSWORD_CHANGE_REQUIRED') {
+        const state = useAuthStore.getState();
+        if (state.user && !state.user.passwordChangeRequired) {
+          state.setUser({ ...state.user, passwordChangeRequired: true });
+        }
+      }
+    }
+
     return Promise.reject(error);
   },
 );

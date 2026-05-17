@@ -44,7 +44,13 @@ export default function LoginPage() {
 
   const onSubmit = handleSubmit(async (values) => {
     try {
-      await loginMutation.mutateAsync(values);
+      const result = await loginMutation.mutateAsync(values);
+      // V044 — admin reset this account, the user must pick a new password
+      // before doing anything else. Skip the regular post-login routing.
+      if (result.user?.passwordChangeRequired) {
+        navigate('/force-change-password', { replace: true });
+        return;
+      }
       // First-login redirect : if the new admin hasn't run the cabinet setup
       // wizard yet (clinic_settings.name is empty), send them straight there
       // instead of /agenda. Idempotent — the wizard re-loads existing values

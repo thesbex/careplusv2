@@ -3,6 +3,7 @@ import LandingPage from '@/features/landing/LandingPage';
 import LoginPage from '@/features/login/LoginRoute';
 import RegisterPage from '@/features/register/RegisterPage';
 import OnboardingPage from '@/features/onboarding/OnboardingPage';
+import ForceChangePasswordPage from '@/features/auth/ForceChangePasswordPage';
 import AgendaRoute from '@/features/agenda';
 import DashboardRoute from '@/features/dashboard/DashboardRoute';
 import DossierRoute from '@/features/dossier-patient';
@@ -82,6 +83,18 @@ export const router = createBrowserRouter(
         <RequireRole roles={['ADMIN', 'MEDECIN']}>
           <OnboardingPage />
         </RequireRole>
+      ),
+    },
+    {
+      // V044 — force-change-password is reachable for any authenticated user
+      // whose passwordChangeRequired flag is set. We use RequireAuth (which
+      // intentionally skips its own redirect when pathname is this route) so
+      // unauthenticated visitors bounce to /login.
+      path: '/force-change-password',
+      element: (
+        <RequireAuth>
+          <ForceChangePasswordPage />
+        </RequireAuth>
       ),
     },
     {

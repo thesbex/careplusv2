@@ -10,5 +10,7 @@ public record LoginResult(
         String email,
         String firstName,
         String lastName,
-        java.util.Set<String> roles
+        java.util.Set<String> roles,
+        /** V044 — TRUE if the admin reset the password ; the client must redirect to /force-change-password. */
+        boolean passwordChangeRequired
 ) {}

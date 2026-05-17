@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import ma.careplus.identity.infrastructure.security.JwtAuthenticationFilter;
 import ma.careplus.identity.infrastructure.security.LoginRateLimitFilter;
+import ma.careplus.identity.infrastructure.security.PasswordChangeRequiredFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,6 +36,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final LoginRateLimitFilter loginRateLimitFilter;
+    private final PasswordChangeRequiredFilter passwordChangeRequiredFilter;
 
     /**
      * Comma-separated list of allowed origins for CORS preflight + actual requests.
@@ -45,9 +47,11 @@ public class SecurityConfig {
     private String allowedOriginsCsv;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
-                          LoginRateLimitFilter loginRateLimitFilter) {
+                          LoginRateLimitFilter loginRateLimitFilter,
+                          PasswordChangeRequiredFilter passwordChangeRequiredFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.loginRateLimitFilter = loginRateLimitFilter;
+        this.passwordChangeRequiredFilter = passwordChangeRequiredFilter;
     }
 
     @Bean
@@ -118,6 +122,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(problemJsonAccessDeniedHandler()))
                 .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(passwordChangeRequiredFilter, JwtAuthenticationFilter.class)
                 .httpBasic(basic -> basic.disable())
                 .build();
     }

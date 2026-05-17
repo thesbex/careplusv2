@@ -22,12 +22,14 @@ import { toProblemDetail } from '@/lib/api/problemJson';
 import {
   useCreateUser,
   useDeactivateUser,
+  useResetUserPassword,
   useUpdateUser,
   useUsers,
   type AdminUser,
 } from '../hooks/useUsers';
 import { usePractitioners } from '../hooks/usePractitioners';
 import { useClinicSettings } from '../hooks/useSettings';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 type UserRole = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN' | 'LAB' | 'RADIO';
 
@@ -61,6 +63,7 @@ export function UtilisateursTab() {
   const { createUser, isPending } = useCreateUser();
   const { updateUser, isPending: isUpdating } = useUpdateUser();
   const { deactivateUser, isPending: isDeactivating } = useDeactivateUser();
+  const { resetPassword, isPending: isResetting } = useResetUserPassword();
   const { practitioners } = usePractitioners();
   const activePractitioners = practitioners.filter((p) => p.active);
   const allActiveIds = activePractitioners.map((p) => p.id);
@@ -74,6 +77,54 @@ export function UtilisateursTab() {
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [draft, setDraft] = useState<UserDraft>(() => emptyUserDraft(allActiveIds));
+
+  // V044 — reset-password dialog state.
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const [resetTarget, setResetTarget] = useState<AdminUser | null>(null);
+  const [resetPwd, setResetPwd] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+
+  function openReset(user: AdminUser) {
+    setResetTarget(user);
+    setResetPwd('');
+    setResetConfirm('');
+  }
+
+  function closeReset() {
+    setResetTarget(null);
+    setResetPwd('');
+    setResetConfirm('');
+  }
+
+  async function handleResetSubmit() {
+    if (!resetTarget) return;
+    if (resetPwd.length < 12) {
+      toast.error('Le mot de passe doit faire au moins 12 caractères.');
+      return;
+    }
+    if (resetPwd !== resetConfirm) {
+      toast.error('Les deux mots de passe ne correspondent pas.');
+      return;
+    }
+    try {
+      await resetPassword({ id: resetTarget.id, password: resetPwd });
+      toast.success('Mot de passe réinitialisé.', {
+        description:
+          "L'utilisateur devra le changer à sa prochaine connexion.",
+      });
+      closeReset();
+    } catch (err) {
+      const problem = toProblemDetail(err);
+      if (problem.status === 403) {
+        toast.error("Vous n'avez pas les droits administrateur pour cette action.");
+      } else {
+        toast.error(
+          problem.title,
+          problem.detail ? { description: problem.detail } : undefined,
+        );
+      }
+    }
+  }
 
   function openCreate() {
     setDraft(emptyUserDraft(allActiveIds));
@@ -436,6 +487,93 @@ export function UtilisateursTab() {
           </div>
         )}
 
+        {resetTarget && (
+          <div
+            data-testid="reset-password-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Réinitialiser le mot de passe de ${resetTarget.firstName} ${resetTarget.lastName}`}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15,23,42,0.45)',
+              display: 'grid',
+              placeItems: 'center',
+              zIndex: 1000,
+            }}
+            onClick={(e) => {
+              if (e.target === e.currentTarget) closeReset();
+            }}
+          >
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                width: 'min(420px, calc(100vw - 32px))',
+                padding: 18,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 15, fontWeight: 600 }}>
+                Réinitialiser le mot de passe
+              </div>
+              <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
+                Définissez un nouveau mot de passe pour{' '}
+                <strong>
+                  {resetTarget.firstName} {resetTarget.lastName}
+                </strong>
+                . L'utilisateur sera obligé de le changer à sa prochaine
+                connexion.
+              </div>
+              <Field>
+                <FieldLabel htmlFor="reset-pwd">Nouveau mot de passe</FieldLabel>
+                <Input
+                  id="reset-pwd"
+                  type="password"
+                  autoComplete="new-password"
+                  value={resetPwd}
+                  onChange={(e) => setResetPwd(e.target.value)}
+                />
+                <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
+                  12 caractères minimum.
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="reset-pwd-confirm">Confirmer</FieldLabel>
+                <Input
+                  id="reset-pwd-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={resetConfirm}
+                  onChange={(e) => setResetConfirm(e.target.value)}
+                />
+              </Field>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 8,
+                  marginTop: 4,
+                }}
+              >
+                <Button onClick={closeReset} disabled={isResetting}>
+                  Annuler
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={isResetting}
+                  onClick={() => void handleResetSubmit()}
+                >
+                  {isResetting ? 'Réinitialisation…' : 'Réinitialiser'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {isLoading && (
           <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
         )}
@@ -497,6 +635,16 @@ export function UtilisateursTab() {
                   >
                     Modifier
                   </Button>
+                  {u.id !== currentUserId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Réinitialiser le mot de passe de ${u.firstName} ${u.lastName}`}
+                      onClick={() => openReset(u)}
+                    >
+                      Réinitialiser MdP
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"

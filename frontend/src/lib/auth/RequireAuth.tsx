@@ -15,9 +15,16 @@ const EMPTY_STRING_ARRAY: readonly string[] = Object.freeze([]);
 /** Wraps authenticated routes; redirects to /login when no access token is in the store. */
 export function RequireAuth({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
+  const passwordChangeRequired = useAuthStore((s) => !!s.user?.passwordChangeRequired);
   const location = useLocation();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  // V044 — after an admin reset, the user can't go anywhere except
+  // /force-change-password until they pick a new password. Server-side filter
+  // enforces the same rule (defence in depth).
+  if (passwordChangeRequired && location.pathname !== '/force-change-password') {
+    return <Navigate to="/force-change-password" replace />;
   }
   return <>{children}</>;
 }
@@ -32,9 +39,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 export function RequireRole({ roles, children }: { roles: string[]; children: ReactNode }) {
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
   const userRoles = useAuthStore((s) => s.user?.roles) ?? EMPTY_STRING_ARRAY;
+  const passwordChangeRequired = useAuthStore((s) => !!s.user?.passwordChangeRequired);
   const location = useLocation();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  if (passwordChangeRequired && location.pathname !== '/force-change-password') {
+    return <Navigate to="/force-change-password" replace />;
   }
   const allowed = roles.some((r) => userRoles.includes(r));
   if (!allowed) {
@@ -65,9 +76,13 @@ export function RequirePermission({
   const isAuthenticated = useAuthStore((s) => !!s.accessToken);
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const userRoles = useAuthStore((s) => s.user?.roles) ?? EMPTY_STRING_ARRAY;
+  const passwordChangeRequired = useAuthStore((s) => !!s.user?.passwordChangeRequired);
   const location = useLocation();
   if (!isAuthenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  if (passwordChangeRequired && location.pathname !== '/force-change-password') {
+    return <Navigate to="/force-change-password" replace />;
   }
   // Backward-compat: legacy sessions (`/users/me` not yet returning
   // permissions) keep the old role-based behaviour. The check kicks in only

@@ -11,8 +11,11 @@ import java.util.stream.Collectors;
 import ma.careplus.identity.application.PractitionerService;
 import ma.careplus.identity.infrastructure.web.dto.AdminUserView;
 import ma.careplus.identity.infrastructure.web.dto.CreateUserRequest;
+import ma.careplus.identity.infrastructure.web.dto.ResetPasswordRequest;
 import ma.careplus.identity.infrastructure.web.dto.UpdateUserRequest;
 import ma.careplus.identity.infrastructure.web.dto.UserView;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import ma.careplus.shared.error.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,6 +164,67 @@ public class AdminUserController {
         return new UserView(id, email, firstName, lastName, roles,
                 Collections.emptySet(), assignedPractitionerIds,
                 specialty, inpe, cnom, cnops);
+    }
+
+    /**
+     * V044 — Reset a user's password.
+     *
+     * <p>Sets a new BCrypt-hashed password, flips {@code password_change_required}
+     * to TRUE (the user is forced to pick a new password at next login), clears
+     * any lock + failed-attempts counter (gesture of kindness — the admin
+     * presumably intervened because the user couldn't get back in), and revokes
+     * every active refresh token so any currently-open session of that user
+     * loses access immediately.
+     *
+     * <p>Refuses to reset the caller's own password — an admin should change
+     * their own password via {@code POST /api/me/change-password} instead, to
+     * avoid trapping themselves in the force-change flow.
+     */
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public ResponseEntity<Void> resetPassword(@PathVariable UUID id,
+                                              @Valid @RequestBody ResetPasswordRequest req) {
+        UUID currentUserId = currentUserId();
+        if (currentUserId != null && currentUserId.equals(id)) {
+            throw new BusinessException(
+                    "CANNOT_RESET_OWN_PASSWORD",
+                    "Utilisez « Mon profil » pour changer votre propre mot de passe.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+
+        String hash = passwordEncoder.encode(req.password());
+        int updated = jdbc.update(
+                "UPDATE identity_user SET password_hash = ?, password_change_required = TRUE, "
+                        + "failed_attempts = 0, locked_until = NULL, updated_at = now() "
+                        + "WHERE id = ?",
+                hash, id);
+        if (updated == 0) {
+            throw new BusinessException(
+                    "USER_NOT_FOUND",
+                    "Utilisateur introuvable.",
+                    HttpStatus.NOT_FOUND.value());
+        }
+
+        // Revoke every live refresh token so the reset propagates immediately
+        // to any session the target user has open elsewhere.
+        jdbc.update(
+                "UPDATE identity_refresh_token SET revoked_at = now() WHERE user_id = ? AND revoked_at IS NULL",
+                id);
+
+        log.info("Admin {} reset password for user {} (force-change flagged, refresh tokens revoked)",
+                currentUserId, id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private static UUID currentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getName() == null) return null;
+        try {
+            return UUID.fromString(auth.getName());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
     @DeleteMapping("/{id}")
