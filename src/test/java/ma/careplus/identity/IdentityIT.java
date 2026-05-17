@@ -196,6 +196,20 @@ class IdentityIT {
     }
 
     @Test
+    void login_successfulAttemptsDoNotConsumeRateLimitBudget() throws Exception {
+        // Six back-to-back GOOD logins from the same IP — would 429 under the old
+        // count-all behaviour (capacity = 5). With the refund-on-200 fix, the
+        // bucket stays full and every attempt sails through.
+        for (int i = 0; i < 6; i++) {
+            mockMvc.perform(post(LOGIN_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(buildLoginJson(TEST_EMAIL, TEST_PASSWORD))
+                            .with(req -> { req.setRemoteAddr("10.0.0.42"); return req; }))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
     void refresh_happyPath_rotatesToken() throws Exception {
         Cookie refreshCookie = performLoginAndGetCookie();
 

@@ -18,8 +18,13 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Rate limits POST /api/auth/login to 5 attempts per 15 minutes per IP.
- * Uses Bucket4j in-memory (no Redis required in on-premise single instance).
+ * Rate limits POST /api/auth/login to 5 <b>failed</b> attempts per 15 minutes
+ * per IP. Successful logins refund the consumed token so a legitimate user who
+ * happens to log in 6 times in 15 minutes (e.g. opens the app from a phone +
+ * laptop + a tablet) isn't punished. The limit only bites on brute-force
+ * patterns (5 failures in a row → 15-min cool-down).
+ *
+ * <p>Uses Bucket4j in-memory (no Redis required in on-premise single instance).
  */
 @Component
 public class LoginRateLimitFilter extends OncePerRequestFilter {
@@ -46,14 +51,24 @@ public class LoginRateLimitFilter extends OncePerRequestFilter {
         String ip = extractIp(request);
         Bucket bucket = buckets.computeIfAbsent(ip, this::newBucket);
 
-        if (bucket.tryConsume(1)) {
-            filterChain.doFilter(request, response);
-        } else {
+        if (!bucket.tryConsume(1)) {
             log.warn("Rate limit exceeded for IP {} on {}", ip, LOGIN_PATH);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
             response.getWriter().write(
                     "{\"status\":429,\"title\":\"RATE_LIMIT\",\"detail\":\"Trop de tentatives. Réessayez dans 15 minutes.\"}");
+            return;
+        }
+
+        filterChain.doFilter(request, response);
+
+        // Refund the token on a successful authentication so genuine users who
+        // sign in from several devices in 15 min aren't locked out. The bucket
+        // only drains on actual failures (401/423/5xx), which is the brute-force
+        // signal we actually want to throttle.
+        int status = response.getStatus();
+        if (status >= 200 && status < 300) {
+            bucket.addTokens(1);
         }
     }
 
