@@ -276,6 +276,66 @@ class ClinicalIT {
                 .andExpect(jsonPath("$.code").value("CONSULT_LOCKED"));
     }
 
+    /**
+     * V046 IHM (2026-05-20) — verrouille les deux branches du dialog
+     * SuspendChoiceDialog (Suspendre la consultation) :
+     *
+     * <p>Branche A « Remettre en salle d'attente » : POST /suspend uniquement →
+     * consultation SUSPENDUE, RDV passe de EN_CONSULTATION à CONSTANTES_PRISES
+     * (le patient réapparait dans /api/queue).
+     *
+     * <p>Branche B « Annuler le rendez-vous » : POST /suspend + DELETE
+     * /appointments/{id} avec une raison. La consultation reste SUSPENDUE,
+     * le RDV passe à ANNULE avec cancel_reason persisté.
+     */
+    @Test
+    void suspend_thenResumeOrCancel_dualBranches() throws Exception {
+        // Pré-état : RDV en EN_CONSULTATION pour que suspend ait un effet
+        // sur l'appointment côté backend.
+        mockMvc.perform(post("/api/appointments/" + appointmentId + "/check-in")
+                        .header("Authorization", bearer(asstEmail)))
+                .andExpect(status().isNoContent());
+        // Démarre une consultation pour passer le RDV en EN_CONSULTATION.
+        MvcResult r = mockMvc.perform(post("/api/consultations")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(String.format(
+                                "{\"patientId\":\"%s\",\"appointmentId\":\"%s\",\"motif\":\"Test\"}",
+                                patientId, appointmentId)))
+                .andExpect(status().isCreated()).andReturn();
+        String cId = objectMapper.readTree(r.getResponse().getContentAsString())
+                .get("id").asText();
+
+        // ── Branche A : suspend → RDV revient à CONSTANTES_PRISES ─────
+        mockMvc.perform(post("/api/consultations/" + cId + "/suspend")
+                        .header("Authorization", bearer(medEmail)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUSPENDUE"));
+        assertThat(jdbc.queryForObject(
+                "SELECT status FROM scheduling_appointment WHERE id = ?",
+                String.class, appointmentId))
+                .isEqualTo("CONSTANTES_PRISES");
+
+        // ── Branche B : enchaîne avec DELETE appointment + raison ─────
+        // (Le dialog appelle suspend() puis cancel() ; ici on simule cancel
+        // après que le suspend a déjà eu lieu — la branche B doit toujours
+        // poser le cancel_reason et passer le RDV à ANNULE.)
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/appointments/" + appointmentId)
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Patient parti sans attendre\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ANNULE"))
+                .andExpect(jsonPath("$.cancelReason")
+                        .value("Patient parti sans attendre"));
+
+        // La consultation reste SUSPENDUE (le cancel ne la signe pas).
+        mockMvc.perform(get("/api/consultations/" + cId)
+                        .header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.status").value("SUSPENDUE"));
+    }
+
     // ── Prochain RDV (follow-up) ──────────────────────────────────────────────
     //
     // Verrouille le flux UI "Programmer un prochain RDV" : depuis une
