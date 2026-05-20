@@ -14,6 +14,7 @@ import { Screen } from '@/components/shell/Screen';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
+import { ReferralContactsSection } from './components/ReferralContactsSection';
 
 const NAV_MAP = {
   dashboard: '/dashboard',
@@ -73,6 +74,7 @@ export default function ProfilPage() {
         </div>
 
         {isMedecin && <SignatureSettingsSection />}
+        {isMedecin && <ReferralContactsSection />}
 
         {!isMedecin && (
           <div
