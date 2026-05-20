@@ -43,6 +43,8 @@ export interface PrescriptionLineApi {
   sortOrder: number;
   /** V015 — résultat (PDF/image) attaché à cette ligne (LAB/IMAGING uniquement). */
   resultDocumentId: string | null;
+  /** V045 — résultat saisi en texte/chiffré, complémentaire au PDF. */
+  resultText: string | null;
 }
 
 export interface PrescriptionApi {

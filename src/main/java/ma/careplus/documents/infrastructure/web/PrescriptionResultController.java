@@ -1,9 +1,11 @@
 package ma.careplus.documents.infrastructure.web;
 
+import jakarta.validation.Valid;
 import java.util.UUID;
 import ma.careplus.documents.application.DocumentService;
 import ma.careplus.documents.domain.PatientDocument;
 import ma.careplus.documents.infrastructure.web.dto.PatientDocumentView;
+import ma.careplus.documents.infrastructure.web.dto.SetResultTextRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,6 +57,22 @@ public class PrescriptionResultController {
     @PreAuthorize("hasAnyRole('ASSISTANT','MEDECIN','ADMIN')")
     public ResponseEntity<Void> remove(@PathVariable UUID lineId) {
         service.detachResult(lineId);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * V045 — saisie texte / chiffrée du résultat, en parallèle du PDF.
+     * Body JSON {@code { "text": "..." }} ; texte vide ou {@code null} efface
+     * la valeur. Authorisé pour les rôles qui peuvent déjà uploader le PDF.
+     */
+    @PutMapping(
+            value = "/api/prescriptions/lines/{lineId}/result-text",
+            consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN','LAB','RADIO')")
+    public ResponseEntity<Void> setResultText(
+            @PathVariable UUID lineId,
+            @Valid @RequestBody SetResultTextRequest req) {
+        service.setResultText(lineId, req == null ? null : req.text());
         return ResponseEntity.noContent().build();
     }
 }

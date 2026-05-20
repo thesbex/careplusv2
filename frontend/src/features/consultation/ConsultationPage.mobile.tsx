@@ -16,6 +16,7 @@ import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
 import { formatCoverage } from '@/features/dossier-patient/components/PatientHeader';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
+import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import type { PrescriptionType } from '@/features/prescription/types';
@@ -455,8 +456,8 @@ export default function ConsultationMobilePage() {
                 ? ''
                 : ` · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`;
               return (
+                <div key={p.id}>
                 <button
-                  key={p.id}
                   type="button"
                   onClick={() => navigate(`/prescriptions/${p.id}`)}
                   className="m-row"
@@ -487,6 +488,11 @@ export default function ConsultationMobilePage() {
                   </div>
                   <ChevronRight aria-hidden="true" />
                 </button>
+                {/* V045 — panneau résultat (PDF + saisie texte) ; le composant
+                    ne rend rien pour DRUG/CERT/SICK_LEAVE et reste réactif post-
+                    signature pour permettre l'attachement tardif (cf. desktop). */}
+                <PrescriptionResultsPanel prescription={p} readOnly={false} />
+                </div>
               );
             })}
           </div>

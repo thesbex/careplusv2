@@ -18,6 +18,8 @@ public record PrescriptionLineResponse(
         int sortOrder,
         /** Document résultat attaché à cette ligne (V015). NULL si pas encore reçu. */
         UUID resultDocumentId,
+        /** V045 — saisie texte/chiffrée du résultat, en parallèle du PDF. NULL si pas saisi. */
+        String resultText,
         /** V038 — statut traitement interne (PENDING/IN_PROGRESS/DONE/CANCELLED). NULL = ligne externe. */
         String internalStatus
 ) {}

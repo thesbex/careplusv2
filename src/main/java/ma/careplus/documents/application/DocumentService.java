@@ -246,6 +246,29 @@ public class DocumentService {
         return saved;
     }
 
+    /**
+     * V045 — saisie texte / chiffrée du résultat, en parallèle du PDF
+     * (result_document_id). Un texte vide ou {@code null} efface le champ
+     * (passe à NULL). Ne touche pas {@code result_document_id} : le PDF et
+     * le texte sont indépendants. Comme {@link #attachResult}, refuse les
+     * lignes médicament (RESULT_NOT_APPLICABLE).
+     */
+    @Transactional
+    public void setResultText(UUID lineId, String text) {
+        PrescriptionLine line = prescriptionLineRepository.findById(lineId)
+                .orElseThrow(() -> new BusinessException("PRESCRIPTION_LINE_NOT_FOUND",
+                        "Ligne de prescription introuvable.", HttpStatus.NOT_FOUND.value()));
+        if (line.getLabTestId() == null && line.getImagingExamId() == null) {
+            throw new BusinessException("RESULT_NOT_APPLICABLE",
+                    "Un résultat ne peut être attaché qu'à une ligne d'analyse ou d'imagerie.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+        String normalized = (text == null || text.trim().isEmpty()) ? null : text.trim();
+        jdbc.update(
+                "UPDATE clinical_prescription_line SET result_text = ?, updated_at = now() WHERE id = ?",
+                normalized, lineId);
+    }
+
     @Transactional
     public void detachResult(UUID lineId) {
         PrescriptionLine line = prescriptionLineRepository.findById(lineId)

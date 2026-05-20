@@ -58,6 +58,7 @@ const baseLine = {
   instructions: null,
   sortOrder: 0,
   resultDocumentId: null,
+  resultText: null,
 };
 
 function rx(over: Partial<PrescriptionApi>): PrescriptionApi {

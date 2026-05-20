@@ -85,6 +85,15 @@ public class PrescriptionLine {
     private UUID resultDocumentId;
 
     /**
+     * V045 — résultat saisi en texte / chiffres en parallèle du PDF
+     * (result_document_id). Permet au médecin de garder les valeurs
+     * directement comparables d'une consultation à l'autre sans ouvrir
+     * le document scanné.
+     */
+    @Column(name = "result_text", columnDefinition = "TEXT")
+    private String resultText;
+
+    /**
      * V038 — workflow interne LAB/IMAGING. NULL = ligne externe (bon papier
      * classique). Sinon transitions PENDING → IN_PROGRESS → DONE/CANCELLED
      * pilotées par InternalRequestService.
@@ -153,6 +162,8 @@ public class PrescriptionLine {
     public void setPosition(int position) { this.position = position; }
     public UUID getResultDocumentId() { return resultDocumentId; }
     public void setResultDocumentId(UUID resultDocumentId) { this.resultDocumentId = resultDocumentId; }
+    public String getResultText() { return resultText; }
+    public void setResultText(String resultText) { this.resultText = resultText; }
     public String getInternalStatus() { return internalStatus; }
     public void setInternalStatus(String internalStatus) { this.internalStatus = internalStatus; }
     public OffsetDateTime getInternalAssignedAt() { return internalAssignedAt; }

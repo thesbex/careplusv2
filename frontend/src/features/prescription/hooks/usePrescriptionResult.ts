@@ -49,6 +49,36 @@ export function useAttachPrescriptionResult() {
   };
 }
 
+/**
+ * V045 — enregistre / efface le résultat saisi en texte. Endpoint
+ * {@code PUT /api/prescriptions/lines/{lineId}/result-text}. Un {@code text}
+ * vide / null efface le champ côté backend. Invalide les listes de
+ * prescription pour re-render la ligne avec la valeur fraîche.
+ */
+interface SaveResultTextPayload {
+  lineId: string;
+  text: string | null;
+}
+
+export function useSavePrescriptionResultText() {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async ({ lineId, text }: SaveResultTextPayload): Promise<void> => {
+      await api.put(`/prescriptions/lines/${lineId}/result-text`, { text });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['prescriptions'] });
+    },
+  });
+
+  return {
+    saveText: (payload: SaveResultTextPayload) => mutation.mutateAsync(payload),
+    isPending: mutation.isPending,
+    error: mutation.error as AxiosError | null,
+  };
+}
+
 export function useDetachPrescriptionResult() {
   const queryClient = useQueryClient();
 
