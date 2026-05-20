@@ -148,6 +148,69 @@ class AdminUserIT {
         assertThat(roleLinks).isEqualTo(2);
     }
 
+    /**
+     * Bottles the IHM walk validated on 2026-05-20 for the Paramétrage >
+     * Utilisateurs flow : an admin must be able to create a Technicien
+     * laboratoire (role LAB), even when the cabinet's Services internes
+     * flags are off. The role codes come from V038 ; this test asserts the
+     * end-to-end persistence so a future regression in CreateUserRequest /
+     * UserRoleService / V038 seed fails loudly.
+     */
+    @Test
+    void adminCanCreateLabTechnician() throws Exception {
+        String token = loginAndGetAccessToken(adminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"lab-tech@test.ma",
+                                 "password":"Lab-Tech-Pwd-2026!",
+                                 "firstName":"Imane",
+                                 "lastName":"Laborantine",
+                                 "roles":["LAB"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("lab-tech@test.ma"))
+                .andExpect(jsonPath("$.roles[0]").value("LAB"));
+
+        Integer roleLinks = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM identity_user_role ur
+                  JOIN identity_user u ON u.id = ur.user_id
+                  JOIN identity_role r ON r.id = ur.role_id
+                 WHERE u.email = 'lab-tech@test.ma' AND r.code = 'LAB'
+                """, Integer.class);
+        assertThat(roleLinks).isEqualTo(1);
+    }
+
+    /** Same contract as {@link #adminCanCreateLabTechnician()} for RADIO. */
+    @Test
+    void adminCanCreateRadioTechnician() throws Exception {
+        String token = loginAndGetAccessToken(adminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"radio-tech@test.ma",
+                                 "password":"Radio-Tech-Pwd-2026!",
+                                 "firstName":"Aya",
+                                 "lastName":"Radiologue",
+                                 "roles":["RADIO"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value("radio-tech@test.ma"))
+                .andExpect(jsonPath("$.roles[0]").value("RADIO"));
+
+        Integer roleLinks = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM identity_user_role ur
+                  JOIN identity_user u ON u.id = ur.user_id
+                  JOIN identity_role r ON r.id = ur.role_id
+                 WHERE u.email = 'radio-tech@test.ma' AND r.code = 'RADIO'
+                """, Integer.class);
+        assertThat(roleLinks).isEqualTo(1);
+    }
+
     @Test
     void secretaireCannotCreateUser() throws Exception {
         String token = loginAndGetAccessToken(secretaireEmail, SECRETAIRE_PASSWORD);
