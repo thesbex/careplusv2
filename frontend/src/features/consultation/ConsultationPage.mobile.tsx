@@ -17,6 +17,7 @@ import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
 import { formatCoverage } from '@/features/dossier-patient/components/PatientHeader';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
+import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import type { PrescriptionType } from '@/features/prescription/types';
@@ -77,6 +78,7 @@ export default function ConsultationMobilePage() {
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [certificatOpen, setCertificatOpen] = useState(false);
+  const [promoteOpen, setPromoteOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
@@ -353,6 +355,25 @@ export default function ConsultationMobilePage() {
                   aria-invalid={errors[s.key] ? true : undefined}
                   {...register(s.key)}
                 />
+                {s.key === 'analyse' && consultation?.patientId && (
+                  <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPromoteOpen(true)}
+                      disabled={!watch('analyse')?.trim()}
+                      style={{
+                        fontSize: 12,
+                        padding: '6px 10px',
+                        border: '1px solid var(--border)',
+                        borderRadius: 6,
+                        background: 'var(--surface)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Ajouter aux antécédents
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </form>
@@ -543,6 +564,15 @@ export default function ConsultationMobilePage() {
             consultationId={id}
           />
         </>
+      )}
+      {consultation?.patientId && (
+        <PromoteDiagnosisDialog
+          open={promoteOpen}
+          onOpenChange={setPromoteOpen}
+          patientId={consultation.patientId}
+          initialDescription={watch('analyse') ?? ''}
+          defaultOccurredOn={new Date().toISOString().slice(0, 10)}
+        />
       )}
       <InvoiceDrawer
         invoice={invoice}

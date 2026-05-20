@@ -115,9 +115,12 @@ interface SoapEditorProps {
   register: UseFormRegister<ConsultationFormValues>;
   errors: FieldErrors<ConsultationFormValues>;
   disabled: boolean;
+  /** Slot rendu sous le textarea Appréciation. Sert au bouton
+   *  "+ Ajouter aux antécédents" qui dépend du patient + du watcher RHF. */
+  afterAnalyse?: React.ReactNode;
 }
 
-export function SoapEditor({ register, errors, disabled }: SoapEditorProps) {
+export function SoapEditor({ register, errors, disabled, afterAnalyse }: SoapEditorProps) {
   return (
     <>
       <SoapBlock letter="S" title="Subjectif — anamnèse">
@@ -152,6 +155,11 @@ export function SoapEditor({ register, errors, disabled }: SoapEditorProps) {
           rows={4}
           placeholder="Diagnostic principal, diagnostics différentiels…"
         />
+        {afterAnalyse && (
+          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+            {afterAnalyse}
+          </div>
+        )}
       </SoapBlock>
 
       <SoapBlock letter="P" title="Plan — conduite à tenir">

@@ -34,6 +34,7 @@ import { CertificatDialog } from './components/CertificatDialog';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
+import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
 import { SignatureLock } from './components/SignatureLock';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
@@ -115,6 +116,9 @@ export default function ConsultationPage() {
       hydratedRef.current = true;
     }
   }, [consultation, reset]);
+
+  // Dialog "Ajouter aux antécédents".
+  const [promoteOpen, setPromoteOpen] = useState(false);
 
   // Debounced autosave. Subscribes to watch() and fires PUT 2s after last change.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -266,7 +270,24 @@ export default function ConsultationPage() {
             {isLoading && !consultation ? (
               <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement de la consultation…</div>
             ) : (
-              <SoapEditor register={register} errors={errors} disabled={isSigned} />
+              <SoapEditor
+                register={register}
+                errors={errors}
+                disabled={isSigned}
+                afterAnalyse={
+                  consultation?.patientId ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={!watch('analyse')?.trim()}
+                      onClick={() => setPromoteOpen(true)}
+                    >
+                      + Ajouter aux antécédents
+                    </Button>
+                  ) : null
+                }
+              />
             )}
           </div>
 
@@ -523,6 +544,15 @@ export default function ConsultationPage() {
             consultationId={id}
           />
         </>
+      )}
+      {consultation?.patientId && (
+        <PromoteDiagnosisDialog
+          open={promoteOpen}
+          onOpenChange={setPromoteOpen}
+          patientId={consultation.patientId}
+          initialDescription={watch('analyse') ?? ''}
+          defaultOccurredOn={new Date().toISOString().slice(0, 10)}
+        />
       )}
       <InvoiceDrawer
         invoice={invoice}
