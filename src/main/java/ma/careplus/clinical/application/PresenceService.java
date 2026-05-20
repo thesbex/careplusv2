@@ -103,6 +103,11 @@ public class PresenceService {
         OffsetDateTime from = today.atStartOfDay(CABINET_ZONE).toOffsetDateTime();
         OffsetDateTime to = today.plusDays(1).atStartOfDay(CABINET_ZONE).toOffsetDateTime();
 
+        // Filter by arrived_at (not start_at) — anyone who physically checked
+        // in today belongs in today's queue, even if their RDV was booked for
+        // another day (early walk-in, late off-day arrival reusing an old RDV,
+        // etc.). Filtering by start_at silently dropped those patients despite
+        // the successful check-in (cf. ARRIVED-OFFDAY bug, 2026-05-20).
         StringBuilder sql = new StringBuilder("""
                 SELECT a.id, a.patient_id, p.first_name, p.last_name,
                        p.birth_date, p.tier,
@@ -116,8 +121,8 @@ public class PresenceService {
                 LEFT JOIN scheduling_appointment_reason r ON r.id = a.reason_id
                 LEFT JOIN identity_user u ON u.id = a.practitioner_id
                 LEFT JOIN clinic_room cr ON cr.id = a.room_id
-                WHERE a.start_at >= ?
-                  AND a.start_at <  ?
+                WHERE a.arrived_at >= ?
+                  AND a.arrived_at <  ?
                   AND a.status IN ('ARRIVE','EN_ATTENTE_CONSTANTES','CONSTANTES_PRISES','EN_CONSULTATION')
                 """);
         java.util.List<Object> args = new java.util.ArrayList<>();
