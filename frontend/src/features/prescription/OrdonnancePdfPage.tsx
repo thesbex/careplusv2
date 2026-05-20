@@ -18,6 +18,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, File as FileIcon, Print } from '@/components/icons';
 import { useDocumentPdfController, metaForPrescription } from './components/DocumentPdfViewer';
+import { PdfCanvasViewer } from './components/PdfCanvasViewer';
 import { usePrescription } from './hooks/usePrescriptions';
 import './prescription.css';
 
@@ -81,12 +82,24 @@ export default function OrdonnancePdfPage() {
           <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
         )}
         {url && (
-          <iframe
-            id={iframeId}
-            className="pr-pdf-viewer"
-            title={`Aperçu ${meta.label}`}
-            src={url}
-          />
+          <>
+            {/* iframe caché : cible pour iframe.contentWindow.print() (bouton
+                Imprimer) — le PDF rendu visible passe par PdfCanvasViewer
+                (PDF.js, insensible au paramètre Chrome "Télécharger les PDF"). */}
+            <iframe
+              id={iframeId}
+              title={`Aperçu ${meta.label}`}
+              src={url}
+              style={{ display: 'none' }}
+              aria-hidden="true"
+            />
+            <PdfCanvasViewer
+              src={url}
+              width={820}
+              maxHeight="100%"
+              className="pr-pdf-viewer-canvas"
+            />
+          </>
         )}
       </div>
     </Screen>

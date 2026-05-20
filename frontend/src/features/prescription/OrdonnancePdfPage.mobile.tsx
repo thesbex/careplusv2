@@ -17,6 +17,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { File as FileIcon, Print, Warn } from '@/components/icons';
 import { usePrescription } from './hooks/usePrescriptions';
 import { useDocumentPdfBlob, metaForPrescription } from './components/DocumentPdfViewer';
+import { PdfCanvasViewer } from './components/PdfCanvasViewer';
 import type { PrescriptionLineApi } from './types';
 import './prescription.css';
 
@@ -202,10 +203,11 @@ export default function OrdonnancePdfMobilePage() {
               )}
             </div>
 
-            {/* Inline PDF preview. The iframe relies on the blob URL fetched
-                with the bearer token (ADR-019). On the rare browser that can't
-                render application/pdf inline, the user still has the two
-                buttons below to open in a new tab or download. */}
+            {/* Inline PDF preview via PDF.js canvas (2026-05-20) — insensible
+                au paramètre Chrome « Télécharger les PDF » qui faisait afficher
+                l'UUID du blob au lieu du document. Marche aussi sur iOS Safari
+                qui refuse souvent l'iframe-PDF. Les boutons Aperçu / Télécharger
+                en dessous restent comme fallback. */}
             {url && (
               <div
                 className="m-card"
@@ -216,17 +218,7 @@ export default function OrdonnancePdfMobilePage() {
                   background: '#fff',
                 }}
               >
-                <iframe
-                  title={`Aperçu ${docMeta.label}`}
-                  src={url}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    height: '60vh',
-                    border: 'none',
-                    background: '#fff',
-                  }}
-                />
+                <PdfCanvasViewer src={url} width={358} maxHeight="60vh" />
               </div>
             )}
 
