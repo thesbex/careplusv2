@@ -369,6 +369,58 @@ class PatientIT {
                 .andExpect(jsonPath("$.antecedents[0].category").value("PERSONNEL_MALADIES_CHRONIQUES"));
     }
 
+    /**
+     * Bottles the 2026-05-20 IHM walk : depuis le bouton "+ Ajouter aux
+     * antécédents" sous le champ A · Appréciation, le médecin promeut le
+     * diagnostic courant en antécédent structuré du dossier (UI : dialog
+     * PromoteDiagnosisDialog, défauts type=MEDICAL,
+     * category=PERSONNEL_MALADIES_CHRONIQUES, occurredOn=aujourd'hui).
+     *
+     * <p>Aucun nouveau endpoint — c'est le contrat existant
+     * {@code POST /patients/{id}/antecedents} qui est appelé. Ce test
+     * verrouille le payload exact que le dialog envoie, et confirme la
+     * jointure dans le GET patient.
+     */
+    @Test
+    void promoteDiagnosisFromConsultation_persistsAsAntecedent() throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/patients")
+                        .header("Authorization", bearer(secEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firstName\":\"Mohamedd\",\"lastName\":\"Alami\"}"))
+                .andReturn();
+        String id = objectMapper.readTree(res.getResponse().getContentAsString())
+                .get("id").asText();
+
+        // Payload identique à celui émis par PromoteDiagnosisDialog avec ses
+        // valeurs par défaut + une description venant du champ Appréciation.
+        String today = java.time.LocalDate.now().toString();
+        String body = """
+                {"type":"MEDICAL",
+                 "description":"HTA stable, dyslipidémie début — promu depuis consultation",
+                 "occurredOn":"%s",
+                 "category":"PERSONNEL_MALADIES_CHRONIQUES"}
+                """.formatted(today);
+        mockMvc.perform(post("/api/patients/" + id + "/antecedents")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("MEDICAL"))
+                .andExpect(jsonPath("$.category").value("PERSONNEL_MALADIES_CHRONIQUES"))
+                .andExpect(jsonPath("$.occurredOn").value(today));
+
+        // Le dossier patient surface l'antécédent immédiatement (l'IHM
+        // invalide ['patient', id] post-success ; côté serveur la jointure
+        // est faite sans cache).
+        mockMvc.perform(get("/api/patients/" + id)
+                        .header("Authorization", bearer(medEmail)))
+                .andExpect(jsonPath("$.antecedents.length()").value(1))
+                .andExpect(jsonPath("$.antecedents[0].description")
+                        .value(org.hamcrest.Matchers.containsString("HTA stable")))
+                .andExpect(jsonPath("$.antecedents[0].category")
+                        .value("PERSONNEL_MALADIES_CHRONIQUES"));
+    }
+
     @Test
     void createNote_asMedecin_thenListedInGetNotes() throws Exception {
         MvcResult res = mockMvc.perform(post("/api/patients")
