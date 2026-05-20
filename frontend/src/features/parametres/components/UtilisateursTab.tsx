@@ -28,7 +28,6 @@ import {
   type AdminUser,
 } from '../hooks/useUsers';
 import { usePractitioners } from '../hooks/usePractitioners';
-import { useClinicSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/lib/auth/authStore';
 
 type UserRole = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN' | 'LAB' | 'RADIO';
@@ -68,11 +67,6 @@ export function UtilisateursTab() {
   const activePractitioners = practitioners.filter((p) => p.active);
   const allActiveIds = activePractitioners.map((p) => p.id);
   const showAssignmentSection = activePractitioners.length >= 2;
-  // V038 — rôles LAB / RADIO disponibles uniquement si le service correspondant
-  // est marqué interne dans paramètres > Cabinet > Services internes.
-  const { settings } = useClinicSettings();
-  const labInternalActive = !!settings?.labInternal;
-  const imagingInternalActive = !!settings?.imagingInternal;
 
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
@@ -349,12 +343,13 @@ export function UtilisateursTab() {
                 <option value="ASSISTANT">Assistant(e)</option>
                 <option value="MEDECIN">Médecin</option>
                 <option value="ADMIN">Administrateur</option>
-                {labInternalActive && (
-                  <option value="LAB">Technicien laboratoire</option>
-                )}
-                {imagingInternalActive && (
-                  <option value="RADIO">Technicien radiologie</option>
-                )}
+                {/* Techniciens internes — toujours proposés. L'admin reste libre
+                    de créer le compte avant même d'activer "Services internes"
+                    dans Paramètres > Cabinet ; le routing des prescriptions
+                    LAB / RADIO vers la queue interne reste, lui, gouverné par
+                    ces flags. */}
+                <option value="LAB">Technicien laboratoire</option>
+                <option value="RADIO">Technicien radiologie</option>
               </select>
             </Field>
             <Field>
