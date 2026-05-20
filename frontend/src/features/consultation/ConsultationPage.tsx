@@ -35,7 +35,9 @@ import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
 import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
+import { SuspendChoiceDialog } from './components/SuspendChoiceDialog';
 import { SignatureLock } from './components/SignatureLock';
+import { useCancelAppointment } from '@/features/salle-attente/hooks/useCancelAppointment';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
 import { useSuspendConsultation } from './hooks/useSuspendConsultation';
@@ -119,6 +121,11 @@ export default function ConsultationPage() {
 
   // Dialog "Ajouter aux antécédents".
   const [promoteOpen, setPromoteOpen] = useState(false);
+
+  // Dialog "Suspendre la consultation" — choix entre "remettre en salle"
+  // et "annuler le rendez-vous" (avec raison).
+  const [suspendOpen, setSuspendOpen] = useState(false);
+  const { cancel: cancelAppointment } = useCancelAppointment();
 
   // Debounced autosave. Subscribes to watch() and fires PUT 2s after last change.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -315,13 +322,7 @@ export default function ConsultationPage() {
                       /* autosave error already toasted by watcher */
                     }
                   }
-                  const ok = await suspend();
-                  if (ok) {
-                    toast.success('Consultation suspendue. Patient remis dans la file.');
-                    void navigate('/salle');
-                  } else {
-                    toast.error('Suspension refusée par le serveur.');
-                  }
+                  setSuspendOpen(true);
                 }}
               >
                 Suspendre
@@ -554,6 +555,22 @@ export default function ConsultationPage() {
           defaultOccurredOn={new Date().toISOString().slice(0, 10)}
         />
       )}
+      <SuspendChoiceDialog
+        open={suspendOpen}
+        onOpenChange={setSuspendOpen}
+        hideCancelBranch={!consultation?.appointmentId}
+        onSuspend={() => suspend()}
+        onCancel={async (reason) => {
+          if (!consultation?.appointmentId) return;
+          await cancelAppointment(consultation.appointmentId, reason);
+        }}
+        onSuspended={() => {
+          void navigate('/salle');
+        }}
+        onCancelled={() => {
+          void navigate('/agenda');
+        }}
+      />
       <InvoiceDrawer
         invoice={invoice}
         open={postSignDialogOpen && !!invoice}
