@@ -157,6 +157,47 @@ class ClinicalIT {
                 .andExpect(jsonPath("$[0].patientFullName").value("Mohamed Alami"));
     }
 
+    /**
+     * Regression — bug "La déclaration d'arrivée d'un patient par un médecin
+     * ne met pas à jour la liste d'attente" (2026-05-20).
+     *
+     * <p>A patient with an RDV dated for another day (typical: early walk-in
+     * checked in against a tomorrow appointment) was correctly transitioned
+     * to ARRIVE but stayed invisible from {@code /api/queue} because the
+     * query filtered on {@code a.start_at} = today instead of
+     * {@code a.arrived_at}. Salle d'attente looked empty even though the
+     * patient was physically in the waiting room.
+     */
+    @Test
+    void queue_includesOffDayArrivals_whenCheckedInToday() throws Exception {
+        // Second patient with an RDV scheduled for TOMORROW, still PLANIFIE.
+        UUID offDayPatientId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO patient_patient (id, last_name, first_name, version, number_children,
+                    status, created_at, updated_at)
+                VALUES (?, 'Benali', 'Sara', 0, 0, 'ACTIF', now(), now())
+                """, offDayPatientId);
+        OffsetDateTime tomorrow = OffsetDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0);
+        UUID offDayAptId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO scheduling_appointment (id, patient_id, practitioner_id,
+                    start_at, end_at, status, walk_in, urgency, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'PLANIFIE', FALSE, FALSE, 0, now(), now())
+                """, offDayAptId, offDayPatientId, medId, tomorrow, tomorrow.plusMinutes(30));
+
+        // Doctor declares the patient's arrival today, even though the RDV is tomorrow.
+        mockMvc.perform(post("/api/appointments/" + offDayAptId + "/check-in")
+                        .header("Authorization", bearer(medEmail)))
+                .andExpect(status().isNoContent());
+
+        // Today's queue must include the off-day arrival (was the bug: length==0).
+        mockMvc.perform(get("/api/queue").header("Authorization", bearer(medEmail)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.appointmentId=='" + offDayAptId + "')].status").value("ARRIVE"))
+                .andExpect(jsonPath("$[?(@.appointmentId=='" + offDayAptId + "')].patientFullName")
+                        .value("Sara Benali"));
+    }
+
     @Test
     void recordVitals_advancesStatusAndComputesBmi() throws Exception {
         mockMvc.perform(post("/api/appointments/" + appointmentId + "/check-in")
