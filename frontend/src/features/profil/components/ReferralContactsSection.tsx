@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Trash } from '@/components/icons';
+import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import {
   useCreateReferralContact,
   useDeleteReferralContact,
@@ -35,6 +36,7 @@ const emptyDraft: ReferralContactInput = {
 };
 
 export function ReferralContactsSection() {
+  const isMobile = useIsMobile();
   const { contacts, isLoading, error } = useReferralContacts();
   const { create, isPending: isCreating } = useCreateReferralContact();
   const { update, isPending: isUpdating } = useUpdateReferralContact();
@@ -164,7 +166,7 @@ export function ReferralContactsSection() {
             borderRadius: 8,
             marginBottom: 14,
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
             gap: 10,
           }}
         >
