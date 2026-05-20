@@ -29,6 +29,7 @@ import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SummaryPanel } from './components/SummaryPanel';
 import { DocumentsPanel } from './components/DocumentsPanel';
+import { BiologicalTrendsPanel } from './components/BiologicalTrendsPanel';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { VaccinationCalendarTab } from '@/features/vaccination/components/VaccinationCalendarTab';
 import { PregnancyTab } from '@/features/grossesse/components/PregnancyTab';
@@ -861,7 +862,8 @@ export default function DossierPage() {
             </DossierTabPanel>
           )}
           <DossierTabPanel value="analyses">
-            <div style={{ padding: '20px 24px' }}>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+              <BiologicalTrendsPanel patientId={raw.id} />
               <DocumentsPanel patientId={raw.id} filter="ANALYSE" />
             </div>
           </DossierTabPanel>
