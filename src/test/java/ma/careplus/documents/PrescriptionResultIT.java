@@ -338,6 +338,77 @@ class PrescriptionResultIT {
                 .andExpect(status().isNoContent());
     }
 
+    // ── V045 — saisie texte / chiffrée du résultat ────────────────────
+
+    @Test
+    @DisplayName("11. V045 — PUT /result-text persiste la saisie texte, n'efface pas le PDF déjà attaché")
+    void setResultText_persistsAndKeepsPdfUntouched() throws Exception {
+        UUID lineId = createPrescriptionLine("LAB");
+        UUID docId = upload(lineId, new MockMultipartFile("file", "lab.pdf", "application/pdf", TINY_PDF));
+
+        String body = """
+                {"text":"NFS : H 14.2 / L 4.8 / Pq 245k\\nGlycémie : 1.02 g/L"}
+                """;
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/prescriptions/lines/" + lineId + "/result-text")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNoContent());
+
+        String savedText = jdbc.queryForObject(
+                "SELECT result_text FROM clinical_prescription_line WHERE id = ?",
+                String.class, lineId);
+        assertThat(savedText).contains("NFS").contains("Glycémie : 1.02 g/L");
+
+        // Le PDF reste accroché — text et document sont indépendants.
+        assertThat(jdbc.queryForObject(
+                "SELECT result_document_id FROM clinical_prescription_line WHERE id = ?",
+                UUID.class, lineId)).isEqualTo(docId);
+    }
+
+    @Test
+    @DisplayName("12. V045 — texte vide / null efface result_text (passe à NULL)")
+    void setResultText_clearsToNull() throws Exception {
+        UUID lineId = createPrescriptionLine("LAB");
+        // Saisie initiale
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/prescriptions/lines/" + lineId + "/result-text")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"valeur initiale\"}"))
+                .andExpect(status().isNoContent());
+
+        // Effacement via texte null
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/prescriptions/lines/" + lineId + "/result-text")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":null}"))
+                .andExpect(status().isNoContent());
+
+        assertThat(jdbc.queryForObject(
+                "SELECT result_text FROM clinical_prescription_line WHERE id = ?",
+                String.class, lineId)).isNull();
+    }
+
+    @Test
+    @DisplayName("13. V045 — ligne médicament rejetée (RESULT_NOT_APPLICABLE) — text non touché")
+    void setResultText_medicationLineRejected() throws Exception {
+        UUID lineId = createPrescriptionLine("DRUG");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/prescriptions/lines/" + lineId + "/result-text")
+                        .header("Authorization", bearer(medEmail))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"ne devrait pas passer\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RESULT_NOT_APPLICABLE"));
+
+        assertThat(jdbc.queryForObject(
+                "SELECT result_text FROM clinical_prescription_line WHERE id = ?",
+                String.class, lineId)).isNull();
+    }
+
     // ---------- helpers ----------
 
     /**
