@@ -8,7 +8,7 @@
  *   - team rail droit → `useTeam`
  *   - envoi de message → `useSendMessage`
  */
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Screen } from '@/components/shell/Screen';
 import {
   Search,
@@ -29,6 +29,8 @@ import { usePatientThreads } from './hooks/usePatientThreads';
 import { useTeam } from './hooks/useTeam';
 import { useConversation } from './hooks/useConversation';
 import { useSendMessage } from './hooks/useSendMessage';
+import { useColleagues } from './hooks/useColleagues';
+import { useStartDm } from './hooks/useStartDm';
 import type {
   ChatMessage,
   Channel,
@@ -59,11 +61,23 @@ export default function MessagesPage() {
   const { data: convo } = useConversation(activeConvo);
   const [composer, setComposer] = useState('');
   const sendMessage = useSendMessage();
+  // DM picker — ouvert au clic sur le + de la section "Messages directs"
+  // (RailHeader) ou sur "Nouveau message" du topbar.
+  const [dmPickerOpen, setDmPickerOpen] = useState(false);
+  const colleaguesQuery = useColleagues(dmPickerOpen);
+  const startDm = useStartDm();
 
   function handleSend() {
     if (!activeConvo || !composer.trim()) return;
     sendMessage.mutate({ conversationId: activeConvo, body: composer.trim() });
     setComposer('');
+  }
+
+  function handlePickColleague(userId: string) {
+    setDmPickerOpen(false);
+    startDm.mutate(userId, {
+      onSuccess: (conv) => setActiveConvo(conv.id),
+    });
   }
 
   const onlineCount = team.filter((m) => m.online === 'on' || m.online === 'self').length;
@@ -80,7 +94,7 @@ export default function MessagesPage() {
           <Button>
             <Filter /> Tous
           </Button>
-          <Button variant="primary">
+          <Button variant="primary" onClick={() => setDmPickerOpen(true)}>
             <Plus /> Nouveau message
           </Button>
         </>
@@ -101,7 +115,16 @@ export default function MessagesPage() {
           active={activeConvo ?? ''}
           onSelect={setActiveConvo}
           self={team.find((m) => m.online === 'self')}
+          onAddDm={() => setDmPickerOpen(true)}
         />
+        {dmPickerOpen && (
+          <ColleaguePicker
+            colleagues={colleaguesQuery.data ?? []}
+            loading={colleaguesQuery.isLoading}
+            onPick={handlePickColleague}
+            onClose={() => setDmPickerOpen(false)}
+          />
+        )}
 
         <div
           style={{
@@ -145,9 +168,10 @@ interface LeftRailProps {
   active: string;
   onSelect: (id: string) => void;
   self: TeamMember | undefined;
+  onAddDm: () => void;
 }
 
-function LeftRail({ channels, dms, patientThreads, active, onSelect, self }: LeftRailProps) {
+function LeftRail({ channels, dms, patientThreads, active, onSelect, self, onAddDm }: LeftRailProps) {
   return (
     <div
       style={{
@@ -184,7 +208,7 @@ function LeftRail({ channels, dms, patientThreads, active, onSelect, self }: Lef
           <ChannelRow key={c.id} c={c} active={active === c.id} onClick={() => onSelect(c.id)} />
         ))}
 
-        <RailHeader label="Messages directs" count={dms.length} mt={14} />
+        <RailHeader label="Messages directs" count={dms.length} mt={14} onAdd={onAddDm} />
         {dms.map((d) => (
           <DMRow key={d.id} d={d} active={active === d.id} onClick={() => onSelect(d.id)} />
         ))}
@@ -253,11 +277,13 @@ function RailHeader({
   count,
   mt,
   hint,
+  onAdd,
 }: {
   label: string;
   count: number;
   mt?: number;
   hint?: boolean;
+  onAdd?: () => void;
 }) {
   return (
     <div
@@ -287,11 +313,13 @@ function RailHeader({
       <button
         type="button"
         aria-label={`Ajouter dans ${label}`}
+        onClick={onAdd}
+        disabled={!onAdd}
         style={{
           background: 'transparent',
           border: 0,
-          color: 'var(--ink-3)',
-          cursor: 'pointer',
+          color: onAdd ? 'var(--ink-3)' : 'var(--ink-4)',
+          cursor: onAdd ? 'pointer' : 'default',
           padding: '2px 4px',
           display: 'inline-flex',
           alignItems: 'center',
@@ -665,8 +693,28 @@ function ConvoHeader({ convo }: { convo: Conversation }) {
 }
 
 function ConvoMessages({ convo }: { convo: Conversation }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Comptage total des messages pour déclencher l'auto-scroll quand un nouveau
+  // arrive (polling 5 s côté useConversation).
+  const totalMsgs = (convo.messages ?? []).reduce((n, d) => n + d.msgs.length, 0);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Auto-scroll vers le bas si l'user était déjà proche du bas (évite de
+    // l'arracher d'un scroll-back qu'il fait pour lire l'historique).
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+    if (nearBottom) {
+      el.scrollTop = el.scrollHeight;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalMsgs, convo.id]);
+
   return (
-    <div className="scroll" style={{ flex: 1, overflow: 'auto', padding: '0 0 12px' }}>
+    <div
+      ref={scrollRef}
+      className="scroll"
+      style={{ flex: 1, overflow: 'auto', padding: '0 0 12px' }}
+    >
       {convo.pinned ? (
         <div
           style={{
@@ -805,7 +853,11 @@ function Message({
   return (
     <div
       style={{
-        padding: previousFromSameUser ? '2px 24px 2px 70px' : '8px 24px 4px',
+        // Fix alignement : on garde TOUJOURS le même padding gauche (24px) + le
+        // spacer 34px + gap 12 = 70px total. Avant, les messages groupés
+        // avaient un padding-left 70px ET un spacer 34px → 116px (texte
+        // décalé loin à droite).
+        padding: previousFromSameUser ? '2px 24px 2px 24px' : '8px 24px 4px',
         display: 'flex',
         gap: 12,
         background: isUrgent ? 'var(--danger-soft)' : 'transparent',
@@ -1347,6 +1399,103 @@ function LinkedPatient({
       >
         {tag}
       </span>
+    </div>
+  );
+}
+
+/**
+ * Picker pour démarrer une DM avec un collègue. Liste les users actifs hors
+ * caller (depuis /chat/colleagues). Clic → POST /chat/direct-messages
+ * idempotent → sélection de la DM (existante ou créée).
+ */
+function ColleaguePicker({
+  colleagues,
+  loading,
+  onPick,
+  onClose,
+}: {
+  colleagues: { id: string; fullName: string; role: string | null }[];
+  loading: boolean;
+  onPick: (userId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choisir un collègue pour démarrer une discussion"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          width: 'min(420px, 92vw)',
+          maxHeight: '80vh',
+          background: 'var(--surface)',
+          borderRadius: 10,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+          <strong style={{ fontSize: 14 }}>Nouveau message</strong>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+            Choisissez un collègue pour ouvrir une discussion privée.
+          </div>
+        </div>
+        <div style={{ overflow: 'auto', flex: 1 }}>
+          {loading && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          )}
+          {!loading && colleagues.length === 0 && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
+              Aucun autre collègue actif.
+            </div>
+          )}
+          {colleagues.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick(c.id)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '10px 18px',
+                border: 0,
+                borderBottom: '1px solid var(--border-soft)',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                color: 'var(--ink-1)',
+                display: 'block',
+              }}
+            >
+              {c.fullName}
+              {c.role && (
+                <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 11.5 }}>
+                  · {c.role}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div style={{ padding: 10, borderTop: '1px solid var(--border)', textAlign: 'right' }}>
+          <Button onClick={onClose}>Fermer</Button>
+        </div>
+      </div>
     </div>
   );
 }

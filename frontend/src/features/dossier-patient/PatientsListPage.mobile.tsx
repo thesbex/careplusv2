@@ -16,7 +16,7 @@
  * (allergies/antécédents/mutuelle/historique) restent côté desktop.
  */
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
@@ -243,9 +243,24 @@ function MPatientRow({
 
 export default function PatientsListMobilePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Mode "picker" — appelé depuis /rdv/new pour choisir un patient. Clic sur
+  // une ligne → retour au form RDV avec patientId pré-rempli, au lieu du
+  // dossier patient (qui faisait perdre le brouillon RDV).
+  const pickerMode = searchParams.get('picker'); // 'rdv' | null
+  const isRdvPicker = pickerMode === 'rdv';
   const [q, setQ] = useState('');
   const [seg, setSeg] = useState<Segment>('tous');
   const [showNew, setShowNew] = useState(false);
+
+  function handlePickPatient(p: { id: string; firstName?: string; lastName?: string }) {
+    if (isRdvPicker) {
+      const name = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
+      navigate(`/rdv/new?patientId=${p.id}${name ? `&patientName=${encodeURIComponent(name)}` : ''}`);
+    } else {
+      navigate(`/patients/${p.id}`);
+    }
+  }
 
   const { patients, total, counts, isLoading, error } = usePatientList({
     q,
@@ -485,7 +500,7 @@ export default function PatientsListMobilePage() {
                   key={p.id}
                   p={p}
                   isFirst={i === 0}
-                  onOpen={() => navigate(`/patients/${p.id}`)}
+                  onOpen={() => handlePickPatient(p)}
                 />
               ))}
             </div>
@@ -514,7 +529,12 @@ export default function PatientsListMobilePage() {
         onOpenChange={setShowNew}
         onCreated={(id) => {
           setShowNew(false);
-          navigate(`/patients/${id}`);
+          // Si on est en picker RDV, on retourne au form RDV plutôt qu'au dossier.
+          if (isRdvPicker) {
+            navigate(`/rdv/new?patientId=${id}`);
+          } else {
+            navigate(`/patients/${id}`);
+          }
         }}
       />
     </MScreen>

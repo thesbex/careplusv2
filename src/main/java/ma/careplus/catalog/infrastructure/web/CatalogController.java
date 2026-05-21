@@ -69,12 +69,16 @@ public class CatalogController {
                         rs.getString("kind")));
     }
 
-    public record LabTestView(UUID id, String code, String name, String category) {}
+    /** V050 — internalPrice : prix de facturation interne (NULL = non facturable). */
+    public record LabTestView(UUID id, String code, String name, String category,
+                              java.math.BigDecimal internalPrice) {}
 
     public record LabTestWriteRequest(
             @NotBlank @Size(max = 32) String code,
             @NotBlank @Size(max = 255) String name,
-            @Size(max = 64) String category) {}
+            @Size(max = 64) String category,
+            /** V050 — peut être null (= ne pas facturer en interne). */
+            java.math.BigDecimal internalPrice) {}
 
     @GetMapping("/lab-tests")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
@@ -83,33 +87,38 @@ public class CatalogController {
         String trimmed = q == null ? "" : q.trim();
         if (trimmed.isEmpty()) {
             return jdbc.query(
-                    "SELECT id, code, name, category FROM catalog_lab_test "
+                    "SELECT id, code, name, category, internal_price FROM catalog_lab_test "
                             + "WHERE active = TRUE ORDER BY name LIMIT 20",
                     (rs, i) -> new LabTestView(
                             (UUID) rs.getObject("id"),
                             rs.getString("code"),
                             rs.getString("name"),
-                            rs.getString("category")));
+                            rs.getString("category"),
+                            rs.getBigDecimal("internal_price")));
         }
         String like = "%" + trimmed + "%";
         return jdbc.query(
-                "SELECT id, code, name, category FROM catalog_lab_test "
+                "SELECT id, code, name, category, internal_price FROM catalog_lab_test "
                         + "WHERE active = TRUE AND (name ILIKE ? OR code ILIKE ?) "
                         + "ORDER BY name LIMIT 20",
                 (rs, i) -> new LabTestView(
                         (UUID) rs.getObject("id"),
                         rs.getString("code"),
                         rs.getString("name"),
-                        rs.getString("category")),
+                        rs.getString("category"),
+                        rs.getBigDecimal("internal_price")),
                 like, like);
     }
 
-    public record ImagingExamView(UUID id, String code, String name, String modality) {}
+    /** V050 — internalPrice. */
+    public record ImagingExamView(UUID id, String code, String name, String modality,
+                                   java.math.BigDecimal internalPrice) {}
 
     public record ImagingExamWriteRequest(
             @NotBlank @Size(max = 32) String code,
             @NotBlank @Size(max = 255) String name,
-            @Size(max = 32) String modality) {}
+            @Size(max = 32) String modality,
+            java.math.BigDecimal internalPrice) {}
 
     @GetMapping("/imaging-exams")
     @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
@@ -118,24 +127,26 @@ public class CatalogController {
         String trimmed = q == null ? "" : q.trim();
         if (trimmed.isEmpty()) {
             return jdbc.query(
-                    "SELECT id, code, name, modality FROM catalog_imaging_exam "
+                    "SELECT id, code, name, modality, internal_price FROM catalog_imaging_exam "
                             + "WHERE active = TRUE ORDER BY modality, name LIMIT 20",
                     (rs, i) -> new ImagingExamView(
                             (UUID) rs.getObject("id"),
                             rs.getString("code"),
                             rs.getString("name"),
-                            rs.getString("modality")));
+                            rs.getString("modality"),
+                            rs.getBigDecimal("internal_price")));
         }
         String like = "%" + trimmed + "%";
         return jdbc.query(
-                "SELECT id, code, name, modality FROM catalog_imaging_exam "
+                "SELECT id, code, name, modality, internal_price FROM catalog_imaging_exam "
                         + "WHERE active = TRUE AND (name ILIKE ? OR code ILIKE ?) "
                         + "ORDER BY modality, name LIMIT 20",
                 (rs, i) -> new ImagingExamView(
                         (UUID) rs.getObject("id"),
                         rs.getString("code"),
                         rs.getString("name"),
-                        rs.getString("modality")),
+                        rs.getString("modality"),
+                        rs.getBigDecimal("internal_price")),
                 like, like);
     }
 
@@ -152,11 +163,11 @@ public class CatalogController {
         }
         UUID id = UUID.randomUUID();
         jdbc.update(
-                "INSERT INTO catalog_lab_test (id, code, name, category, active) "
-                + "VALUES (?, ?, ?, ?, TRUE)",
-                id, req.code(), req.name(), req.category());
+                "INSERT INTO catalog_lab_test (id, code, name, category, internal_price, active) "
+                + "VALUES (?, ?, ?, ?, ?, TRUE)",
+                id, req.code(), req.name(), req.category(), req.internalPrice());
         return ResponseEntity.created(URI.create("/api/catalog/lab-tests/" + id))
-                .body(new LabTestView(id, req.code(), req.name(), req.category()));
+                .body(new LabTestView(id, req.code(), req.name(), req.category(), req.internalPrice()));
     }
 
     @PutMapping("/lab-tests/{id}")
@@ -164,8 +175,6 @@ public class CatalogController {
     public ResponseEntity<Void> updateLabTest(
             @PathVariable UUID id,
             @Valid @RequestBody LabTestWriteRequest req) {
-        // Le code est la clé naturelle UNIQUE — un PUT qui le change vers
-        // un code déjà pris doit retourner 409, pas 500.
         Integer conflict = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM catalog_lab_test WHERE code = ? AND id <> ? AND active = TRUE",
                 Integer.class, req.code(), id);
@@ -174,9 +183,9 @@ public class CatalogController {
         }
         int updated = jdbc.update(
                 "UPDATE catalog_lab_test SET "
-                + "code = ?, name = ?, category = ?, updated_at = now() "
+                + "code = ?, name = ?, category = ?, internal_price = ?, updated_at = now() "
                 + "WHERE id = ?",
-                req.code(), req.name(), req.category(), id);
+                req.code(), req.name(), req.category(), req.internalPrice(), id);
         if (updated == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.noContent().build();
     }
@@ -205,11 +214,11 @@ public class CatalogController {
         }
         UUID id = UUID.randomUUID();
         jdbc.update(
-                "INSERT INTO catalog_imaging_exam (id, code, name, modality, active) "
-                + "VALUES (?, ?, ?, ?, TRUE)",
-                id, req.code(), req.name(), req.modality());
+                "INSERT INTO catalog_imaging_exam (id, code, name, modality, internal_price, active) "
+                + "VALUES (?, ?, ?, ?, ?, TRUE)",
+                id, req.code(), req.name(), req.modality(), req.internalPrice());
         return ResponseEntity.created(URI.create("/api/catalog/imaging-exams/" + id))
-                .body(new ImagingExamView(id, req.code(), req.name(), req.modality()));
+                .body(new ImagingExamView(id, req.code(), req.name(), req.modality(), req.internalPrice()));
     }
 
     @PutMapping("/imaging-exams/{id}")
@@ -225,9 +234,9 @@ public class CatalogController {
         }
         int updated = jdbc.update(
                 "UPDATE catalog_imaging_exam SET "
-                + "code = ?, name = ?, modality = ?, updated_at = now() "
+                + "code = ?, name = ?, modality = ?, internal_price = ?, updated_at = now() "
                 + "WHERE id = ?",
-                req.code(), req.name(), req.modality(), id);
+                req.code(), req.name(), req.modality(), req.internalPrice(), id);
         if (updated == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.noContent().build();
     }

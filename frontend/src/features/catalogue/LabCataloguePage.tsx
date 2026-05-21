@@ -24,15 +24,18 @@ interface LabTest {
   code: string;
   name: string;
   category: string | null;
+  internalPrice: number | null;
 }
 
 interface Form {
   code: string;
   name: string;
   category: string;
+  /** Texte côté form, parsé en number à l'envoi. Vide = NULL → non facturable interne. */
+  internalPrice: string;
 }
 
-const EMPTY_FORM: Form = { code: '', name: '', category: '' };
+const EMPTY_FORM: Form = { code: '', name: '', category: '', internalPrice: '' };
 
 const NAV_MAP = {
   dashboard: '/dashboard',
@@ -111,7 +114,12 @@ export default function LabCataloguePage() {
 
   function openEdit(t: LabTest) {
     setEditingId(t.id);
-    setForm({ code: t.code, name: t.name, category: t.category ?? '' });
+    setForm({
+      code: t.code,
+      name: t.name,
+      category: t.category ?? '',
+      internalPrice: t.internalPrice != null ? String(t.internalPrice) : '',
+    });
     setDrawerOpen(true);
   }
 
@@ -120,11 +128,22 @@ export default function LabCataloguePage() {
       toast.error('Champs requis : Code, Nom.');
       return;
     }
+    const internalPrice = form.internalPrice.trim();
+    let parsedPrice: number | null = null;
+    if (internalPrice) {
+      const n = Number(internalPrice.replace(',', '.'));
+      if (!Number.isFinite(n) || n < 0) {
+        toast.error('Prix interne invalide.');
+        return;
+      }
+      parsedPrice = n;
+    }
     try {
       const body = {
         code: form.code.trim(),
         name: form.name.trim(),
         category: form.category.trim() || null,
+        internalPrice: parsedPrice,
       };
       if (editingId) {
         await api.put(`/catalog/lab-tests/${editingId}`, body);
@@ -323,6 +342,13 @@ export default function LabCataloguePage() {
               <Field label="Code *" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="ex. NFS, CRP, GLY-VEIN…" hint="Identifiant unique servant aux prescriptions." />
               <Field label="Nom *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="ex. Numération formule sanguine" />
               <Field label="Catégorie" value={form.category} onChange={(v) => setForm({ ...form, category: v })} placeholder="Hématologie, Bactériologie, Biochimie…" />
+              <Field
+                label="Prix interne (MAD)"
+                value={form.internalPrice}
+                onChange={(v) => setForm({ ...form, internalPrice: v })}
+                placeholder="ex. 120 — laisser vide = non facturable en interne"
+                hint="V050 — Quand le médecin coche 'Réaliser en interne' et signe la consultation, cette ligne est ajoutée automatiquement à la facture brouillon du patient. Laisser vide pour ne pas facturer automatiquement."
+              />
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>

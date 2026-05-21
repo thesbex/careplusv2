@@ -152,10 +152,14 @@ export default function PriseRDVMobilePage() {
                 role="button"
                 tabIndex={0}
                 aria-label="Changer de patient"
-                onClick={() => navigate('/patients')}
-                onKeyDown={(e) => e.key === 'Enter' && navigate('/patients')}
+                // ?picker=rdv signale à /patients qu'on est dans un flow de
+                // sélection (et pas en navigation libre vers le dossier).
+                // Sans ça, le click sur un patient menait vers le dossier et
+                // l'utilisateur perdait son brouillon RDV.
+                onClick={() => navigate('/patients?picker=rdv')}
+                onKeyDown={(e) => e.key === 'Enter' && navigate('/patients?picker=rdv')}
               >
-                Changer
+                {patientIdParam ? 'Changer' : 'Choisir'}
               </span>
             </div>
           </div>

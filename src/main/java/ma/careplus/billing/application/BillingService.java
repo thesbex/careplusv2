@@ -244,6 +244,43 @@ public class BillingService {
                 }
             }
 
+            // Step 2ter: Append internal LAB / IMAGING lines (V050).
+            // Pour chaque prescription_line marquée en interne (V038 — internal_status
+            // ∈ {PENDING, IN_PROGRESS, DONE} ; CANCELLED exclues) ET dont le catalogue
+            // expose un internal_price non-NULL, on ajoute une ligne facture. Si
+            // internal_price est NULL, on skip silencieusement — le médecin verra
+            // les résultats dans la consult et peut ajouter une ligne manuelle.
+            List<java.util.Map<String, Object>> internalRows = jdbc.queryForList("""
+                    SELECT pl.lab_test_id, pl.imaging_exam_id,
+                           lt.name AS lab_name, lt.internal_price AS lab_price,
+                           ix.name AS img_name, ix.internal_price AS img_price
+                      FROM clinical_prescription_line pl
+                      JOIN clinical_prescription p ON p.id = pl.prescription_id
+                 LEFT JOIN catalog_lab_test    lt ON lt.id = pl.lab_test_id
+                 LEFT JOIN catalog_imaging_exam ix ON ix.id = pl.imaging_exam_id
+                     WHERE p.consultation_id = ?
+                       AND pl.internal_status IS NOT NULL
+                       AND pl.internal_status <> 'CANCELLED'
+                       AND (pl.lab_test_id IS NOT NULL OR pl.imaging_exam_id IS NOT NULL)
+                    """, event.consultationId());
+            for (java.util.Map<String, Object> row : internalRows) {
+                BigDecimal price = (BigDecimal) (row.get("lab_price") != null
+                        ? row.get("lab_price") : row.get("img_price"));
+                if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) continue;
+                String description = (String) (row.get("lab_name") != null
+                        ? row.get("lab_name") : row.get("img_name"));
+                if (description == null) description = "Acte interne";
+                InvoiceLine intLine = new InvoiceLine();
+                intLine.setInvoiceId(invoice.getId());
+                intLine.setPosition(position++);
+                intLine.setDescription(description);
+                intLine.setUnitPrice(price);
+                intLine.setQuantity(BigDecimal.ONE);
+                intLine.setLineTotal(price);
+                invoiceLineRepository.save(intLine);
+                totalAmount = totalAmount.add(price);
+            }
+
             // Step 3: Apply tier discount
             BigDecimal discountAmount = BigDecimal.ZERO;
             if (!"NORMAL".equals(tier)) {
