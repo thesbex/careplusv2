@@ -51,7 +51,9 @@ public class InternalRequestController {
             String doctorName,
             String status,
             OffsetDateTime assignedAt,
-            UUID claimedBy
+            UUID claimedBy,
+            /** V015 — id du document résultat téléversé, sert au bouton "Voir le résultat". */
+            UUID resultDocumentId
     ) {}
 
     @GetMapping("/api/internal-requests")
@@ -108,7 +110,8 @@ public class InternalRequestController {
                 meta.doctorName(),
                 line.getInternalStatus(),
                 line.getInternalAssignedAt(),
-                line.getInternalClaimedBy());
+                line.getInternalClaimedBy(),
+                line.getResultDocumentId());
     }
 
     private static Service parseService(String s) {

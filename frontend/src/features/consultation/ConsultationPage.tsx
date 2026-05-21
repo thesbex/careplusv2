@@ -18,7 +18,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
-import { Check, Doc, Clipboard, Print } from '@/components/icons';
+import { Check, Doc, Clipboard } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
@@ -94,9 +94,8 @@ export default function ConsultationPage() {
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
   const isSuspended = consultation?.status === 'SUSPENDUE' && !isSigned;
-  // Le footer "Certificat" rouvre le PDF du dernier certificat généré pour
-  // la consultation. Désactivé tant qu'aucun cert n'existe.
-  const latestCert = [...prescriptions].reverse().find((p) => p.type === 'CERT');
+  // (latestCert retiré — utilisé seulement par l'ancien bouton "Certificat" du
+  // footer, doublon des CTAs en haut. Cf. retour terrain.)
 
   const {
     register,
@@ -328,18 +327,9 @@ export default function ConsultationPage() {
               >
                 Suspendre
               </Button>
-              <Button
-                type="button"
-                disabled={!latestCert}
-                onClick={() => {
-                  if (!latestCert) return;
-                  // Naviguer vers la route d'aperçu plutôt que window.open(blob)
-                  // — le popup-blocker de Chrome bloquait silencieusement.
-                  navigate(`/prescriptions/${latestCert.id}`);
-                }}
-              >
-                <Print /> Certificat
-              </Button>
+              {/* Bouton "Certificat" du footer retiré (doublon du CTA principal
+                  en haut + de l'action "Certificat médical" dans la colonne
+                  Actions). Cf. retour terrain — bouton ambigu. */}
               <SignatureLock
                 onConfirm={handleSignConfirm}
                 isSigning={isSigning}

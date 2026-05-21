@@ -30,6 +30,7 @@ import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVacc
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
+import { isPureTech } from '@/lib/auth/roleHelpers';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda:   '/agenda',
@@ -45,6 +46,9 @@ export default function ParametrageMobilePage() {
 
   const isAdminOrDoctor =
     !!user && (user.roles.includes('ADMIN') || user.roles.includes('MEDECIN'));
+  // Pure-tech : on n'affiche que Messages + Mon profil + Déconnexion.
+  // Pas de Dashboard, Cabinet, Suivi clinique, Catalogue.
+  const pureTech = isPureTech(user?.roles);
 
   const vaccinationsBadge = useVaccinationOverdueCount() ?? 0;
   const grossessesBadge = useGrossesseAlertsCount() ?? 0;
@@ -92,19 +96,23 @@ export default function ParametrageMobilePage() {
       </div>
 
       <div className="mb-pad">
-        <div className="m-section-h">
-          <h3>Tableau de bord</h3>
-        </div>
-        <div className="m-card" style={{ marginBottom: 18 }}>
-          <MenuRow
-            Icon={BarChartIcon}
-            label="Dashboard"
-            hint="Indicateurs cabinet — KPIs et activité"
-            onClick={() => navigate('/dashboard')}
-          />
-        </div>
+        {!pureTech && (
+          <>
+            <div className="m-section-h">
+              <h3>Tableau de bord</h3>
+            </div>
+            <div className="m-card" style={{ marginBottom: 18 }}>
+              <MenuRow
+                Icon={BarChartIcon}
+                label="Dashboard"
+                hint="Indicateurs cabinet — KPIs et activité"
+                onClick={() => navigate('/dashboard')}
+              />
+            </div>
+          </>
+        )}
 
-        {isAdminOrDoctor ? (
+        {!pureTech && (isAdminOrDoctor ? (
           <>
             <div className="m-section-h">
               <h3>Cabinet</h3>
@@ -136,40 +144,44 @@ export default function ParametrageMobilePage() {
           >
             Les paramètres du cabinet sont réservés à l’administrateur et au médecin.
           </div>
-        )}
+        ))}
 
-        <div className="m-section-h">
-          <h3>Suivi clinique</h3>
-        </div>
-        <div className="m-card" style={{ marginBottom: 18 }}>
-          <MenuRow
-            Icon={StethoIcon}
-            label="Consultations"
-            hint="Brouillons + signées"
-            onClick={() => navigate('/consultations')}
-          />
-          <MenuRow
-            Icon={NeedleIcon}
-            label="Vaccinations"
-            hint="Worklist + rappels en retard"
-            badge={vaccinationsBadge}
-            onClick={() => navigate('/vaccinations')}
-          />
-          <MenuRow
-            Icon={HeartIcon}
-            label="Grossesses"
-            hint="Suivi prénatal + alertes"
-            badge={grossessesBadge}
-            onClick={() => navigate('/grossesses')}
-          />
-          <MenuRow
-            Icon={BoxIcon}
-            label="Stock"
-            hint="Articles, lots, mouvements"
-            badge={stockBadge}
-            onClick={() => navigate('/stock')}
-          />
-        </div>
+        {!pureTech && (
+          <>
+            <div className="m-section-h">
+              <h3>Suivi clinique</h3>
+            </div>
+            <div className="m-card" style={{ marginBottom: 18 }}>
+              <MenuRow
+                Icon={StethoIcon}
+                label="Consultations"
+                hint="Brouillons + signées"
+                onClick={() => navigate('/consultations')}
+              />
+              <MenuRow
+                Icon={NeedleIcon}
+                label="Vaccinations"
+                hint="Worklist + rappels en retard"
+                badge={vaccinationsBadge}
+                onClick={() => navigate('/vaccinations')}
+              />
+              <MenuRow
+                Icon={HeartIcon}
+                label="Grossesses"
+                hint="Suivi prénatal + alertes"
+                badge={grossessesBadge}
+                onClick={() => navigate('/grossesses')}
+              />
+              <MenuRow
+                Icon={BoxIcon}
+                label="Stock"
+                hint="Articles, lots, mouvements"
+                badge={stockBadge}
+                onClick={() => navigate('/stock')}
+              />
+            </div>
+          </>
+        )}
 
         <div className="m-section-h">
           <h3>Communication</h3>
@@ -184,29 +196,33 @@ export default function ParametrageMobilePage() {
           />
         </div>
 
-        <div className="m-section-h">
-          <h3>Catalogues</h3>
-        </div>
-        <div className="m-card" style={{ marginBottom: 18 }}>
-          <MenuRow
-            Icon={PillIcon}
-            label="Médicaments"
-            hint="Référentiel Maroc"
-            onClick={() => navigate('/catalogue')}
-          />
-          <MenuRow
-            Icon={FlaskIcon}
-            label="Analyses biologiques"
-            hint="Tests de laboratoire"
-            onClick={() => navigate('/catalogue/analyses')}
-          />
-          <MenuRow
-            Icon={DocIcon}
-            label="Radio / Imagerie"
-            hint="Examens d’imagerie médicale"
-            onClick={() => navigate('/catalogue/radio')}
-          />
-        </div>
+        {!pureTech && (
+          <>
+            <div className="m-section-h">
+              <h3>Catalogues</h3>
+            </div>
+            <div className="m-card" style={{ marginBottom: 18 }}>
+              <MenuRow
+                Icon={PillIcon}
+                label="Médicaments"
+                hint="Référentiel Maroc"
+                onClick={() => navigate('/catalogue')}
+              />
+              <MenuRow
+                Icon={FlaskIcon}
+                label="Analyses biologiques"
+                hint="Tests de laboratoire"
+                onClick={() => navigate('/catalogue/analyses')}
+              />
+              <MenuRow
+                Icon={DocIcon}
+                label="Radio / Imagerie"
+                hint="Examens d’imagerie médicale"
+                onClick={() => navigate('/catalogue/radio')}
+              />
+            </div>
+          </>
+        )}
 
         <div className="m-section-h">
           <h3>Compte</h3>

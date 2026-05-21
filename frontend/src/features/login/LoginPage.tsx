@@ -16,6 +16,7 @@ import { BrandMark } from '@/components/ui/BrandMark';
 import { Eye, Lock } from '@/components/icons';
 import { useLogin } from '@/lib/auth/useAuth';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { isPureTech, defaultLandingForTech } from '@/lib/auth/roleHelpers';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { loginSchema, type LoginValues } from './schema';
@@ -249,6 +250,9 @@ export default function LoginPage() {
  */
 async function pickPostLoginPath(redirectTo: string): Promise<string> {
   const user = useAuthStore.getState().user;
+  // Pure-tech (LAB/RADIO seul) : redirect direct vers la queue. Évite
+  // qu'un technicien atterrisse sur /agenda et soit bouncé par le guard.
+  if (isPureTech(user?.roles)) return defaultLandingForTech(user?.roles);
   const isAdmin = !!user?.roles?.includes('ADMIN');
   if (!isAdmin) return redirectTo;
   // 404 is fine here — old installs may not have the row yet, treated as empty.

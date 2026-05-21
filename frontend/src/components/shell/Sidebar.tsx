@@ -25,6 +25,7 @@ import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVacc
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
+import { isPureTech } from '@/lib/auth/roleHelpers';
 import {
   useClinicSettings,
   ESTABLISHMENT_TYPE_LABELS,
@@ -134,11 +135,20 @@ export function Sidebar({
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
 
+  // Cloisonnement RBAC strict pour les techniciens (LAB / RADIO seul) :
+  // ils ne doivent voir QUE leur queue de traitement interne, jamais agenda/
+  // patients/factu/etc. — sinon fuite UX. Un user avec LAB+MEDECIN garde
+  // l'accès complet (pas pure-tech).
+  const pureTech = isPureTech(userRoles);
   const visible = ITEMS.filter((i) => {
     if (i.requiresRoles && !i.requiresRoles.some((r) => userRoles.includes(r))) return false;
-    // Backward-compat: hide only when permissions array is populated and the
-    // permission is missing. Legacy sessions keep all items visible.
     if (i.requiresPermission && userPerms != null && !userPerms.includes(i.requiresPermission)) {
+      return false;
+    }
+    // Pure-tech : on cache toute la sidebar SAUF les items strictement
+    // restreints à LAB/RADIO (queueLab, queueRadio) + Messages (collaboration
+    // équipe inter-rôles, légitime même côté technicien).
+    if (pureTech && i.id !== 'queueLab' && i.id !== 'queueRadio' && i.id !== 'messages') {
       return false;
     }
     return true;

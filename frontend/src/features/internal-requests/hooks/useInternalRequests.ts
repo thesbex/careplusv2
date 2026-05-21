@@ -25,6 +25,8 @@ export interface InternalRequestRow {
   status: InternalStatus;
   assignedAt: string | null;
   claimedBy: string | null;
+  /** V015 — id du document résultat (DONE seulement). Drive le bouton "Voir". */
+  resultDocumentId: string | null;
 }
 
 const KEY = 'internal-requests';

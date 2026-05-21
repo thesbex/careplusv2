@@ -19,6 +19,7 @@ import type { MobileTab } from '@/components/shell/MTabs';
 import { Button } from '@/components/ui/Button';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { api } from '@/lib/api/client';
 import {
   useInternalRequests,
   useClaimInternalRequest,
@@ -122,6 +123,27 @@ export default function QueuePage() {
       toast.error('Échec du téléversement du résultat.');
     } finally {
       setUploadingLineId(null);
+    }
+  }
+
+  // Visualiser un résultat (tab DONE) : fetch en blob via axios pour passer le
+  // Bearer JWT in-memory (cf. ADR-019). Ouverture window.open d'un blob URL.
+  // Avant ce fix : on tentait un `window.open('/api/documents/{id}/content')`
+  // direct → le browser n'envoyait pas le JWT (cookie HttpOnly seulement),
+  // d'où le 401 UNAUTHORIZED côté user.
+  async function viewResult(documentId: string) {
+    try {
+      const res = await api.get(`/documents/${documentId}/content`, {
+        responseType: 'arraybuffer',
+      });
+      const ctype = (res.headers['content-type'] as string) ?? 'application/octet-stream';
+      const blob = new Blob([res.data as ArrayBuffer], { type: ctype });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      // Libère la mémoire un peu plus tard (le browser doit avoir le temps d'ouvrir).
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error('Impossible d\'ouvrir le résultat.');
     }
   }
 
@@ -234,9 +256,20 @@ export default function QueuePage() {
               </>
             )}
             {tab === 'DONE' && (
-              <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                Résultat attaché à la consultation
-              </span>
+              <>
+                <span style={{ fontSize: 12, color: 'var(--ink-3)', marginRight: 'auto' }}>
+                  Résultat attaché à la consultation
+                </span>
+                {row.resultDocumentId && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => void viewResult(row.resultDocumentId!)}
+                  >
+                    Voir le résultat
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </div>

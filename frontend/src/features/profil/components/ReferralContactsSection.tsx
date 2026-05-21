@@ -9,13 +9,14 @@
  * automatique en v1 — la consommation (lettre d'orientation) sortira plus
  * tard.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Trash } from '@/components/icons';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { MEDICAL_SPECIALTIES, SPECIALTY_OTHER } from '@/lib/catalogs/medicalSpecialties';
 import {
   useCreateReferralContact,
   useDeleteReferralContact,
@@ -180,22 +181,11 @@ export function ReferralContactsSection() {
               placeholder="Dr Hassan Cherkaoui"
             />
           </Field>
-          <Field>
-            <FieldLabel htmlFor="ref-specialty">Spécialité *</FieldLabel>
-            <Input
-              id="ref-specialty"
-              value={draft.specialty}
-              onChange={(e) => setDraft({ ...draft, specialty: e.target.value })}
-              maxLength={120}
-              list="ref-specialty-suggestions"
-              placeholder="Cardiologie"
-            />
-            <datalist id="ref-specialty-suggestions">
-              {specialties.map((s) => (
-                <option key={s} value={s} />
-              ))}
-            </datalist>
-          </Field>
+          <SpecialtyPicker
+            value={draft.specialty}
+            onChange={(v) => setDraft({ ...draft, specialty: v })}
+            extraOptions={specialties}
+          />
           <Field>
             <FieldLabel htmlFor="ref-phone">Téléphone</FieldLabel>
             <Input
@@ -379,5 +369,98 @@ export function ReferralContactsSection() {
         ))}
       </div>
     </div>
+  );
+}
+
+/**
+ * Picker spécialité = select avec le catalogue prédéfini (MEDICAL_SPECIALTIES)
+ * + les spécialités déjà saisies par le médecin (déduplication) + une option
+ * "Autre…" qui révèle un champ libre.
+ *
+ * Pourquoi pas juste `<input list=...>` (autocomplete natif) : on veut FORCER
+ * le choix dans le catalogue par défaut, avec saisie libre disponible mais
+ * volontaire. Retour terrain Excel : "je veux selectionner parmis celles
+ * existantes dans le marché (cardiologue, hématologue, pédiatre, ..)".
+ */
+function SpecialtyPicker({
+  value,
+  onChange,
+  extraOptions,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  extraOptions: readonly string[];
+}) {
+  // Catalogue final = MEDICAL_SPECIALTIES ∪ saisies historiques du médecin.
+  const allOptions = useMemo(() => {
+    const set = new Set<string>(MEDICAL_SPECIALTIES);
+    extraOptions.forEach((s) => {
+      if (s && s.trim()) set.add(s.trim());
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'fr'));
+  }, [extraOptions]);
+
+  // Si la valeur courante n'est pas dans le catalogue, le mode "Autre" est
+  // automatiquement actif (cas d'une saisie libre faite avant l'arrivée du
+  // catalogue, ou édition d'un confrère déjà créé en libre).
+  const isInCatalog = value === '' || allOptions.includes(value);
+  const [mode, setMode] = useState<'select' | 'free'>(isInCatalog ? 'select' : 'free');
+
+  useEffect(() => {
+    setMode(isInCatalog ? 'select' : 'free');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  return (
+    <Field>
+      <FieldLabel htmlFor="ref-specialty">Spécialité *</FieldLabel>
+      {mode === 'select' ? (
+        <select
+          id="ref-specialty"
+          value={value}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === SPECIALTY_OTHER) {
+              setMode('free');
+              onChange('');
+            } else {
+              onChange(v);
+            }
+          }}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            background: 'var(--surface)',
+            fontFamily: 'inherit',
+            fontSize: 14,
+            color: 'var(--ink)',
+          }}
+        >
+          <option value="">— Sélectionner —</option>
+          {allOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+          <option value={SPECIALTY_OTHER}>Autre… (saisir)</option>
+        </select>
+      ) : (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <Input
+            id="ref-specialty"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            maxLength={120}
+            placeholder="Saisir la spécialité"
+            autoFocus
+          />
+          <Button variant="ghost" size="sm" onClick={() => { setMode('select'); onChange(''); }}>
+            ↩ Liste
+          </Button>
+        </div>
+      )}
+    </Field>
   );
 }

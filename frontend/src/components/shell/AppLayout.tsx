@@ -6,6 +6,8 @@ import { useSalleBadgeCount } from './useSalleBadgeCount';
 import { SpotlightContext } from './spotlightContext';
 import { NAV_MAP, pathToSidebarScreen } from '@/lib/router/navMap';
 import { useHeartbeat } from '@/features/messages/hooks/useHeartbeat';
+import { useAuthStore } from '@/lib/auth/authStore';
+import { isPureTech, defaultLandingForTech } from '@/lib/auth/roleHelpers';
 import '@/styles/shell.css';
 
 /**
@@ -42,6 +44,21 @@ export function AppLayout() {
   // Heartbeat présence — POST /chat/heartbeat toutes les 30 s pour maintenir
   // last_seen_at à jour côté serveur. Drive la présence on/away/off.
   useHeartbeat();
+
+  // Cloisonnement RBAC pur-tech : un user LAB / RADIO sans autre rôle ne doit
+  // pouvoir naviguer QUE vers /queue/lab|/queue/radio + /messages + /profil.
+  // Si une URL hors-scope est saisie, bounce vers sa queue. Empêche la fuite
+  // d'accès qui existait avant — Sidebar cache déjà les items, ce guard
+  // ferme le verrou côté URL.
+  const userRoles = useAuthStore((s) => s.user?.roles);
+  const pureTech = isPureTech(userRoles);
+  useEffect(() => {
+    if (!pureTech) return;
+    const allowed = ['/queue/', '/messages', '/profil', '/force-change-password'];
+    if (!allowed.some((p) => location.pathname.startsWith(p))) {
+      navigate(defaultLandingForTech(userRoles), { replace: true });
+    }
+  }, [pureTech, userRoles, location.pathname, navigate]);
 
   // Salle badge — partagé avec useQueue, refetch 15s. Persistent across
   // page nav since AppLayout itself doesn't unmount.

@@ -49,7 +49,19 @@ export default function ProfilPage() {
       }
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
-      <div style={{ padding: 24, maxWidth: 720 }}>
+      <div
+        style={{
+          padding: 24,
+          maxWidth: 720,
+          // .cp-workspace est overflow:hidden — sans ce wrapper scrollable,
+          // la liste des confrères et les sections suivantes sortaient du
+          // viewport sans ascenseur. flex:1 + min-height:0 + overflow:auto =
+          // scroll vertical natif sur le contenu de la page profil.
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+        }}
+      >
         <div
           style={{
             background: 'var(--surface)',
