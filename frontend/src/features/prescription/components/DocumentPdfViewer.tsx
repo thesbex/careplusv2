@@ -24,7 +24,8 @@
  *
  * Mémoire : `URL.revokeObjectURL` au unmount (ou si la prescription change).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { isAxiosError } from 'axios';
 import { api } from '@/lib/api/client';
 import type { PrescriptionApi } from '../types';
 
@@ -63,6 +64,8 @@ interface UsePrescriptionPdfBlobResult {
   url: string | null;
   isLoading: boolean;
   error: string | null;
+  /** Re-fire the GET. Useful for the "Réessayer" button on a transient failure. */
+  retry: () => void;
 }
 
 /**
@@ -73,11 +76,23 @@ interface UsePrescriptionPdfBlobResult {
  * passe a son propre `objectUrl` local — le cleanup de la première passe
  * révoque uniquement la première URL, la seconde URL reste vivante dans le
  * state. Pas de fuite, pas de "PDF blanc" en dev.
+ *
+ * Timeout & error messaging (2026-05-17) : the global axios timeout is 20 s
+ * (good default for typical API calls), but PDF generation on a cold Render
+ * free-tier dyno can easily take 30-40 s the first time after sleep — the
+ * old version then surfaced a generic "Impossible de charger le PDF" with
+ * no clue why. We now bump the timeout to 60 s for this single endpoint,
+ * log the actual error to the console, and turn the most common failures
+ * into actionable messages.
  */
 export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
   const [url, setUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  // Bump with the retry button to re-trigger the effect.
+  const [attempt, setAttempt] = useState(0);
+
+  const retry = useCallback(() => setAttempt((a) => a + 1), []);
 
   useEffect(() => {
     if (!id) {
@@ -91,15 +106,21 @@ export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
     setError(null);
 
     api
-      .get<ArrayBuffer>(`/prescriptions/${id}/pdf`, { responseType: 'arraybuffer' })
+      .get<ArrayBuffer>(`/prescriptions/${id}/pdf`, {
+        responseType: 'arraybuffer',
+        timeout: 60_000,
+      })
       .then((r) => {
         if (cancelled) return;
         const blob = new Blob([r.data], { type: 'application/pdf' });
         objectUrl = URL.createObjectURL(blob);
         setUrl(objectUrl);
       })
-      .catch(() => {
-        if (!cancelled) setError('Impossible de charger le PDF.');
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('[useDocumentPdfBlob] PDF fetch failed', err);
+        setError(messageForPdfError(err));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -109,9 +130,32 @@ export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [id]);
+  }, [id, attempt]);
 
-  return { url, isLoading, error };
+  return { url, isLoading, error, retry };
+}
+
+/**
+ * Map a fetch error to a French sentence the praticien can act on. We
+ * intentionally keep the technical status visible at the end of the
+ * message so support can correlate with backend logs.
+ */
+function messageForPdfError(err: unknown): string {
+  if (isAxiosError(err)) {
+    if (err.code === 'ECONNABORTED' || err.message.toLowerCase().includes('timeout')) {
+      return "Le serveur met trop de temps à générer le PDF. Réessayez dans quelques secondes.";
+    }
+    const status = err.response?.status;
+    if (status === 401) return 'Session expirée. Reconnectez-vous puis rouvrez le document.';
+    if (status === 403) return "Vous n'avez pas les droits pour consulter ce document.";
+    if (status === 404) return 'Document introuvable.';
+    if (status && status >= 500) {
+      return `Erreur serveur lors de la génération du PDF (HTTP ${status}). Réessayez.`;
+    }
+    if (status) return `Impossible de charger le PDF (HTTP ${status}).`;
+    return 'Connexion interrompue. Vérifiez votre réseau puis réessayez.';
+  }
+  return 'Impossible de charger le PDF.';
 }
 
 interface DocumentPdfViewerProps {
@@ -145,7 +189,7 @@ export function DocumentPdfViewer({
   height = '100%',
   iframeClassName = 'pr-pdf-viewer',
 }: DocumentPdfViewerProps) {
-  const { url, isLoading, error } = useDocumentPdfBlob(documentId);
+  const { url, isLoading, error, retry } = useDocumentPdfBlob(documentId);
   const iframeId = `doc-pdf-frame-${documentId ?? 'pending'}`;
   const filename = `${meta.fileSlug}-${shortId ?? documentId ?? 'document'}.pdf`;
 
@@ -157,7 +201,34 @@ export function DocumentPdfViewer({
         </div>
       )}
       {error && (
-        <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+        <div
+          style={{
+            padding: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            alignItems: 'flex-start',
+          }}
+        >
+          <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+          <button
+            type="button"
+            onClick={retry}
+            style={{
+              fontFamily: 'inherit',
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '6px 14px',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: 'var(--surface)',
+              color: 'var(--ink)',
+              cursor: 'pointer',
+            }}
+          >
+            Réessayer
+          </button>
+        </div>
       )}
       {url && (
         <iframe
