@@ -115,6 +115,7 @@ export default function SalleAttentePage() {
           stock: '/stock',
           queueLab: '/queue/lab',
           queueRadio: '/queue/radio',
+          messages: '/messages',
           catalogue: '/catalogue',
           params: '/parametres',
         } as const;

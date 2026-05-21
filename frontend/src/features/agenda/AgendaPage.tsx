@@ -399,6 +399,7 @@ export default function AgendaPage() {
             stock: '/stock',
             queueLab: '/queue/lab',
             queueRadio: '/queue/radio',
+            messages: '/messages',
             catalogue: '/catalogue',
             params: '/parametres',
           } as const;

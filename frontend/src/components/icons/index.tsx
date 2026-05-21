@@ -412,3 +412,70 @@ export const Baby = (p: IconProps) => (
     <path d="M3.5 14c.6-2.5 2.4-4 4.5-4s3.9 1.5 4.5 4" />
   </Base>
 );
+
+/* ── Messagerie d'équipe ──────────────────────────────────────────────────
+ * Family added for the chat surface (canaux, DM, fils patient). Same 1.5
+ * stroke / 16×16 viewBox / currentColor convention. Ported from the
+ * updated design/prototype/icons.jsx.
+ */
+
+export const Chat = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2 3.5h12v8H7.5L4 14v-2.5H2v-8z" />
+    <path d="M5 6.5h6M5 8.5h4" />
+  </Base>
+);
+
+export const Send = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M14 2L7 9" />
+    <path d="M14 2l-4.5 12-2.5-5-5-2.5L14 2z" />
+  </Base>
+);
+
+export const Paperclip = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M11.5 7L7 11.5a2.5 2.5 0 01-3.5-3.5l5-5a1.7 1.7 0 012.4 2.4L6 10.4" />
+  </Base>
+);
+
+export const Smile = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M6 10.5a2.5 2.5 0 004 0" />
+    <circle cx="5.8" cy="6.5" r={0.5} fill="currentColor" />
+    <circle cx="10.2" cy="6.5" r={0.5} fill="currentColor" />
+  </Base>
+);
+
+export const Hash = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M5 2L3.5 14M11 2l-1.5 12M2.5 5.5h11M1.5 10.5h11" />
+  </Base>
+);
+
+export const At = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="8" cy="8" r="2.5" />
+    <path d="M10.5 8v1.5a1.5 1.5 0 003 0V8a5.5 5.5 0 10-2.5 4.6" />
+  </Base>
+);
+
+export const CheckDouble = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M2 8.5l3 3 5-6M7 11.5L9.5 14l5-7" />
+  </Base>
+);
+
+export const Mic = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="6" y="2" width="4" height="8" rx="2" />
+    <path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2M5.5 14h5" />
+  </Base>
+);
+
+export const Pin = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M6 2h4l-.5 2 1.5 2v2H8.5l-.5 6-.5-6H4.5V6L6 4z" />
+  </Base>
+);

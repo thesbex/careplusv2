@@ -22,6 +22,7 @@ export const NAV_MAP: Record<SidebarScreen, string> = {
   stock: '/stock',
   queueLab: '/queue/lab',
   queueRadio: '/queue/radio',
+  messages: '/messages',
   catalogue: '/catalogue',
   params: '/parametres',
 };

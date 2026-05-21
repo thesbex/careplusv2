@@ -84,6 +84,7 @@ export function Placeholder({ active, mobileTab, title, sub, sprintDay }: Placeh
           stock: '/stock',
           queueLab: '/queue/lab',
           queueRadio: '/queue/radio',
+          messages: '/messages',
           catalogue: '/catalogue',
           params: '/parametres',
         };

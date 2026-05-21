@@ -170,7 +170,55 @@ const Icon = {
     <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="3.5" fill="currentColor"/></svg>
   ),
   Menu: () => Ic.base("M2.5 4h11M2.5 8h11M2.5 12h11"),
+  Info: () => Ic.base(null,
+    <>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 7v4M8 5v.01" />
+    </>
+  ),
+  Upload: () => Ic.base(null,
+    <>
+      <path d="M8 10V2M5 5l3-3 3 3" />
+      <path d="M2.5 11v2a1 1 0 001 1h9a1 1 0 001-1v-2" />
+    </>
+  ),
   Filter: () => Ic.base("M2 3h12l-4.5 5.5V13l-3 1V8.5L2 3z"),
+  Chat: () => Ic.base(null,
+    <>
+      <path d="M2 3.5h12v8H7.5L4 14v-2.5H2v-8z" />
+      <path d="M5 6.5h6M5 8.5h4" />
+    </>
+  ),
+  Send: () => Ic.base(null,
+    <>
+      <path d="M14 2L7 9" />
+      <path d="M14 2l-4.5 12-2.5-5-5-2.5L14 2z" />
+    </>
+  ),
+  Paperclip: () => Ic.base("M11.5 7L7 11.5a2.5 2.5 0 01-3.5-3.5l5-5a1.7 1.7 0 012.4 2.4L6 10.4"),
+  Smile: () => Ic.base(null,
+    <>
+      <circle cx="8" cy="8" r="6" />
+      <path d="M6 10.5a2.5 2.5 0 004 0" />
+      <circle cx="5.8" cy="6.5" r=".5" fill="currentColor" />
+      <circle cx="10.2" cy="6.5" r=".5" fill="currentColor" />
+    </>
+  ),
+  Hash: () => Ic.base("M5 2L3.5 14M11 2l-1.5 12M2.5 5.5h11M1.5 10.5h11"),
+  At: () => Ic.base(null,
+    <>
+      <circle cx="8" cy="8" r="2.5" />
+      <path d="M10.5 8v1.5a1.5 1.5 0 003 0V8a5.5 5.5 0 10-2.5 4.6" />
+    </>
+  ),
+  CheckDouble: () => Ic.base("M2 8.5l3 3 5-6M7 11.5L9.5 14l5-7"),
+  Mic: () => Ic.base(null,
+    <>
+      <rect x="6" y="2" width="4" height="8" rx="2" />
+      <path d="M3.5 7.5a4.5 4.5 0 009 0M8 12v2M5.5 14h5" />
+    </>
+  ),
+  Pin: () => Ic.base("M6 2h4l-.5 2 1.5 2v2H8.5l-.5 6-.5-6H4.5V6L6 4z"),
   Signal: () => Ic.base(null,
     <>
       <rect x="2" y="10" width="2" height="4" />

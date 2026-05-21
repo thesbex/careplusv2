@@ -65,7 +65,8 @@ export default function CongesPage() {
           grossesses: '/grossesses',
           stock: '/stock',
           queueLab: '/queue/lab',
-          queueRadio: '/queue/radio', catalogue: '/catalogue', params: '/parametres',
+          queueRadio: '/queue/radio',
+          messages: '/messages', catalogue: '/catalogue', params: '/parametres',
         } as const;
         navigate(map[id]);
       }}

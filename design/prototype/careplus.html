@@ -31,10 +31,12 @@
 <script type="text/babel" src="screens/parametrage.jsx"></script>
 <script type="text/babel" src="screens/login.jsx"></script>
 <script type="text/babel" src="screens/onboarding.jsx"></script>
+<script type="text/babel" src="screens/messages.jsx"></script>
 
 <script type="text/babel" src="ios-frame.jsx"></script>
 <script type="text/babel" src="mobile/shell.jsx"></script>
 <script type="text/babel" src="mobile/screens.jsx"></script>
+<script type="text/babel" src="mobile/messages.jsx"></script>
 
 <script type="text/babel">
 const APP_W = 1440, APP_H = 900;
@@ -127,6 +129,10 @@ function App() {
         <DCArtboard id="params"     label="11 · Paramétrage cabinet"  width={APP_W} height={APP_H}><Parametrage /></DCArtboard>
       </DCSection>
 
+      <DCSection id="chat" title="Communication interne" subtitle="Messagerie d'équipe · médecin ↔ staff. Canaux, DM, et fils rattachés à un patient.">
+        <DCArtboard id="messages" label="14 · Messages équipe" width={APP_W} height={APP_H}><MessagesEquipe /></DCArtboard>
+      </DCSection>
+
       <DCSection id="mobile" title="Version mobile — iPhone" subtitle="Les 13 écrans reflétés pour médecin en déplacement et secrétaire en mobilité. 390×844 (iPhone 14).">
         <DCArtboard id="m-login"       label="M12 · Login"              width={PHONE_W+24} height={PHONE_H+24}><Phone><MLogin /></Phone></DCArtboard>
         <DCArtboard id="m-onboarding"  label="M13 · Onboarding"         width={PHONE_W+24} height={PHONE_H+24}><Phone><MOnboarding /></Phone></DCArtboard>
@@ -141,6 +147,8 @@ function App() {
         <DCArtboard id="m-factu"       label="M09 · Facturation"        width={PHONE_W+24} height={PHONE_H+24}><Phone><MFacturation /></Phone></DCArtboard>
         <DCArtboard id="m-fac-pdf"     label="M10 · Aperçu facture"     width={PHONE_W+24} height={PHONE_H+24}><Phone><MApercuFacture /></Phone></DCArtboard>
         <DCArtboard id="m-params"      label="M11 · Paramètres"         width={PHONE_W+24} height={PHONE_H+24}><Phone><MParametrage /></Phone></DCArtboard>
+        <DCArtboard id="m-messages"    label="M12 · Messages équipe"   width={PHONE_W+24} height={PHONE_H+24}><Phone><MMessages /></Phone></DCArtboard>
+        <DCArtboard id="m-conversation" label="M12b · Conversation #urgences" width={PHONE_W+24} height={PHONE_H+24}><Phone><MConversation /></Phone></DCArtboard>
       </DCSection>
     </DesignCanvas>
   );
