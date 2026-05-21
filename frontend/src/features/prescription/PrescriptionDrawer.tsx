@@ -164,9 +164,21 @@ export function PrescriptionDrawer({
           description: 'Confirmez l\'override avec une raison pour continuer.',
         });
       } else {
-        toast.error('Création impossible', {
-          description: err instanceof Error ? err.message : undefined,
-        });
+        // Retour terrain Excel : "Request failed with status code 400" était
+        // affiché tel quel — pas actionable. On extrait le `detail` du
+        // ProblemDetail (RFC 7807) renvoyé par le BE pour montrer la vraie
+        // raison (ex. "Consultation signée — impossible d'ajouter une
+        // prescription").
+        let description: string | undefined;
+        const ax = err as { response?: { data?: { detail?: string; title?: string } }; message?: string };
+        if (ax.response?.data?.detail) {
+          description = ax.response.data.detail;
+        } else if (ax.response?.data?.title) {
+          description = ax.response.data.title;
+        } else if (err instanceof Error) {
+          description = err.message;
+        }
+        toast.error('Création impossible', { description });
       }
     }
   }

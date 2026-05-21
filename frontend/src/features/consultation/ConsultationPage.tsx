@@ -349,28 +349,28 @@ export default function ConsultationPage() {
               color="primary"
               label="Prescription médicaments"
               sub={`Ordonnance${prescriptions.length > 0 ? ` · ${prescriptions.length} créée${prescriptions.length > 1 ? 's' : ''}` : ''}`}
-              disabled={isSigned || !consultation}
+              disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('DRUG')}
             />
             <ActionBtn
               icon="Flask"
               label="Bon d'analyses"
               sub="Biologie médicale"
-              disabled={isSigned || !consultation}
+              disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('LAB')}
             />
             <ActionBtn
               icon="Scan"
               label="Bon d'imagerie"
               sub="Radio · écho · IRM"
-              disabled={isSigned || !consultation}
+              disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('IMAGING')}
             />
             <ActionBtn
               icon="Doc"
               label="Certificat médical"
               sub="Aptitude · présence · repos"
-              disabled={!consultation || isSigned}
+              disabled={!consultation || isSigned || isSuspended}
               onClick={() => setCertificatOpen(true)}
             />
             <ActionBtn

@@ -52,6 +52,8 @@ export function WebcamCaptureModal({
   const [error, setError] = useState<CameraError | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  // Bumper pour forcer un retry — re-run l'effet d'attachement caméra.
+  const [retryNonce, setRetryNonce] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -97,8 +99,20 @@ export function WebcamCaptureModal({
       }
       streamRef.current = stream;
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => setReady(true);
+        const v = videoRef.current;
+        v.srcObject = stream;
+        v.onloadedmetadata = () => setReady(true);
+        // Certains browsers (Chrome avec autoplay-policy strict, ou webcams
+        // USB qui mettent du temps) ne déclenchent pas autoplay → ready reste
+        // false → le bouton Capturer reste désactivé. On force play() et on
+        // arme un timeout de sécurité qui passe ready=true au bout de 3 s.
+        const playPromise = v.play();
+        if (playPromise && typeof playPromise.catch === 'function') {
+          playPromise.catch(() => { /* play() autoplay block — fallback below */ });
+        }
+        setTimeout(() => {
+          if (!cancelled && v.videoWidth > 0) setReady(true);
+        }, 3000);
       }
     }
 
@@ -211,7 +225,7 @@ export function WebcamCaptureModal({
       }
       setReady(false);
     };
-  }, [open, maxWidth]);
+  }, [open, maxWidth, retryNonce]);
 
   async function handleCapture() {
     const video = videoRef.current;
@@ -316,6 +330,16 @@ export function WebcamCaptureModal({
                 code : {error.cause}
               </code>
             )}
+            <div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() => setRetryNonce((n) => n + 1)}
+              >
+                Réessayer
+              </Button>
+            </div>
           </div>
         ) : (
           <video
