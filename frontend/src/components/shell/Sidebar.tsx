@@ -15,6 +15,7 @@ import {
   BarChart,
   Logout,
   Eye,
+  Chat,
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -23,6 +24,7 @@ import { performLogout } from '@/lib/auth/useAuth';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
+import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
 import {
   useClinicSettings,
   ESTABLISHMENT_TYPE_LABELS,
@@ -44,7 +46,8 @@ export type SidebarScreen =
   | 'grossesses'
   | 'stock'
   | 'queueLab'
-  | 'queueRadio';
+  | 'queueRadio'
+  | 'messages';
 
 interface NavItem {
   id: SidebarScreen;
@@ -72,6 +75,7 @@ const ITEMS: NavItem[] = [
   // l'accès via Paramètres + suivi par consultation.
   { id: 'queueLab', label: 'Laboratoire', Icon: Stetho, section: 'flux', requiresRoles: ['LAB'] },
   { id: 'queueRadio', label: 'Radiologie', Icon: Stetho, section: 'flux', requiresRoles: ['RADIO'] },
+  { id: 'messages', label: 'Messages', Icon: Chat, section: 'flux' },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN'] },
 ];
@@ -122,6 +126,10 @@ export function Sidebar({
   // Grossesses alerts badge — polled every 30 s (pregnancies with active alerts).
   const liveGrossesses = useGrossesseAlertsCount(safeCounts.grossesses === undefined);
   const grossessesBadge = safeCounts.grossesses ?? liveGrossesses ?? 0;
+
+  // Chat unread badge — polled every 30 s.
+  const liveMessages = useChatUnreadCount();
+  const messagesBadge = liveMessages ?? 0;
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -179,6 +187,8 @@ export function Sidebar({
               ? (grossessesBadge > 0 ? grossessesBadge : undefined)
               : it.id === 'stock'
               ? (stockBadge > 0 ? stockBadge : undefined)
+              : it.id === 'messages'
+              ? (messagesBadge > 0 ? messagesBadge : undefined)
               : undefined
           }
           onClick={() => onNavigate?.(it.id)}

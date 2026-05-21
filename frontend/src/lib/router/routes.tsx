@@ -26,6 +26,11 @@ import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
 import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
+// ADR-035 v2 (2026-05-20) — messagerie iso-maquette : canaux + DMs + fils patient,
+// 100% piloté par le backend V048 (chat_conversation kind-aware, mentions, réactions,
+// urgent, pinned, threading). `features/messages/` consomme les hooks `useChannels`,
+// `useDirectMessages`, `usePatientThreads`, `useConversation`, `useSendMessage`.
+import MessagesRoute from '@/features/messages';
 import { AppLayout } from '@/components/shell/AppLayout';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly, RequireOnboardingComplete } from '@/lib/auth/RequireAuth';
 
@@ -291,6 +296,23 @@ export const router = createBrowserRouter(
             <RequireRole roles={['LAB', 'RADIO', 'MEDECIN', 'ADMIN']}>
               <InternalRequestsQueuePage />
             </RequireRole>
+          ),
+        },
+        {
+          // Messagerie iso-maquette (ADR-035 v2 + V048) — canaux + DMs + fils patient.
+          path: '/messages',
+          element: (
+            <RequireAuth>
+              <MessagesRoute />
+            </RequireAuth>
+          ),
+        },
+        {
+          path: '/messages/:conversationId',
+          element: (
+            <RequireAuth>
+              <MessagesRoute />
+            </RequireAuth>
           ),
         },
       ],

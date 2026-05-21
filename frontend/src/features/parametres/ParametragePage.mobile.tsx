@@ -22,12 +22,14 @@ import {
   BarChart as BarChartIcon,
   Stetho as StethoIcon,
   Users,
+  Chat as ChatIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
+import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda:   '/agenda',
@@ -47,6 +49,7 @@ export default function ParametrageMobilePage() {
   const vaccinationsBadge = useVaccinationOverdueCount() ?? 0;
   const grossessesBadge = useGrossesseAlertsCount() ?? 0;
   const stockBadge = useStockAlertsCount() ?? 0;
+  const messagesBadge = useChatUnreadCount() ?? 0;
 
   const initials =
     user
@@ -165,6 +168,19 @@ export default function ParametrageMobilePage() {
             hint="Articles, lots, mouvements"
             badge={stockBadge}
             onClick={() => navigate('/stock')}
+          />
+        </div>
+
+        <div className="m-section-h">
+          <h3>Communication</h3>
+        </div>
+        <div className="m-card" style={{ marginBottom: 18 }}>
+          <MenuRow
+            Icon={ChatIcon}
+            label="Messages"
+            hint="Messagerie interne du cabinet"
+            badge={messagesBadge}
+            onClick={() => navigate('/messages')}
           />
         </div>
 

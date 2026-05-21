@@ -353,6 +353,22 @@ Trois décisions imbriquées sont prises :
 - Pattern réutilisable : si une future feature a besoin d'un gate cabinet-level (premier abonnement Premium, mise à jour CGU…), ajouter une colonne `xxx_completed_at` à `configuration_clinic_settings` + `<RequireXxxComplete>` wrapper. ADR-034 fige le squelette.
 - Items différés en BACKLOG `Onboarding wizard — parité design différée` réduits drastiquement (il reste : édition flags CNOPS/CNSS/RAMED inline, currency toggle MAD/EUR, tiers-payant / majoration toggles, cachet officiel upload, options filigrane/QR/bilingue activables, document template body editor Paramétrage).
 
+## ADR-035 — Chat interne médecin ↔ staff v1 : DM 1-1 + polling
+**Date**: 2026-05-20
+**Status**: accepted
+**Context**: Demande Y. Boutaleb d'une messagerie entre médecin et son équipe. Cabinet on-premise (1 process, pas de Redis ni broker), ~5-7 users, polling déjà utilisé partout (queue 15 s, badges 30 s). Pas de besoin grand public.
+**Choice**:
+1. **Modèle conversationnel** : DM 1-1 uniquement en v1, pas de canaux/groupes ni de chat patient-contextualisé. Décision : 7 personnes se connaissent — un fil par paire suffit.
+2. **Transport** : polling TanStack Query (badge sidebar 30 s, liste conversations 10 s, fil ouvert 5 s). Pas de SSE ni WebSocket — latence 5-10 s acceptable, on garde la simplicité du contrat REST et 0 nouvelle dépendance. Upgrade SSE possible plus tard sur le même contrat.
+3. **Contenu** : texte 1..2000 chars seulement. Pas de PJ, pas de lien patient/RDV. Périmètre v1 livrable en ~2 J — extensions tracées en BACKLOG.
+4. **RBAC** : tous ↔ tous (au sein du cabinet), pas de permission atomique `CHAT_USE` en v1. Cabinet petit, cloisonnement non demandé.
+5. **Messages immuables** : pas d'édition ni de suppression. Cohérent avec la nature audit-friendly d'un SI médical. Ré-évaluer en v2 si demandé.
+6. **Schéma canonique** : `chat_conversation (user_a_id < user_b_id)` UNIQUE — garantit une seule conv par paire sans logique de dédoublonnage côté code (on swap à l'insertion).
+7. **Persistence** : pur JdbcTemplate (pattern dashboard), pas d'entité JPA. 3 tables simples sans cross-entité.
+
+Endpoint dédié `GET /api/chat/colleagues` pour le picker "Nouveau message" (`/admin/users` est gated ADMIN-only et exclut secrétaires/assistants).
+**Consequence**: V048 + 6 endpoints + 12 IT + slice frontend complet desktop+mobile + badge sidebar + entrée menu Plus mobile. Si un cabinet pilote demande PJ ou canaux thématiques, on étend (table de liaison pour PJ, table `chat_channel` pour groupes) sans casser le contrat REST 1-1 existant.
+
 ---
 
 ## How to add an entry

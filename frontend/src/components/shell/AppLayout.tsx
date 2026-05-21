@@ -5,6 +5,7 @@ import { PatientSearchSpotlight } from './PatientSearchSpotlight';
 import { useSalleBadgeCount } from './useSalleBadgeCount';
 import { SpotlightContext } from './spotlightContext';
 import { NAV_MAP, pathToSidebarScreen } from '@/lib/router/navMap';
+import { useHeartbeat } from '@/features/messages/hooks/useHeartbeat';
 import '@/styles/shell.css';
 
 /**
@@ -37,6 +38,10 @@ export function AppLayout() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
+
+  // Heartbeat présence — POST /chat/heartbeat toutes les 30 s pour maintenir
+  // last_seen_at à jour côté serveur. Drive la présence on/away/off.
+  useHeartbeat();
 
   // Salle badge — partagé avec useQueue, refetch 15s. Persistent across
   // page nav since AppLayout itself doesn't unmount.

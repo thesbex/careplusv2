@@ -4,10 +4,35 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — wizard `/onboarding` poussé à parité ~95% prototype (ADR-033 + ADR-034) avec gate first-login + step resume + 4 chantiers polish iso-maquette (Cabinet type-selector/RC/IF, Médecin team-list, Tarifs nomenclature, Documents éditeur, Récap banner+table+cards, sidebar 360 px par step).
-**Last update**: 2026-05-14 (session étendue, 6 commits)
-**Build**: Front `vite build` OK, `npx tsc --noEmit` vert ; tests onboarding 3/3 + routes 7/7 PASS. **Pas de `mvn verify` complet** sur cette session (memory `feedback_no_mvn_verify_for_now`). QA via Playwright IHM Youssef ADMIN bout-en-bout : gate bounce sur `/agenda` quand `completed_at IS NULL`, walk 7 steps, complete CTA marque `completed_at`, refresh post-complete reste sur `/agenda` (no bounce), reset state à `horaires` puis reload → wizard reprend direct à l'étape 3. DB inspectée après chaque save (clinic_settings, identity_user, scheduling_working_hours, catalog_act flags).
-**Next action**: prochaine session — soit attaquer les items restants du BACKLOG `Onboarding wizard — parité design différée` (édition flags CNOPS/CNSS/RAMED, currency toggle, tiers-payant / majoration toggles, cachet upload, options filigrane/QR/bilingue), soit migrer vers un autre module post-pilote selon retour terrain.
+**Phase**: Post-pilote — chat interne médecin↔staff v1 livré (ADR-035 + V048 + 12 IT + slice FE complet + badges sidebar/mobile).
+**Last update**: 2026-05-20 (session chat v1)
+**Build**: pas de `mvn verify` complet (memory `feedback_no_mvn_verify_for_now`). À valider en IHM Playwright (login MEDECIN + SECRETAIRE, walk envoi/réception/mark-read, badge desktop + mobile 390 px) avant commit.
+**Next action**: QA IHM Playwright bout-en-bout puis commit scopé + push. Items v2 tracés dans `docs/plans/2026-05-20-chat-design.md` (PJ, lien patient/RDV, canaux thématiques, édit/suppr, SSE).
+
+### 2026-05-20 — Chat interne médecin ↔ staff v1 (ADR-035 + V048)
+
+**Shipped** (uncommitted working tree, prêt à committer) :
+
+- **V048 `chat_module.sql`** : 3 tables — `chat_conversation` (canonique `user_a_id < user_b_id` + UNIQUE), `chat_message` (immuable, CHECK length 1..2000), `chat_read_state` (PK composite, UPSERT pour mark-read). `last_message_at` dénormalisé pour tri O(1).
+- **Backend `ma.careplus.chat`** : pure JdbcTemplate (pattern dashboard), `ChatService` + Impl, `ChatController` avec **7 endpoints** sous `/api/chat/**` — `GET /conversations`, `POST /conversations` (idempotent), `GET /conversations/{id}/messages?before=&limit=`, `POST /conversations/{id}/messages`, `POST /conversations/{id}/mark-read`, `GET /unread-count`, `GET /colleagues` (picker dédié — `/admin/users` étant ADMIN-only). Tous `isAuthenticated()`, sécurité par membership (404 si non-membre — pas de 403 pour ne pas révéler).
+- **`ChatIT`** : 12 scénarios — start idempotent / 422 self / 404 user inconnu / send happy + last_message_at / 422 body vide / 422 body > 2000 / 404 non-membre sur list+send+mark-read / list oldest-first / mark-read drops unread à 0 / unread-count agrégé multi-conversations / read receipt visible côté sender après mark-read / 401 anonymous.
+- **Frontend slice `features/chat/`** : 17 fichiers — types, schemas zod, 7 hooks (useConversations 10 s, useMessages 5 s, useStartConversation, useSendMessage, useMarkRead, useChatUnreadCount 30 s, useColleagues 60 s), 5 components (ConversationList, MessageBubble, MessageComposer, MessageThread, NewConversationButton), ChatPage desktop 2-cols + ChatPage.mobile (list OU thread via `?c=`) + ChatRoute responsive.
+- **Navigation wirée** : Sidebar item `messages` (déjà présent dans le union `SidebarScreen` + NAV_MAP) — badge unread polling 30 s via `useChatUnreadCount` (réécrit depuis le placeholder mockup). Mobile : section "Communication" ajoutée à `ParametragePage.mobile.tsx` avec entrée Messages + badge. Route `/messages` ajoutée à `routes.tsx` sous `RequireAuth` (tous rôles).
+- **Tests FE `chat.test.tsx`** : 10 specs — MessageBubble (mine, Lu, reçu jamais de check), ConversationList (empty, list, badge, click), useChatUnreadCount (fetch + disabled).
+- **Design doc** : `docs/plans/2026-05-20-chat-design.md`. **ADR-035** ajouté.
+
+**Décisions clés** (cf. ADR-035) : DM 1-1 only, polling (pas SSE/WS), texte 1..2000 chars only, tous ↔ tous (pas de permission `CHAT_USE` v1), messages immuables, schéma canonique `user_a_id < user_b_id`, endpoint `/chat/colleagues` dédié.
+
+**State** : working tree uncommitted. Pas de `mvn verify`. Risque de régression faible (module isolé, lecture-only sur identity_user).
+
+**Next action** : voir « Current status — Next action ». **Blockers** : aucun.
+
+---
+
+### 2026-05-14 (session étendue) — Onboarding parité polish ~95% + gate (ADR-034)
+
+**Phase précédente**: wizard `/onboarding` poussé à parité ~95% prototype (ADR-033 + ADR-034) avec gate first-login + step resume + 4 chantiers polish iso-maquette (Cabinet type-selector/RC/IF, Médecin team-list, Tarifs nomenclature, Documents éditeur, Récap banner+table+cards, sidebar 360 px par step).
+**Build (état précédent)**: Front `vite build` OK, `npx tsc --noEmit` vert ; tests onboarding 3/3 + routes 7/7 PASS.
 
 ### 2026-05-14 (session étendue) — Onboarding parité polish ~95% + gate (ADR-034)
 

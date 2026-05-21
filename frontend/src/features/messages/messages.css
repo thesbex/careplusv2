@@ -1,0 +1,41 @@
+/*
+ * Messagerie d'équipe — animations only.
+ *
+ * Les styles structurels viennent des tokens globaux (styles.css, mobile.css).
+ * Ici on n'ajoute que les keyframes que la maquette prototype définissait
+ * inline via `document.head.appendChild` — ce qui n'a pas sa place dans un
+ * port React. Tout le reste passe par des styles inline (cohérence 1:1 avec
+ * design/prototype/screens/messages.jsx + mobile/messages.jsx).
+ */
+
+@keyframes chatdot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@keyframes mchat-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+@keyframes mchat-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(168, 50, 30, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(168, 50, 30, 0);
+  }
+}
