@@ -295,7 +295,7 @@ describe('<OrdonnancePdfPage /> — bug B4 (download / print)', () => {
     createSpy.mockRestore();
   });
 
-  it('Imprimer : appelle iframe.contentWindow.print()', async () => {
+  it('Imprimer : crée un iframe dynamique off-screen avec la blob URL', async () => {
     apiGetMock.mockImplementation((url: string) => {
       if (url.endsWith('/pdf')) {
         return Promise.resolve({ data: PDF_BYTES, headers: {}, status: 200 });
@@ -309,22 +309,22 @@ describe('<OrdonnancePdfPage /> — bug B4 (download / print)', () => {
 
     const user = userEvent.setup();
     renderPdfPage('p1');
+    // Attente du blob loaded
     await waitFor(() => {
-      expect(document.querySelector('iframe.pr-pdf-viewer')).not.toBeNull();
+      expect(screen.getByRole('button', { name: /Imprimer/i })).not.toBeDisabled();
     });
 
-    const iframe = document.querySelector('iframe.pr-pdf-viewer') as HTMLIFrameElement;
-    const printSpy = vi.fn();
-    const focusSpy = vi.fn();
-    // jsdom autorise contentWindow mais pas print() ; on stub.
-    Object.defineProperty(iframe, 'contentWindow', {
-      configurable: true,
-      get: () => ({ print: printSpy, focus: focusSpy }),
-    });
+    // Avant le click : pas d'iframe dynamique off-screen.
+    const beforeClick = document.querySelectorAll('iframe[style*="fixed"]').length;
+    expect(beforeClick).toBe(0);
 
     await user.click(screen.getByRole('button', { name: /Imprimer/i }));
 
-    expect(printSpy).toHaveBeenCalledTimes(1);
+    // Après le click : un nouvel iframe positionné fixed (off-screen) a été
+    // créé et attaché au document, avec une src blob:.
+    const afterClick = document.querySelectorAll('iframe[style*="fixed"]');
+    expect(afterClick.length).toBe(1);
+    expect((afterClick[0] as HTMLIFrameElement).src).toMatch(/^blob:/);
   });
 
   it('Boutons Télécharger / Imprimer désactivés tant que le PDF n\'est pas chargé', async () => {

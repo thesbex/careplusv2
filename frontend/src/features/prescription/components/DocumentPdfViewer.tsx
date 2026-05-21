@@ -271,13 +271,51 @@ export function useDocumentPdfController(documentId: string | undefined) {
   }
 
   function print() {
-    const frame = document.getElementById(iframeIdRef.current) as HTMLIFrameElement | null;
-    if (!frame) return;
-    // L'iframe doit avoir fini de charger avant qu'on puisse imprimer
-    // sinon contentWindow est null. En pratique le bouton est désactivé
-    // tant que url == null, et l'iframe est rendue avec ce url.
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
+    if (!blob.url) return;
+    // L'ancienne approche (iframe[display:none].contentWindow.print()) ne
+    // marche pas systématiquement sur Chrome récent — l'iframe caché charge
+    // le PDF mais le print() est silencieusement bloqué quand le PDF viewer
+    // embarqué Chromium s'attache à l'iframe. Retour terrain : "Impression
+    // des documents générés ne marche pas".
+    //
+    // Fix robuste : on crée un NOUVEL iframe dynamique off-screen (pas
+    // display:none mais position:fixed avec dimensions 0) — Chrome traite ça
+    // comme un iframe visible donc le print() porte. Si onload ne se
+    // déclenche pas en 3 s (PDF cassé ou ad-blocker bizarre), fallback vers
+    // window.open(blob) où le user peut utiliser Ctrl+P.
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.setAttribute('aria-hidden', 'true');
+    let printed = false;
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+          printed = true;
+        } catch {
+          // contentWindow.print() peut throw si l'iframe est sandboxed —
+          // on tombera sur le fallback ci-dessous.
+        }
+        // Nettoie l'iframe 60 s après le print dialog (laisse le temps au
+        // browser de l'utiliser pendant que la dialog est ouverte).
+        setTimeout(() => iframe.remove(), 60_000);
+      }, 200);
+    };
+    iframe.src = blob.url;
+    document.body.appendChild(iframe);
+    // Fallback : si onload ne s'est pas déclenché en 3 s, ouvrir le PDF
+    // dans un nouvel onglet (Ctrl+P pour imprimer).
+    setTimeout(() => {
+      if (!printed) {
+        window.open(blob.url ?? '', '_blank', 'noopener,noreferrer');
+      }
+    }, 3000);
   }
 
   return {
