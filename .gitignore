@@ -92,6 +92,22 @@ medecin-team-list.png
 tarifs-nomenclature.png
 add-doctor-modal.png
 consult-*.png
+# Plus de patterns QA divers (post-MVP wave) — capture libre à la racine.
+lab-preview*.png
+messages-*.png
+mobile-promote-*.png
+mobile-result-panel*.png
+pdf-canvas-*.png
+pdf-preview-*.png
+profil-referrals-*.png
+promote-diagnosis-*.png
+suspend-choice-*.png
+v047-trends-*.png
+
+# Stitch design-fetch dumps — large binaries / archives, jamais commités
+design-fetch.bin
+design-fetch.tar
+design-fetch/
 
 # Spring Boot runtime data dir (DocumentStorage at app boot)
 data/
