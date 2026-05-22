@@ -568,7 +568,13 @@ export default function ConsultationPage() {
         onOpenChange={(o) => {
           if (!o) {
             setPostSignDialogOpen(false);
-            void navigate('/facturation');
+            // R038 — après signature + revue du brouillon de facture, on
+            // ramène le médecin à la salle d'attente pour qu'il choisisse
+            // son prochain patient (ce qu'il fait juste après une consult).
+            // Avant : navigate('/facturation') — c'était la vue de la
+            // secrétaire, le médecin la regardait rarement et perdait
+            // l'enchainement de file d'attente.
+            void navigate('/salle');
           }
         }}
       />

@@ -585,7 +585,9 @@ export default function ConsultationMobilePage() {
         onOpenChange={(o) => {
           if (!o) {
             setPostSignDialogOpen(false);
-            void navigate('/facturation');
+            // R038 — cf. desktop : médecin → salle d'attente après revue de
+            // facture, pas vers la liste facturation (secrétaire).
+            void navigate('/salle');
           }
         }}
       />
