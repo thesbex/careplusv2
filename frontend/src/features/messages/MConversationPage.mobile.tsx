@@ -4,7 +4,7 @@
  * ADR-035 v2 : tout vient du back via `useConversation(id)` — plus de fixtures.
  * La structure visuelle est conservée verbatim depuis `design/prototype/mobile/messages.jsx`.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import {
@@ -315,6 +315,11 @@ function ChatBubble({ m, meName }: { m: ChatMessage; meName: string }) {
             fontSize: 13,
             lineHeight: 1.4,
             whiteSpace: 'pre-wrap',
+            // Wrap des longues chaînes sans espaces (URLs, identifiants, B*4000)
+            // pour empêcher la bulle de déborder du viewport mobile.
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
+            minWidth: 0,
           }}
         >
           {renderText(text, isMe)}
@@ -415,6 +420,14 @@ function TypingRow({ who }: { who: string }) {
   );
 }
 
+// Cf. MessagesPage.tsx — même grille (sans dépendance externe).
+const MOBILE_EMOJIS = [
+  '👍', '👎', '🙏', '👌', '✅', '❌', '⚠️', '🚨',
+  '💊', '🩺', '🩸', '🌡️', '💉', '🏥', '🚑', '🦷',
+  '👋', '🤝', '👀', '🧠', '❤️', '🔥', '⏰', '📅',
+  '💡', '📝', '📞', '🤔', '😊', '🙌', '👶', '👵',
+];
+
 function Composer({
   value,
   onChange,
@@ -426,6 +439,26 @@ function Composer({
   onSend: () => void;
   sending: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+
+  function insertAtCursor(insert: string) {
+    const el = inputRef.current;
+    if (!el) {
+      onChange(value + insert);
+      return;
+    }
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + insert + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + insert.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
+
   return (
     <div
       style={{
@@ -433,8 +466,63 @@ function Composer({
         padding: '8px 10px 10px',
         borderTop: '1px solid var(--border)',
         background: 'var(--surface)',
+        position: 'relative',
       }}
     >
+      {emojiOpen && (
+        <>
+          <div
+            role="button"
+            aria-label="Fermer le sélecteur d'émoticônes"
+            tabIndex={-1}
+            onClick={() => setEmojiOpen(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+          />
+          <div
+            role="dialog"
+            aria-label="Émoticônes"
+            style={{
+              position: 'absolute',
+              bottom: 60,
+              left: 10,
+              right: 10,
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 10,
+              padding: 8,
+              boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+              zIndex: 100,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(8, 1fr)',
+              gap: 2,
+            }}
+          >
+            {MOBILE_EMOJIS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  insertAtCursor(e);
+                  setEmojiOpen(false);
+                }}
+                aria-label={`Émoticône ${e}`}
+                style={{
+                  height: 34,
+                  border: 0,
+                  borderRadius: 6,
+                  background: 'transparent',
+                  cursor: 'pointer',
+                  fontSize: 20,
+                  padding: 0,
+                  lineHeight: 1,
+                }}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         {/* Bouton pièce jointe retiré : pas de PJ en v1 (à remettre quand le
             module documents partagés sera wireé au chat). */}
@@ -451,6 +539,7 @@ function Composer({
           }}
         >
           <input
+            ref={inputRef}
             placeholder="Saisir un message"
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -475,14 +564,16 @@ function Composer({
           <button
             type="button"
             aria-label="Ajouter une émoticône"
+            aria-pressed={emojiOpen}
+            onClick={() => setEmojiOpen((v) => !v)}
             style={{
               width: 28,
               height: 28,
               borderRadius: 14,
               border: 0,
-              background: 'transparent',
+              background: emojiOpen ? 'var(--primary-soft)' : 'transparent',
               cursor: 'pointer',
-              color: 'var(--ink-3)',
+              color: emojiOpen ? 'var(--primary)' : 'var(--ink-3)',
               display: 'grid',
               placeItems: 'center',
               flexShrink: 0,

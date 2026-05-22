@@ -143,6 +143,7 @@ export default function MessagesPage() {
                 onChange={setComposer}
                 onSend={handleSend}
                 sending={sendMessage.isPending}
+                members={convo.members ?? team}
               />
             </>
           ) : (
@@ -967,7 +968,16 @@ function Message({
 function MessageBody({ text }: { text: string }) {
   const parts = text.split(/(@[A-Za-zÀ-ÿ.\s]+(?=\s|,|$))/g);
   return (
-    <div style={{ fontSize: 13, color: 'var(--ink)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+    <div
+      style={{
+        fontSize: 13,
+        color: 'var(--ink)',
+        whiteSpace: 'pre-wrap',
+        lineHeight: 1.5,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+      }}
+    >
       {parts.map((p, i) => {
         if (p.startsWith('@')) {
           return (
@@ -1028,17 +1038,51 @@ function PatientAttachCard({ p }: { p: { name: string; id: string; age: number }
   );
 }
 
+// Common emojis sans dépendance externe — assez pour un cabinet médical
+// (cf. CLAUDE.md règle 9 : pas de lib sans ADR).
+const COMPOSER_EMOJIS = [
+  '👍', '👎', '🙏', '👌', '✅', '❌', '⚠️', '🚨',
+  '💊', '🩺', '🩸', '🌡️', '💉', '🏥', '🚑', '🦷',
+  '👋', '🤝', '👀', '🧠', '❤️', '🔥', '⏰', '📅',
+  '💡', '📝', '📞', '🤔', '😊', '🙌', '👶', '👵',
+];
+
 function ConvoComposer({
   value,
   onChange,
   onSend,
   sending,
+  members,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
   sending: boolean;
+  members: TeamMember[];
 }) {
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [mentionOpen, setMentionOpen] = useState(false);
+
+  // Insertion à la position du curseur, avec une espace en suffixe pour rester
+  // dans le flux de frappe. Restaure le focus + la sélection juste après.
+  function insertAtCursor(insert: string) {
+    const ta = taRef.current;
+    if (!ta) {
+      onChange(value + insert);
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const next = value.slice(0, start) + insert + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + insert.length;
+      ta.setSelectionRange(pos, pos);
+    });
+  }
+
   return (
     <div
       style={{
@@ -1046,8 +1090,30 @@ function ConvoComposer({
         padding: '12px 24px 16px',
         borderTop: '1px solid var(--border)',
         background: 'var(--surface)',
+        position: 'relative',
       }}
     >
+      {emojiOpen && (
+        <EmojiPickerPopover
+          onPick={(e) => {
+            insertAtCursor(e);
+            setEmojiOpen(false);
+          }}
+          onClose={() => setEmojiOpen(false)}
+        />
+      )}
+      {mentionOpen && (
+        <MentionPickerPopover
+          members={members}
+          onPick={(m) => {
+            const firstName = m.name.split(' ')[0];
+            const prefix = value && !/[\s\n]$/.test(value) ? ' ' : '';
+            insertAtCursor(`${prefix}@${firstName} `);
+            setMentionOpen(false);
+          }}
+          onClose={() => setMentionOpen(false)}
+        />
+      )}
       <div
         style={{
           border: '1px solid var(--border-strong)',
@@ -1056,9 +1122,8 @@ function ConvoComposer({
           boxShadow: '0 0 0 3px rgba(42, 124, 231, 0.08)',
         }}
       >
-        {/* L'attache patient au draft sera ajoutée dans une itération suivante
-            (composer state local + bouton "Patient" pour ouvrir un picker). */}
         <textarea
+          ref={taRef}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
@@ -1093,11 +1158,27 @@ function ConvoComposer({
             borderTop: '1px solid var(--border-soft)',
           }}
         >
-          {/* Paperclip + Mic retirés : pas de pièce jointe / vocal en v1. À remettre
-              quand le module documents partagés et l'attache audio seront wireés. */}
-          <ComposerBtn icon={<At />} />
-          <ComposerBtn icon={<Smile />} />
-          <ComposerBtn icon={<Stetho />} label="Patient" />
+          <ComposerBtn
+            icon={<At />}
+            ariaLabel="Mentionner un collègue"
+            active={mentionOpen}
+            onClick={() => {
+              setEmojiOpen(false);
+              setMentionOpen((v) => !v);
+            }}
+          />
+          <ComposerBtn
+            icon={<Smile />}
+            ariaLabel="Ajouter une émoticône"
+            active={emojiOpen}
+            onClick={() => {
+              setMentionOpen(false);
+              setEmojiOpen((v) => !v);
+            }}
+          />
+          {/* Patient : picker à câbler quand le module sera prêt — laissé désactivé
+              pour ne pas re-créer un bouton fantôme. */}
+          <ComposerBtn icon={<Stetho />} label="Patient" disabled />
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: 10.5, color: 'var(--ink-4)', marginRight: 8 }}>
             <span
@@ -1129,26 +1210,190 @@ function ConvoComposer({
   );
 }
 
-function ComposerBtn({ icon, label }: { icon: ReactNode; label?: string }) {
+function ComposerBtn({
+  icon,
+  label,
+  ariaLabel,
+  active,
+  disabled,
+  onClick,
+}: {
+  icon: ReactNode;
+  label?: string;
+  ariaLabel?: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
   const style: CSSProperties = {
     height: 26,
     padding: label ? '0 8px' : '0 6px',
     border: 0,
     borderRadius: 4,
-    background: 'transparent',
-    cursor: 'pointer',
-    color: 'var(--ink-3)',
+    background: active ? 'var(--primary-soft)' : 'transparent',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    color: active ? 'var(--primary)' : disabled ? 'var(--ink-4)' : 'var(--ink-3)',
     display: 'inline-flex',
     alignItems: 'center',
     gap: 5,
     fontSize: 11.5,
     fontWeight: 500,
+    opacity: disabled ? 0.6 : 1,
   };
   return (
-    <button type="button" style={style}>
+    <button
+      type="button"
+      style={style}
+      aria-label={ariaLabel}
+      aria-pressed={active ? true : undefined}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+    >
       {icon}
       {label && <span>{label}</span>}
     </button>
+  );
+}
+
+function EmojiPickerPopover({
+  onPick,
+  onClose,
+}: {
+  onPick: (emoji: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div
+        role="button"
+        aria-label="Fermer le sélecteur d'émoticônes"
+        tabIndex={-1}
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+      />
+      <div
+        role="dialog"
+        aria-label="Émoticônes"
+        style={{
+          position: 'absolute',
+          bottom: 72,
+          left: 24,
+          width: 256,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: 8,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+          zIndex: 100,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(8, 1fr)',
+          gap: 2,
+        }}
+      >
+        {COMPOSER_EMOJIS.map((e) => (
+          <button
+            key={e}
+            type="button"
+            onClick={() => onPick(e)}
+            aria-label={`Émoticône ${e}`}
+            style={{
+              width: 28,
+              height: 28,
+              border: 0,
+              borderRadius: 4,
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: 18,
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            {e}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function MentionPickerPopover({
+  members,
+  onPick,
+  onClose,
+}: {
+  members: TeamMember[];
+  onPick: (m: TeamMember) => void;
+  onClose: () => void;
+}) {
+  // Exclut le user courant (self) ; le @moi n'a aucun sens dans un message.
+  const list = members.filter((m) => m.online !== 'self');
+  return (
+    <>
+      <div
+        role="button"
+        aria-label="Fermer le sélecteur de mention"
+        tabIndex={-1}
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+      />
+      <div
+        role="dialog"
+        aria-label="Mentionner un collègue"
+        style={{
+          position: 'absolute',
+          bottom: 72,
+          left: 24,
+          width: 260,
+          maxHeight: 260,
+          overflow: 'auto',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: 4,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+          zIndex: 100,
+        }}
+      >
+        {list.length === 0 && (
+          <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
+            Aucun collègue à mentionner.
+          </div>
+        )}
+        {list.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onPick(m)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 8px',
+              border: 0,
+              background: 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              fontSize: 12.5,
+              color: 'var(--ink)',
+              textAlign: 'left',
+              borderRadius: 4,
+            }}
+          >
+            <div
+              className="cp-avatar"
+              style={{ width: 22, height: 22, fontSize: 9, background: m.color }}
+            >
+              {m.initials}
+            </div>
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {m.name}
+            </span>
+            <span style={{ color: 'var(--ink-4)', fontSize: 10.5 }}>{m.role}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 
