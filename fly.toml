@@ -1,0 +1,43 @@
+# careplus — Fly.io deploy config.
+#
+# Le compute (Spring Boot) bascule sur Fly. Postgres reste sur Neon (déjà en
+# place via DATABASE_URL/USER/PASSWORD — voir docs/DEPLOY.md).
+#
+# Région cdg (Paris) : la plus proche de Casablanca dans le réseau Fly
+# (Frankfurt fra est l'autre choix raisonnable).
+
+app = "careplus-v2"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  # Toujours le profil cloud. DATABASE_URL/USER/PASSWORD et CAREPLUS_JWT_SECRET
+  # sont injectés via `fly secrets set` (jamais en clair ici).
+  SPRING_PROFILES_ACTIVE = "prod-cloud"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+
+  # Auto-stop quand idle (équivalent du sleep Render free). Le démarrage du JVM
+  # est plus rapide qu'un froid Render — ~10-15 s sur 1 GB shared.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    grace_period = "60s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/actuator/health"
+
+[[vm]]
+  # Spring Boot 3 démarre à ~400 MB. On prend 1 GB pour avoir une marge de
+  # heap (75 % de RAM → ~768 MB heap, configuré par JAVA_TOOL_OPTIONS dans le
+  # Dockerfile) et accepter quelques requêtes concurrentes.
+  size = "shared-cpu-1x"
+  memory = "1gb"
+  cpus = 1
