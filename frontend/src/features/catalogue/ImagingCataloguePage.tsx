@@ -25,15 +25,19 @@ interface ImagingExam {
   code: string;
   name: string;
   modality: string | null;
+  /** R030 / V050 — prix facturable en interne (NULL = non facturable). */
+  internalPrice: number | null;
 }
 
 interface Form {
   code: string;
   name: string;
   modality: string;
+  /** Texte côté form, parsé en number à l'envoi. Vide = NULL → non facturable interne. */
+  internalPrice: string;
 }
 
-const EMPTY_FORM: Form = { code: '', name: '', modality: 'RADIO' };
+const EMPTY_FORM: Form = { code: '', name: '', modality: 'RADIO', internalPrice: '' };
 
 const NAV_MAP = {
   dashboard: '/dashboard',
@@ -112,7 +116,12 @@ export default function ImagingCataloguePage() {
 
   function openEdit(e: ImagingExam) {
     setEditingId(e.id);
-    setForm({ code: e.code, name: e.name, modality: e.modality ?? '' });
+    setForm({
+      code: e.code,
+      name: e.name,
+      modality: e.modality ?? '',
+      internalPrice: e.internalPrice != null ? String(e.internalPrice) : '',
+    });
     setDrawerOpen(true);
   }
 
@@ -121,11 +130,22 @@ export default function ImagingCataloguePage() {
       toast.error('Champs requis : Code, Nom.');
       return;
     }
+    const internalPriceRaw = form.internalPrice.trim();
+    let parsedPrice: number | null = null;
+    if (internalPriceRaw) {
+      const n = Number(internalPriceRaw.replace(',', '.'));
+      if (!Number.isFinite(n) || n < 0) {
+        toast.error('Prix interne invalide.');
+        return;
+      }
+      parsedPrice = n;
+    }
     try {
       const body = {
         code: form.code.trim(),
         name: form.name.trim(),
         modality: form.modality.trim() || null,
+        internalPrice: parsedPrice,
       };
       if (editingId) {
         await api.put(`/catalog/imaging-exams/${editingId}`, body);
@@ -340,6 +360,13 @@ export default function ImagingCataloguePage() {
                   <option value="">— Autre —</option>
                 </select>
               </label>
+              <Field
+                label="Prix interne (MAD)"
+                value={form.internalPrice}
+                onChange={(v) => setForm({ ...form, internalPrice: v })}
+                placeholder="ex. 250 — laisser vide = non facturable en interne"
+                hint="V050 — Quand le médecin coche « Réaliser en interne » et signe la consultation, cette ligne est ajoutée automatiquement à la facture brouillon du patient. Laisser vide pour ne pas facturer automatiquement."
+              />
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>
