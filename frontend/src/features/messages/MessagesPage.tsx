@@ -1341,7 +1341,14 @@ function MentionPickerPopover({
   onClose: () => void;
 }) {
   // Exclut le user courant (self) ; le @moi n'a aucun sens dans un message.
-  const list = members.filter((m) => m.online !== 'self');
+  const baseList = members.filter((m) => m.online !== 'self');
+  // R058 — recherche nom/prénom (longues équipes).
+  const [q, setQ] = useState('');
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const list = q.trim()
+    ? baseList.filter((m) => norm(m.name).includes(norm(q.trim())))
+    : baseList;
   return (
     <>
       <div
@@ -1359,19 +1366,38 @@ function MentionPickerPopover({
           bottom: 72,
           left: 24,
           width: 260,
-          maxHeight: 260,
-          overflow: 'auto',
+          maxHeight: 300,
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 8,
-          padding: 4,
           boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
           zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
+        <input
+          autoFocus
+          type="search"
+          placeholder="Filtrer…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Filtrer la liste des collègues à mentionner"
+          style={{
+            margin: 6,
+            padding: '6px 8px',
+            border: '1px solid var(--border)',
+            borderRadius: 5,
+            fontSize: 12,
+            fontFamily: 'inherit',
+            background: 'var(--surface-2, var(--bg-alt))',
+          }}
+        />
+        <div style={{ overflow: 'auto', flex: 1, padding: '0 4px 4px' }}>
         {list.length === 0 && (
           <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
-            Aucun collègue à mentionner.
+            {q.trim() ? `Aucun résultat pour « ${q.trim()} ».` : 'Aucun collègue à mentionner.'}
           </div>
         )}
         {list.map((m) => (
@@ -1407,6 +1433,7 @@ function MentionPickerPopover({
             <span style={{ color: 'var(--ink-4)', fontSize: 10.5 }}>{m.role}</span>
           </button>
         ))}
+        </div>
       </div>
     </>
   );
@@ -1721,6 +1748,13 @@ function ColleaguePicker({
   onPick: (userId: string) => void;
   onClose: () => void;
 }) {
+  // R058 — filtre nom/prénom (case-insensitive, accent-insensitive).
+  const [q, setQ] = useState('');
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const filtered = q.trim()
+    ? colleagues.filter((c) => norm(c.fullName).includes(norm(q.trim())))
+    : colleagues;
   return (
     <div
       role="dialog"
@@ -1756,6 +1790,25 @@ function ColleaguePicker({
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
             Choisissez un collègue pour ouvrir une discussion privée.
           </div>
+          <input
+            autoFocus
+            type="search"
+            placeholder="Rechercher un collègue…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="Rechercher un collègue par nom ou prénom"
+            style={{
+              marginTop: 10,
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '7px 10px',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              fontSize: 13,
+              fontFamily: 'inherit',
+              background: 'var(--surface-2, var(--bg-alt))',
+            }}
+          />
         </div>
         <div style={{ overflow: 'auto', flex: 1 }}>
           {loading && (
@@ -1766,7 +1819,12 @@ function ColleaguePicker({
               Aucun autre collègue actif.
             </div>
           )}
-          {colleagues.map((c) => (
+          {!loading && colleagues.length > 0 && filtered.length === 0 && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
+              Aucun collègue ne correspond à « {q.trim()} ».
+            </div>
+          )}
+          {filtered.map((c) => (
             <button
               key={c.id}
               type="button"

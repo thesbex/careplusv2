@@ -262,6 +262,13 @@ function MobileColleaguePicker({
   onPick: (userId: string) => void;
   onClose: () => void;
 }) {
+  // R058 — filtre nom/prénom (case + accent insensitive).
+  const [q, setQ] = useState('');
+  const norm = (s: string) =>
+    s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '');
+  const filtered = q.trim()
+    ? colleagues.filter((c) => norm(c.fullName).includes(norm(q.trim())))
+    : colleagues;
   return (
     <div
       role="dialog"
@@ -297,6 +304,25 @@ function MobileColleaguePicker({
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
             Choisissez un collègue.
           </div>
+          <input
+            autoFocus
+            type="search"
+            placeholder="Rechercher un collègue…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            aria-label="Rechercher un collègue par nom ou prénom"
+            style={{
+              marginTop: 10,
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '9px 12px',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: 'inherit',
+              background: 'var(--surface-2, var(--bg-alt))',
+            }}
+          />
         </div>
         <div style={{ overflow: 'auto', flex: 1 }}>
           {loading && (
@@ -307,7 +333,12 @@ function MobileColleaguePicker({
               Aucun autre collègue actif.
             </div>
           )}
-          {colleagues.map((c) => (
+          {!loading && colleagues.length > 0 && filtered.length === 0 && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
+              Aucun collègue ne correspond à « {q.trim()} ».
+            </div>
+          )}
+          {filtered.map((c) => (
             <button
               key={c.id}
               type="button"
