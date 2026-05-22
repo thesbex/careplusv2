@@ -52,7 +52,6 @@ export default function ProfilPage() {
       <div
         style={{
           padding: 24,
-          maxWidth: 720,
           // .cp-workspace est overflow:hidden — sans ce wrapper scrollable,
           // la liste des confrères et les sections suivantes sortaient du
           // viewport sans ascenseur. flex:1 + min-height:0 + overflow:auto =
@@ -62,50 +61,67 @@ export default function ProfilPage() {
           overflow: 'auto',
         }}
       >
+        {/* R036 — layout 2 colonnes sur écran large pour exploiter la moitié
+            droite (avant : maxWidth 720 → moitié droite blanche). Les sections
+            sont équilibrées : identité+password à gauche, signature+confrères
+            à droite. Sous 1024 px on retombe en 1 colonne (lecture mobile). */}
         <div
           style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-md)',
-            padding: 18,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+            gap: 16,
+            alignItems: 'start',
+            maxWidth: 1280,
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-            Identité
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r-md)',
+                padding: 18,
+              }}
+            >
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+                Identité
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+                <div>
+                  <strong>Nom :</strong> {user?.firstName} {user?.lastName}
+                </div>
+                <div>
+                  <strong>Email :</strong> {user?.email}
+                </div>
+                <div>
+                  <strong>Rôles :</strong> {(user?.roles ?? []).join(', ')}
+                </div>
+              </div>
+            </div>
+
+            <PasswordChangeSection />
           </div>
-          <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-            <div>
-              <strong>Nom :</strong> {user?.firstName} {user?.lastName}
-            </div>
-            <div>
-              <strong>Email :</strong> {user?.email}
-            </div>
-            <div>
-              <strong>Rôles :</strong> {(user?.roles ?? []).join(', ')}
-            </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {isMedecin && <SignatureSettingsSection />}
+            {isMedecin && <ReferralContactsSection />}
+
+            {!isMedecin && (
+              <div
+                style={{
+                  padding: 14,
+                  border: '1px dashed var(--border)',
+                  borderRadius: 'var(--r-md)',
+                  fontSize: 12,
+                  color: 'var(--ink-3)',
+                }}
+              >
+                La signature scannée n'est utilisée que par les médecins (sur les
+                ordonnances, certificats et carnets de vaccination qu'ils génèrent).
+              </div>
+            )}
           </div>
         </div>
-
-        {isMedecin && <SignatureSettingsSection />}
-        {isMedecin && <ReferralContactsSection />}
-
-        {!isMedecin && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 14,
-              border: '1px dashed var(--border)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 12,
-              color: 'var(--ink-3)',
-            }}
-          >
-            La signature scannée n'est utilisée que par les médecins (sur les
-            ordonnances, certificats et carnets de vaccination qu'ils génèrent).
-          </div>
-        )}
-
-        <PasswordChangeSection />
       </div>
     </Screen>
   );
