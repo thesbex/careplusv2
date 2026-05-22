@@ -82,6 +82,11 @@ export default function ConsultationMobilePage() {
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
+  // R032 — une consultation SUSPENDUE n'est plus en BROUILLON côté BE → toute
+  // tentative de création de prescription renvoie 400 CONSULT_LOCKED. Comme
+  // sur desktop (commit 2030e55), on désactive les 4 boutons d'action quand
+  // la consultation n'est pas en BROUILLON.
+  const isSuspended = consultation?.status === 'SUSPENDUE' && !isSigned;
 
   const {
     register,
@@ -402,7 +407,7 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 40, fontSize: 12 }}
-            disabled={isSigned || !consultation}
+            disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('DRUG')}
           >
             Médic.
@@ -411,7 +416,7 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 40, fontSize: 12 }}
-            disabled={isSigned || !consultation}
+            disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('LAB')}
           >
             Analyses
@@ -420,7 +425,7 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 40, fontSize: 12 }}
-            disabled={isSigned || !consultation}
+            disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('IMAGING')}
           >
             Imagerie
@@ -429,7 +434,7 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 40, fontSize: 12 }}
-            disabled={isSigned || !consultation}
+            disabled={isSigned || isSuspended || !consultation}
             onClick={() => setCertificatOpen(true)}
           >
             Certificat
