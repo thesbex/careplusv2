@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { Button } from '@/components/ui/Button';
 import { Trash } from '@/components/icons';
+import { api } from '@/lib/api/client';
 import {
   useAttachPrescriptionResult,
   useDetachPrescriptionResult,
@@ -67,21 +68,45 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
     }
   }
 
+  // R028 — fetch en blob via axios pour passer le Bearer JWT in-memory
+  // (cf. ADR-019). Avant : <a href="/api/documents/.../content"> → le browser
+  // ouvrait un nouvel onglet sans token et l'API renvoyait 401 UNAUTHORIZED.
+  // Même pattern que QueuePage.viewResult (DRY au cas par cas, lib utilitaire
+  // à extraire si on retombe une 3e fois sur ce besoin).
+  async function viewResult(documentId: string) {
+    try {
+      const res = await api.get(`/documents/${documentId}/content`, {
+        responseType: 'arraybuffer',
+      });
+      const ctype = (res.headers['content-type'] as string) ?? 'application/octet-stream';
+      const blob = new Blob([res.data as ArrayBuffer], { type: ctype });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error("Impossible d'ouvrir le résultat.");
+    }
+  }
+
   if (resultDocumentId) {
     return (
       <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <a
-          href={`/api/documents/${resultDocumentId}/content`}
-          target="_blank"
-          rel="noreferrer noopener"
+        <button
+          type="button"
+          onClick={() => void viewResult(resultDocumentId)}
           style={{
+            background: 'transparent',
+            border: 0,
+            padding: 0,
+            font: 'inherit',
+            cursor: 'pointer',
             fontSize: 13,
             color: 'var(--accent, #0ea5e9)',
             textDecoration: 'underline',
           }}
         >
           📄 Voir résultat
-        </a>
+        </button>
         {!disabled && (
           confirmingDelete ? (
             <>

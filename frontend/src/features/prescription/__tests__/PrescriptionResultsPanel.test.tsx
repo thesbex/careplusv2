@@ -5,8 +5,8 @@
  * Pinne le contrat :
  *   - DRUG : panneau invisible (RESULT_NOT_APPLICABLE backend).
  *   - LAB / IMAGING avec N lignes : exactement UN bouton (pas N).
- *   - Si une ligne a un resultDocumentId : lien « Voir résultat » qui pointe
- *     bien sur /api/documents/{id}/content.
+ *   - Si une ligne a un resultDocumentId : bouton « Voir résultat » (R028 —
+ *     fetch authentifié + blob URL, plus un <a href> sans Bearer JWT).
  *   - Sinon : DocumentUploadButton est rendu (Téléverser + Photographier).
  */
 import { describe, it, expect } from 'vitest';
@@ -83,7 +83,7 @@ describe('PrescriptionResultsPanel', () => {
     expect(screen.queryByText(/Voir résultat/i)).not.toBeInTheDocument();
   });
 
-  it('LAB avec résultat sur une ligne : un seul lien « Voir résultat » même avec 3 lignes', () => {
+  it('LAB avec résultat sur une ligne : un seul bouton « Voir résultat » même avec 3 lignes (R028 — pas un <a href>, mais un button qui fetch avec Bearer)', () => {
     render(
       withClient(
         <PrescriptionResultsPanel
@@ -104,10 +104,11 @@ describe('PrescriptionResultsPanel', () => {
         />,
       ),
     );
-    const links = screen.getAllByRole('link', { name: /Voir résultat/i });
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute('href', '/api/documents/doc-uuid-xyz/content');
-    expect(links[0]).toHaveAttribute('target', '_blank');
+    const buttons = screen.getAllByRole('button', { name: /Voir résultat/i });
+    expect(buttons).toHaveLength(1);
+    // Vérifie qu'on n'est PAS revenu à un <a href> nu (qui n'envoie pas le
+    // Bearer JWT in-memory → 401 UNAUTHORIZED côté API documents).
+    expect(screen.queryByRole('link', { name: /Voir résultat/i })).not.toBeInTheDocument();
   });
 
   it('readOnly : pas de bouton de suppression sur une prescription avec résultat', () => {
