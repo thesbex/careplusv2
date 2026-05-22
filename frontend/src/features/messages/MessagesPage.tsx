@@ -153,7 +153,7 @@ export default function MessagesPage() {
           )}
         </div>
 
-        <RightRail convo={convo} team={team} />
+        <RightRail convo={convo} team={team} onPickMember={handlePickColleague} />
       </div>
     </Screen>
   );
@@ -698,17 +698,32 @@ function ConvoMessages({ convo }: { convo: Conversation }) {
   // Comptage total des messages pour déclencher l'auto-scroll quand un nouveau
   // arrive (polling 5 s côté useConversation).
   const totalMsgs = (convo.messages ?? []).reduce((n, d) => n + d.msgs.length, 0);
+
+  // R060 — quand on ouvre/change de conversation, on force le scroll en bas
+  // (vue du dernier message, attendu par l'utilisateur d'une messagerie).
+  // Sans cette ligne, l'effet « nearBottom » plus bas ne se déclenchait pas
+  // au mount initial parce que `scrollTop = 0` et `scrollHeight - clientHeight`
+  // dépassait toujours le seuil 160 px dès qu'il y avait > 1 écran de
+  // messages → la conversation s'ouvrait sur les vieux messages.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    // Auto-scroll vers le bas si l'user était déjà proche du bas (évite de
-    // l'arracher d'un scroll-back qu'il fait pour lire l'historique).
+    el.scrollTop = el.scrollHeight;
+  }, [convo.id, totalMsgs > 0]);
+
+  // R057 — pour les messages QUI ARRIVENT pendant qu'on est sur la conv
+  // (polling 5 s), on auto-scroll uniquement si l'utilisateur était déjà
+  // près du bas. Évite de l'arracher d'un scroll-back qu'il fait pour lire
+  // l'historique.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
     if (nearBottom) {
       el.scrollTop = el.scrollHeight;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totalMsgs, convo.id]);
+  }, [totalMsgs]);
 
   return (
     <div
@@ -1400,7 +1415,16 @@ function MentionPickerPopover({
 // ════════════════════════════════════════════════════════════
 // Right rail
 // ════════════════════════════════════════════════════════════
-function RightRail({ convo, team }: { convo: Conversation | undefined; team: TeamMember[] }) {
+function RightRail({
+  convo,
+  team,
+  onPickMember,
+}: {
+  convo: Conversation | undefined;
+  team: TeamMember[];
+  /** R056 — clic sur un MemberRow → démarre/ouvre la DM 1-1 avec ce collègue. */
+  onPickMember: (memberId: string) => void;
+}) {
   const members = convo?.members ?? team;
   // Patients référencés dans les messages de la conversation — dédupliqués.
   const linkedPatients = (() => {
@@ -1455,7 +1479,7 @@ function RightRail({ convo, team }: { convo: Conversation | undefined; team: Tea
       <SectionLabel>Membres · {members.length}</SectionLabel>
       <div style={{ marginBottom: 14 }}>
         {members.map((m) => (
-          <MemberRow key={m.id} m={m} />
+          <MemberRow key={m.id} m={m} onPick={onPickMember} />
         ))}
         <button
           type="button"
@@ -1532,7 +1556,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
   );
 }
 
-function MemberRow({ m }: { m: TeamMember }) {
+function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) => void }) {
   const dotColor =
     m.online === 'self'
       ? 'var(--success)'
@@ -1542,8 +1566,11 @@ function MemberRow({ m }: { m: TeamMember }) {
     m.online === 'self'
       ? 'En ligne'
       : ({ on: 'En ligne', away: 'Absent', off: 'Hors ligne' } as const)[m.online] ?? '';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0' }}>
+  // R056 — un clic sur un membre démarre/ouvre la DM 1-1 avec lui. Pas pour
+  // soi-même : on ne chatte pas avec soi.
+  const isSelf = m.online === 'self';
+  const content = (
+    <>
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <div
           className="cp-avatar"
@@ -1576,7 +1603,7 @@ function MemberRow({ m }: { m: TeamMember }) {
           }}
         >
           {m.name}
-          {m.online === 'self' && (
+          {isSelf && (
             <span style={{ color: 'var(--ink-4)', fontWeight: 500, marginLeft: 4 }}>(vous)</span>
           )}
         </div>
@@ -1585,7 +1612,37 @@ function MemberRow({ m }: { m: TeamMember }) {
           <span style={{ color: dotColor, fontWeight: 600 }}>{stateLabel}</span>
         </div>
       </div>
-    </div>
+    </>
+  );
+  if (isSelf) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '5px 0' }}>
+        {content}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(m.id)}
+      aria-label={`Démarrer une discussion avec ${m.name}`}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9,
+        padding: '5px 4px',
+        width: '100%',
+        background: 'transparent',
+        border: 0,
+        borderRadius: 4,
+        cursor: 'pointer',
+        textAlign: 'left',
+        font: 'inherit',
+        color: 'inherit',
+      }}
+    >
+      {content}
+    </button>
   );
 }
 

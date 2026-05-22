@@ -22,6 +22,8 @@ import {
 } from '@/components/icons';
 import { useMobileList } from './hooks/useMobileList';
 import { useTeam } from './hooks/useTeam';
+import { useColleagues } from './hooks/useColleagues';
+import { useStartDm } from './hooks/useStartDm';
 import type { MobileListItem } from './types';
 import './messages.css';
 
@@ -38,6 +40,10 @@ export default function MessagesMobilePage() {
   const [tab, setTab] = useState<Tab>('all');
   const { items: mobileListItems } = useMobileList();
   const { data: team = [] } = useTeam();
+  // R056 — picker collègue ouvert au clic sur le FAB (stub avant ce fix).
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const colleaguesQuery = useColleagues(pickerOpen);
+  const startDm = useStartDm();
 
   const filtered = mobileListItems.filter((it) => {
     if (tab === 'mentions') return it.mentions > 0;
@@ -88,6 +94,7 @@ export default function MessagesMobilePage() {
         <button
           type="button"
           aria-label="Nouveau message"
+          onClick={() => setPickerOpen(true)}
           style={{
             position: 'absolute',
             right: 18,
@@ -111,6 +118,19 @@ export default function MessagesMobilePage() {
         </button>
       }
     >
+      {pickerOpen && (
+        <MobileColleaguePicker
+          colleagues={colleaguesQuery.data ?? []}
+          loading={colleaguesQuery.isLoading}
+          onPick={(userId) => {
+            setPickerOpen(false);
+            startDm.mutate(userId, {
+              onSuccess: (conv) => navigate(`/messages/${conv.id}`),
+            });
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
       <div
         style={{
           padding: '10px 16px',
@@ -222,6 +242,117 @@ export default function MessagesMobilePage() {
 
       <div style={{ height: 16 }} />
     </MScreen>
+  );
+}
+
+/**
+ * R056 — bottom sheet pour démarrer une DM avec un collègue. Liste les users
+ * actifs hors caller (depuis /chat/colleagues). Clic → POST /chat/direct-messages
+ * idempotent → navigation vers la DM (existante ou créée). Adapté mobile :
+ * pleine largeur, slide depuis le bas.
+ */
+function MobileColleaguePicker({
+  colleagues,
+  loading,
+  onPick,
+  onClose,
+}: {
+  colleagues: { id: string; fullName: string; role: string | null }[];
+  loading: boolean;
+  onPick: (userId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choisir un collègue"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'flex-end',
+        zIndex: 1000,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          maxHeight: '80vh',
+          background: 'var(--surface)',
+          borderTopLeftRadius: 14,
+          borderTopRightRadius: 14,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 -10px 30px rgba(0,0,0,0.18)',
+        }}
+      >
+        <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Nouveau message</div>
+          <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
+            Choisissez un collègue.
+          </div>
+        </div>
+        <div style={{ overflow: 'auto', flex: 1 }}>
+          {loading && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          )}
+          {!loading && colleagues.length === 0 && (
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
+              Aucun autre collègue actif.
+            </div>
+          )}
+          {colleagues.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick(c.id)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '14px 18px',
+                border: 0,
+                borderBottom: '1px solid var(--border-soft)',
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 14,
+                color: 'var(--ink-1)',
+                display: 'block',
+              }}
+            >
+              {c.fullName}
+              {c.role && (
+                <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 12 }}>
+                  · {c.role}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            padding: '14px 18px',
+            border: 0,
+            borderTop: '1px solid var(--border)',
+            background: 'transparent',
+            color: 'var(--ink-2)',
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Annuler
+        </button>
+      </div>
+    </div>
   );
 }
 

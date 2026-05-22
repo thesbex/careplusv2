@@ -4,7 +4,7 @@
  * ADR-035 v2 : tout vient du back via `useConversation(id)` — plus de fixtures.
  * La structure visuelle est conservée verbatim depuis `design/prototype/mobile/messages.jsx`.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import {
@@ -29,6 +29,36 @@ export default function MConversationMobilePage() {
   const me = useAuthStore((s) => s.user);
   const sendMessage = useSendMessage();
   const [draft, setDraft] = useState('');
+
+  // R060 / R057 — auto-scroll vers le bas via un anchor en fin de liste.
+  // Sur mobile le scroll container est `.mb.scroll` (MScreen), hors de notre
+  // contrôle. L'anchor.scrollIntoView fonctionne quel que soit l'ancêtre
+  // scrollable.
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const totalMsgs = (convo?.messages ?? []).reduce((n, d) => n + d.msgs.length, 0);
+
+  // R060 — ouverture/changement de conv → toujours en bas (vue du dernier
+  // message, attendu par l'utilisateur d'une messagerie).
+  useEffect(() => {
+    if (totalMsgs > 0) {
+      anchorRef.current?.scrollIntoView({ block: 'end' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convo?.id, totalMsgs > 0]);
+
+  // R057 — nouveaux messages reçus pendant qu'on est sur la conv (polling
+  // 5 s). On ne scroll que si l'anchor était déjà dans le viewport (ou
+  // proche) — sinon on arracherait l'utilisateur d'un scrollback.
+  useEffect(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const nearBottom = rect.top < window.innerHeight + 160;
+    if (nearBottom) {
+      el.scrollIntoView({ block: 'end' });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalMsgs]);
 
   const channelDisplayName = convo
     ? convo.kind === 'channel'
@@ -76,6 +106,8 @@ export default function MConversationMobilePage() {
           )
         )}
         {convo?.typing && <TypingRow who={convo.typing} />}
+        {/* R060 — anchor invisible pour scrollIntoView : reste collé au dernier message. */}
+        <div ref={anchorRef} aria-hidden="true" style={{ height: 1 }} />
       </div>
 
       <Composer value={draft} onChange={setDraft} onSend={handleSend} sending={sendMessage.isPending} />
