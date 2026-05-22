@@ -24,6 +24,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* R037 — sans min-height:0 le grid item refuse de se contraindre sous la
+   * hauteur intrinsèque de son contenu (saisie résultats d'analyse longue).
+   * Résultat : la colonne grandit, .cs-layout clip, le footer (bouton
+   * Clôturer + signature) sortait du viewport et devenait inerte. */
+  min-height: 0;
 }
 
 .cs-soap-toolbar {
@@ -64,6 +69,11 @@
   background: var(--surface-2);
   padding: 16px;
   overflow: auto;
+  /* R037 — idem .cs-soap-col : sans min-height:0 le panneau de résultats
+   * d'analyse pousse la colonne au-delà de la row du grid, débordement clip
+   * par .cs-layout, et tout ce qui était dessous (footer signature dans la
+   * colonne SOAP) devenait invisible / non-cliquable. */
+  min-height: 0;
 }
 
 .cs-section-h {
