@@ -25,6 +25,7 @@ import {
 import { useMoveAppointment, extractConflictMessage } from './hooks/useAppointmentMutations';
 import { usePractitioners } from './hooks/usePractitioners';
 import { useRooms } from './hooks/useRooms';
+import { useReasonsForAgenda } from './hooks/useReasonsForAgenda';
 import { useLeaves } from '@/features/parametres/hooks/useLeaves';
 import { useQueue } from '@/features/salle-attente/hooks/useQueue';
 import { PriseRDVDialog } from '../prise-rdv/PriseRDVDialog';
@@ -118,6 +119,9 @@ export default function AgendaPage() {
   }
 
   const [roomFilter, setRoomFilter] = useState<string>('ALL'); // 'ALL' | roomId
+  // R052 — filtre par motif de prestation (control, première visite, urgence…).
+  const [reasonFilter, setReasonFilter] = useState<string>('ALL'); // 'ALL' | reasonId
+  const { reasons, byId: reasonsById } = useReasonsForAgenda();
 
   const { days, appointments: rawAppointments, weekLabel, todayKey, refetch } =
     useWeekAppointments(weekOffset, { practitionerIdFilter: practitionerFilter });
@@ -146,13 +150,15 @@ export default function AgendaPage() {
     [queue],
   );
 
-  // Client-side room filter (rooms come from the appointment payload).
+  // Client-side filters (rooms + reasons come from the appointment payload).
   const appointments = useMemo(
-    () =>
-      roomFilter === 'ALL'
-        ? rawAppointments
-        : rawAppointments.filter((a) => a.roomId === roomFilter),
-    [rawAppointments, roomFilter],
+    () => {
+      let out = rawAppointments;
+      if (roomFilter !== 'ALL') out = out.filter((a) => a.roomId === roomFilter);
+      if (reasonFilter !== 'ALL') out = out.filter((a) => a.reasonId === reasonFilter);
+      return out;
+    },
+    [rawAppointments, roomFilter, reasonFilter],
   );
 
   const [selected, setSelected] = useState<Appointment | null>(null);
@@ -426,7 +432,7 @@ export default function AgendaPage() {
             setMonthIndex(new Date().getMonth());
           }}
         />
-        {(showPractitionerSelector || showRoomSelector) && (
+        {(showPractitionerSelector || showRoomSelector || reasons.length > 0) && (
           <div
             style={{
               display: 'flex',
@@ -476,6 +482,26 @@ export default function AgendaPage() {
                 </Select>
               </label>
             )}
+            {/* R052 — filtre par motif de prestation. Affiché même en cabinet
+                solo (un médecin a souvent envie d'isoler ses urgences). */}
+            {reasons.length > 0 && (
+              <label className="ag-filter-label">
+                Motif
+                <Select
+                  aria-label="Filtrer par motif de prestation"
+                  className="ag-filter-select"
+                  value={reasonFilter}
+                  onChange={(e) => setReasonFilter(e.target.value)}
+                >
+                  <option value="ALL">Tous les motifs</option>
+                  {reasons.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+            )}
           </div>
         )}
         {view === 'mois' ? (
@@ -496,6 +522,9 @@ export default function AgendaPage() {
             leaveDays={leaveDays}
             jourMode={view === 'jour'}
             {...(todayKey ? { today: todayKey } : {})}
+            reasonColors={Object.fromEntries(
+              Object.entries(reasonsById).map(([id, r]) => [id, r.colorHex]),
+            )}
           />
         )}
       </Screen>

@@ -30,6 +30,8 @@ export interface Appointment {
   dur: number;
   patient: string;
   reason: string;
+  /** R052/R053 — id du motif (uuid) pour filtre + couleur stable. */
+  reasonId?: string;
   status: AppointmentStatus;
   allergy?: string;
   /** Backend status name (PLANIFIE / CONFIRME / ARRIVE / ...). */

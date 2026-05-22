@@ -10,6 +10,7 @@ export interface AppointmentApi {
   patientId: string;
   patientFullName: string | null;
   practitionerId?: string;
+  reasonId?: string | null;
   reasonLabel: string | null;
   startAt: string;
   endAt: string;
@@ -100,6 +101,7 @@ function adapt(a: AppointmentApi, days: WeekDay[]): Appointment {
     status: STATUS_MAP[a.status] ?? 'confirmed',
     rawStatus: a.status,
     ...(a.practitionerId ? { practitionerId: a.practitionerId } : {}),
+    ...(a.reasonId ? { reasonId: a.reasonId } : {}),
     ...(a.roomId ? { roomId: a.roomId } : {}),
     ...(a.roomName ? { roomName: a.roomName } : {}),
   };

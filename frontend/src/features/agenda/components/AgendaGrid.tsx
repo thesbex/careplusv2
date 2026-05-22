@@ -16,6 +16,8 @@ interface AgendaGridProps {
   now?: string;
   /** Days that fall in a practitioner-leave range. Painted with a striped overlay. */
   leaveDays?: Set<DayKey>;
+  /** R053 — mapping reasonId → colorHex pour teinter chaque bloc selon son motif. */
+  reasonColors?: Record<string, string>;
   /**
    * Jour view mode (one day, full-width). Per design-handoff-v2 / `screens/
    * agenda.jsx::AgendaJour`, the single header cell carries the `today` class
@@ -37,7 +39,7 @@ function snapTimeFromY(yPx: number, totalRows: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today, now, leaveDays, jourMode = false }: AgendaGridProps) {
+export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today, now, leaveDays, jourMode = false, reasonColors }: AgendaGridProps) {
   // Default `now` to the actual wall-clock when the page didn't pass one.
   // Hardcoding "09:47" (the design fixture) used to leak into production —
   // today = Sunday at 22h showed a phantom line at 09:47 on Thursday.
@@ -122,14 +124,18 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
               )}
               {appointments
                 .filter((a) => a.day === d.key)
-                .map((a, i) => (
-                  <AgendaBlock
-                    key={`${d.key}-${i}`}
-                    a={a}
-                    {...(onSelect ? { onClick: onSelect } : {})}
-                    draggable={!!onMove}
-                  />
-                ))}
+                .map((a, i) => {
+                  const color = a.reasonId ? reasonColors?.[a.reasonId] : undefined;
+                  return (
+                    <AgendaBlock
+                      key={`${d.key}-${i}`}
+                      a={a}
+                      {...(onSelect ? { onClick: onSelect } : {})}
+                      draggable={!!onMove}
+                      {...(color ? { reasonColor: color } : {})}
+                    />
+                  );
+                })}
             </div>
           ))}
         </div>

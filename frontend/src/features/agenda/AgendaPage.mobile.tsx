@@ -16,6 +16,7 @@ import {
 } from './hooks/useAppointments';
 import { usePractitioners } from './hooks/usePractitioners';
 import { useRooms } from './hooks/useRooms';
+import { useReasonsForAgenda } from './hooks/useReasonsForAgenda';
 import type { DayKey } from './types';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
@@ -94,6 +95,9 @@ export default function AgendaMobilePage() {
   }
 
   const [roomFilter, setRoomFilter] = useState<string>('ALL');
+  // R052 — filtre motif de prestation (idem desktop).
+  const [reasonFilter, setReasonFilter] = useState<string>('ALL');
+  const { reasons, byId: reasonsById } = useReasonsForAgenda();
 
   const { days, appointments: rawAppointments, weekLabel, isLoading } = useWeekAppointments(
     weekOffset,
@@ -102,11 +106,13 @@ export default function AgendaMobilePage() {
   const [selectedDay, setSelectedDay] = useState<DayKey>(todayKey);
 
   const filteredAppointments = useMemo(
-    () =>
-      roomFilter === 'ALL'
-        ? rawAppointments
-        : rawAppointments.filter((a) => a.roomId === roomFilter),
-    [rawAppointments, roomFilter],
+    () => {
+      let out = rawAppointments;
+      if (roomFilter !== 'ALL') out = out.filter((a) => a.roomId === roomFilter);
+      if (reasonFilter !== 'ALL') out = out.filter((a) => a.reasonId === reasonFilter);
+      return out;
+    },
+    [rawAppointments, roomFilter, reasonFilter],
   );
   const dayAppointments = filteredAppointments.filter((a) => a.day === selectedDay);
   const selectedDayInfo = days.find((d) => d.key === selectedDay);
@@ -217,7 +223,7 @@ export default function AgendaMobilePage() {
         </div>
       </div>
 
-      {(showPractitionerSelector || showRoomSelector) && (
+      {(showPractitionerSelector || showRoomSelector || reasons.length > 0) && (
         <div
           style={{
             display: 'flex',
@@ -281,6 +287,31 @@ export default function AgendaMobilePage() {
               ))}
             </select>
           )}
+          {reasons.length > 0 && (
+            <select
+              aria-label="Filtrer par motif de prestation"
+              value={reasonFilter}
+              onChange={(e) => setReasonFilter(e.target.value)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                height: 32,
+                border: '1px solid var(--border)',
+                borderRadius: 6,
+                padding: '0 8px',
+                fontSize: 12.5,
+                fontFamily: 'inherit',
+                background: 'var(--surface)',
+              }}
+            >
+              <option value="ALL">Tous les motifs</option>
+              {reasons.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       )}
 
@@ -318,7 +349,9 @@ export default function AgendaMobilePage() {
                   Aucun rendez-vous ce jour.
                 </div>
               ) : (
-                dayAppointments.map((r, i) => (
+                dayAppointments.map((r, i) => {
+                  const reasonColor = r.reasonId ? reasonsById[r.reasonId]?.colorHex : undefined;
+                  return (
                   <div key={r.id ?? i} className="m-tl-row">
                     <div className="m-tl-hour">{r.start}</div>
                     <div className="m-tl-col filled">
@@ -336,6 +369,10 @@ export default function AgendaMobilePage() {
                           color: 'inherit',
                           cursor: r.patientId ? 'pointer' : 'default',
                           WebkitTapHighlightColor: 'transparent',
+                          // R053 — bordure gauche teintée selon le motif de prestation
+                          // (control / urgence / certificat…), en surplus du fond
+                          // qui code le statut (consult / arrived / done).
+                          ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}` } : {}),
                         }}
                         aria-label={`Ouvrir le dossier de ${r.patient}`}
                       >
@@ -357,7 +394,8 @@ export default function AgendaMobilePage() {
                       </button>
                     </div>
                   </div>
-                ))
+                  );
+                })
               )}
             </div>
           </>

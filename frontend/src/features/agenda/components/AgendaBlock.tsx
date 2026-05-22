@@ -7,6 +7,13 @@ interface AgendaBlockProps {
   onClick?: (a: Appointment) => void;
   /** When true, enable HTML5 drag-and-drop to allow moving the block. */
   draggable?: boolean;
+  /**
+   * R053 — couleur du motif de prestation (Contrôle / Première visite / Urgence
+   * / Certificat…). Rendue en bord gauche du bloc pour ajouter un 2e axe d'info
+   * sans masquer le code couleur du statut (consult/arrived/done) qui reste
+   * porté par le fond.
+   */
+  reasonColor?: string;
 }
 
 /**
@@ -15,7 +22,7 @@ interface AgendaBlockProps {
  * inline because a 15-min slot is only 18px tall.
  * Ported from design/prototype/screens/agenda.jsx:AgendaBlock.
  */
-export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
+export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockProps) {
   // 1px inset top + bottom (was 2+2). Borders on the block already provide
   // visual separation between adjacent slots, so a 2px total gap is enough —
   // the 4px reservation was eating into the per-block padding budget and
@@ -35,7 +42,11 @@ export function AgendaBlock({ a, onClick, draggable }: AgendaBlockProps) {
     <button
       type="button"
       className={cls}
-      style={{ top, height }}
+      style={{
+        top,
+        height,
+        ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}` } : {}),
+      }}
       onClick={() => onClick?.(a)}
       aria-label={`${a.patient} à ${a.start}, ${a.reason}`}
       draggable={draggable && !!a.id}
