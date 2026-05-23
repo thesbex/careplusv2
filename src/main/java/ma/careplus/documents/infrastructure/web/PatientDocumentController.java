@@ -78,7 +78,10 @@ public class PatientDocumentController {
     }
 
     @GetMapping("/api/documents/{id}/content")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    // LAB / RADIO sont inclus : le technicien doit pouvoir relire le résultat
+    // qu'il a téléversé via PrescriptionResultController (sinon « Impossible
+    // d'ouvrir le résultat » côté queue traitées — Suivi CarePlus 2026-05-22).
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN','LAB','RADIO')")
     public ResponseEntity<Resource> download(@PathVariable UUID id) {
         PatientDocument doc = service.getActive(id);
         Resource res = storage.loadAsResource(doc.getStorageKey());
@@ -113,7 +116,7 @@ public class PatientDocumentController {
      * permet de reconstruire le blob côté client en toute sécurité.
      */
     @GetMapping("/api/documents/{id}/preview")
-    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN','LAB','RADIO')")
     public ResponseEntity<Map<String, Object>> preview(@PathVariable UUID id) {
         PatientDocument doc = service.getActive(id);
         Resource res = storage.loadAsResource(doc.getStorageKey());
