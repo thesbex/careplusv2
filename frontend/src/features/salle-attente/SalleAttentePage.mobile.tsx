@@ -15,6 +15,7 @@ import { useCheckIn } from './hooks/useCheckIn';
 import { api } from '@/lib/api/client';
 import { useUpcomingToday } from './hooks/useUpcomingToday';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
+import { useAuthStore } from '@/lib/auth/authStore';
 import type { QueueEntry, WaitingPatientStatus } from './types';
 import './salle-attente.css';
 
@@ -41,6 +42,12 @@ export default function SalleAttenteMobilePage() {
   const { startConsultation, isPending: isStarting } = useStartConsultation();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
   const [cancelTarget, setCancelTarget] = useState<QueueEntry | null>(null);
+  // Constantes non-obligatoires : un MEDECIN qui tape un patient « arrivé » va
+  // directement en consultation (les constantes restent saisissables depuis
+  // la consultation). Les ASSISTANT/SECRETAIRE — dont c'est le rôle de saisir
+  // les constantes — restent envoyés vers /constantes pour leur workflow.
+  const userRoles = useAuthStore((s) => s.user?.roles) ?? [];
+  const isMedecin = userRoles.includes('MEDECIN');
 
   async function handleDeclareArrival(appointmentId: string) {
     try {
@@ -71,6 +78,22 @@ export default function SalleAttenteMobilePage() {
     if (entry.status === 'arrived') {
       if (!entry.appointmentId) {
         toast.error('RDV introuvable pour cette entrée.');
+        return;
+      }
+      // Médecin → bypass /constantes : on démarre directement la consultation
+      // pour ne pas le forcer à passer par la salle pré-consult. Assistant /
+      // Secrétaire → /constantes (c'est leur tâche).
+      if (isMedecin && entry.patientId) {
+        try {
+          const payload: { patientId: string; appointmentId?: string } = {
+            patientId: entry.patientId,
+            appointmentId: entry.appointmentId,
+          };
+          const created = await startConsultation(payload);
+          void navigate(`/consultations/${created.id}`);
+        } catch {
+          toast.error('Impossible de démarrer la consultation.');
+        }
         return;
       }
       void navigate(`/constantes/${entry.appointmentId}`);

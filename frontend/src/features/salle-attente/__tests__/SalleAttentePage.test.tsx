@@ -164,10 +164,12 @@ describe('<SalleAttentePage /> (desktop)', () => {
 
   it('renders CTA buttons matching patient statuses', () => {
     renderDesktop();
-    // arrived → "Prendre constantes"
+    // arrived → "Prendre constantes" + bouton secondaire "Envoyer en consult."
+    // (constantes non obligatoires : le médecin peut sauter cette étape).
     expect(screen.getByRole('button', { name: /Prendre constantes/ })).toBeInTheDocument();
-    // vitals → "Envoyer en consult."
-    expect(screen.getByRole('button', { name: /Envoyer en consult\./ })).toBeInTheDocument();
+    // 2 occurrences : sur la ligne arrived ET sur la ligne vitals.
+    const consultBtns = screen.getAllByRole('button', { name: /Envoyer en consult\./ });
+    expect(consultBtns.length).toBeGreaterThanOrEqual(2);
     // waiting → "Appeler"
     expect(screen.getByRole('button', { name: /Appeler/ })).toBeInTheDocument();
   });

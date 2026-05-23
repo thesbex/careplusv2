@@ -118,6 +118,17 @@ export function QueueRow({
               Prendre constantes →
             </Button>
           )}
+          {p.status === 'arrived' && p.patientId && (
+            <Button
+              size="sm"
+              variant={canRecordVitals ? 'ghost' : 'primary'}
+              disabled={busy}
+              onClick={() => onStartConsult?.(p)}
+              title="Démarrer la consultation sans saisir de constantes"
+            >
+              Envoyer en consult. →
+            </Button>
+          )}
           {p.status === 'vitals' && p.patientId && (
             <Button size="sm" disabled={busy} onClick={() => onStartConsult?.(p)}>
               Envoyer en consult. →
