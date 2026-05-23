@@ -14,6 +14,7 @@ export interface TeamMember {
   initials: string;
   color: string;
   online: Presence;
+  hasPhoto?: boolean;
 }
 
 export interface Channel {
@@ -61,6 +62,13 @@ export interface PatientAttach {
   age: number;
 }
 
+export interface MessageAttachment {
+  id: string;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+}
+
 export interface ChatMessage {
   u: TeamMember;
   time: string;
@@ -70,6 +78,7 @@ export interface ChatMessage {
   reply?: MessageReply;
   patient?: PatientAttach;
   urgent?: boolean;
+  attachment?: MessageAttachment;
 }
 
 export interface MessageDay {

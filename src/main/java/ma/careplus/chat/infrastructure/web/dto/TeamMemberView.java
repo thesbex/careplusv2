@@ -12,4 +12,5 @@ public record TeamMemberView(
         String role,
         String initials,
         String color,
-        String presence) {}
+        String presence,
+        boolean hasPhoto) {}

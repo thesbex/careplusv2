@@ -14,6 +14,7 @@ import { Screen } from '@/components/shell/Screen';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
+import { ProfilePhotoSection } from './components/ProfilePhotoSection';
 import { ReferralContactsSection } from './components/ReferralContactsSection';
 
 const NAV_MAP = {
@@ -75,6 +76,7 @@ export default function ProfilPage() {
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <ProfilePhotoSection />
             <div
               style={{
                 background: 'var(--surface)',

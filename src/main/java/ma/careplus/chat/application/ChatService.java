@@ -10,6 +10,8 @@ import ma.careplus.chat.infrastructure.web.dto.MessageView;
 import ma.careplus.chat.infrastructure.web.dto.PatientThreadView;
 import ma.careplus.chat.infrastructure.web.dto.SendMessageBody;
 import ma.careplus.chat.infrastructure.web.dto.TeamMemberView;
+import org.springframework.core.io.Resource;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Chat module — messagerie d'équipe iso-maquette.
@@ -68,4 +70,17 @@ public interface ChatService {
 
     /** Met à jour last_seen_at du caller — appelé toutes les 30 s par le client. */
     void heartbeat(UUID userId);
+
+    // ── Pièces jointes (V053) ────────────────────────────────────────────────
+    /**
+     * Envoie un message avec une PJ. Le binaire est stocké et lié au message
+     * créé. Body peut être vide (le filename joue alors le rôle d'aperçu).
+     */
+    MessageView sendMessageWithAttachment(UUID userId, UUID conversationId,
+                                           String body, MultipartFile file);
+
+    /** Renvoie le binaire d'une PJ + son mime + nom original. */
+    AttachmentDownload downloadAttachment(UUID userId, UUID attachmentId);
+
+    record AttachmentDownload(Resource resource, String mime, String filename, long sizeBytes) {}
 }

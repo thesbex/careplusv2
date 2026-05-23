@@ -5,6 +5,7 @@ export interface Colleague {
   id: string;
   fullName: string;
   role: string | null;
+  hasPhoto?: boolean;
 }
 
 /**

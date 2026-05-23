@@ -56,9 +56,11 @@ public class ChatServiceImpl implements ChatService {
     );
 
     private final JdbcTemplate jdbc;
+    private final ma.careplus.documents.application.DocumentStorage storage;
 
-    public ChatServiceImpl(JdbcTemplate jdbc) {
+    public ChatServiceImpl(JdbcTemplate jdbc, ma.careplus.documents.application.DocumentStorage storage) {
         this.jdbc = jdbc;
+        this.storage = storage;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -117,6 +119,7 @@ public class ChatServiceImpl implements ChatService {
                          WHERE ur.user_id = other.id
                          ORDER BY r.code LIMIT 1) AS other_role,
                        other.enabled AS other_enabled,
+                       (other.photo_storage_key IS NOT NULL) AS other_has_photo,
                        lm.body AS last_body,
                        lm.created_at AS last_at,
                        (SELECT COUNT(*) FROM chat_message m
@@ -144,7 +147,9 @@ public class ChatServiceImpl implements ChatService {
                             rs.getObject("other_id", UUID.class),
                             rs.getString("first_name"), rs.getString("last_name"),
                             rs.getString("email"), rs.getString("other_role"),
-                            rs.getBoolean("other_enabled"), userId);
+                            rs.getBoolean("other_enabled"),
+                            rs.getBoolean("other_has_photo"),
+                            userId);
                     OffsetDateTime at = rs.getObject("last_at", OffsetDateTime.class);
                     return new DirectMessageView(
                             convId, other,
@@ -323,6 +328,7 @@ public class ChatServiceImpl implements ChatService {
                            m.body, m.created_at, m.is_urgent, m.pinned_at,
                            m.patient_id,
                            u.first_name, u.last_name, u.email, u.enabled,
+                           (u.photo_storage_key IS NOT NULL) AS sender_has_photo,
                            (SELECT r.code FROM identity_user_role ur
                               JOIN identity_role r ON r.id = ur.role_id
                              WHERE ur.user_id = u.id ORDER BY r.code LIMIT 1) AS sender_role,
@@ -343,6 +349,7 @@ public class ChatServiceImpl implements ChatService {
                            m.body, m.created_at, m.is_urgent, m.pinned_at,
                            m.patient_id,
                            u.first_name, u.last_name, u.email, u.enabled,
+                           (u.photo_storage_key IS NOT NULL) AS sender_has_photo,
                            (SELECT r.code FROM identity_user_role ur
                               JOIN identity_role r ON r.id = ur.role_id
                              WHERE ur.user_id = u.id ORDER BY r.code LIMIT 1) AS sender_role,
@@ -374,7 +381,9 @@ public class ChatServiceImpl implements ChatService {
                     senderId,
                     rs.getString("first_name"), rs.getString("last_name"),
                     rs.getString("email"), rs.getString("sender_role"),
-                    rs.getBoolean("enabled"), userId);
+                    rs.getBoolean("enabled"),
+                    rs.getBoolean("sender_has_photo"),
+                    userId);
 
             UUID parentId = rs.getObject("parent_message_id", UUID.class);
 
@@ -403,7 +412,8 @@ public class ChatServiceImpl implements ChatService {
                     patient,
                     List.of(), // mentions ajoutées au post-process
                     List.of(), // reactions ajoutées au post-process
-                    null);     // reply meta ajouté au post-process
+                    null,      // reply meta ajouté au post-process
+                    null);     // attachment ajouté au post-process (V053)
         }, args);
 
         if (rows.isEmpty()) return rows;
@@ -414,6 +424,7 @@ public class ChatServiceImpl implements ChatService {
         Map<UUID, List<MentionedUser>> mentionsByMsg = loadMentions(msgIds);
         Map<UUID, List<ReactionGroup>> reactionsByMsg = loadReactions(msgIds, userId);
         Map<UUID, ReplyMeta> repliesByParent = loadReplyMeta(msgIds);
+        Map<UUID, MessageView.Attachment> attachmentsByMsg = loadAttachments(msgIds);
 
         List<MessageView> enriched = new ArrayList<>(rows.size());
         for (MessageView m : rows) {
@@ -423,7 +434,8 @@ public class ChatServiceImpl implements ChatService {
                     m.patient(),
                     mentionsByMsg.getOrDefault(m.id(), List.of()),
                     reactionsByMsg.getOrDefault(m.id(), List.of()),
-                    repliesByParent.get(m.id())));
+                    repliesByParent.get(m.id()),
+                    attachmentsByMsg.get(m.id())));
         }
 
         // oldest first pour append-only
@@ -645,6 +657,7 @@ public class ChatServiceImpl implements ChatService {
         assertMember(userId, conversationId);
         return jdbc.query("""
                 SELECT u.id, u.first_name, u.last_name, u.email, u.enabled, u.last_seen_at,
+                       (u.photo_storage_key IS NOT NULL) AS has_photo,
                        (SELECT r.code FROM identity_user_role ur
                           JOIN identity_role r ON r.id = ur.role_id
                          WHERE ur.user_id = u.id ORDER BY r.code LIMIT 1) AS role_code
@@ -658,6 +671,7 @@ public class ChatServiceImpl implements ChatService {
                         rs.getString("email"), rs.getString("role_code"),
                         rs.getBoolean("enabled"),
                         rs.getObject("last_seen_at", OffsetDateTime.class),
+                        rs.getBoolean("has_photo"),
                         userId),
                 conversationId);
     }
@@ -667,6 +681,7 @@ public class ChatServiceImpl implements ChatService {
     public List<TeamMemberView> listTeam(UUID userId) {
         return jdbc.query("""
                 SELECT u.id, u.first_name, u.last_name, u.email, u.enabled, u.last_seen_at,
+                       (u.photo_storage_key IS NOT NULL) AS has_photo,
                        (SELECT r.code FROM identity_user_role ur
                           JOIN identity_role r ON r.id = ur.role_id
                          WHERE ur.user_id = u.id ORDER BY r.code LIMIT 1) AS role_code
@@ -679,6 +694,7 @@ public class ChatServiceImpl implements ChatService {
                         rs.getString("email"), rs.getString("role_code"),
                         rs.getBoolean("enabled"),
                         rs.getObject("last_seen_at", OffsetDateTime.class),
+                        rs.getBoolean("has_photo"),
                         userId));
     }
 
@@ -687,6 +703,7 @@ public class ChatServiceImpl implements ChatService {
     public List<ColleagueView> listColleagues(UUID userId) {
         return jdbc.query("""
                 SELECT u.id, u.first_name, u.last_name, u.email,
+                       (u.photo_storage_key IS NOT NULL) AS has_photo,
                        (SELECT r.code FROM identity_user_role ur
                           JOIN identity_role r ON r.id = ur.role_id
                          WHERE ur.user_id = u.id ORDER BY r.code LIMIT 1) AS role_code
@@ -700,9 +717,10 @@ public class ChatServiceImpl implements ChatService {
                     String last = rs.getString("last_name");
                     String email = rs.getString("email");
                     String role = rs.getString("role_code");
+                    boolean hasPhoto = rs.getBoolean("has_photo");
                     String fullName = ((first == null ? "" : first) + " " + (last == null ? "" : last)).strip();
                     if (fullName.isEmpty()) fullName = email == null ? "—" : email;
-                    return new ColleagueView(id, fullName, role);
+                    return new ColleagueView(id, fullName, role, hasPhoto);
                 }, userId);
     }
 
@@ -710,6 +728,113 @@ public class ChatServiceImpl implements ChatService {
     @Transactional
     public void heartbeat(UUID userId) {
         jdbc.update("UPDATE identity_user SET last_seen_at = now() WHERE id = ?", userId);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  PIÈCES JOINTES (V053)
+    // ════════════════════════════════════════════════════════════════════════
+
+    private static final java.util.Set<String> ATTACHMENT_ALLOWED_MIME = java.util.Set.of(
+            "application/pdf",
+            "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif");
+    private static final long ATTACHMENT_MAX_BYTES = 10L * 1024 * 1024; // 10 Mo
+
+    @Override
+    @Transactional
+    public MessageView sendMessageWithAttachment(UUID userId, UUID conversationId,
+                                                  String body, org.springframework.web.multipart.MultipartFile file) {
+        assertMember(userId, conversationId);
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("CHAT_ATTACHMENT_EMPTY",
+                    "Aucun fichier reçu.", 400);
+        }
+        String mime = file.getContentType();
+        if (mime == null || !ATTACHMENT_ALLOWED_MIME.contains(mime.toLowerCase(java.util.Locale.ROOT))) {
+            throw new BusinessException("CHAT_ATTACHMENT_MIME",
+                    "Format non supporté (PDF, JPEG, PNG, WebP, HEIC seulement).", 415);
+        }
+        if (file.getSize() > ATTACHMENT_MAX_BYTES) {
+            throw new BusinessException("CHAT_ATTACHMENT_TOO_LARGE",
+                    "Fichier trop volumineux (max 10 Mo).", 413);
+        }
+
+        // Insère le message avec body (peut être vide → on met le filename par défaut
+        // pour que la liste de gauche affiche un dernier message lisible).
+        String trimmed = body == null ? "" : body.strip();
+        if (trimmed.isEmpty()) {
+            trimmed = "📎 " + file.getOriginalFilename();
+        }
+        UUID msgId = UUID.randomUUID();
+        OffsetDateTime now = OffsetDateTime.now();
+        jdbc.update("""
+                INSERT INTO chat_message (id, conversation_id, sender_id, body, is_urgent, created_at)
+                VALUES (?, ?, ?, ?, FALSE, ?)
+                """,
+                msgId, conversationId, userId, trimmed,
+                java.sql.Timestamp.from(now.toInstant()));
+        jdbc.update("UPDATE chat_conversation SET last_message_at = ?, updated_at = now() WHERE id = ?",
+                java.sql.Timestamp.from(now.toInstant()), conversationId);
+
+        // Stocke le binaire sous chat/<conversationId>/<attachmentId>.<ext>
+        UUID attachmentId = UUID.randomUUID();
+        String ext = extensionFromMime(mime);
+        String key;
+        try {
+            key = storage.store(conversationId, attachmentId, ext, file.getInputStream());
+        } catch (java.io.IOException e) {
+            throw new BusinessException("CHAT_ATTACHMENT_IO",
+                    "Échec écriture fichier.", 500);
+        }
+        // Réécrit le préfixe pour grouper sous "chat/" — DocumentStorage utilise
+        // <patientId>/<docId>.<ext> ; ici le 1er segment est l'id de conversation,
+        // c'est OK, on garde la clé telle quelle.
+        jdbc.update("""
+                INSERT INTO chat_attachment
+                       (id, message_id, storage_key, mime, size_bytes, original_filename, uploaded_by, uploaded_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                attachmentId, msgId, key, mime, file.getSize(),
+                file.getOriginalFilename() == null ? "fichier" : file.getOriginalFilename(),
+                userId, java.sql.Timestamp.from(now.toInstant()));
+
+        return listMessages(userId, conversationId, null, 1).stream()
+                .filter(m -> m.id().equals(msgId)).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Message just inserted not found: " + msgId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AttachmentDownload downloadAttachment(UUID userId, UUID attachmentId) {
+        Map<String, Object> row;
+        try {
+            row = jdbc.queryForMap("""
+                    SELECT a.storage_key, a.mime, a.original_filename, a.size_bytes,
+                           m.conversation_id
+                      FROM chat_attachment a
+                      JOIN chat_message m ON m.id = a.message_id
+                     WHERE a.id = ?
+                    """, attachmentId);
+        } catch (Exception e) {
+            throw new NotFoundException("CHAT-ATT-404", "Pièce jointe introuvable.");
+        }
+        UUID convId = (UUID) row.get("conversation_id");
+        assertMember(userId, convId); // 404 sympatique si pas membre
+        return new AttachmentDownload(
+                storage.loadAsResource((String) row.get("storage_key")),
+                (String) row.get("mime"),
+                (String) row.get("original_filename"),
+                ((Number) row.get("size_bytes")).longValue());
+    }
+
+    private static String extensionFromMime(String mime) {
+        return switch (mime.toLowerCase(java.util.Locale.ROOT)) {
+            case "application/pdf" -> "pdf";
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/webp" -> "webp";
+            case "image/heic", "image/heif" -> "heic";
+            default -> "";
+        };
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -747,15 +872,22 @@ public class ChatServiceImpl implements ChatService {
 
     private TeamMemberView buildMember(UUID id, String first, String last, String email,
                                         String role, boolean enabled, UUID caller) {
-        return buildMember(id, first, last, email, role, enabled, null, caller);
+        return buildMember(id, first, last, email, role, enabled, null, false, caller);
+    }
+
+    private TeamMemberView buildMember(UUID id, String first, String last, String email,
+                                        String role, boolean enabled, boolean hasPhoto, UUID caller) {
+        return buildMember(id, first, last, email, role, enabled, null, hasPhoto, caller);
     }
 
     /**
      * @param lastSeenAt timestamp du dernier heartbeat (V049). Si null → user jamais connecté → off.
+     * @param hasPhoto V052 — true si l'user a une photo de profil ; le FE compose
+     *                 alors {@code GET /api/users/{id}/photo} dans l'avatar.
      */
     private TeamMemberView buildMember(UUID id, String first, String last, String email,
                                         String role, boolean enabled,
-                                        OffsetDateTime lastSeenAt, UUID caller) {
+                                        OffsetDateTime lastSeenAt, boolean hasPhoto, UUID caller) {
         String fullName = ((first == null ? "" : first) + " " + (last == null ? "" : last)).strip();
         if (fullName.isEmpty()) fullName = email == null ? "—" : email;
         String roleLabel = roleLabelOf(role);
@@ -765,7 +897,7 @@ public class ChatServiceImpl implements ChatService {
         initials = initials.toUpperCase(Locale.ROOT);
         String color = role != null ? ROLE_COLOR.getOrDefault(role, "#6B6B6B") : "#6B6B6B";
         String presence = computePresence(id, enabled, lastSeenAt, caller);
-        return new TeamMemberView(id, fullName, roleLabel, initials, color, presence);
+        return new TeamMemberView(id, fullName, roleLabel, initials, color, presence, hasPhoto);
     }
 
     /**
@@ -874,6 +1006,28 @@ public class ChatServiceImpl implements ChatService {
                     OffsetDateTime at = rs.getObject("last_at", OffsetDateTime.class);
                     String last = rs.getString("last_sender");
                     out.put(parent, new ReplyMeta(cnt, at, last == null ? "" : last.strip()));
+                }, args);
+        return out;
+    }
+
+    /** V053 — récupère la PJ par message_id (1-1 max en v1). */
+    private Map<UUID, MessageView.Attachment> loadAttachments(java.util.Set<UUID> msgIds) {
+        if (msgIds.isEmpty()) return Map.of();
+        String inClause = "(" + msgIds.stream().map(id -> "?").reduce((a, b) -> a + "," + b).orElse("") + ")";
+        Object[] args = msgIds.toArray();
+        Map<UUID, MessageView.Attachment> out = new HashMap<>();
+        jdbc.query("""
+                SELECT id, message_id, original_filename, mime, size_bytes
+                  FROM chat_attachment
+                 WHERE message_id IN """ + inClause + """
+
+                """,
+                rs -> {
+                    UUID id = rs.getObject("id", UUID.class);
+                    UUID mid = rs.getObject("message_id", UUID.class);
+                    out.put(mid, new MessageView.Attachment(
+                            id, rs.getString("original_filename"),
+                            rs.getString("mime"), rs.getLong("size_bytes")));
                 }, args);
         return out;
     }

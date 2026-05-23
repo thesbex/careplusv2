@@ -19,6 +19,7 @@ export function useTeam() {
           initials: m.initials,
           color: m.color,
           online: m.presence,
+          hasPhoto: m.hasPhoto ?? false,
         })),
       ),
     refetchInterval: 30_000,

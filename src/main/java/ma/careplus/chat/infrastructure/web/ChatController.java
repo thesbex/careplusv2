@@ -19,6 +19,9 @@ import ma.careplus.chat.infrastructure.web.dto.StartConversationRequest;
 import ma.careplus.chat.infrastructure.web.dto.StartPatientThreadRequest;
 import ma.careplus.chat.infrastructure.web.dto.TeamMemberView;
 import ma.careplus.chat.infrastructure.web.dto.UnreadCountView;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -29,7 +32,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Endpoints REST pour le module chat iso-maquette : canaux + DM + fils patient,
@@ -202,6 +207,33 @@ public class ChatController {
     public ResponseEntity<Void> heartbeat(Authentication auth) {
         service.heartbeat(callerId(auth));
         return ResponseEntity.noContent().build();
+    }
+
+    // ── Pièces jointes (V053) ─────────────────────────────────────────────────
+    @PostMapping(value = "/conversations/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Envoie un message avec une pièce jointe (PDF / image)")
+    public ResponseEntity<MessageView> sendWithAttachment(
+            Authentication auth,
+            @PathVariable("id") UUID conversationId,
+            @RequestPart(value = "file") MultipartFile file,
+            @RequestPart(value = "body", required = false) String body) {
+        return ResponseEntity.ok(service.sendMessageWithAttachment(
+                callerId(auth), conversationId, body, file));
+    }
+
+    @GetMapping("/attachments/{id}/content")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Télécharge / visualise une pièce jointe")
+    public ResponseEntity<Resource> downloadAttachment(
+            Authentication auth, @PathVariable("id") UUID attachmentId) {
+        ChatService.AttachmentDownload d = service.downloadAttachment(callerId(auth), attachmentId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, d.mime())
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "inline; filename=\"" + d.filename().replaceAll("[\"\\r\\n]", "_") + "\"")
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(d.sizeBytes()))
+                .body(d.resource());
     }
 
     private static UUID callerId(Authentication auth) {

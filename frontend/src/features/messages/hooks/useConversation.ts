@@ -26,6 +26,7 @@ export function useConversation(conversationId: string | null | undefined) {
         initials: m.initials,
         color: m.color,
         online: m.presence,
+        hasPhoto: m.hasPhoto ?? false,
       }));
 
       const days = groupByDay(msgs);
@@ -64,6 +65,7 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
       initials: m.sender.initials,
       color: m.sender.color,
       online: m.sender.presence,
+      hasPhoto: m.sender.hasPhoto ?? false,
     };
     const cm: ChatMessage = {
       u: sender,
@@ -86,6 +88,14 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
         name: m.patient.name,
         id: m.patient.pid,
         age: m.patient.age ?? 0,
+      };
+    }
+    if (m.attachment) {
+      cm.attachment = {
+        id: m.attachment.id,
+        filename: m.attachment.filename,
+        mime: m.attachment.mime,
+        sizeBytes: m.attachment.sizeBytes,
       };
     }
     map.get(day)!.push(cm);

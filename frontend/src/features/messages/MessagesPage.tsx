@@ -20,6 +20,7 @@ import {
   At,
   Smile,
   Stetho,
+  Paperclip,
 } from '@/components/icons';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -29,8 +30,11 @@ import { usePatientThreads } from './hooks/usePatientThreads';
 import { useTeam } from './hooks/useTeam';
 import { useConversation } from './hooks/useConversation';
 import { useSendMessage } from './hooks/useSendMessage';
+import { useSendAttachment } from './hooks/useSendAttachment';
 import { useColleagues } from './hooks/useColleagues';
 import { useStartDm } from './hooks/useStartDm';
+import { UserAvatar } from './components/UserAvatar';
+import { AttachmentChip } from './components/AttachmentChip';
 import type {
   ChatMessage,
   Channel,
@@ -61,6 +65,7 @@ export default function MessagesPage() {
   const { data: convo } = useConversation(activeConvo);
   const [composer, setComposer] = useState('');
   const sendMessage = useSendMessage();
+  const sendAttachment = useSendAttachment();
   // DM picker — ouvert au clic sur le + de la section "Messages directs"
   // (RailHeader) ou sur "Nouveau message" du topbar.
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
@@ -70,6 +75,17 @@ export default function MessagesPage() {
   function handleSend() {
     if (!activeConvo || !composer.trim()) return;
     sendMessage.mutate({ conversationId: activeConvo, body: composer.trim() });
+    setComposer('');
+  }
+
+  function handleAttach(file: File) {
+    if (!activeConvo) return;
+    const body = composer.trim();
+    sendAttachment.mutate(
+      body
+        ? { conversationId: activeConvo, file, body }
+        : { conversationId: activeConvo, file },
+    );
     setComposer('');
   }
 
@@ -142,7 +158,8 @@ export default function MessagesPage() {
                 value={composer}
                 onChange={setComposer}
                 onSend={handleSend}
-                sending={sendMessage.isPending}
+                onAttach={handleAttach}
+                sending={sendMessage.isPending || sendAttachment.isPending}
                 members={convo.members ?? team}
               />
             </>
@@ -883,12 +900,13 @@ function Message({
       {previousFromSameUser ? (
         <div style={{ width: 34, flexShrink: 0 }} />
       ) : (
-        <div
-          className="cp-avatar"
-          style={{ width: 34, height: 34, fontSize: 11.5, background: m.u.color, flexShrink: 0 }}
-        >
-          {m.u.initials}
-        </div>
+        <UserAvatar
+          userId={m.u.id}
+          hasPhoto={m.u.hasPhoto ?? false}
+          initials={m.u.initials}
+          color={m.u.color}
+          size={34}
+        />
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
         {!previousFromSameUser && (
@@ -912,6 +930,7 @@ function Message({
           </div>
         )}
         <MessageBody text={m.text} />
+        {m.attachment && <AttachmentChip a={m.attachment} />}
         {m.patient && <PatientAttachCard p={m.patient} />}
         {m.reactions && (
           <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
@@ -1066,16 +1085,19 @@ function ConvoComposer({
   value,
   onChange,
   onSend,
+  onAttach,
   sending,
   members,
 }: {
   value: string;
   onChange: (v: string) => void;
   onSend: () => void;
+  onAttach?: (file: File) => void;
   sending: boolean;
   members: TeamMember[];
 }) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
 
@@ -1191,6 +1213,26 @@ function ConvoComposer({
               setEmojiOpen((v) => !v);
             }}
           />
+          {onAttach && (
+            <>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (f) onAttach(f);
+                }}
+              />
+              <ComposerBtn
+                icon={<Paperclip />}
+                ariaLabel="Joindre un document"
+                onClick={() => fileRef.current?.click()}
+              />
+            </>
+          )}
           {/* Patient : picker à câbler quand le module sera prêt — laissé désactivé
               pour ne pas re-créer un bouton fantôme. */}
           <ComposerBtn icon={<Stetho />} label="Patient" disabled />

@@ -11,6 +11,8 @@ export interface ApiTeamMember {
   initials: string;
   color: string;
   presence: Presence;
+  /** V052 — true si le user a une photo de profil (GET /api/users/{id}/photo). */
+  hasPhoto?: boolean;
 }
 
 export interface ApiChannel {
@@ -66,6 +68,13 @@ export interface ApiReplyMeta {
   lastSenderName: string;
 }
 
+export interface ApiAttachment {
+  id: string;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+}
+
 export interface ApiMessage {
   id: string;
   conversationId: string;
@@ -81,6 +90,7 @@ export interface ApiMessage {
   mentions: ApiMentionedUser[];
   reactions: ApiReactionGroup[];
   reply: ApiReplyMeta | null;
+  attachment: ApiAttachment | null;
 }
 
 export interface ApiConversation {

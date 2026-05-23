@@ -17,6 +17,7 @@ export function useDirectMessages() {
             initials: d.contact.initials,
             color: d.contact.color,
             online: d.contact.presence,
+            hasPhoto: d.contact.hasPhoto ?? false,
           },
           last: d.last,
           time: d.time,
