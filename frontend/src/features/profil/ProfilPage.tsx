@@ -11,6 +11,9 @@
  */
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
+import { MScreen } from '@/components/shell/MScreen';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
@@ -36,8 +39,89 @@ const NAV_MAP = {
 
 export default function ProfilPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const user = useAuthStore((s) => s.user);
   const isMedecin = (user?.roles ?? []).includes('MEDECIN');
+
+  // Section groups — two grid columns on desktop, stacked single column on mobile.
+  const leftColumn = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <ProfilePhotoSection />
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-md)',
+          padding: 18,
+        }}
+      >
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Identité</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
+          <div>
+            <strong>Nom :</strong> {user?.firstName} {user?.lastName}
+          </div>
+          <div>
+            <strong>Email :</strong> {user?.email}
+          </div>
+          <div>
+            <strong>Rôles :</strong> {(user?.roles ?? []).join(', ')}
+          </div>
+        </div>
+      </div>
+      <PasswordChangeSection />
+    </div>
+  );
+
+  const rightColumn = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {isMedecin && <SignatureSettingsSection />}
+      {isMedecin && <ReferralContactsSection />}
+      {!isMedecin && (
+        <div
+          style={{
+            padding: 14,
+            border: '1px dashed var(--border)',
+            borderRadius: 'var(--r-md)',
+            fontSize: 12,
+            color: 'var(--ink-3)',
+          }}
+        >
+          La signature scannée n'est utilisée que par les médecins (sur les
+          ordonnances, certificats et carnets de vaccination qu'ils génèrent).
+        </div>
+      )}
+    </div>
+  );
+
+  // Mobile: wrap in MScreen so the page has a working back affordance (→ menu
+  // hub) + bottom tabs. Before this, /profil rendered the desktop Screen whose
+  // only nav is the sidebar — hidden on mobile, stranding the user with no way
+  // back. Single column also avoids the desktop grid's 420px min overflowing a
+  // 390px viewport.
+  if (isMobile) {
+    return (
+      <MScreen
+        tab="menu"
+        topbar={
+          <MTopbar
+            left={
+              <MIconBtn
+                icon="ChevronLeft"
+                label="Retour"
+                onClick={() => navigate('/parametres')}
+              />
+            }
+            title="Mon profil"
+          />
+        }
+      >
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {leftColumn}
+          {rightColumn}
+        </div>
+      </MScreen>
+    );
+  }
 
   return (
     <Screen
@@ -75,54 +159,8 @@ export default function ProfilPage() {
             maxWidth: 1280,
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <ProfilePhotoSection />
-            <div
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--r-md)',
-                padding: 18,
-              }}
-            >
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-                Identité
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
-                <div>
-                  <strong>Nom :</strong> {user?.firstName} {user?.lastName}
-                </div>
-                <div>
-                  <strong>Email :</strong> {user?.email}
-                </div>
-                <div>
-                  <strong>Rôles :</strong> {(user?.roles ?? []).join(', ')}
-                </div>
-              </div>
-            </div>
-
-            <PasswordChangeSection />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {isMedecin && <SignatureSettingsSection />}
-            {isMedecin && <ReferralContactsSection />}
-
-            {!isMedecin && (
-              <div
-                style={{
-                  padding: 14,
-                  border: '1px dashed var(--border)',
-                  borderRadius: 'var(--r-md)',
-                  fontSize: 12,
-                  color: 'var(--ink-3)',
-                }}
-              >
-                La signature scannée n'est utilisée que par les médecins (sur les
-                ordonnances, certificats et carnets de vaccination qu'ils génèrent).
-              </div>
-            )}
-          </div>
+          {leftColumn}
+          {rightColumn}
         </div>
       </div>
     </Screen>

@@ -3,16 +3,22 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { MTopbar, MIconBtn } from '../MTopbar';
 import { MTabs } from '../MTabs';
 import { MScreen } from '../MScreen';
 
-// MScreen souscrit à useQueue() pour alimenter le badge live de la Salle
-// quand l'appelant n'override pas `badges`. Wrap les renders concernés.
+// MScreen souscrit à useQueue() pour le badge live de la Salle et utilise
+// useNavigate() pour la nav par défaut des onglets — wrap les renders dans un
+// QueryClient + un Router.
 function withClient(ui: ReactNode) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={qc}>{ui}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>
+  );
 }
 
 describe('<MTopbar />', () => {

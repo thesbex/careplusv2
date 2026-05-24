@@ -251,11 +251,18 @@ export const router = createBrowserRouter(
           ),
         },
         {
+          // NB: guard is RequireAuth, not RequireRole ADMIN. On mobile (and as
+          // the desktop fallback for non-admins) ParametrageRoute renders the
+          // menu/profile hub that ALL roles need — it's the "Plus" tab target.
+          // The admin-only desktop settings are gated INSIDE ParametrageRoute.
+          // A route-level ADMIN guard bounced every non-admin to /agenda and
+          // made every "Plus" module (dashboard, consultations, vaccinations,
+          // grossesses, stock, messages, catalogue, profil) unreachable on mobile.
           path: '/parametres',
           element: (
-            <RequireRole roles={['ADMIN']}>
+            <RequireAuth>
               <ParametragePage />
-            </RequireRole>
+            </RequireAuth>
           ),
         },
         {
