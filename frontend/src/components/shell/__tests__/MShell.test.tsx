@@ -4,10 +4,12 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { afterEach } from 'vitest';
 import type { ReactNode } from 'react';
 import { MTopbar, MIconBtn } from '../MTopbar';
 import { MTabs } from '../MTabs';
 import { MScreen } from '../MScreen';
+import { useAuthStore } from '@/lib/auth/authStore';
 
 // MScreen souscrit à useQueue() pour le badge live de la Salle et utilise
 // useNavigate() pour la nav par défaut des onglets — wrap les renders dans un
@@ -130,5 +132,49 @@ describe('<MScreen />', () => {
       ),
     );
     expect(screen.queryByLabelText(/notification/)).not.toBeInTheDocument();
+  });
+});
+
+describe('<MScreen /> — pure-tech (LAB/RADIO) tab bar', () => {
+  afterEach(() => useAuthStore.getState().clear());
+
+  function loginAs(roles: string[]) {
+    useAuthStore.getState().setSession('t-1', {
+      id: 'u1',
+      email: 'x@y',
+      firstName: 'X',
+      lastName: 'Y',
+      roles,
+    });
+  }
+
+  it('renders File/Messages/Profil tabs (not the standard 5) for a LAB-only user', () => {
+    loginAs(['LAB']);
+    render(
+      withClient(
+        <MScreen topbar={<MTopbar brand />}>
+          <div>content</div>
+        </MScreen>,
+      ),
+    );
+    expect(screen.getByRole('button', { name: /File/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Messages/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Profil/ })).toBeInTheDocument();
+    // The standard module tabs must NOT be shown — they only bounce pure-tech.
+    expect(screen.queryByRole('button', { name: /Agenda/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Factures/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps the standard 5-tab bar for a non-pure-tech user (LAB + MEDECIN)', () => {
+    loginAs(['LAB', 'MEDECIN']);
+    render(
+      withClient(
+        <MScreen topbar={<MTopbar brand />}>
+          <div>content</div>
+        </MScreen>,
+      ),
+    );
+    expect(screen.getByRole('button', { name: /Agenda/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Plus/ })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,11 @@
-import { Calendar, Waiting, Users, Invoice, Menu } from '@/components/icons';
+import { Calendar, Waiting, Users, Invoice, Menu, Stetho, Chat } from '@/components/icons';
 import type { ComponentType, SVGProps } from 'react';
 
 export type MobileTab = 'agenda' | 'salle' | 'patients' | 'factu' | 'menu';
+
+/** Bottom-tab ids for pure-tech (LAB/RADIO-only) users — their cloister only
+ *  allows the queue, messages and profil, so they get a dedicated 3-tab bar. */
+export type TechMobileTab = 'queue' | 'messages' | 'profil';
 
 interface Item {
   id: MobileTab;
@@ -27,6 +31,60 @@ export function MTabs({ active = 'agenda', badges = {}, onTabChange }: MTabsProp
   return (
     <nav className="mtabs" aria-label="Navigation mobile">
       {ITEMS.map((it) => {
+        const badge = badges[it.id];
+        const on = active === it.id;
+        return (
+          <button
+            key={it.id}
+            type="button"
+            className={`mtab ${on ? 'on' : ''}`}
+            aria-current={on ? 'page' : undefined}
+            onClick={() => onTabChange?.(it.id)}
+            style={{ background: 'transparent', border: 0, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            <it.Icon />
+            <span>{it.label}</span>
+            {typeof badge === 'number' && badge > 0 && (
+              <span className="mtab-badge" aria-label={`${badge} notification${badge > 1 ? 's' : ''}`}>
+                {badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
+interface TechItem {
+  id: TechMobileTab;
+  label: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
+}
+
+const TECH_ITEMS: TechItem[] = [
+  { id: 'queue', label: 'File', Icon: Stetho },
+  { id: 'messages', label: 'Messages', Icon: Chat },
+  { id: 'profil', label: 'Profil', Icon: Users },
+];
+
+export interface MTechTabsProps {
+  active?: TechMobileTab;
+  badges?: Partial<Record<TechMobileTab, number>>;
+  onTabChange?: (tab: TechMobileTab) => void;
+}
+
+/**
+ * Bottom tab bar for pure-tech (LAB/RADIO-only) users. They are cloistered to
+ * their queue + messages + profil (see AppLayout), so the standard 5-tab bar
+ * (agenda/salle/patients/factu) would only bounce them back. This bar exposes
+ * exactly their reachable destinations — restoring desktop↔mobile parity for
+ * Messages and Profil.
+ */
+export function MTechTabs({ active, badges = {}, onTabChange }: MTechTabsProps) {
+  return (
+    <nav className="mtabs" aria-label="Navigation mobile">
+      {TECH_ITEMS.map((it) => {
         const badge = badges[it.id];
         const on = active === it.id;
         return (

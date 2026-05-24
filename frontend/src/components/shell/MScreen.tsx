@@ -1,7 +1,16 @@
 import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MTabs, type MTabsProps, type MobileTab } from './MTabs';
+import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  MTabs,
+  MTechTabs,
+  type MTabsProps,
+  type MobileTab,
+  type TechMobileTab,
+} from './MTabs';
 import { useSalleBadgeCount } from './useSalleBadgeCount';
+import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
+import { useAuthStore } from '@/lib/auth/authStore';
+import { isPureTech, defaultLandingForTech } from '@/lib/auth/roleHelpers';
 import '@/styles/mobile.css';
 
 export interface MScreenProps {
@@ -48,13 +57,34 @@ export function MScreen({
   noTabs = false,
 }: MScreenProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const roles = useAuthStore((s) => s.user?.roles);
+  const pureTech = isPureTech(roles);
 
   // Salle d'attente badge — souscrit à /api/queue (cache partagé avec
   // useQueue, refetch 15 s). On ne tape pas le réseau si l'appelant a
   // déjà passé un `badges` explicite (ex. SalleAttentePage.mobile.tsx).
-  const liveSalle = useSalleBadgeCount(badges === undefined);
+  // Inutile pour un pure-tech (pas d'onglet Salle dans sa barre).
+  const liveSalle = useSalleBadgeCount(badges === undefined && !pureTech);
   const resolvedBadges =
     badges ?? (liveSalle !== undefined && liveSalle > 0 ? { salle: liveSalle } : {});
+
+  // Pure-tech : barre d'onglets dédiée (File / Messages / Profil). On ignore le
+  // `onTabChange` de la page (qui pointe vers les routes standard, hors cloister)
+  // et on pilote la nav nous-mêmes vers les seules destinations autorisées.
+  const techUnread = (useChatUnreadCount(pureTech) ?? 0);
+  const techActive: TechMobileTab | undefined = location.pathname.startsWith('/queue')
+    ? 'queue'
+    : location.pathname.startsWith('/messages')
+    ? 'messages'
+    : location.pathname.startsWith('/profil')
+    ? 'profil'
+    : undefined;
+  const techNav = (next: TechMobileTab) => {
+    if (next === 'queue') navigate(defaultLandingForTech(roles));
+    else if (next === 'messages') navigate('/messages');
+    else navigate('/profil');
+  };
 
   const tabsProps: MTabsProps = {
     active: tab,
@@ -66,7 +96,16 @@ export function MScreen({
       {topbar}
       <div className="mb scroll">{children}</div>
       {fab}
-      {!noTabs && <MTabs {...tabsProps} />}
+      {!noTabs &&
+        (pureTech ? (
+          <MTechTabs
+            {...(techActive !== undefined ? { active: techActive } : {})}
+            badges={techUnread > 0 ? { messages: techUnread } : {}}
+            onTabChange={techNav}
+          />
+        ) : (
+          <MTabs {...tabsProps} />
+        ))}
     </div>
   );
 }
