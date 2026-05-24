@@ -616,10 +616,6 @@ Was "Angular 17 + PrimeNG after backend MVP". Superseded by the hi-fi React prot
 - Docker image for cloud deployment
 - Helm chart (if any cabinet chain ever needs k8s)
 
-## Mobile
-
-- **Pure-tech (LAB/RADIO-only) mobile nav gap.** On mobile, a pure-tech user lands on their queue, but the bottom tab bar + "Retour" all point to cloistered routes (`/agenda`, `/parametres`, …) that AppLayout bounces straight back to the queue. Result: **no mobile path to `/messages` or `/profil`** for pure-tech, even though the desktop sidebar exposes both. Fix needs a bespoke pure-tech mobile nav (queue / messages / profil). Found during the 2026-05-24 mobile nav audit; couldn't verify a fix live (no pure-tech user seeded). Pre-existing, edge role — low priority.
-
 ## Compliance
 
 - CNDP declaration template
