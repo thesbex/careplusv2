@@ -1779,13 +1779,31 @@ function LinkedPatient({
  * caller (depuis /chat/colleagues). Clic → POST /chat/direct-messages
  * idempotent → sélection de la DM (existante ou créée).
  */
+/** Palette + couleur déterministe (par id) pour les avatars du picker —
+ *  les collègues n'ont pas de couleur côté backend (contrairement à /chat/team). */
+const PICKER_AVATAR_PALETTE: readonly string[] = ['#1E5AA8', '#2A7CE7', '#6B6B6B', '#3F7A3A', '#B8500C'];
+function pickerAvatarColor(id: string): string {
+  const idx = id.charCodeAt(id.length - 1) % PICKER_AVATAR_PALETTE.length;
+  return PICKER_AVATAR_PALETTE[idx] ?? '#2A7CE7';
+}
+function pickerInitials(fullName: string): string {
+  // First + last word (matches the backend's FB-style initials), not first two
+  // words — "Fatima Zahra Benjelloun" → "FB", not "FZ".
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? '';
+  if (!first) return '?';
+  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
+  const last = parts[parts.length - 1] ?? '';
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
+}
+
 function ColleaguePicker({
   colleagues,
   loading,
   onPick,
   onClose,
 }: {
-  colleagues: { id: string; fullName: string; role: string | null }[];
+  colleagues: { id: string; fullName: string; role: string | null; hasPhoto?: boolean }[];
   loading: boolean;
   onPick: (userId: string) => void;
   onClose: () => void;
@@ -1882,15 +1900,26 @@ function ColleaguePicker({
                 fontFamily: 'inherit',
                 fontSize: 13,
                 color: 'var(--ink-1)',
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
               }}
             >
-              {c.fullName}
-              {c.role && (
-                <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 11.5 }}>
-                  · {c.role}
-                </span>
-              )}
+              <UserAvatar
+                userId={c.id}
+                hasPhoto={c.hasPhoto ?? false}
+                initials={pickerInitials(c.fullName)}
+                color={pickerAvatarColor(c.id)}
+                size={32}
+              />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {c.fullName}
+                {c.role && (
+                  <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 11.5 }}>
+                    · {c.role}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>

@@ -160,6 +160,8 @@ describe('Messagerie — mobile conversation', () => {
     withProviders(<MConversationMobilePage />, '/messages/ch-1');
     expect(screen.getByRole('button', { name: 'Retour' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Envoyer' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Pièce jointe' })).toBeInTheDocument();
+    // Composer émoticônes — la pièce jointe n'existe pas sur la conversation
+    // mobile (attachements desktop-only en v1).
+    expect(screen.getByRole('button', { name: 'Ajouter une émoticône' })).toBeInTheDocument();
   });
 });

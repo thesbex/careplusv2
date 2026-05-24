@@ -17,6 +17,11 @@ if (typeof globalThis.Path2D === 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).Path2D = class Path2D {};
 }
+// jsdom doesn't implement scrollIntoView — components that auto-scroll (chat
+// conversation, message lists) throw on mount otherwise.
+if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = function scrollIntoView() {};
+}
 
 // jsdom doesn't implement matchMedia — polyfill it so hooks like useIsMobile
 // work in tests. Defaults to `matches: false` so tests render the desktop

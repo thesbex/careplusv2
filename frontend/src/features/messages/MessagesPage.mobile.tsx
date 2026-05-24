@@ -24,6 +24,7 @@ import { useMobileList } from './hooks/useMobileList';
 import { useTeam } from './hooks/useTeam';
 import { useColleagues } from './hooks/useColleagues';
 import { useStartDm } from './hooks/useStartDm';
+import { UserAvatar } from './components/UserAvatar';
 import type { MobileListItem } from './types';
 import './messages.css';
 
@@ -251,13 +252,30 @@ export default function MessagesMobilePage() {
  * idempotent → navigation vers la DM (existante ou créée). Adapté mobile :
  * pleine largeur, slide depuis le bas.
  */
+/** Avatar couleur déterministe (par id) — les collègues n'ont pas de couleur
+ *  backend (contrairement à /chat/team). Aligné avec le picker desktop. */
+const PICKER_AVATAR_PALETTE: readonly string[] = ['#1E5AA8', '#2A7CE7', '#6B6B6B', '#3F7A3A', '#B8500C'];
+function pickerAvatarColor(id: string): string {
+  const idx = id.charCodeAt(id.length - 1) % PICKER_AVATAR_PALETTE.length;
+  return PICKER_AVATAR_PALETTE[idx] ?? '#2A7CE7';
+}
+function pickerInitials(fullName: string): string {
+  // First + last word (FB-style, aligned with backend), not first two words.
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? '';
+  if (!first) return '?';
+  if (parts.length === 1) return first.slice(0, 2).toUpperCase();
+  const last = parts[parts.length - 1] ?? '';
+  return `${first[0] ?? ''}${last[0] ?? ''}`.toUpperCase();
+}
+
 function MobileColleaguePicker({
   colleagues,
   loading,
   onPick,
   onClose,
 }: {
-  colleagues: { id: string; fullName: string; role: string | null }[];
+  colleagues: { id: string; fullName: string; role: string | null; hasPhoto?: boolean }[];
   loading: boolean;
   onPick: (userId: string) => void;
   onClose: () => void;
@@ -346,7 +364,7 @@ function MobileColleaguePicker({
               style={{
                 width: '100%',
                 textAlign: 'left',
-                padding: '14px 18px',
+                padding: '12px 18px',
                 border: 0,
                 borderBottom: '1px solid var(--border-soft)',
                 background: 'transparent',
@@ -354,15 +372,26 @@ function MobileColleaguePicker({
                 fontFamily: 'inherit',
                 fontSize: 14,
                 color: 'var(--ink-1)',
-                display: 'block',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
               }}
             >
-              {c.fullName}
-              {c.role && (
-                <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 12 }}>
-                  · {c.role}
-                </span>
-              )}
+              <UserAvatar
+                userId={c.id}
+                hasPhoto={c.hasPhoto ?? false}
+                initials={pickerInitials(c.fullName)}
+                color={pickerAvatarColor(c.id)}
+                size={38}
+              />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                {c.fullName}
+                {c.role && (
+                  <span style={{ color: 'var(--ink-3)', marginLeft: 6, fontSize: 12 }}>
+                    · {c.role}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </div>
