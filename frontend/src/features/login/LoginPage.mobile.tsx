@@ -32,8 +32,14 @@ export default function LoginMobilePage() {
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/agenda';
 
   const onSubmit = handleSubmit(async (values) => {
+    // Trim stray whitespace from autofill / copy-paste — a trailing space
+    // otherwise 401s as "Identifiants incorrects" on correct credentials.
+    const credentials = {
+      email: values.email.trim(),
+      password: values.password.trim(),
+    };
     try {
-      const result = await loginMutation.mutateAsync(values);
+      const result = await loginMutation.mutateAsync(credentials);
       if (result.user?.passwordChangeRequired) {
         navigate('/force-change-password', { replace: true });
         return;

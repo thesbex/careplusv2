@@ -44,8 +44,16 @@ export default function LoginPage() {
   const redirectTo = (location.state as { from?: string } | null)?.from ?? '/agenda';
 
   const onSubmit = handleSubmit(async (values) => {
+    // Guard against stray whitespace from autofill / copy-paste: an email never
+    // contains spaces, and no careplus password intentionally has leading or
+    // trailing whitespace. A single trailing space here otherwise 401s as
+    // "Identifiants incorrects" against credentials that are actually correct.
+    const credentials = {
+      email: values.email.trim(),
+      password: values.password.trim(),
+    };
     try {
-      const result = await loginMutation.mutateAsync(values);
+      const result = await loginMutation.mutateAsync(credentials);
       // V044 — admin reset this account, the user must pick a new password
       // before doing anything else. Skip the regular post-login routing.
       if (result.user?.passwordChangeRequired) {
