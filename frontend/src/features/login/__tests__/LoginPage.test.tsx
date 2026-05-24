@@ -110,6 +110,36 @@ describe('<LoginPage />', () => {
     expect(useAuthStore.getState().hasRole('SECRETAIRE')).toBe(true);
   });
 
+  it('trims surrounding whitespace from email + password before posting', async () => {
+    // Regression: a trailing space from autofill/copy-paste used to 401 as
+    // "Identifiants incorrects" on otherwise-correct credentials.
+    const user = userEvent.setup();
+    mockPost.mockResolvedValueOnce({
+      data: {
+        accessToken: 'eyJ-fake-token',
+        expiresInSeconds: 900,
+        user: {
+          id: 'u1',
+          email: 'admin@careplus.ma',
+          firstName: 'Admin',
+          lastName: 'Cabinet',
+          roles: ['ADMIN'],
+        },
+      },
+    });
+    renderLogin();
+
+    await user.type(screen.getByLabelText('Adresse email'), '  admin@careplus.ma  ');
+    await user.type(screen.getByLabelText('Mot de passe'), '  ChangeMe123!  ');
+    await user.click(screen.getByRole('button', { name: /Se connecter/ }));
+
+    await waitFor(() => expect(mockPost).toHaveBeenCalled());
+    expect(mockPost).toHaveBeenCalledWith('/auth/login', {
+      email: 'admin@careplus.ma',
+      password: 'ChangeMe123!',
+    });
+  });
+
   it('redirects to /force-change-password when the user must change pwd (V044)', async () => {
     const user = userEvent.setup();
     mockPost.mockResolvedValueOnce({
