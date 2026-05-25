@@ -4,10 +4,10 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Hospitalisation Slice A (référentiel lits)** construit (V054 + module backend + onglet Paramétrage). Compile BE + build prod FE verts. Non testé en IHM, non commité.
+**Phase**: Post-pilote — **Hospitalisation Slice A (référentiel lits) LIVRÉ + commité** sur branche `feat/hospitalisation-slice-a` (2 commits : feature `a0adccf` + IT `9fa3bc9`). Pas encore poussé.
 **Last update**: 2026-05-25 (session hospitalisation — conception + Slice A)
-**Build**: backend `mvn -DskipTests compile` ✓ ; frontend `npm run build` ✓ (tsc strict). Pas de `mvn verify` (memory `feedback_no_mvn_verify_for_now`). **Pas encore de QA IHM Playwright ni d'IT.**
-**Next action**: (1) QA IHM Playwright Slice A (activer flag → onglet Chambres & lits → créer service/chambre/lit → board → toggle statut) ; (2) IT sibling `HospitalizationReferentialIT` ; (3) commit scopé. Puis Slices B-E (admission/séjour/ADT, suivi clinique, sortie+facture, cloisonnement) — voir `docs/plans/2026-05-25-hospitalisation-design.md`.
+**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** ; **IT `HospitalizationReferentialIT` 9/9 verts** (Testcontainers).
+**Next action**: push branche + (au choix) Slice B — admission / séjour / ADT (migration séjour + bed_assignment, worklist hospitalisés, badge dossier). Voir `docs/plans/2026-05-25-hospitalisation-design.md` (Slices B-E + décisions D1-D7).
 
 ### 2026-05-25 — Hospitalisation : conception fonctionnelle + Slice A (référentiel lits)
 
@@ -20,7 +20,9 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 - **SettingsController** : `hospitalizationEnabled` ajouté à `ClinicSettingsView` + `UpdateClinicSettingsRequest` + GET/PUT (pattern null = pas de changement).
 - **Frontend `features/hospitalisation/`** : `useHospitalization.ts` (types + hooks CRUD ward/room/bed + board) ; `ChambresLitsTab.tsx` (board read-only coloré par statut + sections Services/Chambres/Lits). Câblé dans `ParametragePage` : toggle « hospitalise des patients » dans l'onglet Cabinet + onglet conditionnel « Chambres & lits ». Type settings étendu.
 
-**State** : working tree uncommitted. **Blockers** : aucun. **À ne pas oublier avant commit** : QA IHM (memory `feedback_qa_ihm_playwright_self` + `feedback_qa_mobile_parity`) + IT sibling + `npm run build` déjà vert.
+**Validation** : QA IHM Playwright (login MEDECIN+ADMIN) — toggle flag → persiste → onglet « Chambres & lits » apparaît → créer service MAT/Maternité + chambre 102 (Individuelle, 400 MAD/j) + lit « Lit A » → board affiche la hiérarchie → toggle statut lit NETTOYAGE reflété au board → garde : désactiver service avec chambre active = 409, service reste actif. Persistance DB vérifiée à chaque étape. IT 9/9. Mobile : l'onglet Paramétrage est desktop-only par convention (comme Logo/Salles) — pas de gap mobile introduit ; le board mobile arrivera comme écran worklist en Slice B.
+
+**State** : commité sur `feat/hospitalisation-slice-a` (non poussé). **Blockers** : aucun. **Note env** : le backend dev a été redémarré (l'instance IntelliJ d'origine a été arrêtée pour appliquer V054) — tourne en profil dev sur :8080.
 
 ### 2026-05-20 — Chat interne médecin ↔ staff v1 (ADR-035 + V048)
 
