@@ -12,7 +12,7 @@ import { api } from '@/lib/api/client';
 
 export type OrphanRole = 'MEDECIN' | 'ADMIN' | 'SECRETAIRE' | 'ASSISTANT';
 
-export type OrphanModule = 'vaccination' | 'pregnancy';
+export type OrphanModule = 'vaccination' | 'pregnancy' | 'hospitalization';
 
 interface ClinicSettingsRaw {
   id: string;
@@ -30,6 +30,10 @@ interface ClinicSettingsRaw {
   vaccinationOrphanVisibleRoles: OrphanRole[];
   /** V039 — codes de rôle voyant les grossesses sans médecin référent. */
   pregnancyOrphanVisibleRoles: OrphanRole[];
+  /** V056 — codes de rôle voyant les séjours sans médecin référent. */
+  hospitalizationOrphanVisibleRoles: OrphanRole[];
+  /** V056 — règle de comptage des journées : NUITS | JOURS_ENTAMES. */
+  stayBillingDayRule: 'NUITS' | 'JOURS_ENTAMES';
 }
 
 const DEFAULT_ORPHAN_ROLES: OrphanRole[] = ['MEDECIN', 'ADMIN', 'SECRETAIRE', 'ASSISTANT'];
@@ -51,6 +55,9 @@ export function useAgendaIsolation() {
       data?.vaccinationOrphanVisibleRoles ?? DEFAULT_ORPHAN_ROLES,
     pregnancyOrphanVisibleRoles:
       data?.pregnancyOrphanVisibleRoles ?? DEFAULT_ORPHAN_ROLES,
+    hospitalizationOrphanVisibleRoles:
+      data?.hospitalizationOrphanVisibleRoles ?? DEFAULT_ORPHAN_ROLES,
+    stayBillingDayRule: data?.stayBillingDayRule ?? 'NUITS',
     isLoading,
   };
 }
@@ -63,11 +70,15 @@ export function useUpdateAgendaIsolation() {
       agendaStrictIsolation,
       vaccinationOrphanVisibleRoles,
       pregnancyOrphanVisibleRoles,
+      hospitalizationOrphanVisibleRoles,
+      stayBillingDayRule,
     }: {
       settings: ClinicSettingsRaw;
       agendaStrictIsolation?: boolean;
       vaccinationOrphanVisibleRoles?: OrphanRole[];
       pregnancyOrphanVisibleRoles?: OrphanRole[];
+      hospitalizationOrphanVisibleRoles?: OrphanRole[];
+      stayBillingDayRule?: 'NUITS' | 'JOURS_ENTAMES';
     }) => {
       const payload: Record<string, unknown> = {
         name: settings.name,
@@ -87,6 +98,12 @@ export function useUpdateAgendaIsolation() {
       }
       if (pregnancyOrphanVisibleRoles !== undefined) {
         payload.pregnancyOrphanVisibleRoles = pregnancyOrphanVisibleRoles;
+      }
+      if (hospitalizationOrphanVisibleRoles !== undefined) {
+        payload.hospitalizationOrphanVisibleRoles = hospitalizationOrphanVisibleRoles;
+      }
+      if (stayBillingDayRule !== undefined) {
+        payload.stayBillingDayRule = stayBillingDayRule;
       }
       const r = await api.put<ClinicSettingsRaw>('/settings/clinic', payload);
       return r.data;

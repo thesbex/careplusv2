@@ -33,6 +33,8 @@ import { BiologicalTrendsPanel } from './components/BiologicalTrendsPanel';
 import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { VaccinationCalendarTab } from '@/features/vaccination/components/VaccinationCalendarTab';
 import { PregnancyTab } from '@/features/grossesse/components/PregnancyTab';
+import { StaysTab } from '@/features/hospitalisation/components/StaysTab';
+import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import './dossier-patient.css';
@@ -614,6 +616,7 @@ export default function DossierPage() {
   const { prescriptions: patientPrescriptions } = usePrescriptionsForPatient(raw?.id);
   const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
   const { counts: tabCounts } = useTabCounts(raw?.id);
+  const { settings: clinicSettings } = useClinicSettings();
 
   async function handleNewConsultation() {
     if (!raw) return;
@@ -718,6 +721,7 @@ export default function DossierPage() {
           value={tab}
           onValueChange={setTab}
           showGrossesse={patient.sex === 'F'}
+          showSejours={clinicSettings?.hospitalizationEnabled ?? false}
           counts={tabCounts}
         >
           <DossierTabPanel value="timeline">
@@ -860,6 +864,11 @@ export default function DossierPage() {
           {patient.sex === 'F' && (
             <DossierTabPanel value="grossesse">
               <PregnancyTab patientId={raw.id} />
+            </DossierTabPanel>
+          )}
+          {(clinicSettings?.hospitalizationEnabled ?? false) && (
+            <DossierTabPanel value="sejours">
+              <StaysTab patientId={raw.id} />
             </DossierTabPanel>
           )}
           <DossierTabPanel value="analyses">

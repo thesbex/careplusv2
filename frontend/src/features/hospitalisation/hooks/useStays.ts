@@ -87,6 +87,15 @@ export function useActiveStayCount(enabled = true) {
   return data ?? 0;
 }
 
+export function usePatientStays(patientId: string | null) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['hosp-patient-stays', patientId],
+    queryFn: () => api.get<StayDetail[]>(`/hospitalization/stays?patientId=${patientId}`).then((r) => r.data),
+    enabled: !!patientId,
+  });
+  return { stays: data ?? [], isLoading, error: error ? 'Impossible de charger les séjours.' : null };
+}
+
 export function useStayDetail(stayId: string | null) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['hosp-stay', stayId],
@@ -148,4 +157,52 @@ export function useGenerateStayInvoice() {
   const m = useStayMutation((stayId: string) =>
     api.post<{ invoiceId: string }>(`/hospitalization/stays/${stayId}/invoice`).then((r) => r.data));
   return { generateInvoice: m.mutateAsync, isPending: m.isPending };
+}
+
+// ── Constantes au lit (Slice C) ──────────────────────────────────────────
+
+export interface StayVitals {
+  id: string;
+  systolicMmhg: number | null;
+  diastolicMmhg: number | null;
+  temperatureC: number | null;
+  weightKg: number | null;
+  heartRateBpm: number | null;
+  spo2Percent: number | null;
+  glycemiaGPerL: number | null;
+  notes: string | null;
+  recordedAt: string;
+}
+
+const EMPTY_VITALS: StayVitals[] = [];
+
+export function useStayVitals(stayId: string | null) {
+  const { data } = useQuery({
+    queryKey: ['hosp-stay-vitals', stayId],
+    queryFn: () => api.get<StayVitals[]>(`/hospitalization/stays/${stayId}/vitals`).then((r) => r.data),
+    enabled: !!stayId,
+  });
+  return { vitals: data ?? EMPTY_VITALS };
+}
+
+export interface StayVitalsPayload {
+  systolicMmhg?: number;
+  diastolicMmhg?: number;
+  temperatureC?: number;
+  heartRateBpm?: number;
+  spo2Percent?: number;
+  glycemiaGPerL?: number;
+  notes?: string;
+}
+
+export function useRecordStayVitals() {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: ({ stayId, payload }: { stayId: string; payload: StayVitalsPayload }) =>
+      api.post<StayVitals>(`/hospitalization/stays/${stayId}/vitals`, payload).then((r) => r.data),
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ['hosp-stay-vitals', vars.stayId] });
+    },
+  });
+  return { recordVitals: m.mutateAsync, isPending: m.isPending };
 }

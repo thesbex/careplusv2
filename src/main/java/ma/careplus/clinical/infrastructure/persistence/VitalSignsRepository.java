@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 public interface VitalSignsRepository extends JpaRepository<VitalSigns, UUID> {
     List<VitalSigns> findByPatientIdOrderByRecordedAtDesc(UUID patientId);
     List<VitalSigns> findByAppointmentIdOrderByRecordedAtDesc(UUID appointmentId);
+    /** V056 — constantes saisies pendant un séjour hospitalier. */
+    List<VitalSigns> findByStayIdOrderByRecordedAtDesc(UUID stayId);
 
     /**
      * Lie les constantes saisies en salle d'attente (avant que la consultation

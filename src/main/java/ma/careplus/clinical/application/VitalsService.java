@@ -102,6 +102,25 @@ public class VitalsService {
         return vitalsRepository.findByPatientIdOrderByRecordedAtDesc(patientId);
     }
 
+    /**
+     * Enregistre des constantes rattachées à un séjour hospitalier (soins au lit,
+     * V056). Le {@code patientId} est résolu par l'appelant (module hospitalisation)
+     * depuis le séjour. Pas de transition de statut RDV (séjour ≠ file d'attente).
+     */
+    public VitalSigns recordForStay(UUID stayId, UUID patientId, UUID recordedBy, RecordVitalsRequest req) {
+        VitalSigns v = new VitalSigns();
+        v.setPatientId(patientId);
+        v.setStayId(stayId);
+        applyVitals(v, req);
+        v.setRecordedBy(recordedBy);
+        return vitalsRepository.save(v);
+    }
+
+    @Transactional(readOnly = true)
+    public List<VitalSigns> forStay(UUID stayId) {
+        return vitalsRepository.findByStayIdOrderByRecordedAtDesc(stayId);
+    }
+
     private static BigDecimal computeBmi(BigDecimal weightKg, BigDecimal heightCm) {
         if (weightKg == null || heightCm == null || heightCm.signum() <= 0) return null;
         BigDecimal heightM = heightCm.movePointLeft(2); // cm → m

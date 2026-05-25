@@ -80,7 +80,11 @@ public class SettingsController {
             /** V043 — Logo placement on PDFs: HEADER | FOOTER | WATERMARK | NONE. */
             String logoPosition,
             /** V054 — true => module hospitalisation (lits, séjours) actif. */
-            boolean hospitalizationEnabled
+            boolean hospitalizationEnabled,
+            /** V056 — règle de comptage des journées facturables : NUITS | JOURS_ENTAMES. */
+            String stayBillingDayRule,
+            /** V056 — rôles autorisés à voir les séjours sans médecin référent (cloisonnement). */
+            List<String> hospitalizationOrphanVisibleRoles
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -126,7 +130,11 @@ public class SettingsController {
             /** V042 — Forme juridique. Optional. */
             @Size(max = 64) String legalForm,
             /** V054 — capacité hospitalisation. Optional : null = pas de changement. */
-            Boolean hospitalizationEnabled
+            Boolean hospitalizationEnabled,
+            /** V056 — règle journées. Optional : null = pas de changement. */
+            @Pattern(regexp = "NUITS|JOURS_ENTAMES") String stayBillingDayRule,
+            /** V056 — rôles voyant les séjours orphelins. Optional : null = pas de changement. */
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> hospitalizationOrphanVisibleRoles
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -150,7 +158,8 @@ public class SettingsController {
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
                             + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo, "
-                            + "rc, if_no, legal_form, logo_position, hospitalization_enabled "
+                            + "rc, if_no, legal_form, logo_position, hospitalization_enabled, "
+                            + "stay_billing_day_rule, hospitalization_orphan_visible_roles "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -174,7 +183,9 @@ public class SettingsController {
                             rs.getString("if_no"),
                             rs.getString("legal_form"),
                             rs.getString("logo_position"),
-                            rs.getBoolean("hospitalization_enabled")));
+                            rs.getBoolean("hospitalization_enabled"),
+                            rs.getString("stay_billing_day_rule"),
+                            readStringArray(rs, "hospitalization_orphan_visible_roles")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -198,6 +209,8 @@ public class SettingsController {
         List<String> finalOrphanRoles;
         List<String> finalPregnancyOrphanRoles;
         boolean finalHospitalizationEnabled;
+        String finalStayBillingDayRule;
+        List<String> finalHospOrphanRoles;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
@@ -250,6 +263,20 @@ public class SettingsController {
             } else {
                 finalHospitalizationEnabled = req.hospitalizationEnabled();
             }
+            if (req.stayBillingDayRule() == null) {
+                finalStayBillingDayRule = jdbc.queryForObject(
+                        "SELECT stay_billing_day_rule FROM configuration_clinic_settings WHERE id = ?",
+                        String.class, id);
+            } else {
+                finalStayBillingDayRule = req.stayBillingDayRule();
+            }
+            if (req.hospitalizationOrphanVisibleRoles() == null) {
+                finalHospOrphanRoles = jdbc.queryForObject(
+                        "SELECT hospitalization_orphan_visible_roles FROM configuration_clinic_settings WHERE id = ?",
+                        (rs, i) -> readStringArray(rs, "hospitalization_orphan_visible_roles"), id);
+            } else {
+                finalHospOrphanRoles = List.copyOf(req.hospitalizationOrphanVisibleRoles());
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
@@ -260,6 +287,8 @@ public class SettingsController {
                             + "rc=COALESCE(?, rc), if_no=COALESCE(?, if_no), "
                             + "legal_form=COALESCE(?, legal_form), "
                             + "hospitalization_enabled=?, "
+                            + "stay_billing_day_rule=?, "
+                            + "hospitalization_orphan_visible_roles=?, "
                             + "updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
@@ -271,6 +300,8 @@ public class SettingsController {
                     finalPregnancyOrphanRoles.toArray(String[]::new),
                     nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
                     finalHospitalizationEnabled,
+                    finalStayBillingDayRule,
+                    finalHospOrphanRoles.toArray(String[]::new),
                     id);
         } else {
             id = UUID.randomUUID();
@@ -286,13 +317,18 @@ public class SettingsController {
                     ? List.copyOf(req.pregnancyOrphanVisibleRoles())
                     : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
             finalHospitalizationEnabled = Boolean.TRUE.equals(req.hospitalizationEnabled());
+            finalStayBillingDayRule = req.stayBillingDayRule() != null ? req.stayBillingDayRule() : "NUITS";
+            finalHospOrphanRoles = req.hospitalizationOrphanVisibleRoles() != null
+                    ? List.copyOf(req.hospitalizationOrphanVisibleRoles())
+                    : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
                             + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
-                            + " rc, if_no, legal_form, hospitalization_enabled) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " rc, if_no, legal_form, hospitalization_enabled, "
+                            + " stay_billing_day_rule, hospitalization_orphan_visible_roles) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
@@ -301,7 +337,9 @@ public class SettingsController {
                     finalOrphanRoles.toArray(String[]::new),
                     finalPregnancyOrphanRoles.toArray(String[]::new),
                     nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
-                    finalHospitalizationEnabled);
+                    finalHospitalizationEnabled,
+                    finalStayBillingDayRule,
+                    finalHospOrphanRoles.toArray(String[]::new));
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
@@ -324,7 +362,8 @@ public class SettingsController {
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
                 finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo,
                 finalReadback[0], finalReadback[1], finalReadback[2], finalReadback[3],
-                finalHospitalizationEnabled);
+                finalHospitalizationEnabled,
+                finalStayBillingDayRule, finalHospOrphanRoles);
     }
 
     /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */

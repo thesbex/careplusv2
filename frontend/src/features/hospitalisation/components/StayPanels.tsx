@@ -18,9 +18,12 @@ import {
   useCancelStay,
   useDischarge,
   useGenerateStayInvoice,
+  useRecordStayVitals,
   useStayDetail,
+  useStayVitals,
   useTransfer,
   type DischargeType,
+  type StayVitalsPayload,
 } from '../hooks/useStays';
 
 export const SELECT_STYLE: React.CSSProperties = {
@@ -143,9 +146,12 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
   const { discharge, isPending: discharging } = useDischarge();
   const { generateInvoice, isPending: billing } = useGenerateStayInvoice();
   const { cancelStay } = useCancelStay();
+  const { vitals } = useStayVitals(stayId);
+  const { recordVitals, isPending: recVit } = useRecordStayVitals();
   const [transferBed, setTransferBed] = useState('');
   const [dischargeType, setDischargeType] = useState<DischargeType>('DOMICILE');
   const [summary, setSummary] = useState('');
+  const [vit, setVit] = useState<Record<string, string>>({});
 
   if (isLoading || !stay) {
     return <Panel><div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div></Panel>;
@@ -171,6 +177,30 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
     if (!confirm('Annuler cette admission ? Le lit sera libéré.')) return;
     try { await cancelStay(stayId); toast.success('Admission annulée.'); onClose(); }
     catch (err) { reportError(err); }
+  }
+  function num(k: string): number | undefined {
+    const n = Number(vit[k]);
+    return vit[k] && !Number.isNaN(n) ? n : undefined;
+  }
+  async function doVitals() {
+    const payload: StayVitalsPayload = {};
+    const sys = num('sys'); if (sys !== undefined) payload.systolicMmhg = sys;
+    const dia = num('dia'); if (dia !== undefined) payload.diastolicMmhg = dia;
+    const temp = num('temp'); if (temp !== undefined) payload.temperatureC = temp;
+    const fc = num('fc'); if (fc !== undefined) payload.heartRateBpm = fc;
+    const spo2 = num('spo2'); if (spo2 !== undefined) payload.spo2Percent = spo2;
+    const gly = num('gly'); if (gly !== undefined) payload.glycemiaGPerL = gly;
+    if (vit.notes?.trim()) payload.notes = vit.notes.trim();
+    if (Object.keys(payload).length === 0) { toast.error('Saisir au moins une constante.'); return; }
+    try { await recordVitals({ stayId, payload }); toast.success('Constantes enregistrées.'); setVit({}); }
+    catch (err) { reportError(err); }
+  }
+  async function doPdf() {
+    try {
+      const r = await api.get(`/hospitalization/stays/${stayId}/summary-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(r.data as Blob);
+      window.open(url, '_blank');
+    } catch (err) { reportError(err); }
   }
 
   return (
@@ -240,6 +270,44 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
           </>
         )}
 
+        {stay.status === 'EN_COURS' && (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Constantes au lit</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              <Field><FieldLabel htmlFor="v-sys">TA syst.</FieldLabel>
+                <Input id="v-sys" type="number" value={vit.sys ?? ''} onChange={(e) => setVit({ ...vit, sys: e.target.value })} placeholder="120" /></Field>
+              <Field><FieldLabel htmlFor="v-dia">TA diast.</FieldLabel>
+                <Input id="v-dia" type="number" value={vit.dia ?? ''} onChange={(e) => setVit({ ...vit, dia: e.target.value })} placeholder="80" /></Field>
+              <Field><FieldLabel htmlFor="v-temp">T° (°C)</FieldLabel>
+                <Input id="v-temp" type="number" step="0.1" value={vit.temp ?? ''} onChange={(e) => setVit({ ...vit, temp: e.target.value })} placeholder="37.0" /></Field>
+              <Field><FieldLabel htmlFor="v-fc">FC (bpm)</FieldLabel>
+                <Input id="v-fc" type="number" value={vit.fc ?? ''} onChange={(e) => setVit({ ...vit, fc: e.target.value })} placeholder="72" /></Field>
+              <Field><FieldLabel htmlFor="v-spo2">SpO₂ (%)</FieldLabel>
+                <Input id="v-spo2" type="number" value={vit.spo2 ?? ''} onChange={(e) => setVit({ ...vit, spo2: e.target.value })} placeholder="98" /></Field>
+              <Field><FieldLabel htmlFor="v-gly">Glycémie</FieldLabel>
+                <Input id="v-gly" type="number" step="0.01" value={vit.gly ?? ''} onChange={(e) => setVit({ ...vit, gly: e.target.value })} placeholder="1.0" /></Field>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <Button type="button" variant="primary" disabled={recVit} onClick={() => void doVitals()}>
+                {recVit ? 'Enregistrement…' : 'Enregistrer les constantes'}
+              </Button>
+            </div>
+            {vitals.length > 0 && (
+              <div style={{ marginTop: 10, fontSize: 11.5, color: 'var(--ink-3)' }}>
+                {vitals.slice(0, 5).map((v) => (
+                  <div key={v.id} style={{ padding: '3px 0', borderTop: '1px solid var(--border)' }}>
+                    {new Date(v.recordedAt).toLocaleString('fr-MA')} ·
+                    {v.systolicMmhg && v.diastolicMmhg ? ` TA ${v.systolicMmhg}/${v.diastolicMmhg}` : ''}
+                    {v.temperatureC ? ` · T° ${v.temperatureC}` : ''}
+                    {v.heartRateBpm ? ` · FC ${v.heartRateBpm}` : ''}
+                    {v.spo2Percent ? ` · SpO₂ ${v.spo2Percent}%` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {stay.status === 'SORTI' && (
           <Button type="button" variant="primary" disabled={billing} onClick={() => void doInvoice()}>
             {billing ? 'Génération…' : 'Générer la facture de séjour'}
@@ -249,6 +317,9 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
           <Button type="button" variant="primary" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
             Voir la facture
           </Button>
+        )}
+        {(stay.status === 'SORTI' || stay.status === 'FACTURE') && (
+          <Button type="button" onClick={() => void doPdf()}>Télécharger le compte-rendu (PDF)</Button>
         )}
 
         <Button type="button" onClick={onClose}>Fermer</Button>

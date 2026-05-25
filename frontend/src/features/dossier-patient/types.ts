@@ -72,6 +72,7 @@ export type DossierTab =
   | 'prescr'
   | 'vaccination'
   | 'grossesse'
+  | 'sejours'
   | 'analyses'
   | 'imagerie'
   | 'docs'

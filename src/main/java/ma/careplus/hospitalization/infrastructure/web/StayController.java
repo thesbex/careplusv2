@@ -6,12 +6,19 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import ma.careplus.clinical.application.VitalsService;
+import ma.careplus.clinical.domain.VitalSigns;
+import ma.careplus.clinical.infrastructure.web.dto.RecordVitalsRequest;
 import ma.careplus.hospitalization.application.StayService;
+import ma.careplus.hospitalization.application.StaySummaryPdfService;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayQueueEntry;
+import ma.careplus.hospitalization.infrastructure.web.dto.StayVitalsView;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.AdmitRequest;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.DischargeRequest;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.TransferRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -20,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -48,9 +56,19 @@ public class StayController {
     private static final String BILL_ROLES = "hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')";
 
     private final StayService service;
+    private final VitalsService vitalsService;
+    private final StaySummaryPdfService pdfService;
 
-    public StayController(StayService service) {
+    public StayController(StayService service, VitalsService vitalsService, StaySummaryPdfService pdfService) {
         this.service = service;
+        this.vitalsService = vitalsService;
+        this.pdfService = pdfService;
+    }
+
+    private static StayVitalsView toVitalsView(VitalSigns v) {
+        return new StayVitalsView(v.getId(), v.getSystolicMmhg(), v.getDiastolicMmhg(),
+                v.getTemperatureC(), v.getWeightKg(), v.getHeartRateBpm(), v.getSpo2Percent(),
+                v.getGlycemiaGPerL(), v.getNotes(), v.getRecordedAt());
     }
 
     private static UUID actor(Authentication auth) {
@@ -59,8 +77,15 @@ public class StayController {
 
     @GetMapping("/queue")
     @PreAuthorize(READ_ROLES)
-    public ResponseEntity<List<StayQueueEntry>> queue() {
-        return ResponseEntity.ok(service.listActive());
+    public ResponseEntity<List<StayQueueEntry>> queue(Authentication auth) {
+        return ResponseEntity.ok(service.listActive(auth));
+    }
+
+    /** Séjours d'un patient (onglet dossier). */
+    @GetMapping
+    @PreAuthorize(READ_ROLES)
+    public ResponseEntity<List<StayDetailView>> byPatient(@RequestParam("patientId") UUID patientId) {
+        return ResponseEntity.ok(service.listForPatient(patientId));
     }
 
     @GetMapping("/{id}")
@@ -102,5 +127,35 @@ public class StayController {
     public ResponseEntity<Map<String, UUID>> invoice(@PathVariable UUID id, Authentication auth) {
         UUID invoiceId = service.generateInvoice(id, actor(auth));
         return ResponseEntity.ok(Map.of("invoiceId", invoiceId));
+    }
+
+    // ── Constantes au lit (Slice C) ────────────────────────────────────
+
+    /** Saisie de constantes rattachées au séjour (soins au lit). */
+    @PostMapping("/{id}/vitals")
+    @PreAuthorize(READ_ROLES)
+    public ResponseEntity<StayVitalsView> recordVitals(
+            @PathVariable UUID id, @Valid @RequestBody RecordVitalsRequest req, Authentication auth) {
+        StayDetailView stay = service.get(id); // 404 si séjour inconnu + résout le patient
+        VitalSigns v = vitalsService.recordForStay(id, stay.patientId(), actor(auth), req);
+        return ResponseEntity.ok(toVitalsView(v));
+    }
+
+    @GetMapping("/{id}/vitals")
+    @PreAuthorize(READ_ROLES)
+    public ResponseEntity<List<StayVitalsView>> listVitals(@PathVariable UUID id) {
+        return ResponseEntity.ok(vitalsService.forStay(id).stream().map(StayController::toVitalsView).toList());
+    }
+
+    // ── Compte-rendu d'hospitalisation PDF (Slice C) ───────────────────
+
+    @GetMapping("/{id}/summary-pdf")
+    @PreAuthorize(READ_ROLES)
+    public ResponseEntity<byte[]> summaryPdf(@PathVariable UUID id) {
+        byte[] pdf = pdfService.generate(id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"compte-rendu-hospitalisation.pdf\"")
+                .body(pdf);
     }
 }

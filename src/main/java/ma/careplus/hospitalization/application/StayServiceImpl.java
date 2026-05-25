@@ -4,10 +4,14 @@ import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import ma.careplus.billing.application.BillingService;
+import ma.careplus.identity.application.AccessScopeService;
 import ma.careplus.billing.domain.Invoice;
 import ma.careplus.billing.infrastructure.web.dto.InvoiceLineRequest;
 import ma.careplus.hospitalization.domain.Bed;
@@ -31,6 +35,10 @@ import ma.careplus.patient.application.PatientService;
 import ma.careplus.patient.domain.Patient;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +53,13 @@ public class StayServiceImpl implements StayService {
     private final WardRepository wardRepo;
     private final PatientService patientService;
     private final BillingService billingService;
+    private final AccessScopeService accessScope;
+    private final JdbcTemplate jdbc;
 
     public StayServiceImpl(StayRepository stayRepo, BedAssignmentRepository assignmentRepo,
                            BedRepository bedRepo, RoomRepository roomRepo, WardRepository wardRepo,
-                           PatientService patientService, BillingService billingService) {
+                           PatientService patientService, BillingService billingService,
+                           AccessScopeService accessScope, JdbcTemplate jdbc) {
         this.stayRepo = stayRepo;
         this.assignmentRepo = assignmentRepo;
         this.bedRepo = bedRepo;
@@ -56,6 +67,8 @@ public class StayServiceImpl implements StayService {
         this.wardRepo = wardRepo;
         this.patientService = patientService;
         this.billingService = billingService;
+        this.accessScope = accessScope;
+        this.jdbc = jdbc;
     }
 
     // ── Commands ───────────────────────────────────────────────────────
@@ -129,9 +142,10 @@ public class StayServiceImpl implements StayService {
             throw new BusinessException("STAY_NOT_DISCHARGED",
                     "Le séjour doit être en sortie (SORTI) avant facturation. Statut : " + stay.getStatus(), 409);
         }
+        String rule = dayRule();
         List<InvoiceLineRequest> lines = new ArrayList<>();
         for (BedAssignment a : assignmentRepo.findAllByStayIdOrderByFromAtAsc(stayId)) {
-            int nights = nights(a.getFromAt(), a.getToAt() != null ? a.getToAt() : Instant.now());
+            int nights = nights(a.getFromAt(), a.getToAt() != null ? a.getToAt() : Instant.now(), rule);
             if (a.getDailyRateAmount().compareTo(BigDecimal.ZERO) <= 0) continue;
             BedCtx b = resolveBedQuiet(a.getBedId());
             String desc = "Hébergement " + (b != null ? b.label : "lit")
@@ -154,21 +168,44 @@ public class StayServiceImpl implements StayService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<StayQueueEntry> listActive() {
+    public List<StayQueueEntry> listActive(Authentication auth) {
+        // Cloisonnement (Slice E) : si l'isolation stricte est active, un médecin ne
+        // voit que SES séjours (attending_practitioner_id) ; les séjours sans référent
+        // (orphelins) restent visibles aux rôles configurés. Calque ADR-032.
+        Optional<Set<UUID>> scopeOpt = accessScope.allowedPractitioners(auth);
+        boolean enforce = scopeOpt.isPresent();
+        Set<UUID> allowed = scopeOpt.orElse(Set.of());
+        Set<String> orphanRoles = enforce ? new HashSet<>(readHospOrphanRoles()) : Set.of();
+        boolean callerSeesOrphans = enforce && callerRoles(auth).stream().anyMatch(orphanRoles::contains);
+
+        String rule = dayRule();
         List<StayQueueEntry> out = new ArrayList<>();
         for (Stay stay : stayRepo.findAllByStatusAndDeletedAtIsNullOrderByAdmittedAtDesc("EN_COURS")) {
+            if (enforce) {
+                UUID att = stay.getAttendingPractitionerId();
+                boolean visible = (att != null && allowed.contains(att)) || (att == null && callerSeesOrphans);
+                if (!visible) continue;
+            }
             Patient p = patientService.getActive(stay.getPatientId());
             BedAssignment current = assignmentRepo.findByStayIdAndToAtIsNull(stay.getId()).orElse(null);
             BedCtx bed = current != null ? resolveBedQuiet(current.getBedId()) : null;
             out.add(new StayQueueEntry(
                     stay.getId(), stay.getPatientId(), p.getFirstName(), p.getLastName(),
                     stay.getAdmissionReason(), stay.getAdmittedAt(),
-                    nights(stay.getAdmittedAt(), Instant.now()),
+                    nights(stay.getAdmittedAt(), Instant.now(), rule),
                     bed != null ? bed.label : null,
                     bed != null ? bed.wardLabel : null,
                     stay.getAttendingPractitionerId()));
         }
         return out;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StayDetailView> listForPatient(UUID patientId) {
+        return stayRepo.findAllByPatientIdAndDeletedAtIsNullOrderByAdmittedAtDesc(patientId).stream()
+                .map(s -> get(s.getId()))
+                .toList();
     }
 
     @Override
@@ -187,10 +224,11 @@ public class StayServiceImpl implements StayService {
         List<AssignmentView> assignments = new ArrayList<>();
         List<ChargeLine> charges = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO;
+        String rule = dayRule();
         Instant end = stay.getDischargedAt() != null ? stay.getDischargedAt() : Instant.now();
         for (BedAssignment a : assignmentRepo.findAllByStayIdOrderByFromAtAsc(stayId)) {
             Instant to = a.getToAt() != null ? a.getToAt() : end;
-            int nights = nights(a.getFromAt(), to);
+            int nights = nights(a.getFromAt(), to, rule);
             BedCtx b = resolveBedQuiet(a.getBedId());
             assignments.add(new AssignmentView(a.getId(), a.getBedId(),
                     b != null ? b.label : null, b != null ? b.wardLabel : null,
@@ -264,11 +302,53 @@ public class StayServiceImpl implements StayService {
         return new BedCtx(bed.getId(), label, wardLabel, rate, roomClass);
     }
 
-    /** Nombre de nuits (règle NUITS, min 1) entre deux instants. */
-    private static int nights(Instant from, Instant to) {
+    /**
+     * Nombre de journées facturables (min 1) selon la règle cabinet (D2) :
+     * NUITS = nuits passées (floor des jours) ; JOURS_ENTAMES = jour d'entrée ET
+     * de sortie comptés (floor + 1).
+     */
+    private static int nights(Instant from, Instant to, String rule) {
         if (from == null || to == null) return 1;
         long days = Duration.between(from, to).toDays();
+        if ("JOURS_ENTAMES".equals(rule)) {
+            return (int) Math.max(1, days + 1);
+        }
         return (int) Math.max(1, days);
+    }
+
+    /** Règle de comptage des journées (config cabinet, défaut NUITS). */
+    private String dayRule() {
+        try {
+            String r = jdbc.queryForObject(
+                    "SELECT stay_billing_day_rule FROM configuration_clinic_settings LIMIT 1", String.class);
+            return r != null ? r : "NUITS";
+        } catch (EmptyResultDataAccessException e) {
+            return "NUITS";
+        }
+    }
+
+    /** Rôles autorisés à voir les séjours orphelins (config, défaut tous). */
+    private List<String> readHospOrphanRoles() {
+        try {
+            return jdbc.queryForObject(
+                    "SELECT hospitalization_orphan_visible_roles FROM configuration_clinic_settings LIMIT 1",
+                    (rs, i) -> {
+                        java.sql.Array arr = rs.getArray(1);
+                        if (arr == null) return List.<String>of();
+                        Object raw = arr.getArray();
+                        return raw instanceof String[] s ? List.of(s) : List.<String>of();
+                    });
+        } catch (EmptyResultDataAccessException e) {
+            return List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
+        }
+    }
+
+    private static Set<String> callerRoles(Authentication auth) {
+        if (auth == null) return Set.of();
+        return auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                .collect(Collectors.toSet());
     }
 
     private static String roomClassLabel(String roomClass) {

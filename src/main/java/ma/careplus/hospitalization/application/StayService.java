@@ -2,6 +2,7 @@ package ma.careplus.hospitalization.application;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.core.Authentication;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayQueueEntry;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.AdmitRequest;
@@ -26,14 +27,17 @@ public interface StayService {
     /** Annule une admission (EN_COURS → ANNULE), libère le lit. */
     void cancel(UUID stayId, UUID actorId);
 
-    /** Worklist des patients hospitalisés (séjours EN_COURS). */
-    List<StayQueueEntry> listActive();
+    /** Worklist des patients hospitalisés (séjours EN_COURS), filtrée par cloisonnement. */
+    List<StayQueueEntry> listActive(Authentication auth);
 
     /** Nombre de séjours EN_COURS (badge sidebar). */
     long countActive();
 
     /** Détail d'un séjour + historique ADT + aperçu de facturation. */
     StayDetailView get(UUID stayId);
+
+    /** Tous les séjours d'un patient (onglet dossier), plus récent en premier. */
+    List<StayDetailView> listForPatient(UUID patientId);
 
     /**
      * Génère la facture de séjour (hébergement nuits × prix de journée par

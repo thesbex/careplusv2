@@ -27,6 +27,10 @@ public class VitalSigns {
     @Column(name = "consultation_id")
     private UUID consultationId;
 
+    /** V056 — constantes saisies au lit pendant un séjour hospitalier (nullable). */
+    @Column(name = "stay_id")
+    private UUID stayId;
+
     @Column(name = "systolic_mmhg")
     private Integer systolicMmhg;
 
@@ -98,6 +102,8 @@ public class VitalSigns {
     public void setAppointmentId(UUID v) { this.appointmentId = v; }
     public UUID getConsultationId() { return consultationId; }
     public void setConsultationId(UUID v) { this.consultationId = v; }
+    public UUID getStayId() { return stayId; }
+    public void setStayId(UUID v) { this.stayId = v; }
     public Integer getSystolicMmhg() { return systolicMmhg; }
     public void setSystolicMmhg(Integer v) { this.systolicMmhg = v; }
     public Integer getDiastolicMmhg() { return diastolicMmhg; }

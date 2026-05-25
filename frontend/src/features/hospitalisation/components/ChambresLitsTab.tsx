@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useAgendaIsolation, useUpdateAgendaIsolation } from '@/features/parametres/hooks/useAgendaIsolation';
+import { OrphanRolesPanel } from '@/features/parametres/components/OrphanRolesPanel';
 import {
   BED_STATUS_LABELS,
   ROOM_CLASS_LABELS,
@@ -440,6 +442,45 @@ function BedBoardSection() {
   );
 }
 
+// ── Règle de facturation (D2) ────────────────────────────────────────────
+
+function DayRuleSection({ canManage }: { canManage: boolean }) {
+  const { settings, stayBillingDayRule } = useAgendaIsolation();
+  const { updateAgendaIsolation, isPending } = useUpdateAgendaIsolation();
+
+  async function change(rule: 'NUITS' | 'JOURS_ENTAMES') {
+    if (!settings) return;
+    try {
+      await updateAgendaIsolation({ settings, stayBillingDayRule: rule });
+      toast.success('Règle de facturation mise à jour.');
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  return (
+    <Panel data-testid="hosp-day-rule-section">
+      <PanelHeader>Facturation du séjour — comptage des journées</PanelHeader>
+      <div style={{ padding: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 10 }}>
+          Détermine comment les nuits sont comptées sur la facture de séjour. « Nuits » compte les
+          nuits passées ; « Jours entamés » compte le jour d'entrée ET de sortie (usage clinique fréquent).
+        </div>
+        <select
+          aria-label="Règle de comptage des journées"
+          value={stayBillingDayRule}
+          disabled={!canManage || isPending}
+          onChange={(e) => void change(e.target.value as 'NUITS' | 'JOURS_ENTAMES')}
+          style={{ ...SELECT_STYLE, maxWidth: 280 }}
+        >
+          <option value="NUITS">Nuits (par défaut)</option>
+          <option value="JOURS_ENTAMES">Jours entamés (entrée + sortie)</option>
+        </select>
+      </div>
+    </Panel>
+  );
+}
+
 // ── Tab ──────────────────────────────────────────────────────────────────
 
 export function ChambresLitsTab() {
@@ -456,6 +497,10 @@ export function ChambresLitsTab() {
       <RoomsSection canManage={canManage} />
       <div style={{ height: 16 }} />
       <BedsSection canManage={canManage} canSetStatus={canSetStatus} />
+      <div style={{ height: 16 }} />
+      <DayRuleSection canManage={canManage} />
+      <div style={{ height: 16 }} />
+      <OrphanRolesPanel module="hospitalization" />
     </>
   );
 }

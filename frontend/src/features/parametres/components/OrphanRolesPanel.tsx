@@ -54,6 +54,14 @@ const COPY: Record<OrphanModule, ModuleCopy> = {
     toastDisabled: (r) => `${r} : ne voit plus les grossesses sans médecin référent.`,
     testId: 'pregnancy-orphan-roles',
   },
+  hospitalization: {
+    title: 'Séjours sans médecin référent',
+    description:
+      "Quand le cloisonnement est activé, choisir les rôles qui voient dans la liste des patients hospitalisés les séjours sans médecin responsable. Un médecin est référent s'il est le médecin responsable du séjour (saisi à l'admission).",
+    toastEnabled: (r) => `${r} : peut voir les séjours sans médecin référent.`,
+    toastDisabled: (r) => `${r} : ne voit plus les séjours sans médecin référent.`,
+    testId: 'hospitalization-orphan-roles',
+  },
 };
 
 interface Props {
@@ -67,6 +75,7 @@ export function OrphanRolesPanel({ module }: Props) {
     agendaStrictIsolation,
     vaccinationOrphanVisibleRoles,
     pregnancyOrphanVisibleRoles,
+    hospitalizationOrphanVisibleRoles,
     isLoading,
   } = useAgendaIsolation();
   const { updateAgendaIsolation, isPending } = useUpdateAgendaIsolation();
@@ -81,7 +90,9 @@ export function OrphanRolesPanel({ module }: Props) {
   const currentRoles =
     module === 'vaccination'
       ? vaccinationOrphanVisibleRoles
-      : pregnancyOrphanVisibleRoles;
+      : module === 'pregnancy'
+      ? pregnancyOrphanVisibleRoles
+      : hospitalizationOrphanVisibleRoles;
 
   async function toggleRole(role: OrphanRole, next: boolean) {
     if (!settings) {
@@ -97,7 +108,9 @@ export function OrphanRolesPanel({ module }: Props) {
         settings,
         ...(module === 'vaccination'
           ? { vaccinationOrphanVisibleRoles: nextArray }
-          : { pregnancyOrphanVisibleRoles: nextArray }),
+          : module === 'pregnancy'
+          ? { pregnancyOrphanVisibleRoles: nextArray }
+          : { hospitalizationOrphanVisibleRoles: nextArray }),
       });
       toast.success(next ? copy.toastEnabled(role) : copy.toastDisabled(role));
     } catch (err) {

@@ -31,6 +31,8 @@ interface DossierTabsProps {
   children: React.ReactNode;
   /** When true, inserts the "Grossesse" tab right after Vaccination. */
   showGrossesse?: boolean;
+  /** When true, inserts the "Séjours" tab (établissement avec hospitalisation). */
+  showSejours?: boolean;
   /** Real counts from the backend. `undefined` = still loading; render labels without badges. */
   counts?: PatientTabCounts | null;
 }
@@ -40,6 +42,7 @@ export function DossierTabs({
   onValueChange,
   children,
   showGrossesse,
+  showSejours,
   counts,
 }: DossierTabsProps) {
   // Build the tab list dynamically — `count` only set when counts are loaded.
@@ -61,6 +64,9 @@ export function DossierTabs({
 
   if (showGrossesse) {
     TABS.push({ id: 'grossesse', label: 'Grossesse' });
+  }
+  if (showSejours) {
+    TABS.push({ id: 'sejours', label: 'Séjours' });
   }
 
   TABS.push(

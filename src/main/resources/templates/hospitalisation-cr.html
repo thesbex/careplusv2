@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!--
+  Template PDF — Compte-rendu d'hospitalisation (séjour).
+  Variables :
+    cabinet.{name,address,city,phone,inpe,cnom,establishmentTypeLabel}
+    cabinetLogoBase64 / cabinetLogoMime / cabinetLogoPosition
+    patient.fullName
+    stay.{admittedAt,dischargedAt,dischargeType,summary,total,reason}
+    assignments[] : {label, nights, dailyRate, lineTotal}
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11pt; margin: 0; padding: 0; color: #1a1a1a; }
+        .page { padding: 22mm 22mm 28mm 22mm; }
+        .header { border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 18px; display: table; width: 100%; }
+        .header-left { display: table-cell; width: 60%; }
+        .header-right { display: table-cell; width: 40%; text-align: right; vertical-align: top; }
+        .cabinet-name { font-size: 16pt; font-weight: bold; color: #2563eb; }
+        .cabinet-meta { font-size: 9pt; color: #555; line-height: 1.5; }
+        .doc-title { font-size: 14pt; font-weight: bold; text-transform: uppercase; color: #2563eb; text-align: center; letter-spacing: 0.08em; margin: 24px 0 18px 0; }
+        .row { font-size: 11pt; line-height: 1.7; margin-bottom: 6px; }
+        .row strong { font-weight: bold; }
+        .section-title { font-size: 11pt; font-weight: bold; color: #2563eb; margin: 18px 0 6px 0; }
+        table.adt { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 6px; }
+        table.adt th, table.adt td { border: 1px solid #d7dde8; padding: 5px 8px; text-align: left; }
+        table.adt th { background: #f1f5fb; }
+        .total { text-align: right; font-weight: bold; font-size: 11pt; margin-top: 4px; }
+        .summary { font-size: 11pt; line-height: 1.8; text-align: justify; white-space: pre-wrap; margin-top: 6px; }
+        .signature-block { margin-top: 50px; text-align: right; }
+        .signature-area { display: inline-block; border: 1px dashed #aaa; height: 70px; width: 220px; }
+        .footer { border-top: 1px solid #c7d2fe; padding-top: 10px; margin-top: 40px; font-size: 9pt; color: #777; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="page">
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:fixed;left:0;right:0;top:90mm;text-align:center;pointer-events:none;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="width:110mm;max-height:90mm;opacity:0.1;" alt=""/>
+    </div>
+
+    <div class="header">
+        <div class="header-left">
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;" alt="Logo"/>
+            <div class="cabinet-name" th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">Clinique</div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                Tél : <span th:text="${cabinet.phone}">+212</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">INPE : <span th:text="${cabinet.inpe}">INPE</span><br/></span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">CNOM : <span th:text="${cabinet.cnom}">CNOM</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="doc-title">Compte-rendu d'hospitalisation</div>
+
+    <div class="row">Patient : <strong th:text="${patient.fullName}">Prénom NOM</strong></div>
+    <div class="row">Admission : <strong th:text="${stay.admittedAt}">—</strong>
+        &nbsp;·&nbsp; Sortie : <strong th:text="${stay.dischargedAt}">—</strong>
+        &nbsp;·&nbsp; Type : <strong th:text="${stay.dischargeType}">—</strong></div>
+    <div class="row" th:if="${stay.reason != null and !#strings.isEmpty(stay.reason)}">
+        Motif d'admission : <span th:text="${stay.reason}">—</span></div>
+
+    <div class="section-title">Séjour (hébergement)</div>
+    <table class="adt">
+        <thead><tr><th>Lit</th><th>Nuits</th><th>Prix/jour</th><th>Total</th></tr></thead>
+        <tbody>
+            <tr th:each="a : ${assignments}">
+                <td th:text="${a.label}">Chambre · Lit</td>
+                <td th:text="${a.nights}">1</td>
+                <td th:text="${a.dailyRate} + ' MAD'">400 MAD</td>
+                <td th:text="${a.lineTotal} + ' MAD'">400 MAD</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="total">Total hébergement : <span th:text="${stay.total} + ' MAD'">800 MAD</span></div>
+
+    <div class="section-title">Compte-rendu médical</div>
+    <div class="summary" th:if="${stay.summary != null and !#strings.isEmpty(stay.summary)}" th:text="${stay.summary}">…</div>
+    <div class="summary" th:if="${stay.summary == null or #strings.isEmpty(stay.summary)}" style="color:#888;font-style:italic;">Aucun compte-rendu saisi.</div>
+
+    <div class="signature-block">
+        <div style="font-size:10pt;">Cachet et signature du médecin</div>
+        <th:block th:if="${signatureBase64 != null}">
+            <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
+                 style="max-width:220px;max-height:80px;display:inline-block;margin-top:6px;" alt="Signature"/>
+        </th:block>
+        <div class="signature-area" th:if="${signatureBase64 == null}">&#160;</div>
+    </div>
+
+    <div class="footer">
+        <img th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'FOOTER'}"
+             th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="max-height:42px;max-width:120px;display:block;margin:0 auto 4px;" alt="Logo"/>
+        Document généré par CarePlus &mdash; confidentiel médical
+    </div>
+</div>
+</body>
+</html>
