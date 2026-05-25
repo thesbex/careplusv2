@@ -4,10 +4,18 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Hospitalisation Slice A (référentiel lits) LIVRÉ + commité** sur branche `feat/hospitalisation-slice-a` (2 commits : feature `a0adccf` + IT `9fa3bc9`). Pas encore poussé.
-**Last update**: 2026-05-25 (session hospitalisation — conception + Slice A)
-**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** ; **IT `HospitalizationReferentialIT` 9/9 verts** (Testcontainers).
-**Next action**: push branche + (au choix) Slice B — admission / séjour / ADT (migration séjour + bed_assignment, worklist hospitalisés, badge dossier). Voir `docs/plans/2026-05-25-hospitalisation-design.md` (Slices B-E + décisions D1-D7).
+**Phase**: Post-pilote — **Module hospitalisation Slices A + B + D LIVRÉS + commités** sur `feat/hospitalisation-slice-a` (5 commits). Référentiel lits + admission/séjour/ADT + facturation coût quotidien opérationnels. Pas encore poussé.
+**Last update**: 2026-05-25 (session hospitalisation — conception + Slices A/B/D)
+**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** (Slice A + cycle séjour complet) ; **17 IT verts** (`HospitalizationReferentialIT` 9 + `StayLifecycleIT` 8, Testcontainers).
+**Next action**: push branche. Restes optionnels (BACKLOG, non bloquants) : Slice C (rattacher constantes/consultation au séjour), Slice E (cloisonnement), onglet « Séjours » sur dossier patient, comptage journées paramétrable (D2), PDF compte-rendu. Voir `docs/plans/2026-05-25-hospitalisation-design.md`.
+
+### 2026-05-25 (suite) — Hospitalisation Slices B+D : séjour + facturation coût quotidien
+
+**Shipped** (commits `b46a47a` feature + `600317a` IT) :
+- **V055** : `hospitalization_stay` (EN_COURS→SORTI→FACTURE, ANNULE) + `hospitalization_bed_assignment` (ADT, prix de journée gelé, 1 affectation courante/lit).
+- **Backend** : `StayService` (admit/transfer/discharge/cancel/queue/detail/generateInvoice) + gardes (patient déjà admis, lit occupé/indispo, sortie avant facture). `BillingService.createStayInvoice` (facture brouillon = N nuits × prix de journée par affectation + remise tier, via numérotation légale billing). Board V054 enrichi (occupation calculée depuis affectations actives — D3 hybride).
+- **Frontend** : `features/hospitalisation` worklist + admission (recherche patient + lit libre) + détail (transfert/sortie/facture), desktop + mobile (panneaux partagés). Sidebar « Hospitalisation » + menu Plus mobile gated par `hospitalization_enabled`. Type `NavScreen` introduit (Sidebar/navMap/AppLayout/Screen) pour widening sans toucher les NAV_MAP locaux des pages.
+- **QA IHM** : admettre Cherkaoui → transfert Lit A→B → sortie DOMICILE → facture brouillon **800 MAD (2 nuits × 400, 2 lignes)**. DB vérifiée. **17 IT** verts.
 
 ### 2026-05-25 — Hospitalisation : conception fonctionnelle + Slice A (référentiel lits)
 
