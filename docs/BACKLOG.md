@@ -624,6 +624,19 @@ Was "Angular 17 + PrimeNG after backend MVP". Superseded by the hi-fi React prot
 - Right-to-be-forgotten: anonymization job
 - 10-year retention policy enforcement
 
+## Hospitalisation / Séjour (IPD/ADT) — clinique avec lits
+
+- **Module hospitalisation** — conception fonctionnelle détaillée dans
+  [`docs/plans/2026-05-25-hospitalisation-design.md`](plans/2026-05-25-hospitalisation-design.md)
+  (demande Y. Boutaleb 2026-05-25 : faire de careplus un passe-partout cabinet → centre →
+  clinique avec lits). Principe : **capability `hospitalization_enabled`** gated par
+  `establishment_type` (V034), invisible pour un cabinet GP. Périmètre : référentiel
+  chambres/lits + statut temps réel, admission/séjour/transfert/sortie (ADT), forfait
+  journalier (prix de journée) facturé comme prestation à part via le module billing
+  existant, rôle `INFIRMIER` + permission `HOSPITALIZATION_ADMIT` (pas de rôle `ADMISSION`
+  imposé — la secrétaire = bureau des admissions dans une petite clinique). 5 slices
+  (~10-12 j). 7 décisions à valider listées dans le design doc (D1-D7).
+
 ## Not in our plan but worth considering
 
 - Teleconsultation (WebRTC) — only if market demand clear, high maintenance cost

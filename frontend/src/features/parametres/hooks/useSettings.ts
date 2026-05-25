@@ -34,6 +34,8 @@ export interface ClinicSettings {
   ifNo?: string | null;
   /** V042 — Forme juridique. */
   legalForm?: string | null;
+  /** V054 — true => module hospitalisation (lits, séjours) actif. */
+  hospitalizationEnabled?: boolean;
 }
 
 export interface ClinicSettingsForm {
@@ -54,6 +56,8 @@ export interface ClinicSettingsForm {
   rc?: string;
   ifNo?: string;
   legalForm?: string;
+  /** V054 — capacité hospitalisation. Optional (null = ne pas toucher). */
+  hospitalizationEnabled?: boolean;
 }
 
 /**

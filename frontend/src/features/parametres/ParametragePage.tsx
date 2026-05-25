@@ -41,6 +41,7 @@ import { OrphanRolesPanel } from './components/OrphanRolesPanel';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
+import { ChambresLitsTab } from '@/features/hospitalisation/components/ChambresLitsTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -60,7 +61,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation';
 
 function establishmentTabLabel(type: EstablishmentType | undefined): string {
   if (!type) return 'Cabinet';
@@ -75,7 +76,10 @@ const IDENTITY_HEADER: Record<EstablishmentType, string> = {
   AUTRE: 'Identité de l’établissement',
 };
 
-function buildTabs(type: EstablishmentType | undefined): { id: Tab; label: string }[] {
+function buildTabs(
+  type: EstablishmentType | undefined,
+  hospitalizationEnabled: boolean,
+): { id: Tab; label: string }[] {
   return [
     { id: 'cabinet', label: establishmentTabLabel(type) },
     { id: 'tarifs', label: 'Tarifs' },
@@ -86,6 +90,8 @@ function buildTabs(type: EstablishmentType | undefined): { id: Tab; label: strin
     { id: 'droits', label: 'Droits d’accès' },
     { id: 'vaccinations', label: 'Vaccinations' },
     { id: 'stock', label: 'Stock' },
+    // V054 — onglet conditionnel : seulement si l'établissement hospitalise.
+    ...(hospitalizationEnabled ? [{ id: 'hospitalisation' as Tab, label: 'Chambres & lits' }] : []),
   ];
 }
 
@@ -102,6 +108,7 @@ const EMPTY_FORM: ClinicSettingsForm = {
   establishmentType: 'CABINET',
   imagingInternal: false,
   labInternal: false,
+  hospitalizationEnabled: false,
 };
 
 const ESTABLISHMENT_TYPE_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'HOPITAL' | 'CENTRE_MEDICAL' | 'AUTRE'; label: string }[] = [
@@ -135,6 +142,7 @@ function CabinetTab() {
         establishmentType: settings.establishmentType ?? 'CABINET',
         imagingInternal: settings.imagingInternal ?? false,
         labInternal: settings.labInternal ?? false,
+        hospitalizationEnabled: settings.hospitalizationEnabled ?? false,
       });
       setHydrated(true);
     }
@@ -285,6 +293,29 @@ function CabinetTab() {
               onChange={(e) => setField('imagingInternal', e.target.checked)}
             />
             Service de radiologie interne
+          </label>
+        </div>
+        <div
+          style={{
+            gridColumn: '1 / -1',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r-md)',
+            padding: '12px 14px',
+            background: 'var(--bg-2, #fafafa)',
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Hospitalisation</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
+            Cocher si l'établissement dispose de lits et hospitalise des patients (clinique,
+            hôpital). Active l'onglet « Chambres &amp; lits » et le module de séjour.
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={!!form.hospitalizationEnabled}
+              onChange={(e) => setField('hospitalizationEnabled', e.target.checked)}
+            />
+            Cet établissement hospitalise des patients (lits)
           </label>
         </div>
         <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
@@ -682,7 +713,7 @@ export default function ParametragePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('cabinet');
   const { settings } = useClinicSettings();
-  const tabs = buildTabs(settings?.establishmentType);
+  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false);
 
   return (
     <Screen
@@ -735,6 +766,7 @@ export default function ParametragePage() {
         {tab === 'droits' && <DroitsTab />}
         {tab === 'vaccinations' && <VaccinationParamTab />}
         {tab === 'stock' && <StockParamTab />}
+        {tab === 'hospitalisation' && <ChambresLitsTab />}
       </div>
     </Screen>
   );

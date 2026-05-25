@@ -4,10 +4,23 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — chat interne médecin↔staff v1 livré (ADR-035 + V048 + 12 IT + slice FE complet + badges sidebar/mobile).
-**Last update**: 2026-05-20 (session chat v1)
-**Build**: pas de `mvn verify` complet (memory `feedback_no_mvn_verify_for_now`). À valider en IHM Playwright (login MEDECIN + SECRETAIRE, walk envoi/réception/mark-read, badge desktop + mobile 390 px) avant commit.
-**Next action**: QA IHM Playwright bout-en-bout puis commit scopé + push. Items v2 tracés dans `docs/plans/2026-05-20-chat-design.md` (PJ, lien patient/RDV, canaux thématiques, édit/suppr, SSE).
+**Phase**: Post-pilote — **Hospitalisation Slice A (référentiel lits)** construit (V054 + module backend + onglet Paramétrage). Compile BE + build prod FE verts. Non testé en IHM, non commité.
+**Last update**: 2026-05-25 (session hospitalisation — conception + Slice A)
+**Build**: backend `mvn -DskipTests compile` ✓ ; frontend `npm run build` ✓ (tsc strict). Pas de `mvn verify` (memory `feedback_no_mvn_verify_for_now`). **Pas encore de QA IHM Playwright ni d'IT.**
+**Next action**: (1) QA IHM Playwright Slice A (activer flag → onglet Chambres & lits → créer service/chambre/lit → board → toggle statut) ; (2) IT sibling `HospitalizationReferentialIT` ; (3) commit scopé. Puis Slices B-E (admission/séjour/ADT, suivi clinique, sortie+facture, cloisonnement) — voir `docs/plans/2026-05-25-hospitalisation-design.md`.
+
+### 2026-05-25 — Hospitalisation : conception fonctionnelle + Slice A (référentiel lits)
+
+**Conception** : `docs/plans/2026-05-25-hospitalisation-design.md` — careplus passe-partout (cabinet → centre → clinique avec lits). Recherche ADT/IPD + contexte Maroc (BAF, forfait journalier, grilles ANAM). Principe : **capability `hospitalization_enabled`** gated par `establishment_type` (V034), invisible pour un cabinet GP. Pas de rôle ADMISSION imposé (permission `HOSPITALIZATION_ADMIT` + rôle `INFIRMIER`). 5 slices, 7 décisions D1-D7 (recos appliquées en bloc). Entrée BACKLOG + mémoire `project_hospitalization_design_20260525`.
+
+**Shipped Slice A** (uncommitted working tree) :
+
+- **V054 `hospitalization_referential.sql`** : flag `hospitalization_enabled` sur `configuration_clinic_settings` ; tables `hospitalization_ward` / `_room` (room_class CHECK + `daily_rate`) / `_bed` (status CHECK, unique par chambre) ; rôle `INFIRMIER` (id ...007) ; permission `HOSPITALIZATION_ADMIT` seedée (ADMIN/MEDECIN/SECRETAIRE/INFIRMIER = TRUE, ASSISTANT = FALSE).
+- **Backend `ma.careplus.hospitalization`** : entités Ward/Room/Bed (pattern ClinicRoom, soft-delete, optimistic lock), 3 repositories, `BedManagementService` + Impl (CRUD + garde anti-orphelin + board bulk-load anti-N+1 + statut OCCUPE non settable manuellement), `HospitalizationController` 13 endpoints sous `/api/hospitalization/**` (lecture rôles soignants, écriture MEDECIN/ADMIN, toggle statut SECRETAIRE/INFIRMIER/MEDECIN/ADMIN).
+- **SettingsController** : `hospitalizationEnabled` ajouté à `ClinicSettingsView` + `UpdateClinicSettingsRequest` + GET/PUT (pattern null = pas de changement).
+- **Frontend `features/hospitalisation/`** : `useHospitalization.ts` (types + hooks CRUD ward/room/bed + board) ; `ChambresLitsTab.tsx` (board read-only coloré par statut + sections Services/Chambres/Lits). Câblé dans `ParametragePage` : toggle « hospitalise des patients » dans l'onglet Cabinet + onglet conditionnel « Chambres & lits ». Type settings étendu.
+
+**State** : working tree uncommitted. **Blockers** : aucun. **À ne pas oublier avant commit** : QA IHM (memory `feedback_qa_ihm_playwright_self` + `feedback_qa_mobile_parity`) + IT sibling + `npm run build` déjà vert.
 
 ### 2026-05-20 — Chat interne médecin ↔ staff v1 (ADR-035 + V048)
 
