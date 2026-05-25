@@ -4,10 +4,18 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Module hospitalisation Slices A + B + D LIVRÉS + commités** sur `feat/hospitalisation-slice-a` (5 commits). Référentiel lits + admission/séjour/ADT + facturation coût quotidien opérationnels. Pas encore poussé.
-**Last update**: 2026-05-25 (session hospitalisation — conception + Slices A/B/D)
-**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** (Slice A + cycle séjour complet) ; **17 IT verts** (`HospitalizationReferentialIT` 9 + `StayLifecycleIT` 8, Testcontainers).
-**Next action**: push branche. Restes optionnels (BACKLOG, non bloquants) : Slice C (rattacher constantes/consultation au séjour), Slice E (cloisonnement), onglet « Séjours » sur dossier patient, comptage journées paramétrable (D2), PDF compte-rendu. Voir `docs/plans/2026-05-25-hospitalisation-design.md`.
+**Phase**: Post-pilote — **Module hospitalisation COMPLET (Slices A→E + D2 + dossier + PDF) LIVRÉ + commité** sur `feat/hospitalisation-slice-a` (8 commits). Pas encore poussé.
+**Last update**: 2026-05-25 (session hospitalisation — module complet)
+**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** ; **22 IT verts** (Référentiel 9 + Cycle 8 + Extras 5, Testcontainers).
+**Next action**: push branche + ouvrir PR. Module hospitalisation fonctionnellement complet.
+
+### 2026-05-25 (suite 2) — Hospitalisation reste : Slices C/E + D2 + dossier + PDF
+
+**Shipped** (commits `789fde1` feature + `2594fde` IT) :
+- **V056** : `stay_billing_day_rule` + `hospitalization_orphan_visible_roles` (config) + `stay_id` sur `clinical_vital_signs`.
+- **Slice C — constantes au lit** : `VitalsService.recordForStay/forStay` + POST/GET `/stays/{id}/vitals` + formulaire & historique dans le détail séjour.
+- **PDF compte-rendu** : `hospitalisation-cr.html` + `StaySummaryPdfService` + GET `/stays/{id}/summary-pdf`.
+- **D2** : `nights()` NUITS/JOURS_ENTAMES + select param. **Slice E** : worklist filtrée `AccessScopeService` + `OrphanRolesPanel module="hospitalization"`. **Onglet « Séjours »** dossier patient.
 
 ### 2026-05-25 (suite) — Hospitalisation Slices B+D : séjour + facturation coût quotidien
 
