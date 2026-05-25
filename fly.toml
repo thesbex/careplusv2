@@ -6,8 +6,8 @@
 # Région cdg (Paris) : la plus proche de Casablanca dans le réseau Fly
 # (Frankfurt fra est l'autre choix raisonnable).
 
-app = "careplus-v2"
-primary_region = "cdg"
+app = "careplusv2"
+primary_region = "ams"
 
 [build]
   dockerfile = "Dockerfile"

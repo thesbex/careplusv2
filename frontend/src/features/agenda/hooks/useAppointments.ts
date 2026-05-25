@@ -219,26 +219,74 @@ export function useWeekAppointments(
 /**
  * Fetches all appointments for a given calendar month (1st 00:00 → next month
  * 1st 00:00). Used by the agenda month view.
+ *
+ * Honours the same practitioner filter as {@link useWeekAppointments} :
+ * - undefined → connected user's own month (legacy default).
+ * - "ALL"     → fan out and merge across every active practitioner.
+ * - <UUID>    → that specific practitioner only.
+ *
+ * Without this the month view always queried `practitionerId=<connected user>`,
+ * which returned 0 for non-MEDECIN roles (a secretary isn't a practitioner)
+ * and ignored the toolbar selector for everyone else.
  */
-export function useMonthAppointments(year: number, month: number): {
+export function useMonthAppointments(
+  year: number,
+  month: number,
+  options: UseWeekAppointmentsOptions = {},
+): {
   appointments: AppointmentApi[];
   isLoading: boolean;
 } {
   const userId = useAuthStore((s) => s.user?.id);
   const from = new Date(year, month, 1).toISOString();
   const to = new Date(year, month + 1, 1).toISOString();
+  const { practitionerIdFilter } = options;
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['appointments-month', userId, from],
+  const effectiveFilter: PractitionerIdFilter | undefined =
+    practitionerIdFilter ?? userId ?? undefined;
+
+  const { data: practitioners } = usePractitioners();
+  const allMode = effectiveFilter === ALL_PRACTITIONERS;
+
+  const fanOutQueries = useQueries({
+    queries: allMode
+      ? practitioners.map((p) => ({
+          queryKey: ['appointments-month', p.id, from] as const,
+          queryFn: () =>
+            api
+              .get<AppointmentApi[]>(
+                `/appointments?practitionerId=${p.id}&from=${encodeURIComponent(
+                  from,
+                )}&to=${encodeURIComponent(to)}`,
+              )
+              .then((r) => r.data),
+          staleTime: 60_000,
+        }))
+      : [],
+  });
+
+  const singlePractitionerId =
+    !allMode && typeof effectiveFilter === 'string' ? effectiveFilter : null;
+
+  const single = useQuery({
+    queryKey: ['appointments-month', singlePractitionerId, from],
     queryFn: () =>
       api
         .get<AppointmentApi[]>(
-          `/appointments?practitionerId=${userId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
+          `/appointments?practitionerId=${singlePractitionerId}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
         )
         .then((r) => r.data),
-    enabled: !!userId,
+    enabled: !!singlePractitionerId,
     staleTime: 60_000,
   });
 
-  return { appointments: data ?? [], isLoading };
+  const appointments: AppointmentApi[] = allMode
+    ? fanOutQueries.flatMap((q) => q.data ?? [])
+    : (single.data ?? []);
+
+  const isLoading = allMode
+    ? fanOutQueries.some((q) => q.isLoading)
+    : single.isLoading;
+
+  return { appointments, isLoading };
 }

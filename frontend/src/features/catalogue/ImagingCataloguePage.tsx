@@ -16,7 +16,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Plus, Search, Trash } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { CatalogueTabs } from './LabCataloguePage';
+import { CatalogueTabs, formatInternalPrice } from './LabCataloguePage';
 import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
 
@@ -257,6 +257,7 @@ export default function ImagingCataloguePage() {
                   <Th style={{ width: 100 }}>Code</Th>
                   <Th>Nom</Th>
                   <Th style={{ width: 220 }}>Modalité</Th>
+                  <Th style={{ width: 130, textAlign: 'right' }}>Prix interne</Th>
                   {canEdit && <Th style={{ width: 110 }}> </Th>}
                 </tr>
               </thead>
@@ -273,6 +274,7 @@ export default function ImagingCataloguePage() {
                       <Td className="mono">{e.code}</Td>
                       <Td>{e.name}</Td>
                       <Td style={{ color: 'var(--ink-3)' }}>{idx === 0 ? mod : ''}</Td>
+                      <Td style={{ textAlign: 'right' }}>{formatInternalPrice(e.internalPrice)}</Td>
                       {canEdit && (
                         <Td>
                           <div style={{ display: 'flex', gap: 4 }}>

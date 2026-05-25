@@ -35,6 +35,8 @@ export function useMobileList() {
       unread: d.unread,
       mentions: d.mentions,
       avatar: { initials: d.contact.initials, color: d.contact.color },
+      userId: d.contact.id,
+      hasPhoto: d.contact.hasPhoto ?? false,
       online: d.contact.online,
     }));
     const threads = (threadsQ.data ?? []).map<MobileListItem>((p) => ({

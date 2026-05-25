@@ -231,9 +231,11 @@ interface DocRowProps {
   title: string;
   meta: string;
   onClick?: () => void;
+  /** Si fourni, affiche un bouton corbeille (suppression d'ordonnance avant clôture). */
+  onDelete?: () => void;
 }
 
-export function DocRow({ title, meta, onClick }: DocRowProps) {
+export function DocRow({ title, meta, onClick, onDelete }: DocRowProps) {
   return (
     <div
       style={{
@@ -254,6 +256,17 @@ export function DocRow({ title, meta, onClick }: DocRowProps) {
       <Button variant="ghost" size="sm" iconOnly aria-label="Aperçu" onClick={onClick}>
         <Icons.Eye />
       </Button>
+      {onDelete && (
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Supprimer l'ordonnance"
+          onClick={onDelete}
+        >
+          <Icons.Trash />
+        </Button>
+      )}
     </div>
   );
 }

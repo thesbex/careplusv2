@@ -19,6 +19,8 @@ import {
 import { useAuthStore } from '@/lib/auth/authStore';
 import { useConversation } from './hooks/useConversation';
 import { useSendMessage } from './hooks/useSendMessage';
+import { useMarkConversationRead } from './hooks/useMarkConversationRead';
+import { UserAvatar } from './components/UserAvatar';
 import type { ChatMessage, Conversation } from './types';
 import './messages.css';
 
@@ -28,6 +30,7 @@ export default function MConversationMobilePage() {
   const { data: convo } = useConversation(conversationId ?? null);
   const me = useAuthStore((s) => s.user);
   const sendMessage = useSendMessage();
+  const markRead = useMarkConversationRead();
   const [draft, setDraft] = useState('');
 
   // R060 / R057 — auto-scroll vers le bas via un anchor en fin de liste.
@@ -36,6 +39,14 @@ export default function MConversationMobilePage() {
   // scrollable.
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const totalMsgs = (convo?.messages ?? []).reduce((n, d) => n + d.msgs.length, 0);
+
+  // Marque lu à l'ouverture + à chaque nouveau message reçu pendant qu'on est
+  // sur la conv — sinon le badge Messages ne se décrémente pas (bug QA).
+  useEffect(() => {
+    if (!conversationId) return;
+    markRead.mutate(conversationId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId, totalMsgs]);
 
   // R060 — ouverture/changement de conv → toujours en bas (vue du dernier
   // message, attendu par l'utilisateur d'une messagerie).
@@ -302,12 +313,13 @@ function ChatBubble({ m, meName }: { m: ChatMessage; meName: string }) {
       }}
     >
       {!isMe && (
-        <div
-          className="cp-avatar"
-          style={{ width: 26, height: 26, fontSize: 9.5, background: m.u.color, flexShrink: 0 }}
-        >
-          {m.u.initials}
-        </div>
+        <UserAvatar
+          userId={m.u.id}
+          hasPhoto={m.u.hasPhoto ?? false}
+          initials={m.u.initials}
+          color={m.u.color}
+          size={26}
+        />
       )}
 
       <div

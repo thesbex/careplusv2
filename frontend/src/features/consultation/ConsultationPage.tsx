@@ -22,6 +22,7 @@ import { Check, Doc, Clipboard } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import { useDeletePrescription } from '@/features/prescription/hooks/useDeletePrescription';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import { ConsultationPrestationsPanel } from '@/features/prestation/components/ConsultationPrestationsPanel';
@@ -83,6 +84,7 @@ export default function ConsultationPage() {
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { suspend, isSuspending } = useSuspendConsultation(id);
   const { prescriptions } = usePrescriptions(id);
+  const { remove: removePrescription } = useDeletePrescription(id, consultation?.patientId);
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
   const { adjustTotal, isPending: isAdjusting } = useAdjustInvoiceTotal();
@@ -417,6 +419,33 @@ export default function ConsultationPage() {
                   title={`${docMeta.label}${titleSuffix}`}
                   meta={subLabel}
                   onClick={() => navigate(`/prescriptions/${p.id}`)}
+                  {...(!isSigned && !isSuspended
+                    ? {
+                        onDelete: () => {
+                          if (
+                            !confirm(
+                              `Supprimer « ${docMeta.label} » ? Cette ordonnance sera retirée de la consultation.`,
+                            )
+                          )
+                            return;
+                          removePrescription(p.id)
+                            .then(() => toast.success('Ordonnance supprimée.'))
+                            .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
+                              const status = err.response?.status;
+                              if (status === 409) {
+                                toast.error(
+                                  err.response?.data?.message ??
+                                    'Analyse/radio déjà en file interne — annulez-la d’abord.',
+                                );
+                              } else if (status === 400) {
+                                toast.error('Impossible : la consultation est clôturée.');
+                              } else {
+                                toast.error('Suppression de l’ordonnance impossible.');
+                              }
+                            });
+                        },
+                      }
+                    : {})}
                 />
                 {/* readOnly=false même quand la consultation est SIGNEE :
                     le patient ramène ses résultats d'analyses / d'imagerie

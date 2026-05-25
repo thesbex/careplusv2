@@ -256,6 +256,7 @@ export default function LabCataloguePage() {
                   <Th style={{ width: 100 }}>Code</Th>
                   <Th>Nom</Th>
                   <Th style={{ width: 220 }}>Catégorie</Th>
+                  <Th style={{ width: 130, textAlign: 'right' }}>Prix interne</Th>
                   {canEdit && <Th style={{ width: 110 }}> </Th>}
                 </tr>
               </thead>
@@ -272,6 +273,7 @@ export default function LabCataloguePage() {
                       <Td className="mono">{t.code}</Td>
                       <Td>{t.name}</Td>
                       <Td style={{ color: 'var(--ink-3)' }}>{idx === 0 ? cat : ''}</Td>
+                      <Td style={{ textAlign: 'right' }}>{formatInternalPrice(t.internalPrice)}</Td>
                       {canEdit && (
                         <Td>
                           <div style={{ display: 'flex', gap: 4 }}>
@@ -393,6 +395,18 @@ const btnLink: React.CSSProperties = {
   fontSize: 11.5, padding: '4px 8px', borderRadius: 4,
   color: 'var(--primary)', fontFamily: 'inherit',
 };
+
+/**
+ * Rend la colonne « Prix interne » du catalogue analyses / radio. Un prix NULL
+ * = analyse non facturée en interne → affiché en gris pour que l'admin
+ * repère d'un coup d'œil ce qu'il reste à tarifer (R030 / V050).
+ */
+export function formatInternalPrice(price: number | null): React.ReactNode {
+  if (price == null) {
+    return <span style={{ color: 'var(--ink-3)' }}>—</span>;
+  }
+  return <span style={{ fontVariantNumeric: 'tabular-nums' }}>{price.toLocaleString('fr-FR')} MAD</span>;
+}
 
 function Th({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (

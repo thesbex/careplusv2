@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Warn, Lock, ChevronRight } from '@/components/icons';
+import { Warn, Lock, ChevronRight, Trash } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
 import { formatCoverage } from '@/features/dossier-patient/components/PatientHeader';
@@ -19,6 +19,7 @@ import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
 import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
+import { useDeletePrescription } from '@/features/prescription/hooks/useDeletePrescription';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
 import type { PrescriptionType } from '@/features/prescription/types';
 import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoices';
@@ -74,6 +75,25 @@ export default function ConsultationMobilePage() {
   const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
+  const { remove: removePrescription } = useDeletePrescription(id, consultation?.patientId);
+
+  function handleDeletePrescription(prescriptionId: string, label: string) {
+    if (!confirm(`Supprimer « ${label} » ? Cette ordonnance sera retirée de la consultation.`)) return;
+    removePrescription(prescriptionId)
+      .then(() => toast.success('Ordonnance supprimée.'))
+      .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
+        const status = err.response?.status;
+        if (status === 409) {
+          toast.error(
+            err.response?.data?.message ?? 'Analyse/radio déjà en file interne — annulez-la d’abord.',
+          );
+        } else if (status === 400) {
+          toast.error('Impossible : la consultation est clôturée.');
+        } else {
+          toast.error('Suppression de l’ordonnance impossible.');
+        }
+      });
+  }
   const [rxOpen, setRxOpen] = useState<PrescriptionType | null>(null);
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
@@ -518,6 +538,26 @@ export default function ConsultationMobilePage() {
                     ne rend rien pour DRUG/CERT/SICK_LEAVE et reste réactif post-
                     signature pour permettre l'attachement tardif (cf. desktop). */}
                 <PrescriptionResultsPanel prescription={p} readOnly={false} />
+                {!isSigned && !isSuspended && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePrescription(p.id, docMeta.label)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      background: 'transparent',
+                      border: 0,
+                      color: 'var(--danger)',
+                      fontFamily: 'inherit',
+                      fontSize: 12,
+                      padding: '6px 2px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Trash aria-hidden="true" /> Supprimer
+                  </button>
+                )}
                 </div>
               );
             })}

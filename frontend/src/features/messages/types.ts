@@ -114,6 +114,9 @@ export interface MobileListItem {
   pid?: string;
   participants?: number;
   avatar?: { initials: string; color: string };
+  /** V052 — id user + flag photo, pour rendre l'avatar photo dans la liste DM. */
+  userId?: string;
+  hasPhoto?: boolean;
   online?: Presence;
   role?: string;
   sent?: boolean;

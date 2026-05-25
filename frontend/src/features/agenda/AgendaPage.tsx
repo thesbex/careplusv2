@@ -176,7 +176,19 @@ export default function AgendaPage() {
   const [monthYear, setMonthYear] = useState(todayDate.getFullYear());
   const [monthIndex, setMonthIndex] = useState(todayDate.getMonth());
   const monthLabel = `${MONTHS_FR[monthIndex] ?? ''} ${monthYear}`;
-  const { appointments: monthAppointments } = useMonthAppointments(monthYear, monthIndex);
+  const { appointments: rawMonthAppointments } = useMonthAppointments(monthYear, monthIndex, {
+    practitionerIdFilter: practitionerFilter,
+  });
+
+  // Apply the same Salle + Motif filters to the month view that the week/day
+  // view gets (lignes 154-162). Without this, selecting a motif in Mois did
+  // nothing — MonthGrid/MonthSidebar/count all consumed the raw payload.
+  const monthAppointments = useMemo(() => {
+    let out = rawMonthAppointments;
+    if (roomFilter !== 'ALL') out = out.filter((a) => a.roomId === roomFilter);
+    if (reasonFilter !== 'ALL') out = out.filter((a) => a.reasonId === reasonFilter);
+    return out;
+  }, [rawMonthAppointments, roomFilter, reasonFilter]);
 
   // Leaves cover all views; the month grid + week/day overlay both consume them.
   // Multi-praticien : si l'utilisateur a sélectionné UN médecin précis dans le

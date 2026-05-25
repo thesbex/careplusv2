@@ -475,17 +475,13 @@ function MessageRow({ it, onOpen }: { it: MobileListItem; onOpen: () => void }) 
           </div>
         ) : (
           <>
-            <div
-              className="cp-avatar"
-              style={{
-                width: 42,
-                height: 42,
-                fontSize: 14,
-                background: it.avatar?.color ?? '#6B6B6B',
-              }}
-            >
-              {it.avatar?.initials ?? '?'}
-            </div>
+            <UserAvatar
+              userId={it.userId ?? ''}
+              hasPhoto={it.hasPhoto ?? false}
+              initials={it.avatar?.initials ?? '?'}
+              color={it.avatar?.color ?? '#6B6B6B'}
+              size={42}
+            />
             <span
               style={{
                 position: 'absolute',

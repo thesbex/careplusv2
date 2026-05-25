@@ -162,6 +162,51 @@ public class PrescriptionService {
         return prescription;
     }
 
+    /**
+     * Supprime une ordonnance (et ses lignes) tant que la consultation n'est
+     * pas clôturée. Le médecin peut se tromper de prescription : on l'autorise
+     * à la retirer en BROUILLON, comme la création (symétrie avec
+     * createPrescription). Refusé dès que la consultation est SIGNEE — à ce
+     * stade l'ordonnance fait foi et la facture a pu être générée.
+     *
+     * Garde V038 : une ligne déjà déposée en file interne LAB/RADIO
+     * (internal_status non NULL) ne peut plus être supprimée silencieusement —
+     * un technicien la voit / la traite peut-être déjà. On bloque avec un
+     * message explicite (le médecin doit d'abord l'annuler côté file).
+     */
+    public void deletePrescription(UUID prescriptionId) {
+        Prescription prescription = prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() -> new NotFoundException(
+                        "PRESCRIPTION_NOT_FOUND", "Ordonnance introuvable : " + prescriptionId));
+
+        Consultation consultation = consultationRepository.findById(prescription.getConsultationId())
+                .orElseThrow(() -> new NotFoundException(
+                        "CONSULT_NOT_FOUND",
+                        "Consultation introuvable : " + prescription.getConsultationId()));
+
+        if (consultation.getStatus() != ConsultationStatus.BROUILLON) {
+            throw new BusinessException(
+                    "CONSULT_LOCKED",
+                    "Une ordonnance ne peut être supprimée que tant que la consultation est en cours (non clôturée).",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+
+        List<PrescriptionLine> lines =
+                prescriptionLineRepository.findByPrescriptionIdOrderBySortOrderAsc(prescriptionId);
+        boolean routedInternally = lines.stream()
+                .anyMatch(l -> l.getInternalStatus() != null);
+        if (routedInternally) {
+            throw new BusinessException(
+                    "PRESCRIPTION_IN_INTERNAL_QUEUE",
+                    "Cette ordonnance contient une analyse/radio déjà déposée en file interne. "
+                            + "Annulez-la d'abord côté laboratoire/radiologie avant de la supprimer.",
+                    HttpStatus.CONFLICT.value());
+        }
+
+        prescriptionLineRepository.deleteAll(lines);
+        prescriptionRepository.delete(prescription);
+    }
+
     /** V038 — lit un drapeau booléen sur configuration_clinic_settings (single-row). */
     private boolean readBooleanFlag(String column) {
         try {

@@ -8,7 +8,7 @@
  *   - team rail droit → `useTeam`
  *   - envoi de message → `useSendMessage`
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Screen } from '@/components/shell/Screen';
 import {
   Search,
@@ -33,6 +33,8 @@ import { useSendMessage } from './hooks/useSendMessage';
 import { useSendAttachment } from './hooks/useSendAttachment';
 import { useColleagues } from './hooks/useColleagues';
 import { useStartDm } from './hooks/useStartDm';
+import { useMarkConversationRead } from './hooks/useMarkConversationRead';
+import { usePatientSearch } from '@/features/prise-rdv/hooks/usePatientSearch';
 import { UserAvatar } from './components/UserAvatar';
 import { AttachmentChip } from './components/AttachmentChip';
 import type {
@@ -66,15 +68,37 @@ export default function MessagesPage() {
   const [composer, setComposer] = useState('');
   const sendMessage = useSendMessage();
   const sendAttachment = useSendAttachment();
+  const markRead = useMarkConversationRead();
+
+  // Marque la conversation comme lue dès qu'on l'ouvre, et à nouveau quand un
+  // nouveau message arrive pendant qu'elle est ouverte — sinon le badge
+  // "Messages" reste figé sur l'ancien compteur (bug QA). On clé l'effet sur
+  // l'identité du dernier message pour ne pas spammer un upsert à chaque poll.
+  const lastMsgKey = useMemo(() => {
+    const days = convo?.messages ?? [];
+    const lastDay = days[days.length - 1];
+    const lastMsg = lastDay?.msgs[lastDay.msgs.length - 1];
+    return lastMsg ? `${lastDay?.day}|${lastMsg.time}|${lastDay?.msgs.length}` : '';
+  }, [convo]);
+  useEffect(() => {
+    if (!activeConvo) return;
+    markRead.mutate(activeConvo);
+    // markRead.mutate est stable (react-query) ; on ne le met pas en dép.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConvo, lastMsgKey]);
   // DM picker — ouvert au clic sur le + de la section "Messages directs"
   // (RailHeader) ou sur "Nouveau message" du topbar.
   const [dmPickerOpen, setDmPickerOpen] = useState(false);
   const colleaguesQuery = useColleagues(dmPickerOpen);
   const startDm = useStartDm();
 
-  function handleSend() {
+  function handleSend(patientId?: string | null) {
     if (!activeConvo || !composer.trim()) return;
-    sendMessage.mutate({ conversationId: activeConvo, body: composer.trim() });
+    sendMessage.mutate({
+      conversationId: activeConvo,
+      body: composer.trim(),
+      ...(patientId ? { patientId } : {}),
+    });
     setComposer('');
   }
 
@@ -470,12 +494,13 @@ function DMRow({ d, active, onClick }: { d: DirectMessage; active: boolean; onCl
       }}
     >
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div
-          className="cp-avatar"
-          style={{ width: 22, height: 22, fontSize: 9, background: d.contact.color }}
-        >
-          {d.contact.initials}
-        </div>
+        <UserAvatar
+          userId={d.contact.id}
+          hasPhoto={d.contact.hasPhoto ?? false}
+          initials={d.contact.initials}
+          color={d.contact.color}
+          size={22}
+        />
         <span
           style={{
             position: 'absolute',
@@ -1091,7 +1116,7 @@ function ConvoComposer({
 }: {
   value: string;
   onChange: (v: string) => void;
-  onSend: () => void;
+  onSend: (patientId?: string | null) => void;
   onAttach?: (file: File) => void;
   sending: boolean;
   members: TeamMember[];
@@ -1100,6 +1125,14 @@ function ConvoComposer({
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [mentionOpen, setMentionOpen] = useState(false);
+  const [patientOpen, setPatientOpen] = useState(false);
+  // Patient attaché au prochain message (R0xx — activation du bouton "Patient").
+  const [attachedPatient, setAttachedPatient] = useState<{ id: string; name: string } | null>(null);
+
+  function send() {
+    onSend(attachedPatient?.id ?? null);
+    setAttachedPatient(null);
+  }
 
   // Insertion à la position du curseur, avec une espace en suffixe pour rester
   // dans le flux de frappe. Restaure le focus + la sélection juste après.
@@ -1151,6 +1184,15 @@ function ConvoComposer({
           onClose={() => setMentionOpen(false)}
         />
       )}
+      {patientOpen && (
+        <PatientPickerPopover
+          onPick={(p) => {
+            setAttachedPatient(p);
+            setPatientOpen(false);
+          }}
+          onClose={() => setPatientOpen(false)}
+        />
+      )}
       <div
         style={{
           border: '1px solid var(--border-strong)',
@@ -1166,7 +1208,7 @@ function ConvoComposer({
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
-              onSend();
+              send();
             }
           }}
           placeholder="Saisir un message — Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne"
@@ -1185,6 +1227,45 @@ function ConvoComposer({
             maxHeight: 120,
           }}
         />
+
+        {attachedPatient && (
+          <div
+            style={{
+              margin: '0 10px 6px',
+              padding: '5px 8px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              background: 'var(--primary-soft)',
+              border: '1px solid var(--primary)',
+              borderRadius: 6,
+              fontSize: 12,
+              color: 'var(--ink)',
+              maxWidth: 'fit-content',
+            }}
+          >
+            <Stetho />
+            <span>
+              Patient joint : <strong>{attachedPatient.name}</strong>
+            </span>
+            <button
+              type="button"
+              onClick={() => setAttachedPatient(null)}
+              aria-label="Retirer le patient joint"
+              style={{
+                border: 0,
+                background: 'transparent',
+                cursor: 'pointer',
+                color: 'var(--ink-3)',
+                fontSize: 15,
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         <div
           style={{
@@ -1233,9 +1314,18 @@ function ConvoComposer({
               />
             </>
           )}
-          {/* Patient : picker à câbler quand le module sera prêt — laissé désactivé
-              pour ne pas re-créer un bouton fantôme. */}
-          <ComposerBtn icon={<Stetho />} label="Patient" disabled />
+          {/* Patient : rattache une fiche patient au message. Le destinataire
+              voit une carte "Mme X · PT-00489 · Ouvrir dossier" sous la bulle. */}
+          <ComposerBtn
+            icon={<Stetho />}
+            label="Patient"
+            active={patientOpen || !!attachedPatient}
+            onClick={() => {
+              setEmojiOpen(false);
+              setMentionOpen(false);
+              setPatientOpen((v) => !v);
+            }}
+          />
           <span style={{ flex: 1 }} />
           <span style={{ fontSize: 10.5, color: 'var(--ink-4)', marginRight: 8 }}>
             <span
@@ -1256,7 +1346,7 @@ function ConvoComposer({
             variant="primary"
             size="sm"
             style={{ height: 28, padding: '0 12px', gap: 6 }}
-            onClick={onSend}
+            onClick={() => send()}
             disabled={sending || !value.trim()}
           >
             <Send /> {sending ? 'Envoi…' : 'Envoyer'}
@@ -1481,6 +1571,114 @@ function MentionPickerPopover({
   );
 }
 
+/**
+ * Sélecteur de patient pour le composer chat — recherche live sur /patients?q=
+ * (même endpoint que la prise de RDV). Au pick, on rattache l'id patient au
+ * prochain message. Même habillage popover que MentionPickerPopover.
+ */
+function PatientPickerPopover({
+  onPick,
+  onClose,
+}: {
+  onPick: (p: { id: string; name: string }) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const { candidates, isLoading } = usePatientSearch(q);
+  return (
+    <>
+      <div
+        role="button"
+        aria-label="Fermer le sélecteur de patient"
+        tabIndex={-1}
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, zIndex: 90 }}
+      />
+      <div
+        role="dialog"
+        aria-label="Joindre un patient"
+        style={{
+          position: 'absolute',
+          bottom: 72,
+          left: 24,
+          width: 300,
+          maxHeight: 320,
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.12)',
+          zIndex: 100,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        <input
+          autoFocus
+          type="search"
+          placeholder="Rechercher un patient (nom, téléphone)…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Rechercher un patient à joindre"
+          style={{
+            margin: 6,
+            padding: '6px 8px',
+            border: '1px solid var(--border)',
+            borderRadius: 5,
+            fontSize: 12,
+            fontFamily: 'inherit',
+            background: 'var(--surface-2, var(--bg-alt))',
+          }}
+        />
+        <div style={{ overflow: 'auto', flex: 1, padding: '0 4px 4px' }}>
+          {q.trim().length < 2 && (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
+              Saisissez au moins 2 caractères.
+            </div>
+          )}
+          {q.trim().length >= 2 && isLoading && (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>Recherche…</div>
+          )}
+          {q.trim().length >= 2 && !isLoading && candidates.length === 0 && (
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
+              Aucun patient pour « {q.trim()} ».
+            </div>
+          )}
+          {candidates.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onPick({ id: c.id, name: c.name })}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 8px',
+                border: 0,
+                background: 'transparent',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 12.5,
+                color: 'var(--ink)',
+                textAlign: 'left',
+                borderRadius: 4,
+              }}
+            >
+              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {c.name}
+              </span>
+              <span style={{ color: 'var(--ink-4)', fontSize: 10.5 }}>
+                {c.tags[0] ?? c.phone}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ════════════════════════════════════════════════════════════
 // Right rail
 // ════════════════════════════════════════════════════════════
@@ -1641,12 +1839,13 @@ function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) =>
   const content = (
     <>
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <div
-          className="cp-avatar"
-          style={{ width: 28, height: 28, fontSize: 10, background: m.color }}
-        >
-          {m.initials}
-        </div>
+        <UserAvatar
+          userId={m.id}
+          hasPhoto={m.hasPhoto ?? false}
+          initials={m.initials}
+          color={m.color}
+          size={28}
+        />
         <span
           style={{
             position: 'absolute',
