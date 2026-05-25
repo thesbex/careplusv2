@@ -23,6 +23,7 @@ import {
   Stetho as StethoIcon,
   Users,
   Chat as ChatIcon,
+  Activity as ActivityIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -30,6 +31,8 @@ import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVacc
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
+import { useClinicSettings } from './hooks/useSettings';
+import { useActiveStayCount } from '@/features/hospitalisation/hooks/useStays';
 import { isPureTech } from '@/lib/auth/roleHelpers';
 
 const TAB_MAP: Record<MobileTab, string> = {
@@ -54,6 +57,9 @@ export default function ParametrageMobilePage() {
   const grossessesBadge = useGrossesseAlertsCount() ?? 0;
   const stockBadge = useStockAlertsCount() ?? 0;
   const messagesBadge = useChatUnreadCount() ?? 0;
+  const { settings } = useClinicSettings();
+  const hospitalizationEnabled = settings?.hospitalizationEnabled ?? false;
+  const sejoursBadge = useActiveStayCount(hospitalizationEnabled);
 
   const initials =
     user
@@ -179,6 +185,15 @@ export default function ParametrageMobilePage() {
                 badge={stockBadge}
                 onClick={() => navigate('/stock')}
               />
+              {hospitalizationEnabled && (
+                <MenuRow
+                  Icon={ActivityIcon}
+                  label="Hospitalisation"
+                  hint="Patients hospitalisés + séjours"
+                  badge={sejoursBadge}
+                  onClick={() => navigate('/hospitalisation')}
+                />
+              )}
             </div>
           </>
         )}

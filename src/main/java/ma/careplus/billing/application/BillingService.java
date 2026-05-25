@@ -502,6 +502,66 @@ public class BillingService {
 
     // ── Write operations ──────────────────────────────────────────────────────
 
+    /**
+     * Crée une facture BROUILLON de séjour hospitalier à partir de lignes fournies
+     * par le module hospitalisation (hébergement nuits × prix de journée, + actes).
+     * Applique la remise tier du patient (comme {@link #onConsultationSigned}).
+     * Appelée en synchrone par le module hospitalisation (API publique inter-module).
+     *
+     * @return la facture brouillon créée (id + netAmount), à émettre ensuite via {@link #issueInvoice}.
+     */
+    @Transactional
+    public Invoice createStayInvoice(UUID patientId, List<InvoiceLineRequest> lines, UUID actorId) {
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new NotFoundException("PATIENT_NOT_FOUND", "Patient introuvable : " + patientId));
+        String tier = patient.getTier() != null ? patient.getTier() : "NORMAL";
+
+        Invoice invoice = new Invoice();
+        invoice.setPatientId(patientId);
+        invoice.setStatus(InvoiceStatus.BROUILLON);
+        invoice.setMutuelleInsuranceId(patient.getMutuelleInsuranceId());
+        invoice.setMutuellePoliceNumber(patient.getMutuellePoliceNumber());
+        invoice.setTotalAmount(BigDecimal.ZERO);
+        invoice.setDiscountAmount(BigDecimal.ZERO);
+        invoice.setNetAmount(BigDecimal.ZERO);
+        invoice = invoiceRepository.save(invoice);
+
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        int position = 0;
+        for (InvoiceLineRequest lr : lines) {
+            BigDecimal qty = lr.quantity() != null ? lr.quantity() : BigDecimal.ONE;
+            BigDecimal lineTotal = lr.unitPrice().multiply(qty);
+            InvoiceLine line = new InvoiceLine();
+            line.setInvoiceId(invoice.getId());
+            line.setActId(lr.actId());
+            line.setPosition(position++);
+            line.setDescription(lr.description());
+            line.setUnitPrice(lr.unitPrice());
+            line.setQuantity(qty);
+            line.setLineTotal(lineTotal);
+            invoiceLineRepository.save(line);
+            totalAmount = totalAmount.add(lineTotal);
+        }
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (!"NORMAL".equals(tier)) {
+            Optional<ConfigPatientTier> tierConfig = tierRepository.findByTier(tier);
+            if (tierConfig.isPresent() && tierConfig.get().getDiscountPercent().compareTo(BigDecimal.ZERO) > 0) {
+                discountAmount = totalAmount
+                        .multiply(tierConfig.get().getDiscountPercent())
+                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            }
+        }
+        invoice.setTotalAmount(totalAmount);
+        invoice.setDiscountAmount(discountAmount);
+        invoice.setNetAmount(totalAmount.subtract(discountAmount));
+        invoiceRepository.save(invoice);
+
+        log.info("Draft stay invoice {} created for patient {} tier {} total {}",
+                invoice.getId(), patientId, tier, invoice.getNetAmount());
+        return invoice;
+    }
+
     @Transactional
     public Invoice updateInvoice(UUID invoiceId, InvoiceUpdateRequest req, UUID actorId) {
         Invoice invoice = loadDraftOrThrow(invoiceId);

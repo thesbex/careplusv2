@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Sidebar, type SidebarProps, type SidebarScreen } from './Sidebar';
+import { Sidebar, type SidebarProps, type NavScreen } from './Sidebar';
 import { PatientSearchSpotlight } from './PatientSearchSpotlight';
 import { useSalleBadgeCount } from './useSalleBadgeCount';
 import { SpotlightContext } from './spotlightContext';
@@ -27,7 +27,7 @@ import '@/styles/shell.css';
 export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const active: SidebarScreen = pathToSidebarScreen(location.pathname) ?? 'agenda';
+  const active: NavScreen = pathToSidebarScreen(location.pathname) ?? 'agenda';
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {

@@ -16,6 +16,7 @@ import {
   Logout,
   Eye,
   Chat,
+  Activity,
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -25,6 +26,7 @@ import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVacc
 import { useStockAlertsCount } from '@/features/stock/hooks/useStockAlertsCount';
 import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesseAlertsCount';
 import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
+import { useActiveStayCount } from '@/features/hospitalisation/hooks/useStays';
 import { isPureTech } from '@/lib/auth/roleHelpers';
 import {
   useClinicSettings,
@@ -50,8 +52,16 @@ export type SidebarScreen =
   | 'queueRadio'
   | 'messages';
 
+/**
+ * Surécran de navigation : SidebarScreen + les écrans optionnels gated par une
+ * capacité (hospitalisation V054/V055). Gardé séparé de SidebarScreen pour ne
+ * pas casser les `NAV_MAP` locaux (historiques) des pages, qui n'indexent que
+ * les écrans de base. Le shell (Sidebar / navMap / AppLayout) utilise NavScreen.
+ */
+export type NavScreen = SidebarScreen | 'sejours';
+
 interface NavItem {
-  id: SidebarScreen;
+  id: NavScreen;
   label: string;
   Icon: IconComponent;
   section: 'flux' | 'config';
@@ -59,6 +69,8 @@ interface NavItem {
   requiresRoles?: string[];
   /** If set, the item is only rendered when the current user has the permission. */
   requiresPermission?: string;
+  /** V054/V055 — only rendered when the establishment has hospitalization enabled. */
+  requiresHospitalization?: boolean;
 }
 
 const ITEMS: NavItem[] = [
@@ -71,6 +83,8 @@ const ITEMS: NavItem[] = [
   { id: 'vaccinations', label: 'Vaccinations', Icon: Needle, section: 'flux' },
   { id: 'grossesses', label: 'Grossesses', Icon: Heart, section: 'flux' },
   { id: 'stock', label: 'Stock', Icon: Box, section: 'flux' },
+  // V054/V055 — hospitalisation : visible uniquement si l'établissement a des lits.
+  { id: 'sejours', label: 'Hospitalisation', Icon: Activity, section: 'flux', requiresHospitalization: true },
   // V038 — queue traitements internes : visible uniquement aux utilisateurs
   // qui ont le rôle correspondant (LAB / RADIO). MEDECIN/ADMIN gardent
   // l'accès via Paramètres + suivi par consultation.
@@ -82,11 +96,11 @@ const ITEMS: NavItem[] = [
 ];
 
 export interface SidebarProps {
-  active?: SidebarScreen;
+  active?: NavScreen;
   counts?: { salle?: number; vaccinations?: number; stock?: number; grossesses?: number };
   cabinet?: { name: string; city: string };
   user?: { name: string; role: string; initials: string };
-  onNavigate?: (id: SidebarScreen) => void;
+  onNavigate?: (id: NavScreen) => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -131,6 +145,12 @@ export function Sidebar({
   // Chat unread badge — polled every 30 s.
   const liveMessages = useChatUnreadCount();
   const messagesBadge = liveMessages ?? 0;
+
+  // V054/V055 — hospitalisation : item + badge visibles seulement si l'établissement
+  // a coché « hospitalise des patients ». Invisible pour un cabinet GP.
+  const hospitalizationEnabled = settings?.hospitalizationEnabled ?? false;
+  const sejoursBadge = useActiveStayCount(hospitalizationEnabled);
+
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -145,6 +165,7 @@ export function Sidebar({
     if (i.requiresPermission && userPerms != null && !userPerms.includes(i.requiresPermission)) {
       return false;
     }
+    if (i.requiresHospitalization && !hospitalizationEnabled) return false;
     // Pure-tech : on cache toute la sidebar SAUF les items strictement
     // restreints à LAB/RADIO (queueLab, queueRadio) + Messages (collaboration
     // équipe inter-rôles, légitime même côté technicien).
@@ -199,6 +220,8 @@ export function Sidebar({
               ? (stockBadge > 0 ? stockBadge : undefined)
               : it.id === 'messages'
               ? (messagesBadge > 0 ? messagesBadge : undefined)
+              : it.id === 'sejours'
+              ? (sejoursBadge > 0 ? sejoursBadge : undefined)
               : undefined
           }
           onClick={() => onNavigate?.(it.id)}

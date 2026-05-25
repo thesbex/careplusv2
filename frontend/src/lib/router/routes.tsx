@@ -21,6 +21,7 @@ import ProfilPage from '@/features/profil/ProfilPage';
 import VaccinationsQueueRoute from '@/features/vaccination/VaccinationsQueueRoute';
 import PregnancesQueueRoute from '@/features/grossesse/PregnancesQueueRoute';
 import StockArticlesRoute from '@/features/stock/StockArticlesRoute';
+import HospitalisationRoute from '@/features/hospitalisation/HospitalisationRoute';
 import StockArticleDetailRoute from '@/features/stock/StockArticleDetailRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
@@ -239,6 +240,14 @@ export const router = createBrowserRouter(
           element: (
             <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'MEDECIN', 'ADMIN']}>
               <StockArticlesRoute />
+            </RequireRole>
+          ),
+        },
+        {
+          path: '/hospitalisation',
+          element: (
+            <RequireRole roles={['SECRETAIRE', 'ASSISTANT', 'INFIRMIER', 'MEDECIN', 'ADMIN']}>
+              <HospitalisationRoute />
             </RequireRole>
           ),
         },

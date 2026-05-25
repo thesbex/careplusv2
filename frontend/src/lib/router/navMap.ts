@@ -1,4 +1,4 @@
-import type { SidebarScreen } from '@/components/shell/Sidebar';
+import type { NavScreen } from '@/components/shell/Sidebar';
 
 /**
  * Single source of truth for the sidebar item ↔ route path mapping.
@@ -10,7 +10,7 @@ import type { SidebarScreen } from '@/components/shell/Sidebar';
  * seule fois (refacto AppLayout) et n'a plus besoin que chaque page passe
  * `onNavigate` ; (2) ajouter une route ne suppose plus de toucher 14 fichiers.
  */
-export const NAV_MAP: Record<SidebarScreen, string> = {
+export const NAV_MAP: Record<NavScreen, string> = {
   dashboard: '/dashboard',
   agenda: '/agenda',
   patients: '/patients',
@@ -23,6 +23,7 @@ export const NAV_MAP: Record<SidebarScreen, string> = {
   queueLab: '/queue/lab',
   queueRadio: '/queue/radio',
   messages: '/messages',
+  sejours: '/hospitalisation',
   catalogue: '/catalogue',
   params: '/parametres',
 };
@@ -36,15 +37,15 @@ export const NAV_MAP: Record<SidebarScreen, string> = {
  * landing page, login, onboarding, profil) — the layout then renders the
  * sidebar with no item highlighted, which is the expected UX.
  */
-export function pathToSidebarScreen(pathname: string): SidebarScreen | undefined {
+export function pathToSidebarScreen(pathname: string): NavScreen | undefined {
   // Exact-equal short-circuit (covers /dashboard, /agenda, /salle…).
-  const direct = (Object.entries(NAV_MAP) as [SidebarScreen, string][]).find(
+  const direct = (Object.entries(NAV_MAP) as [NavScreen, string][]).find(
     ([, p]) => p === pathname,
   );
   if (direct) return direct[0];
 
   // Prefix match — picks the longest path that the URL starts with.
-  const sortedByLength = (Object.entries(NAV_MAP) as [SidebarScreen, string][]).sort(
+  const sortedByLength = (Object.entries(NAV_MAP) as [NavScreen, string][]).sort(
     (a, b) => b[1].length - a[1].length,
   );
   for (const [screen, path] of sortedByLength) {

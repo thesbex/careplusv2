@@ -3,10 +3,13 @@ package ma.careplus.hospitalization.application;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import java.util.stream.Collectors;
 import ma.careplus.hospitalization.domain.Bed;
+import ma.careplus.hospitalization.domain.BedAssignment;
 import ma.careplus.hospitalization.domain.Room;
 import ma.careplus.hospitalization.domain.Ward;
+import ma.careplus.hospitalization.infrastructure.persistence.BedAssignmentRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.BedRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.RoomRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.WardRepository;
@@ -35,11 +38,14 @@ public class BedManagementServiceImpl implements BedManagementService {
     private final WardRepository wardRepo;
     private final RoomRepository roomRepo;
     private final BedRepository bedRepo;
+    private final BedAssignmentRepository assignmentRepo;
 
-    public BedManagementServiceImpl(WardRepository wardRepo, RoomRepository roomRepo, BedRepository bedRepo) {
+    public BedManagementServiceImpl(WardRepository wardRepo, RoomRepository roomRepo, BedRepository bedRepo,
+                                    BedAssignmentRepository assignmentRepo) {
         this.wardRepo = wardRepo;
         this.roomRepo = roomRepo;
         this.bedRepo = bedRepo;
+        this.assignmentRepo = assignmentRepo;
     }
 
     // ── Services (wards) ───────────────────────────────────────────────
@@ -236,12 +242,19 @@ public class BedManagementServiceImpl implements BedManagementService {
                 .collect(Collectors.groupingBy(Room::getWardId));
         Map<UUID, List<Bed>> bedsByRoom = bedRepo.findAllByActiveTrueOrderByCodeAsc().stream()
                 .collect(Collectors.groupingBy(Bed::getRoomId));
+        // Occupation réelle (D3 hybride) : un lit avec une affectation courante = OCCUPE,
+        // ce qui prime sur son statut manuel stocké.
+        Set<UUID> occupiedBeds = assignmentRepo.findAllByToAtIsNull().stream()
+                .map(BedAssignment::getBedId)
+                .collect(Collectors.toSet());
 
         List<WardBoard> wardBoards = wards.stream().map(w -> {
             List<RoomBoard> roomBoards = roomsByWard.getOrDefault(w.getId(), List.of()).stream()
                     .map(r -> new RoomBoard(
                             r.getId(), r.getCode(), r.getLabelFr(), r.getRoomClass(), r.getDailyRate(),
-                            bedsByRoom.getOrDefault(r.getId(), List.of()).stream().map(this::toView).toList()))
+                            bedsByRoom.getOrDefault(r.getId(), List.of()).stream()
+                                    .map(b -> toBoardView(b, occupiedBeds.contains(b.getId())))
+                                    .toList()))
                     .toList();
             return new WardBoard(w.getId(), w.getCode(), w.getLabelFr(), roomBoards);
         }).toList();
@@ -279,5 +292,11 @@ public class BedManagementServiceImpl implements BedManagementService {
 
     private BedView toView(Bed b) {
         return new BedView(b.getId(), b.getRoomId(), b.getCode(), b.getStatus(), b.isActive());
+    }
+
+    /** Vue board : l'occupation réelle (séjour actif) prime sur le statut manuel. */
+    private BedView toBoardView(Bed b, boolean occupied) {
+        String status = occupied ? "OCCUPE" : b.getStatus();
+        return new BedView(b.getId(), b.getRoomId(), b.getCode(), status, b.isActive());
     }
 }

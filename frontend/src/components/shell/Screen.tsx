@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { type SidebarScreen, type SidebarProps } from './Sidebar';
+import { type SidebarScreen, type NavScreen, type SidebarProps } from './Sidebar';
 import { Topbar, type TopbarProps } from './Topbar';
 import { useSpotlight } from './spotlightContext';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -10,7 +10,7 @@ export interface ScreenProps {
    * actually derives the active item from the URL via pathToSidebarScreen,
    * so this prop is informational only.
    */
-  active: SidebarScreen;
+  active: NavScreen;
   title: string;
   sub?: string;
   pageDate?: string;
@@ -19,8 +19,12 @@ export interface ScreenProps {
   children: ReactNode;
   /** Deprecated: AppLayout reads counts directly from the badge hooks. Ignored. */
   counts?: SidebarProps['counts'];
-  /** Deprecated: AppLayout owns sidebar navigation. Ignored. */
-  onNavigate?: SidebarProps['onNavigate'];
+  /**
+   * Deprecated: AppLayout owns sidebar navigation. Ignored. Typed on the base
+   * SidebarScreen (not NavScreen) so pages keeping a local NAV_MAP keyed only on
+   * the base screens still type-check.
+   */
+  onNavigate?: (id: SidebarScreen) => void;
   topbarProps?: Partial<Omit<TopbarProps, 'title' | 'sub' | 'pageDate' | 'right'>>;
 }
 
