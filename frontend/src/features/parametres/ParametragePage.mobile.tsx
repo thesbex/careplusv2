@@ -145,6 +145,14 @@ export default function ParametrageMobilePage() {
                   onClick={() => navigate('/charges')}
                 />
               )}
+              {isAdmin && (
+                <MenuRow
+                  Icon={Users}
+                  label="Personnel"
+                  hint="RH — congés, absences, salaires"
+                  onClick={() => navigate('/personnel')}
+                />
+              )}
             </div>
           </>
         ) : (
