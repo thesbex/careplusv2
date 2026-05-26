@@ -75,6 +75,30 @@ beforeEach(() => {
 });
 
 describe('<FollowUpDialog />', () => {
+  // Régression filtre agenda : un RDV de contrôle doit défaut sur le motif
+  // « Contrôle » même si « Consultation de suivi » apparaît AVANT dans la liste
+  // (ordre du seed V002). Sinon le filtre « motif = Contrôle » ne les remonte pas.
+  it('par défaut sélectionne le motif « Contrôle » même si « Consultation de suivi » est listé avant', async () => {
+    mockGet.mockImplementation((url: string) => {
+      if (url === '/reasons')
+        return Promise.resolve({
+          data: [
+            { id: 'r-suivi', code: 'SUIVI', label: 'Consultation de suivi', durationMinutes: 15, colorHex: null },
+            { id: 'r-ctl', code: 'CONTROLE', label: 'Contrôle', durationMinutes: 15, colorHex: null },
+          ],
+        });
+      if (url.startsWith('/appointments?')) return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+    renderDialog();
+    // Gate on the reason options actually being in the DOM (reasons query resolved).
+    await screen.findByText(/Contrôle \(15 min\)/);
+    const motifSelect = (Array.from(document.querySelectorAll('select')) as HTMLSelectElement[])
+      .find((s) => Array.from(s.options).some((o) => /Contrôle/.test(o.text)));
+    expect(motifSelect!.value).toBe('r-ctl');
+  });
+
+
   it('affiche le panneau planning à côté du formulaire (desktop)', async () => {
     renderDialog();
     expect(await screen.findByTestId('day-planning')).toBeInTheDocument();
