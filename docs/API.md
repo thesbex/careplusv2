@@ -268,6 +268,95 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 **Étapes 4-6 à venir** : frontend onglet dossier + worklist, manual QA, docs finaux.
 
+## finance — dépenses cabinet (QA9-15 — V058) ✅
+
+- `GET /api/expenses` — MEDECIN/ADMIN — list non-deleted expenses, ordered by expense_date DESC. Optional query params: `category` (enum), `from` (LocalDate), `to` (LocalDate).
+- `POST /api/expenses` — ADMIN — create expense `{category, label, amount, expenseDate, periodicity?, supplier?, notes?}` → 201 + ExpenseResponse.
+- `PUT /api/expenses/{id}` — ADMIN — full update of an expense; 404 if not found/deleted.
+- `DELETE /api/expenses/{id}` — ADMIN — soft delete (sets deleted_at); 204. 404 if not found.
+- `GET /api/expenses/summary?year=YYYY` — MEDECIN/ADMIN — monthly totals `[{month:1-12, total}]` for the given year (only months with at least one non-deleted entry are returned).
+
+Categories: `EAU_ELECTRICITE | INTERNET | LOYER | SYNDIC | REPARATION | FOURNITURES | ASSURANCE | IMPOTS | SALAIRE | AUTRE`
+Periodicities: `PONCTUELLE | MENSUELLE | ANNUELLE`
+
+## consent — modèles de consentement + génération (QA9-13 — V059) ✅
+
+### Bibliothèque de modèles (Part A)
+
+- `GET  /api/consent-templates` — MEDECIN (voit actifs seulement) / ADMIN (voit tout) — liste non-supprimée ordonnée par type + titre.
+- `GET  /api/consent-templates/{id}` — MEDECIN/ADMIN — détail d'un modèle.
+- `POST /api/consent-templates` — ADMIN — créer modèle `{type, title, body, active}` → 201 + ConsentTemplateView.
+- `PUT  /api/consent-templates/{id}` — ADMIN — mise à jour complète.
+- `DELETE /api/consent-templates/{id}` — ADMIN — soft-delete (deleted_at). 204.
+
+Types acceptés : `PARTAGE_DOSSIER | ACTE_OPERATOIRE | ANESTHESIE | IMAGERIE | PRELEVEMENT | HOSPITALISATION | AUTRE`
+
+Placeholders dans `body` : `{{patientNom}}` `{{patientCin}}` `{{dateJour}}` `{{cabinet}}` — substitués côté serveur à la génération.
+
+### Génération patient (Part B)
+
+- `POST /api/patients/{patientId}/consents` — MEDECIN/ADMIN — génère PDF consentement et le stocke comme `patient_document` de type `CONSENTEMENT`. Corps : `{templateId?: UUID, title: String, body: String}`. Retourne `{documentId}`. Le PDF est récupérable via `GET /api/documents/{documentId}/content`.
+- `GET  /api/patients/{patientId}/consents` — MEDECIN/ADMIN — liste les documents `CONSENTEMENT` du patient (oldest-first → desc uploadedAt).
+
+`ConsentTemplateView` : `{id, type, title, body, active, createdAt, updatedAt}`.
+`GenerateConsentResponse` : `{documentId}`.
+
+**DocumentType étendu** : `CONSENTEMENT` ajouté à l'enum `DocumentType` (QA9-13). Aucune contrainte CHECK en DB sur `patient_document.type` (V009 déclare `VARCHAR(32)` sans CHECK) — l'enum Java suffit.
+
+## confrere — courrier au confrère (QA9-10) ✅
+
+- `POST /api/consultations/{consultationId}/confrere-letter` — MEDECIN/ADMIN — génère PDF courrier et le stocke comme `patient_document` de type `LETTRE_CONFRERE`. Corps : `{recipientName: String (required), recipientSpecialty?: String, recipientCity?: String, body: String (required)}`. Retourne `{documentId}`. Le PDF est récupérable via `GET /api/documents/{documentId}/content`.
+- `GET  /api/consultations/{consultationId}/confrere-letters` — MEDECIN/ADMIN — liste les documents `LETTRE_CONFRERE` liés à cette consultation (filtre patient_id + notes=consultationId=...).
+
+Le médecin destinataire est identifié via `recipientName` (texte libre, peut venir du ReferralContact directory côté frontend).
+La signature du médecin émetteur (scannée) est intégrée au PDF si configurée (même pattern ordonnance/certificat).
+
+**DocumentType étendu** : `LETTRE_CONFRERE` ajouté à l'enum `DocumentType` (QA9-10). Aucune migration DB requise — `patient_document.type` est `VARCHAR(32)` sans CHECK (confirmé V009+V059).
+
+## hospitalization — prestations de séjour (QA10-2 — V060) ✅
+
+Actes/services additionnels pendant un séjour (consultation, oxygène, repas, etc.) facturés en sus du prix de journée.
+
+- `POST /api/hospitalization/stays/{stayId}/prestations` — SECRETAIRE/INFIRMIER/MEDECIN/ADMIN — ajouter une prestation `{actId?: UUID, label: String, unitPrice: BigDecimal, quantity?: BigDecimal}` → 201 + `StayPrestationView`. Rejeté 409 si séjour FACTURE ou ANNULE.
+- `GET  /api/hospitalization/stays/{stayId}/prestations` — SECRETAIRE/ASSISTANT/INFIRMIER/MEDECIN/ADMIN — lister les prestations du séjour (ordre `performed_at` ASC).
+- `DELETE /api/hospitalization/stays/{stayId}/prestations/{id}` — SECRETAIRE/INFIRMIER/MEDECIN/ADMIN — supprimer une prestation (hard delete). → 204. 409 `STAY_ALREADY_INVOICED` si séjour déjà FACTURE.
+
+`StayPrestationView` : `{id, stayId, actId, label, unitPrice, quantity, lineTotal, performedAt, createdBy}`.
+
+**Facturation** : lors de `POST /api/hospitalization/stays/{id}/invoice`, les lignes de prestation sont ajoutées à la suite des lignes d'hébergement. La facture de séjour = nuits × prix_journée par lit + Σ prestations.
+
+**StayDetailView étendu** : le détail du séjour (`GET /api/hospitalization/stays/{id}`) expose désormais `prestations: PrestationLine[]` + `prestationsTotal: BigDecimal` (aperçu avant facturation).
+
+## hr — gestion du personnel (QA9-14 — V061) ✅
+
+Module RH : gestion des employés sans accès applicatif (gardien, ménage, infirmier…) et du personnel avec login (secrétaire, assistante). Suivi salaire, congés/absences/retards, accrual automatique 1,5 j/mois.
+
+### Staff (employés)
+- `GET  /api/hr/staff` — ADMIN — liste non-supprimés ; filtres `?active=bool&role=SECURITE|MENAGE|INFIRMIER|SECRETAIRE|ASSISTANTE|TECHNICIEN|AUTRE`
+- `POST /api/hr/staff` — ADMIN — créer un employé `{fullName, role, hireDate, monthlySalary?, phone?, userId?, active?, notes?}` → 201
+- `GET  /api/hr/staff/{id}` — ADMIN — détail
+- `PUT  /api/hr/staff/{id}` — ADMIN — modifier
+- `DELETE /api/hr/staff/{id}` — ADMIN — soft-delete (deleted_at) → 204
+
+### Résumé / solde de congés
+- `GET  /api/hr/staff/{id}/summary` — ADMIN — `{staffId, monthsWorked, accruedLeaveDays, takenLeaveDays, leaveBalanceDays, absencesCount, latenessCount}`
+  - `monthsWorked = ChronoUnit.MONTHS.between(hireDate, today)` clamped at 0
+  - `accruedLeaveDays = monthsWorked × 1.5`
+  - `takenLeaveDays = Σ days` pour les entrées CONGE
+  - `leaveBalanceDays = accrued − taken`
+
+### Entrées congé/absence/retard
+- `GET  /api/hr/staff/{id}/leave` — ADMIN — liste des entrées (tri `start_date DESC`)
+- `POST /api/hr/staff/{id}/leave` — ADMIN — ajouter `{type: CONGE|ABSENCE|RETARD, startDate, days, notes?}` → 201
+- `DELETE /api/hr/leave/{id}` — ADMIN — suppression physique → 204
+
+### Paiements de salaire
+- `GET  /api/hr/staff/{id}/payments` — ADMIN — liste des paiements (tri `period DESC`)
+- `POST /api/hr/staff/{id}/payments` — ADMIN — enregistrer `{period: YYYY-MM, amount, paidAt, notes?}` → 201
+- `DELETE /api/hr/payments/{id}` — ADMIN — suppression physique → 204
+
+`StaffResponse` : `{id, fullName, role, hireDate, monthlySalary, phone, userId, active, notes, createdAt, updatedAt}`.
+
 ## Actuator & meta (J1) ✅
 
 - `GET /actuator/health` — public — health probe (`{status: UP}`)
