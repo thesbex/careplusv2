@@ -387,6 +387,39 @@ class ChatIT {
                 .andExpect(jsonPath("$.total").value(3));
     }
 
+    // QA9-2 (suivi .xlsx 2026-05-26) — « le nombre de messages affiché dans le menu
+    // ne se décrémente pas quand les messages sont lus ». Ce test verrouille le contrat
+    // backend : après mark-read d'une conversation, unread-count retombe à 0.
+    @Test
+    void unread_count_decrements_after_mark_read() throws Exception {
+        String medAuth = bearer(medId);
+        String secAuth = bearer(secId);
+
+        // med ouvre un DM vers sec et y envoie 2 messages → sec a 2 non-lus.
+        MvcResult dm = mockMvc.perform(post("/api/chat/direct-messages")
+                        .header("Authorization", medAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"otherUserId\":\"" + secId + "\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String dmId = objectMapper.readTree(dm.getResponse().getContentAsString()).get("id").asText();
+        sendMessage(medAuth, dmId, "non lu 1");
+        sendMessage(medAuth, dmId, "non lu 2");
+
+        mockMvc.perform(get("/api/chat/unread-count").header("Authorization", secAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2));
+
+        // sec lit la conversation (mark-read).
+        mockMvc.perform(post("/api/chat/conversations/" + dmId + "/mark-read")
+                        .header("Authorization", secAuth))
+                .andExpect(status().isNoContent());
+
+        // Le compteur doit être retombé à 0 — c'est la décrémentation attendue.
+        mockMvc.perform(get("/api/chat/unread-count").header("Authorization", secAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(0));
+    }
+
     @Test
     void unauthenticated_returns_401() throws Exception {
         mockMvc.perform(get("/api/chat/channels"))
