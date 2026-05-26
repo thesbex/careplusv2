@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Détail d'un séjour : identité + statut + historique d'affectations (ADT) +
- * aperçu de la facturation (lignes hébergement nuits × prix de journée).
+ * aperçu de la facturation (lignes hébergement nuits × prix de journée + prestations).
  */
 public record StayDetailView(
         UUID id,
@@ -24,7 +24,9 @@ public record StayDetailView(
         UUID invoiceId,
         List<AssignmentView> assignments,
         List<ChargeLine> chargePreview,
-        BigDecimal chargeTotal) {
+        BigDecimal chargeTotal,
+        List<PrestationLine> prestations,
+        BigDecimal prestationsTotal) {
 
     /** Une affectation de lit dans l'historique ADT. */
     public record AssignmentView(
@@ -42,5 +44,14 @@ public record StayDetailView(
             String description,
             BigDecimal unitPrice,
             int quantity,
+            BigDecimal lineTotal) {}
+
+    /** Une prestation de séjour (acte supplémentaire en sus du prix de journée). */
+    public record PrestationLine(
+            UUID id,
+            UUID actId,
+            String label,
+            BigDecimal unitPrice,
+            BigDecimal quantity,
             BigDecimal lineTotal) {}
 }

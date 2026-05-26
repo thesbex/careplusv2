@@ -22,11 +22,13 @@ import ma.careplus.hospitalization.domain.Ward;
 import ma.careplus.hospitalization.infrastructure.persistence.BedAssignmentRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.BedRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.RoomRepository;
+import ma.careplus.hospitalization.infrastructure.persistence.StayPrestationRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.StayRepository;
 import ma.careplus.hospitalization.infrastructure.persistence.WardRepository;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView.AssignmentView;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView.ChargeLine;
+import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView.PrestationLine;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayQueueEntry;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.AdmitRequest;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayRequests.DischargeRequest;
@@ -51,6 +53,7 @@ public class StayServiceImpl implements StayService {
     private final BedRepository bedRepo;
     private final RoomRepository roomRepo;
     private final WardRepository wardRepo;
+    private final StayPrestationRepository prestationRepo;
     private final PatientService patientService;
     private final BillingService billingService;
     private final AccessScopeService accessScope;
@@ -58,6 +61,7 @@ public class StayServiceImpl implements StayService {
 
     public StayServiceImpl(StayRepository stayRepo, BedAssignmentRepository assignmentRepo,
                            BedRepository bedRepo, RoomRepository roomRepo, WardRepository wardRepo,
+                           StayPrestationRepository prestationRepo,
                            PatientService patientService, BillingService billingService,
                            AccessScopeService accessScope, JdbcTemplate jdbc) {
         this.stayRepo = stayRepo;
@@ -65,6 +69,7 @@ public class StayServiceImpl implements StayService {
         this.bedRepo = bedRepo;
         this.roomRepo = roomRepo;
         this.wardRepo = wardRepo;
+        this.prestationRepo = prestationRepo;
         this.patientService = patientService;
         this.billingService = billingService;
         this.accessScope = accessScope;
@@ -153,9 +158,16 @@ public class StayServiceImpl implements StayService {
                     + " — " + nights + " nuit" + (nights > 1 ? "s" : "");
             lines.add(new InvoiceLineRequest(null, desc, a.getDailyRateAmount(), BigDecimal.valueOf(nights)));
         }
+        // Append prestation lines (actes/services supplémentaires en sus du prix de journée)
+        for (ma.careplus.hospitalization.domain.StayPrestation sp :
+                prestationRepo.findAllByStayIdOrderByPerformedAtAsc(stayId)) {
+            lines.add(new InvoiceLineRequest(sp.getActId(), sp.getLabel(),
+                    sp.getUnitPrice(), sp.getQuantity()));
+        }
+
         if (lines.isEmpty()) {
             throw new BusinessException("STAY_NO_CHARGES",
-                    "Aucun montant facturable (prix de journée à 0).", 422);
+                    "Aucun montant facturable (prix de journée à 0 et aucune prestation).", 422);
         }
         Invoice invoice = billingService.createStayInvoice(stay.getPatientId(), lines, actorId);
         stay.setInvoiceId(invoice.getId());
@@ -241,12 +253,25 @@ public class StayServiceImpl implements StayService {
                 total = total.add(lineTotal);
             }
         }
+
+        // Prestations (actes/services supplémentaires)
+        List<PrestationLine> prestationLines = new ArrayList<>();
+        BigDecimal prestationsTotal = BigDecimal.ZERO;
+        for (ma.careplus.hospitalization.domain.StayPrestation sp :
+                prestationRepo.findAllByStayIdOrderByPerformedAtAsc(stayId)) {
+            BigDecimal qty = sp.getQuantity() != null ? sp.getQuantity() : BigDecimal.ONE;
+            BigDecimal lineTotal = sp.getUnitPrice().multiply(qty);
+            prestationLines.add(new PrestationLine(sp.getId(), sp.getActId(), sp.getLabel(),
+                    sp.getUnitPrice(), qty, lineTotal));
+            prestationsTotal = prestationsTotal.add(lineTotal);
+        }
+
         return new StayDetailView(
                 stay.getId(), stay.getPatientId(), p.getFirstName(), p.getLastName(),
                 stay.getStatus(), stay.getAdmissionReason(), stay.getAttendingPractitionerId(),
                 stay.getAdmittedAt(), stay.getDischargedAt(), stay.getDischargeType(),
                 stay.getDischargeSummary(), stay.getInvoiceId(),
-                assignments, charges, total);
+                assignments, charges, total, prestationLines, prestationsTotal);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────
