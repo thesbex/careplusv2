@@ -236,8 +236,12 @@ class StayExtrasIT {
         insertConfig(false, "JOURS_ENTAMES");
         String b = bearer(med1Email);
         String stayId = admit(b, med1Id);
-        // Antidater l'affectation d'un jour pour simuler un séjour d'une journée pleine.
-        jdbc.update("UPDATE hospitalization_bed_assignment SET from_at = now() - interval '1 day' WHERE stay_id = ?::uuid", stayId);
+        // Antidater l'affectation d'une journée pleine. On recule de 25 h (et non 24 h)
+        // pour rester strictement dans l'intervalle ]1 jour, 2 jours[ malgré l'écart
+        // d'horloge sub-seconde entre le now() SQL (from_at) et l'Instant.now() applicatif
+        // posé à la sortie (to_at) : floor des jours = 1 → JOURS_ENTAMES = 2, de façon
+        // déterministe (un recul de 24 h exactement rendait le test flaky).
+        jdbc.update("UPDATE hospitalization_bed_assignment SET from_at = now() - interval '25 hours' WHERE stay_id = ?::uuid", stayId);
         mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/discharge")
                 .header("Authorization", b).contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("dischargeType", "DOMICILE"))))
