@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 
-export type RoleCode = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN';
+export type RoleCode =
+  | 'SECRETAIRE'
+  | 'ASSISTANT'
+  | 'MEDECIN'
+  | 'ADMIN'
+  | 'RECEPTIONNISTE';
 
 export interface RolePermissionRow {
   roleCode: RoleCode;
