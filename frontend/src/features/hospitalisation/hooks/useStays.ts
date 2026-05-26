@@ -159,6 +159,69 @@ export function useGenerateStayInvoice() {
   return { generateInvoice: m.mutateAsync, isPending: m.isPending };
 }
 
+// ── Prestations du séjour (QA10-2) ───────────────────────────────────────
+
+export interface StayPrestationView {
+  id: string;
+  stayId: string;
+  actId: string | null;
+  label: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+  performedAt: string;
+  createdBy: string | null;
+}
+
+const EMPTY_PRESTATIONS: StayPrestationView[] = [];
+
+export function useStayPrestations(stayId: string | null) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['hosp-stay-prestations', stayId],
+    queryFn: () =>
+      api.get<StayPrestationView[]>(`/hospitalization/stays/${stayId}/prestations`).then((r) => r.data),
+    enabled: !!stayId,
+  });
+  return {
+    prestations: data ?? EMPTY_PRESTATIONS,
+    isLoading,
+    error: error ? 'Impossible de charger les prestations.' : null,
+  };
+}
+
+export interface AddStayPrestationPayload {
+  actId?: string;
+  label: string;
+  unitPrice: number;
+  quantity?: number;
+}
+
+export function useAddStayPrestation(stayId: string) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: (payload: AddStayPrestationPayload) =>
+      api.post<StayPrestationView>(`/hospitalization/stays/${stayId}/prestations`, payload).then((r) => r.data),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['hosp-stay-prestations', stayId] });
+      void qc.invalidateQueries({ queryKey: ['hosp-stay', stayId] });
+    },
+  });
+  return { addPrestation: m.mutateAsync, isPending: m.isPending };
+}
+
+export function useDeleteStayPrestation(stayId: string) {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: (id: string) =>
+      api.delete(`/hospitalization/stays/${stayId}/prestations/${id}`),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['hosp-stay-prestations', stayId] });
+      void qc.invalidateQueries({ queryKey: ['hosp-stay', stayId] });
+    },
+  });
+  return { deletePrestation: m.mutateAsync, isPending: m.isPending };
+}
+
 // ── Constantes au lit (Slice C) ──────────────────────────────────────────
 
 export interface StayVitals {

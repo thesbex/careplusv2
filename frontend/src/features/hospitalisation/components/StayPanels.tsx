@@ -11,15 +11,19 @@ import { Input } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { usePrestationCatalog } from '@/features/prestation/hooks/usePrestations';
 import { useBedBoard } from '../hooks/useHospitalization';
 import {
   DISCHARGE_TYPE_LABELS,
+  useAddStayPrestation,
   useAdmit,
   useCancelStay,
+  useDeleteStayPrestation,
   useDischarge,
   useGenerateStayInvoice,
   useRecordStayVitals,
   useStayDetail,
+  useStayPrestations,
   useStayVitals,
   useTransfer,
   type DischargeType,
@@ -138,6 +142,129 @@ export function AdmissionForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+/**
+ * Section Prestations du séjour (QA10-2) : liste + formulaire d'ajout inline.
+ * L'acte du catalogue préremplit label + prix ; saisie libre possible.
+ * Réutilisée par desktop + mobile via StayDetailPanel (parité 390 px).
+ */
+export function StayPrestationsSection({ stayId, editable }: { stayId: string; editable: boolean }) {
+  const { prestations } = useStayPrestations(stayId);
+  const { prestations: catalog } = usePrestationCatalog(false);
+  const { addPrestation, isPending: adding } = useAddStayPrestation(stayId);
+  const { deletePrestation } = useDeleteStayPrestation(stayId);
+  const [actId, setActId] = useState('');
+  const [label, setLabel] = useState('');
+  const [price, setPrice] = useState('');
+  const [qty, setQty] = useState('1');
+
+  const total = prestations.reduce((s, p) => s + p.lineTotal, 0);
+
+  function pickAct(id: string) {
+    setActId(id);
+    const act = catalog.find((c) => c.id === id);
+    if (act) {
+      setLabel(act.label);
+      setPrice(String(act.defaultPrice));
+    }
+  }
+
+  async function add() {
+    const trimmed = label.trim();
+    const priceNum = Number(price);
+    const qtyNum = Number(qty);
+    if (!trimmed) { toast.error('Libellé requis.'); return; }
+    if (!price || Number.isNaN(priceNum) || priceNum < 0) { toast.error('Prix unitaire invalide.'); return; }
+    const payload = {
+      label: trimmed,
+      unitPrice: priceNum,
+      ...(actId ? { actId } : {}),
+      ...(qty && !Number.isNaN(qtyNum) ? { quantity: qtyNum } : {}),
+    };
+    try {
+      await addPrestation(payload);
+      toast.success('Prestation ajoutée.');
+      setActId(''); setLabel(''); setPrice(''); setQty('1');
+    } catch (err) { reportError(err); }
+  }
+
+  async function remove(id: string) {
+    try {
+      await deletePrestation(id);
+      toast.success('Prestation retirée.');
+    } catch (err) {
+      const p = toProblemDetail(err);
+      if (p.code === 'STAY_ALREADY_INVOICED') { toast.error('Séjour déjà facturé.'); return; }
+      reportError(err);
+    }
+  }
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }} data-testid="stay-prestations">
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Prestations</div>
+      {prestations.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Aucune prestation.</div>
+      )}
+      {prestations.map((p) => (
+        <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontSize: 12.5, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
+          <span>{p.label} ({p.quantity} × {p.unitPrice.toLocaleString('fr-MA')})</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontWeight: 600 }}>{p.lineTotal.toLocaleString('fr-MA')} MAD</span>
+            {editable && (
+              <button type="button" aria-label={`Retirer ${p.label}`} onClick={() => void remove(p.id)}
+                style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger, #c0392b)',
+                  fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
+            )}
+          </span>
+        </div>
+      ))}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6,
+        borderTop: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}>
+        <span>Total prestations</span>
+        <span data-testid="stay-prestations-total">{total.toLocaleString('fr-MA')} MAD</span>
+      </div>
+
+      {editable && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>Ajouter une prestation</div>
+          <Field>
+            <FieldLabel htmlFor="pr-act">Acte du catalogue</FieldLabel>
+            <select id="pr-act" aria-label="Choisir une prestation" value={actId}
+              onChange={(e) => pickAct(e.target.value)} style={SELECT_STYLE}>
+              <option value="">— Saisie libre —</option>
+              {catalog.map((c) => (
+                <option key={c.id} value={c.id}>{c.label} ({c.defaultPrice} MAD)</option>
+              ))}
+            </select>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="pr-label">Libellé</FieldLabel>
+            <Input id="pr-label" value={label} onChange={(e) => setLabel(e.target.value)}
+              placeholder="Oxygène, repas…" />
+          </Field>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Field style={{ flex: 1 }}>
+              <FieldLabel htmlFor="pr-price">Prix unitaire (MAD)</FieldLabel>
+              <Input id="pr-price" type="number" min="0" step="0.01" value={price}
+                onChange={(e) => setPrice(e.target.value)} placeholder="50" />
+            </Field>
+            <Field style={{ width: 90 }}>
+              <FieldLabel htmlFor="pr-qty">Quantité</FieldLabel>
+              <Input id="pr-qty" type="number" min="1" step="1" value={qty}
+                onChange={(e) => setQty(e.target.value)} />
+            </Field>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button type="button" variant="primary" disabled={adding} onClick={() => void add()}>
+              {adding ? 'Ajout…' : 'Ajouter'}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: () => void }) {
   const navigate = useNavigate();
   const { stay, isLoading } = useStayDetail(stayId);
@@ -233,6 +360,8 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
             <span>Total hébergement</span><span>{stay.chargeTotal.toLocaleString('fr-MA')} MAD</span>
           </div>
         </div>
+
+        <StayPrestationsSection stayId={stayId} editable={stay.status === 'EN_COURS' || stay.status === 'SORTI'} />
 
         {stay.status === 'EN_COURS' && (
           <>
