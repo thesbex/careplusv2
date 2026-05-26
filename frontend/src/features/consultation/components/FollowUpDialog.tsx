@@ -96,9 +96,15 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
 
   useEffect(() => {
     if (reasons.length > 0 && !reasonId) {
-      const ctrl = reasons.find((r) => /control|contrôle|suivi/i.test(r.label) || /CONTROL/i.test(r.code));
-      const fallback = reasons[0];
-      setReasonId(ctrl?.id ?? fallback?.id ?? '');
+      // Un RDV de contrôle doit porter le motif « Contrôle » : sinon le filtre
+      // « motif = Contrôle » de l'agenda ne remonte jamais ces RDV (ils étaient
+      // taggés « Consultation de suivi » faute de priorité). On vise donc d'abord
+      // le motif code CONTROLE / libellé « Contrôle », puis « suivi », puis le 1er.
+      const ctrl =
+        reasons.find((r) => /^CONTROL/i.test(r.code) || /contr[oô]le/i.test(r.label)) ??
+        reasons.find((r) => /suivi/i.test(r.label) || /SUIVI/i.test(r.code)) ??
+        reasons[0];
+      setReasonId(ctrl?.id ?? '');
     }
   }, [reasons, reasonId]);
 
