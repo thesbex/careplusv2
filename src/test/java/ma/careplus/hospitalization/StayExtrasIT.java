@@ -187,6 +187,49 @@ class StayExtrasIT {
         assertThat(r.getResponse().getContentAsByteArray().length).isGreaterThan(500);
     }
 
+    // QA10-1 — le CR de séjour doit honorer logo_position=WATERMARK (filigrane).
+    // Régression : le service ne cuisait pas l'alpha dans le PNG (openhtmltopdf
+    // ignore l'opacité CSS sur les rasters) → filigrane non appliqué. Ce test
+    // exerce le chemin WATERMARK (applyTransparency sur un vrai PNG) et vérifie
+    // que le PDF se génère bien.
+    @Test
+    @DisplayName("X3b. PDF compte-rendu avec logo WATERMARK → 200 %PDF (filigrane cuit côté serveur)")
+    void x3b_pdfWithWatermarkLogo() throws Exception {
+        jdbc.update("""
+                INSERT INTO configuration_clinic_settings (id, name, address, city, phone,
+                    agenda_strict_isolation, stay_billing_day_rule, logo_blob, logo_mime, logo_position)
+                VALUES (?, 'Clinique', 'Addr', 'Casa', '+212', FALSE, 'NUITS', ?, 'image/png', 'WATERMARK')
+                """, UUID.randomUUID(), pngBytes());
+
+        String b = bearer(med1Email);
+        String stayId = admit(b, med1Id);
+        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/discharge")
+                .header("Authorization", b).contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("dischargeType", "DOMICILE", "dischargeSummary", "RAS"))))
+                .andExpect(status().isOk());
+
+        byte[] pdf = mockMvc.perform(get("/api/hospitalization/stays/" + stayId + "/summary-pdf")
+                        .header("Authorization", b))
+                .andExpect(status().isOk())
+                .andExpect(c -> assertThat(c.getResponse().getContentType()).contains("application/pdf"))
+                .andReturn().getResponse().getContentAsByteArray();
+        assertThat(pdf.length).isGreaterThan(500);
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
+
+    /** Petit PNG 32×32 valide (décodable par ImageIO) pour exercer le filigrane. */
+    private static byte[] pngBytes() throws Exception {
+        java.awt.image.BufferedImage img =
+                new java.awt.image.BufferedImage(32, 32, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = img.createGraphics();
+        g.setColor(new java.awt.Color(0x0E, 0x7A, 0x6B));
+        g.fillRect(0, 0, 32, 32);
+        g.dispose();
+        java.io.ByteArrayOutputStream bos = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(img, "png", bos);
+        return bos.toByteArray();
+    }
+
     @Test
     @DisplayName("X4. règle JOURS_ENTAMES : 1 jour de séjour facturé 2 journées (vs 1 en NUITS)")
     void x4_dayRule() throws Exception {
