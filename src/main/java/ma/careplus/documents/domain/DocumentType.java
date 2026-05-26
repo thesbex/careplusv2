@@ -15,5 +15,7 @@ public enum DocumentType {
     /** Photo patient (avatar) — gérée via PatientPhotoController. QA5-3. */
     PHOTO,
     /** Résultat (PDF analyse, image radio) attaché à une ligne de prescription. V015. */
-    RESULTAT
+    RESULTAT,
+    /** Document de consentement patient généré à partir d'un modèle ou composé manuellement. QA9-13. */
+    CONSENTEMENT
 }

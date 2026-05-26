@@ -60,4 +60,17 @@ public interface PatientDocumentRepository extends JpaRepository<PatientDocument
                AND d.type = ma.careplus.documents.domain.DocumentType.RESULTAT
             """)
     Optional<PatientDocument> findActiveResult(@Param("docId") UUID docId);
+
+    /**
+     * Documents de consentement (CONSENTEMENT) d'un patient, triés du plus
+     * récent au plus ancien. QA9-13.
+     */
+    @Query("""
+            SELECT d FROM PatientDocument d
+             WHERE d.patientId = :patientId
+               AND d.deletedAt IS NULL
+               AND d.type = ma.careplus.documents.domain.DocumentType.CONSENTEMENT
+             ORDER BY d.uploadedAt DESC
+            """)
+    List<PatientDocument> findConsentsByPatient(@Param("patientId") UUID patientId);
 }

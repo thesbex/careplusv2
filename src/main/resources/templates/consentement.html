@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  Template PDF — Document de consentement patient. QA9-13.
+  Variables :
+    cabinet.{name,address,city,phone,inpe,cnom,establishmentTypeLabel}
+    cabinetLogoBase64 / cabinetLogoMime / cabinetLogoPosition
+    title           — Titre du document (ex. "Consentement acte opératoire")
+    body            — Texte du consentement (placeholders déjà substitués)
+    patient.fullName — Nom complet en majuscules
+    patient.cin      — CIN du patient
+    dateJour         — Date du jour (dd/MM/yyyy)
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+        }
+        .page {
+            padding: 20mm 22mm 28mm 22mm;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 18px;
+            display: table;
+            width: 100%;
+        }
+        .header-left {
+            display: table-cell;
+            width: 60%;
+        }
+        .header-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .cabinet-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .cabinet-meta {
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.5;
+        }
+        .doc-title {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #2563eb;
+            text-align: center;
+            letter-spacing: 0.06em;
+            margin: 20px 0 16px 0;
+        }
+        .patient-box {
+            background: #f0f4ff;
+            border: 1px solid #c7d2fe;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 18px;
+            font-size: 10pt;
+        }
+        .patient-box strong {
+            font-size: 11pt;
+        }
+        .issue-date {
+            text-align: right;
+            font-size: 10pt;
+            color: #555;
+            margin-bottom: 14px;
+        }
+        .consent-body {
+            font-size: 11pt;
+            line-height: 1.9;
+            text-align: justify;
+            white-space: pre-wrap;
+            margin-bottom: 30px;
+        }
+        .signature-block {
+            display: table;
+            width: 100%;
+            margin-top: 40px;
+        }
+        .sig-col {
+            display: table-cell;
+            width: 50%;
+            text-align: center;
+        }
+        .sig-label {
+            font-size: 10pt;
+            color: #444;
+            margin-bottom: 6px;
+        }
+        .sig-area {
+            border: 1px dashed #aaa;
+            height: 60px;
+            width: 160px;
+            margin: 0 auto;
+        }
+        .sig-name {
+            font-size: 9pt;
+            color: #888;
+            margin-top: 4px;
+        }
+        .footer {
+            border-top: 1px solid #c7d2fe;
+            padding-top: 10px;
+            margin-top: 40px;
+            font-size: 9pt;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- WATERMARK (position WATERMARK — alpha baked server-side) -->
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:fixed;left:0;right:0;top:90mm;text-align:center;pointer-events:none;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="width:110mm;max-height:90mm;opacity:0.1;" alt=""/>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;" alt="Logo"/>
+            <div class="cabinet-name"
+                 th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">
+                Cabinet Médical
+            </div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                <span>Tél : </span><span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCUMENT TITLE -->
+    <div class="doc-title" th:text="${title}">FORMULAIRE DE CONSENTEMENT</div>
+
+    <!-- ISSUE DATE -->
+    <div class="issue-date">
+        Fait le : <span th:text="${dateJour}">01/01/2026</span>
+    </div>
+
+    <!-- PATIENT BOX -->
+    <div class="patient-box">
+        <strong>Patient : </strong>
+        <span th:text="${patient.fullName}">NOM Prénom</span>
+        <span th:if="${patient.cin != null and !patient.cin.isEmpty()}">
+            &#160;|&#160; CIN : <span th:text="${patient.cin}">XXXXXXXX</span>
+        </span>
+    </div>
+
+    <!-- CONSENT BODY -->
+    <div class="consent-body" th:text="${body}">
+        Texte du consentement…
+    </div>
+
+    <!-- SIGNATURE BLOCK -->
+    <div class="signature-block">
+        <div class="sig-col">
+            <div class="sig-label">Signature du médecin</div>
+            <div class="sig-area"></div>
+            <div class="sig-name">&nbsp;</div>
+        </div>
+        <div class="sig-col">
+            <div class="sig-label">Signature du patient (Lu et approuvé)</div>
+            <div class="sig-area"></div>
+            <div class="sig-name" th:text="${patient.fullName}">&nbsp;</div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <span th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">Cabinet</span>
+        &#160;—&#160;
+        <span th:text="${cabinet.address}">Adresse</span>,
+        <span th:text="${cabinet.city}">Ville</span>
+        &#160;—&#160;
+        Tél : <span th:text="${cabinet.phone}">Phone</span>
+    </div>
+
+</div>
+</body>
+</html>
