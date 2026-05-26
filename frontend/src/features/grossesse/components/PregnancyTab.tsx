@@ -11,6 +11,7 @@
  * Si aucune grossesse en cours : empty state avec CTA "Déclarer".
  */
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -26,7 +27,7 @@ import {
 import { useCurrentPregnancy } from '../hooks/useCurrentPregnancy';
 import { usePregnancies } from '../hooks/usePregnancies';
 import { usePregnancyVisits } from '../hooks/usePregnancyVisits';
-import { usePregnancyUltrasounds } from '../hooks/usePregnancyUltrasounds';
+import { usePregnancyUltrasounds, downloadUltrasoundCrPdf } from '../hooks/usePregnancyUltrasounds';
 import { usePregnancyAlerts } from '../hooks/usePregnancyAlerts';
 import { usePregnancyPlan } from '../hooks/usePregnancyPlan';
 import { PregnancyAlertsBanner } from './PregnancyAlertsBanner';
@@ -419,6 +420,7 @@ function CurrentPregnancySection({
                 <th>SA</th>
                 <th>Conclusions</th>
                 <th>Corrige DPA</th>
+                <th>Compte-rendu</th>
               </tr>
             </thead>
             <tbody>
@@ -433,6 +435,9 @@ function CurrentPregnancySection({
                     {u.findings ?? '—'}
                   </td>
                   <td>{u.correctsDueDate ? 'Oui' : '—'}</td>
+                  <td>
+                    <UltrasoundCrPdfButton pregnancyId={pregnancy.id} ultrasoundId={u.id} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -440,6 +445,36 @@ function CurrentPregnancySection({
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Bouton de téléchargement du compte-rendu PDF d'une échographie.
+ * Gère son propre état "en cours" pour éviter les double-clics.
+ */
+function UltrasoundCrPdfButton({
+  pregnancyId,
+  ultrasoundId,
+}: {
+  pregnancyId: string;
+  ultrasoundId: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      disabled={busy}
+      aria-label="Télécharger le compte-rendu PDF"
+      onClick={() => {
+        setBusy(true);
+        downloadUltrasoundCrPdf(pregnancyId, ultrasoundId)
+          .catch(() => toast.error('Compte-rendu PDF indisponible.'))
+          .finally(() => setBusy(false));
+      }}
+    >
+      {busy ? '…' : 'Compte-rendu PDF'}
+    </Button>
   );
 }
 
