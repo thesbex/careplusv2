@@ -25,6 +25,7 @@ import { formatCoverage } from './components/PatientHeader';
 import { VaccinationCalendarTabMobile } from '@/features/vaccination/components/VaccinationCalendarTab.mobile';
 import { PregnancyTabMobile } from '@/features/grossesse/components/PregnancyTab.mobile';
 import { StaysTab } from '@/features/hospitalisation/components/StaysTab';
+import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import type { MobileDossierTab } from './types';
 
@@ -37,6 +38,7 @@ export default function DossierMobilePage() {
   const hospitalizationEnabled = clinicSettings?.hospitalizationEnabled ?? false;
   const [tab, setTab] = useState<MobileDossierTab>('historique');
   const [showEdit, setShowEdit] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
   const { consultations: patientConsultations } = useConsultations(
     raw?.id ? { patientId: raw.id } : {},
@@ -587,6 +589,16 @@ export default function DossierMobilePage() {
         )}
 
         {tab === 'admin' && (
+          <>
+          {/* QA9-13 — génération d'un consentement éclairé (mobile). */}
+          <button
+            type="button"
+            className="m-btn primary"
+            style={{ height: 42, marginBottom: 12, width: '100%' }}
+            onClick={() => setShowConsent(true)}
+          >
+            Générer un consentement
+          </button>
           <div className="m-card">
             {/* V044/coverage-fix — mutuelle was previously only editable, never
                 read-visible on mobile. User report 2026-05-17. */}
@@ -643,6 +655,7 @@ export default function DossierMobilePage() {
               </div>
             ))}
           </div>
+          </>
         )}
       </div>
 
@@ -652,6 +665,10 @@ export default function DossierMobilePage() {
           onOpenChange={setShowEdit}
           patient={raw}
         />
+      )}
+
+      {raw && (
+        <ConsentDialog open={showConsent} onOpenChange={setShowConsent} patientId={raw.id} />
       )}
     </MScreen>
   );
