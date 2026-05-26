@@ -316,7 +316,9 @@ public class CatalogController {
 
     public record MedicationFullView(
             UUID id, String commercialName, String dci, String form, String dosage,
-            String tags, boolean favorite, boolean active) {}
+            String tags, boolean favorite, boolean active,
+            /** V057 — prix de cession en interne (NULL = non facturable en interne). */
+            java.math.BigDecimal internalPrice) {}
 
     public record MedicationWriteRequest(
             @NotBlank @Size(max = 200) String commercialName,
@@ -325,7 +327,9 @@ public class CatalogController {
             @NotBlank @Size(max = 60) String dosage,
             @Size(max = 200) String tags,
             Boolean favorite,
-            Boolean active) {}
+            Boolean active,
+            /** V057 — prix de cession en interne (QA9-6). NULL = non facturable en interne. */
+            @jakarta.validation.constraints.DecimalMin("0.00") java.math.BigDecimal internalPrice) {}
 
     /**
      * Liste paginée pour l'écran Catalogue (recherche + tri par DCI puis nom).
@@ -339,7 +343,7 @@ public class CatalogController {
             @RequestParam(required = false, defaultValue = "200") int limit) {
         String trimmed = q == null ? "" : q.trim();
         StringBuilder sql = new StringBuilder(
-                "SELECT id, commercial_name, dci, form, dosage, tags, favorite, active "
+                "SELECT id, commercial_name, dci, form, dosage, tags, favorite, active, internal_price "
                 + "FROM catalog_medication WHERE active = TRUE");
         java.util.List<Object> args = new java.util.ArrayList<>();
         if (!trimmed.isEmpty()) {
@@ -363,7 +367,8 @@ public class CatalogController {
                         rs.getString("dosage"),
                         rs.getString("tags"),
                         rs.getBoolean("favorite"),
-                        rs.getBoolean("active")),
+                        rs.getBoolean("active"),
+                        rs.getBigDecimal("internal_price")),
                 args.toArray());
     }
 
@@ -384,16 +389,18 @@ public class CatalogController {
         UUID id = UUID.randomUUID();
         jdbc.update(
                 "INSERT INTO catalog_medication "
-                + "(id, commercial_name, dci, form, dosage, tags, favorite, active) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE)",
+                + "(id, commercial_name, dci, form, dosage, tags, favorite, active, internal_price) "
+                + "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, ?)",
                 id,
                 req.commercialName(), req.dci(), req.form(), req.dosage(),
                 req.tags(),
-                req.favorite() != null && req.favorite());
+                req.favorite() != null && req.favorite(),
+                req.internalPrice());
         return ResponseEntity.created(URI.create("/api/catalog/medications/" + id))
                 .body(new MedicationFullView(id, req.commercialName(), req.dci(),
                         req.form(), req.dosage(), req.tags(),
-                        req.favorite() != null && req.favorite(), true));
+                        req.favorite() != null && req.favorite(), true,
+                        req.internalPrice()));
     }
 
     @PutMapping("/medications/{id}")
@@ -404,10 +411,10 @@ public class CatalogController {
         int updated = jdbc.update(
                 "UPDATE catalog_medication SET "
                 + "commercial_name = ?, dci = ?, form = ?, dosage = ?, "
-                + "tags = ?, favorite = COALESCE(?, favorite), updated_at = now() "
+                + "tags = ?, favorite = COALESCE(?, favorite), internal_price = ?, updated_at = now() "
                 + "WHERE id = ?",
                 req.commercialName(), req.dci(), req.form(), req.dosage(),
-                req.tags(), req.favorite(), id);
+                req.tags(), req.favorite(), req.internalPrice(), id);
         if (updated == 0) return ResponseEntity.notFound().build();
         return ResponseEntity.noContent().build();
     }

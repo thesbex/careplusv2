@@ -281,6 +281,43 @@ public class BillingService {
                 totalAmount = totalAmount.add(price);
             }
 
+            // Step 2quater: Append internal pharmacy lines (V057 / QA9-7).
+            // Pour chaque ligne DRUG marquée "fournir en interne" (internal_dispense)
+            // dont le médicament expose un internal_price non-NULL, on ajoute une
+            // ligne facture internal_price × quantité (quantité par défaut 1). Si
+            // internal_price est NULL, on skip — le médecin facture à la main.
+            List<java.util.Map<String, Object>> pharmacyRows = jdbc.queryForList("""
+                    SELECT m.commercial_name AS med_name, m.dosage AS med_dosage,
+                           m.internal_price AS med_price, COALESCE(pl.quantity, 1) AS qty
+                      FROM clinical_prescription_line pl
+                      JOIN clinical_prescription p ON p.id = pl.prescription_id
+                      JOIN catalog_medication m ON m.id = pl.medication_id
+                     WHERE p.consultation_id = ?
+                       AND pl.internal_dispense = TRUE
+                       AND m.internal_price IS NOT NULL
+                    """, event.consultationId());
+            for (java.util.Map<String, Object> row : pharmacyRows) {
+                BigDecimal price = (BigDecimal) row.get("med_price");
+                if (price == null || price.compareTo(BigDecimal.ZERO) <= 0) continue;
+                int qty = ((Number) row.get("qty")).intValue();
+                if (qty <= 0) qty = 1;
+                BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(qty));
+                String medName = (String) row.get("med_name");
+                String dosage = (String) row.get("med_dosage");
+                String description = "Médicament (interne) : "
+                        + (medName != null ? medName : "—")
+                        + (dosage != null && !dosage.isBlank() ? " " + dosage : "");
+                InvoiceLine medLine = new InvoiceLine();
+                medLine.setInvoiceId(invoice.getId());
+                medLine.setPosition(position++);
+                medLine.setDescription(description);
+                medLine.setUnitPrice(price);
+                medLine.setQuantity(BigDecimal.valueOf(qty));
+                medLine.setLineTotal(lineTotal);
+                invoiceLineRepository.save(medLine);
+                totalAmount = totalAmount.add(lineTotal);
+            }
+
             // Step 3: Apply tier discount
             BigDecimal discountAmount = BigDecimal.ZERO;
             if (!"NORMAL".equals(tier)) {

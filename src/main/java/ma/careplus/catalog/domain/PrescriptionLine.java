@@ -107,6 +107,10 @@ public class PrescriptionLine {
     @Column(name = "internal_claimed_by")
     private UUID internalClaimedBy;
 
+    /** V057 — true => ligne médicament fournie par la pharmacie interne (facturée à la signature). */
+    @Column(name = "internal_dispense", nullable = false)
+    private boolean internalDispense = false;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -170,6 +174,8 @@ public class PrescriptionLine {
     public void setInternalAssignedAt(OffsetDateTime internalAssignedAt) { this.internalAssignedAt = internalAssignedAt; }
     public UUID getInternalClaimedBy() { return internalClaimedBy; }
     public void setInternalClaimedBy(UUID internalClaimedBy) { this.internalClaimedBy = internalClaimedBy; }
+    public boolean isInternalDispense() { return internalDispense; }
+    public void setInternalDispense(boolean internalDispense) { this.internalDispense = internalDispense; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

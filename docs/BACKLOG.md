@@ -489,6 +489,15 @@ Batch de 15 retours issus du fichier de suivi utilisateur. Format : **[BUG]** = 
 6. **QA9-10 / QA9-13** — bundler avec l'éditeur de documents/templates (F13, consentements).
 7. **QA9-14 / QA9-15** (RH + charges) — gros périmètres "back-office", brainstorming dédié avant dev.
 
+## QA wave 10 — 2026-05-26 (hospitalisation — retours Y. Boutaleb)
+
+Retours terrain sur le module hospitalisation livré le 25/05. Format : **[BUG]** / **[FEATURE]**.
+
+- [ ] **QA10-1 — Compte-rendu de séjour : config logo (filigrane/background) non appliquée** — **[BUG]** · Minor. *« Quand je télécharge le compte-rendu, le rapport se génère bien mais la configuration souhaitée (logo en background) n'est pas appliquée sur le document généré. »* Le PDF compte-rendu hospitalisation n'honore pas `logo_position=WATERMARK` (ni le logo en background). Vérifier le template Thymeleaf du CR séjour vs `ordonnance.html`/templates qui injectent déjà le filigrane (`clinic.logoPosition` / `cabinet.signaturePath`). Aligner le CR sur le même partial logo.
+- [ ] **QA10-2 — Prestations pendant l'hospitalisation (consultation, O₂, repas…) → association patient + facturation** — **[FEATURE]** · Minor. *« Des prestations peuvent être fournies lors de l'hospitalisation (une consultation, administration d'oxygène, repas…), comment seront-elles associées au patient ? et comment facturer ? »* Cadrer : lignes de prestation rattachées au `stay` (séjour) en plus du forfait journalier, cumulées sur la facture de séjour (réutiliser `catalog_act`/prestations + le pattern facturation séjour). À brainstormer (catalogue de prestations hospitalières, qui les saisit, quand).
+- [ ] **QA10-3 — Accès à l'historique d'hospitalisation après la sortie** — **[FEATURE]** · Minor. *« Une fois la personne n'est plus hospitalisée, il n'y a pas moyen de revenir à l'historique de l'hospitalisation effectuée. C'est normal ? »* ⚠️ **Partiellement adressé 2026-05-26** : l'onglet « Séjours » du dossier patient (desktop + mobile, livré ce jour) liste l'historique des séjours (statut SORTI/FACTURÉ inclus). À vérifier en QA que ça répond au besoin ; sinon ajouter un accès depuis la worklist hospitalisation (filtre « sortis » / archive).
+- [ ] **QA10-4 — « Générer facture de séjour » : toast succès mais facture absente de Facturation** — **[BUG]** · Minor. *« Quand je clique sur "Générer facture de séjour", message "Facture de séjour générée. Ouverture dans Facturation" mais dans la facturation je ne retrouve pas la facture. »* La facture de séjour est créée (endpoint `POST /hospitalization/stays/{id}/invoice`) mais n'apparaît pas dans la liste `/facturation`. Diagnostic probable : la facture séjour a un `consultation_id` NULL et/ou un statut/canal que le filtre de la liste factures exclut, ou la liste ne requête que les factures issues de consultation. Tracer la création vs le `GET /api/invoices` (search) — la facture séjour doit être listable.
+
 ## Clinical
 
 - Consultation amendment (v2, v3… chain) with full audit trace
