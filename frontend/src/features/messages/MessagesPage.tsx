@@ -689,20 +689,20 @@ function ConvoHeader({ convo }: { convo: Conversation }) {
       <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           {members.slice(0, 4).map((m, i) => (
-            <div
+            <UserAvatar
               key={m.id}
-              className="cp-avatar"
+              userId={m.id}
+              hasPhoto={m.hasPhoto ?? false}
+              initials={m.initials}
+              color={m.color}
+              size={26}
               style={{
-                width: 26,
-                height: 26,
+                borderRadius: '50%',
                 fontSize: 9.5,
-                background: m.color,
                 marginLeft: i === 0 ? 0 : -8,
                 border: '2px solid var(--surface)',
               }}
-            >
-              {m.initials}
-            </div>
+            />
           ))}
           {members.length > 4 && (
             <div
@@ -1553,12 +1553,14 @@ function MentionPickerPopover({
               borderRadius: 4,
             }}
           >
-            <div
-              className="cp-avatar"
-              style={{ width: 22, height: 22, fontSize: 9, background: m.color }}
-            >
-              {m.initials}
-            </div>
+            <UserAvatar
+              userId={m.id}
+              hasPhoto={m.hasPhoto ?? false}
+              initials={m.initials}
+              color={m.color}
+              size={22}
+              style={{ borderRadius: '50%', fontSize: 9 }}
+            />
             <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {m.name}
             </span>
