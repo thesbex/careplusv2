@@ -301,6 +301,44 @@ class ChatIT {
         assertThat(memberCount).isEqualTo(2); // creator + sec
     }
 
+    // QA9-4 (suivi .xlsx 2026-05-26) — « l'icône Patient du chat doit être activée
+    // et offrir une fonctionnalité ». Fonctionnalité livrée : joindre une fiche
+    // patient à un message (carte « Nom · PID · Ouvrir dossier » côté destinataire).
+    // Ce test verrouille le contrat backend : un message envoyé avec patientId
+    // renvoie l'objet patient attaché (id + nom).
+    @Test
+    void message_with_attached_patient_echoes_patient_card() throws Exception {
+        UUID patientId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO patient_patient (id, last_name, first_name, birth_date, version,
+                    number_children, status, created_at, updated_at)
+                VALUES (?, 'Cherkaoui', 'Ahmed', '1960-01-01', 0, 0, 'ACTIF', now(), now())
+                """, patientId);
+
+        String medAuth = bearer(medId);
+        MvcResult dm = mockMvc.perform(post("/api/chat/direct-messages")
+                        .header("Authorization", medAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"otherUserId\":\"" + secId + "\"}"))
+                .andExpect(status().isOk()).andReturn();
+        String dmId = objectMapper.readTree(dm.getResponse().getContentAsString()).get("id").asText();
+
+        // Envoi d'un message avec une fiche patient jointe.
+        mockMvc.perform(post("/api/chat/conversations/" + dmId + "/messages")
+                        .header("Authorization", medAuth)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"body\":\"Peux-tu programmer un contrôle ?\",\"patientId\":\"" + patientId + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patient.id").value(patientId.toString()))
+                .andExpect(jsonPath("$.patient.name").value(org.hamcrest.Matchers.containsString("Cherkaoui")));
+
+        // Et la fiche patient persiste : GET messages la renvoie aussi.
+        mockMvc.perform(get("/api/chat/conversations/" + dmId + "/messages")
+                        .header("Authorization", medAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].patient.id").value(patientId.toString()));
+    }
+
     @Test
     void read_receipt_visible_to_sender_after_recipient_marks_read() throws Exception {
         String medAuth = bearer(medId);
