@@ -108,6 +108,7 @@ const EMPTY_FORM: ClinicSettingsForm = {
   establishmentType: 'CABINET',
   imagingInternal: false,
   labInternal: false,
+  pharmacyInternal: false,
   hospitalizationEnabled: false,
 };
 
@@ -142,6 +143,7 @@ function CabinetTab() {
         establishmentType: settings.establishmentType ?? 'CABINET',
         imagingInternal: settings.imagingInternal ?? false,
         labInternal: settings.labInternal ?? false,
+        pharmacyInternal: settings.pharmacyInternal ?? false,
         hospitalizationEnabled: settings.hospitalizationEnabled ?? false,
       });
       setHydrated(true);
@@ -286,13 +288,23 @@ function CabinetTab() {
             />
             Laboratoire d'analyses interne
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
             <input
               type="checkbox"
               checked={!!form.imagingInternal}
               onChange={(e) => setField('imagingInternal', e.target.checked)}
             />
             Service de radiologie interne
+          </label>
+          {/* V057 (QA9-5) — pharmacie interne : active le prix interne sur le catalogue
+              médicaments + l'option "fournir en interne" à la prescription. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={!!form.pharmacyInternal}
+              onChange={(e) => setField('pharmacyInternal', e.target.checked)}
+            />
+            Pharmacie interne (l'établissement fournit des médicaments)
           </label>
         </div>
         <div

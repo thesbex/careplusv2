@@ -19,6 +19,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Plus, Search, Trash, Pill as PillIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import { CatalogueTabs } from './LabCataloguePage';
 import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
@@ -32,6 +33,8 @@ interface Medication {
   tags: string | null;
   favorite: boolean;
   active: boolean;
+  /** V057 — prix de cession en interne (null = non facturable en interne). */
+  internalPrice: number | null;
 }
 
 interface Form {
@@ -41,6 +44,8 @@ interface Form {
   dosage: string;
   tags: string;
   favorite: boolean;
+  /** V057 — chaîne pour l'input ; '' = pas de prix interne. */
+  internalPrice: string;
 }
 
 const EMPTY_FORM: Form = {
@@ -50,6 +55,7 @@ const EMPTY_FORM: Form = {
   dosage: '',
   tags: '',
   favorite: false,
+  internalPrice: '',
 };
 
 const NAV_MAP = {
@@ -80,6 +86,8 @@ export default function CataloguePage() {
   const [tagFilter, setTagFilter] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const { settings } = useClinicSettings();
+  const pharmacyInternal = settings?.pharmacyInternal ?? false;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -133,6 +141,7 @@ export default function CataloguePage() {
       dosage: m.dosage,
       tags: m.tags ?? '',
       favorite: m.favorite,
+      internalPrice: m.internalPrice != null ? String(m.internalPrice) : '',
     });
     setDrawerOpen(true);
   }
@@ -150,6 +159,8 @@ export default function CataloguePage() {
         tags: form.tags.trim() || null,
         favorite: form.favorite,
         active: true,
+        // V057 — prix interne : '' → null (non facturable en interne).
+        internalPrice: form.internalPrice.trim() ? Number(form.internalPrice) : null,
       };
       if (editingId) {
         await api.put(`/catalog/medications/${editingId}`, body);
@@ -405,6 +416,16 @@ export default function CataloguePage() {
                 />
                 Marquer comme favori (apparaît en haut des suggestions)
               </label>
+              {/* V057 (QA9-6) — prix interne, visible seulement si la pharmacie interne est activée. */}
+              {pharmacyInternal && (
+                <Field
+                  label="Prix de cession en interne (MAD)"
+                  value={form.internalPrice}
+                  onChange={(v) => setForm({ ...form, internalPrice: v.replace(/[^0-9.]/g, '') })}
+                  placeholder="ex. 45.00 — vide = non facturable en interne"
+                  hint="Si renseigné, ce prix est ajouté à la facture de consultation quand le médecin coche « fournir en interne » à la prescription."
+                />
+              )}
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>

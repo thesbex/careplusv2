@@ -26,6 +26,8 @@ export interface ClinicSettings {
   imagingInternal?: boolean;
   /** V034 — capacité laboratoire interne. */
   labInternal?: boolean;
+  /** V057 — capacité pharmacie interne (fourniture de médicaments). */
+  pharmacyInternal?: boolean;
   /** V037 — true si un logo est configuré (bytes via GET /settings/clinic/logo). */
   hasLogo?: boolean;
   /** V042 — Registre du Commerce. */
@@ -52,6 +54,8 @@ export interface ClinicSettingsForm {
   establishmentType?: EstablishmentType;
   imagingInternal?: boolean;
   labInternal?: boolean;
+  /** V057 — capacité pharmacie interne. */
+  pharmacyInternal?: boolean;
   /** V042 — mentions légales étendues. Optional (null = ne pas toucher). */
   rc?: string;
   ifNo?: string;
