@@ -85,5 +85,6 @@ export type MobileDossierTab =
   | 'rx'
   | 'vaccination'
   | 'grossesse'
+  | 'sejours'
   | 'factu'
   | 'admin';

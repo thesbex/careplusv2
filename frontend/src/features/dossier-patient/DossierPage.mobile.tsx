@@ -24,6 +24,8 @@ import { EditPatientMobileSheet } from './components/EditPatientMobileSheet';
 import { formatCoverage } from './components/PatientHeader';
 import { VaccinationCalendarTabMobile } from '@/features/vaccination/components/VaccinationCalendarTab.mobile';
 import { PregnancyTabMobile } from '@/features/grossesse/components/PregnancyTab.mobile';
+import { StaysTab } from '@/features/hospitalisation/components/StaysTab';
+import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
@@ -31,6 +33,8 @@ export default function DossierMobilePage() {
   const navigate = useNavigate();
   const { patient, raw, isLoading } = usePatient(id);
   const { insurances } = useInsurances();
+  const { settings: clinicSettings } = useClinicSettings();
+  const hospitalizationEnabled = clinicSettings?.hospitalizationEnabled ?? false;
   const [tab, setTab] = useState<MobileDossierTab>('historique');
   const [showEdit, setShowEdit] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
@@ -266,6 +270,7 @@ export default function DossierMobilePage() {
               'rx',
               'vaccination',
               ...(patient.sex === 'F' ? (['grossesse'] as MobileDossierTab[]) : []),
+              ...(hospitalizationEnabled ? (['sejours'] as MobileDossierTab[]) : []),
               'factu',
               'admin',
             ] as MobileDossierTab[]
@@ -284,6 +289,8 @@ export default function DossierMobilePage() {
                   ? 'Vaccination'
                   : t === 'grossesse'
                   ? 'Grossesse'
+                  : t === 'sejours'
+                  ? 'Séjours'
                   : t === 'factu'
                   ? `Factures (${patientInvoices.length})`
                   : 'Admin.';
@@ -571,6 +578,12 @@ export default function DossierMobilePage() {
 
         {tab === 'grossesse' && raw && patient.sex === 'F' && (
           <PregnancyTabMobile patientId={raw.id} />
+        )}
+
+        {tab === 'sejours' && raw && hospitalizationEnabled && (
+          <div className="m-card">
+            <StaysTab patientId={raw.id} />
+          </div>
         )}
 
         {tab === 'admin' && (

@@ -446,6 +446,49 @@ Batch de retours utilisateur live (médecin propriétaire) — usage IHM en cond
 #### Tech debt — qualité contractuelle
 - [ ] **TD-1 — Activer Jackson `FAIL_ON_UNKNOWN_PROPERTIES = true`** côté backend Spring. Aujourd'hui désactivé par défaut → tout DTO frontend qui envoie un mauvais nom de champ est silencieusement ignoré (HTTP 201, DB NULL). Ce trou a permis 5 bugs grossesse à se cacher (BUG-7..11 du QA wave 8) avant qu'on les diagnostique via IT directes. Fix : `spring.jackson.deserialization.fail-on-unknown-properties=true` dans application.yml. **Risque** : peut casser des écritures legacy si des clients envoient des champs en trop ; auditer les payloads existants avant push, ou activer par profil (dev d'abord). Bonus : ajouter une assertion contract dans chaque IT POST qui envoie un champ inconnu et attend 400 (catch tout futur regression).
 
+## QA wave 9 — 2026-05-26 (suivi .xlsx Y. Boutaleb)
+
+Batch de 15 retours issus du fichier de suivi utilisateur. Format : **[BUG]** = comportement actuel ≠ attendu · **[FEATURE]** = nouvelle capacité. Statut source = *Waiting* (aucun encore démarré). Priorité reprise de la colonne du fichier (Minor sauf QA9-9 = **Major**).
+
+### Chat / Messagerie (4)
+
+- [ ] **QA9-1 — Photo de profil des collègues dans les contacts de chat** — **[BUG]** · Minor. *« La photo d'un collègue n'apparaît pas dans les contacts de chat, il faut mettre sa photo de profil. »* Le chat affiche probablement des initiales au lieu de la photo de profil utilisateur. Brancher l'avatar utilisateur (réutiliser le pattern `PatientAvatar` / endpoint photo de profil staff s'il existe, sinon créer `GET /api/users/{id}/photo`). Lié à [[chat-v1-shipped]] (ADR-035 + V048).
+- [ ] **QA9-2 — Badge "messages non lus" ne se décrémente pas à la lecture** — **[BUG]** · Minor. *« Le nombre de message affiché dans le menu Messages ne se décrémente pas si les messages sont lus. »* Le compteur du menu reste figé après lecture. Diagnostic probable : `mark-read` côté serveur OK mais (a) le badge n'invalide pas son cache React Query, ou (b) la requête de count ignore le flag `read_at`. Tracer write (mark-read) vs read (count) sur le même thread.
+- [ ] **QA9-3 — Photo de profil dans la liste "Nouveau message"** — **[FEATURE]** · Minor. *« Dans l'écran de nouveau message où on choisit un interlocuteur, rajoute l'image de profil des utilisateurs dans chaque élément de la liste du personnel. »* Même source d'avatar que QA9-1. Bundler les deux (même composant avatar staff).
+- [ ] **QA9-4 — Icône "patient" inerte dans la barre du chat → activer + fonctionnalité** — **[FEATURE]** · Minor. *« Dans l'écran de chat, à droite du bouton de chargement de documents, une icône avec le libellé "patient". À quoi sert-elle ? Je veux que tu l'actives et offres une fonctionnalité derrière. »* Aujourd'hui placeholder mort (cf. règle "ne jamais shipper un CTA sans handler", QA2-5). **Fonction proposée** : partager une référence patient dans la conversation (picker patient → carte patient cliquable dans le fil → ouvre le dossier, sous garde de cloisonnement). **À cadrer** : confidentialité — ne partager qu'avec un destinataire ayant accès au dossier.
+
+### Pharmacie interne / médicaments fournis par l'établissement (3 — bundle cohérent)
+
+- [ ] **QA9-5 — Capability "l'établissement fournit des médicaments en interne"** — **[FEATURE]** · Minor. *« L'établissement peut aussi fournir des médicaments en interne et les fournir aux patients, ceci doit être indiqué dans l'écran de paramétrage de l'administrateur. »* Pattern identique à la capability `hospitalization_enabled` (cf. [[hospitalisation-module-complet-2026-05-25]]) : flag `internal_pharmacy_enabled` dans le paramétrage admin, gated par `establishment_type`, invisible pour un cabinet GP simple.
+- [ ] **QA9-6 — Prix des médicaments fournis (comme radiologie/imagerie)** — **[FEATURE]** · Minor. *« Si l'établissement peut fournir les médicaments, il faut pouvoir associer un prix de médicament comme c'est déjà fait avec radiologie/imagerie. »* Étendre le catalogue : prix/tarif sur `catalog_medication` (réutiliser le pattern `catalog_tariff` des actes/imagerie). Visible seulement si QA9-5 activé.
+- [ ] **QA9-7 — Prescription "fournie en interne" → mise à jour automatique de la facture** — **[FEATURE]** · Minor. *« Si l'établissement fournit les médicaments, il faut indiquer lors de la prescription s'il veut qu'elle soit fournie en interne et, si oui, mettre à jour la facture avec l'ensemble des médicaments prescrits lors de la consultation. »* À la prescription : toggle "fournir en interne" par ligne (ou global ordonnance) → émet des lignes de facture (prix QA9-6) sur l'invoice de la consultation via le module billing. Dépend de QA9-5 + QA9-6. **À cadrer** : décrément du stock interne (lien module stock QA7-1) ?
+
+### Consultation / dossier (3)
+
+- [ ] **QA9-8 — Supprimer une prescription tant que la consultation n'est pas clôturée** — **[FEATURE]** · Minor. *« Le médecin peut se tromper et prescrire une mauvaise prescription, je veux pouvoir supprimer une prescription tant que la consultation n'est pas clôturée. »* Bouton supprimer sur chaque prescription dont la consultation est en `BROUILLON`/non signée et appartient au médecin courant. Garde-fou : interdit après signature (immuabilité légale). Cascade éventuelle sur facture brouillon. Cohérent avec F6 (suppression consultation brouillon).
+- [ ] **QA9-9 — Hospitalisation du patient (clinique avec lits)** — **[FEATURE MAJOR]** · ⚠️ **DÉJÀ LIVRÉ 2026-05-25**. Demande : *« Un patient peut être hospitalisé… paramétrage à indiquer, prestation à part avec coût quotidien, chambre dédiée, paramétrage des chambres, profil spécial pour l'admission… l'application doit être passe-partout : cabinet → centre médical → clinique avec hospitalisation. »* **Couvert** par le module hospitalisation complet (V054+V055+V056, capability `hospitalization_enabled` gated `establishment_type`, référentiel services/chambres/lits, admission/transfert/sortie ADT, facture coût quotidien, constantes au lit, PDF compte-rendu, cloisonnement, onglet Séjours). Voir [[hospitalisation-module-complet-2026-05-25]] + `docs/plans/2026-05-25-hospitalisation-design.md`. **Reste à confirmer en QA terrain avec l'utilisateur** que le livré couvre bien son besoin (profil/rôle d'admission notamment : choix = secrétaire = bureau des admissions + permission `HOSPITALIZATION_ADMIT`, pas de rôle dédié imposé).
+- [ ] **QA9-10 — Notes professionnelles / courriers à un confrère externe, associées à la consultation** — **[FEATURE]** · Minor. *« Chaque médecin devrait pouvoir créer des notes professionnelles pour un autre médecin externe (une lettre détaillant le cas et le motif), les utiliser/éditer lors d'une consultation, et cette note est associée à la consultation. »* Recoupe **F13** (référentiel spécialistes + lettre confrère type `LETTRE_CONFRERE` dans `patient_document`). Différence : ici l'accent est sur la rédaction libre de la lettre et son rattachement à la `consultation_id`. À bundler avec F13.
+
+### Liste d'attente multi-praticien (2)
+
+- [ ] **QA9-11 — Salle d'attente en colonnes par médecin (secrétaire multi-praticien) + cloisonnement** — **[FEATURE]** · Minor. *« Si une secrétaire gère plusieurs médecins, la liste d'attente devrait être divisée en colonnes pour séparer les visites par médecin. Un médecin ne voit que ses consultations (si cloisonnement activé). »* S'appuie sur la direction multi-praticien (cf. [[multi-practitioner-direction]], section *Multi-practitioner cabinet* du backlog) et le cloisonnement (cf. [[cloisonnement-grossesse-v039]] / ADR-032). UI : colonnes Kanban par praticien quand ≥2 MEDECIN actifs ; vue mono filtrée pour un médecin cloisonné.
+- [ ] **QA9-12 — Ajout patient spontané (sans RDV) en salle d'attente, drag dans la bonne colonne** — **[FEATURE]** · Minor. *« Un patient peut se présenter spontanément sans rendez-vous ; la secrétaire doit pouvoir le rajouter à l'écran de salle d'attente (en le glissant directement dans la bonne colonne si elle gère plusieurs médecins). »* Dépend de QA9-11 (les colonnes). Bouton "Ajouter un patient sans RDV" → recherche/création patient → place dans la file du médecin choisi (drag-drop entre colonnes).
+
+### Administration / RH / charges (3)
+
+- [ ] **QA9-13 — Modèles de consentement par type, créés par l'admin, réutilisés par les médecins** — **[FEATURE]** · Minor. *« L'administrateur peut créer un ou plusieurs modèles de consentement selon un type, réutilisables par les médecins pour édition et impression : partage du dossier patient, type d'opération… »* Table `consent_template` (type, libellé, corps Thymeleaf/variables) gérée en Paramétrage admin ; côté consultation/dossier, le médecin choisit un modèle → édite → imprime → trace dans `patient_document` (nouveau type `CONSENTEMENT`). Réutilise le pattern éditeur de documents (cf. items "Document templates editor").
+- [ ] **QA9-14 — Module personnel/RH : utilisateurs sans accès appli + salaire + congés auto** — **[FEATURE]** · Minor *(« HADI WA7CH number 2 » — gros périmètre)*. *« Créer des utilisateurs sans accès à l'application pour suivre paiement, congés, absences, retards (agent de sécurité, femme de ménage, infirmière…). L'admin définit le salaire, la date de recrutement ; le système met à jour automatiquement le solde de congé de 1,5 jour par mois travaillé ; administrer salaire et congés. Les profils assistante/secrétaire sont aussi concernés. »* Périmètre à cadrer (brainstorming requis) : entité `staff_member` (login optionnel/désactivé, poste, date recrutement, salaire), accrual congés 1,5 j/mois automatique (job mensuel), suivi absences/retards, fiche de paie simple. **À trancher** : lien avec `identity_user` existant (assistante/secrétaire = déjà des users) vs entité RH séparée. *Suggestions bienvenues de l'utilisateur.*
+- [ ] **QA9-15 — Écran de gestion des charges (eau/électricité, internet, loyer, syndic, réparations…)** — **[FEATURE]** · Minor. *« L'administrateur devrait avoir un écran pour définir les charges : eau/électricité, internet, loyer, frais de syndic, réparation… »* Entité `expense` (catégorie, libellé, montant, périodicité ponctuelle/mensuelle/annuelle, date, fournisseur, justificatif PDF optionnel). Écran admin CRUD + récap mensuel. Brique d'un futur dashboard financier (cf. F1) : CA − charges = résultat. *Suggestions bienvenues de l'utilisateur.*
+
+### Priorisation suggérée QA9
+1. **QA9-2 / QA9-1 / QA9-3** (chat : badge + avatars) — quick wins, bundler les 3 (même source avatar staff).
+2. **QA9-8** (suppression prescription brouillon) — quick win, gain qualité clinique immédiat.
+3. **QA9-9** — vérifier en QA que le module hospitalisation livré couvre la demande ; clôturer ou rouvrir selon retour.
+4. **QA9-5 → QA9-7** (pharmacie interne) — bundle cohérent (capability → prix → facturation), ~1 sprint.
+5. **QA9-11 + QA9-12** (salle d'attente multi-praticien + walk-in) — bundle, dépend du chantier multi-praticien.
+6. **QA9-10 / QA9-13** — bundler avec l'éditeur de documents/templates (F13, consentements).
+7. **QA9-14 / QA9-15** (RH + charges) — gros périmètres "back-office", brainstorming dédié avant dev.
+
 ## Clinical
 
 - Consultation amendment (v2, v3… chain) with full audit trace
@@ -636,6 +679,13 @@ Was "Angular 17 + PrimeNG after backend MVP". Superseded by the hi-fi React prot
   existant, rôle `INFIRMIER` + permission `HOSPITALIZATION_ADMIT` (pas de rôle `ADMISSION`
   imposé — la secrétaire = bureau des admissions dans une petite clinique). 5 slices
   (~10-12 j). 7 décisions à valider listées dans le design doc (D1-D7).
+
+## Hospitalisation — parité mobile (audit 2026-05-26)
+
+Le module hospitalisation (livré 2026-05-25) a un écran `/hospitalisation` responsive complet (worklist + admission + détail séjour via `HospitalisationPage.mobile.tsx`). Deux surfaces secondaires restaient desktop-only ; audit + correction partielle ce jour :
+
+- ~~**Onglet "Séjours" du dossier patient absent sur mobile**~~ — **livré 2026-05-26**. `StaysTab` (auto-contenu, styles inline) ajouté au `DossierPage.mobile.tsx`, gated `hospitalizationEnabled` (parité avec le desktop), onglet "Séjours" injecté dans la barre scrollable.
+- [ ] **Référentiel chambres/lits (`ChambresLitsTab`) desktop-only** — le CRUD services/chambres/lits n'est monté que dans `ParametragePage.tsx` (desktop). `ParametragePage.mobile.tsx` ne propose qu'un lien vers `/hospitalisation`, pas la config des lits. Gap acceptable (travail de paramétrage typiquement fait sur desktop, aligné sur l'item "Mobile parity Paramétrage : desktop-only") mais à porter si un cabinet pilote gère ses lits depuis une tablette.
 
 ## Not in our plan but worth considering
 
