@@ -112,8 +112,10 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: 'Administrateur',
   ASSISTANT: 'Assistant(e)',
   SECRETAIRE: 'Secrétaire',
+  RECEPTIONNISTE: 'Réceptionniste',
+  INFIRMIER: 'Infirmier(ère)',
 };
-const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE'];
+const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE', 'RECEPTIONNISTE', 'INFIRMIER'];
 
 export function Sidebar({
   active = 'agenda',

@@ -28,9 +28,17 @@ import {
   type AdminUser,
 } from '../hooks/useUsers';
 import { usePractitioners } from '../hooks/usePractitioners';
+import { useClinicSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/lib/auth/authStore';
 
-type UserRole = 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN' | 'LAB' | 'RADIO';
+type UserRole =
+  | 'SECRETAIRE'
+  | 'ASSISTANT'
+  | 'MEDECIN'
+  | 'ADMIN'
+  | 'LAB'
+  | 'RADIO'
+  | 'RECEPTIONNISTE';
 
 interface UserDraft {
   email: string;
@@ -64,6 +72,15 @@ export function UtilisateursTab() {
   const { deactivateUser, isPending: isDeactivating } = useDeactivateUser();
   const { resetPassword, isPending: isResetting } = useResetUserPassword();
   const { practitioners } = usePractitioners();
+  const { settings } = useClinicSettings();
+  // Le rôle RÉCEPTIONNISTE (bureau des admissions) n'a de sens que lorsque
+  // l'établissement hospitalise (clinique / hôpital). On ne le propose dans le
+  // dropdown que dans ce cas — les utilisateurs existants qui le portent restent
+  // affichés (cf. liste plus bas, qui rend les codes tels quels).
+  const hospitalizationEnabled =
+    settings?.hospitalizationEnabled === true ||
+    settings?.establishmentType === 'CLINIQUE' ||
+    settings?.establishmentType === 'HOPITAL';
   const activePractitioners = practitioners.filter((p) => p.active);
   const allActiveIds = activePractitioners.map((p) => p.id);
   const showAssignmentSection = activePractitioners.length >= 2;
@@ -350,6 +367,12 @@ export function UtilisateursTab() {
                     ces flags. */}
                 <option value="LAB">Technicien laboratoire</option>
                 <option value="RADIO">Technicien radiologie</option>
+                {/* Réceptionniste = bureau des admissions, gated sur la capacité
+                    hospitalisation (clinique / hôpital). On garde l'option si on
+                    édite un utilisateur qui la porte déjà, même capacité désactivée. */}
+                {(hospitalizationEnabled || draft.role === 'RECEPTIONNISTE') && (
+                  <option value="RECEPTIONNISTE">Réceptionniste</option>
+                )}
               </select>
             </Field>
             <Field>

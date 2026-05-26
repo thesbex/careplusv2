@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<!--
+  Template PDF — Compte-rendu d'échographie obstétricale.
+  Variables :
+    cabinet.{name,address,city,phone,inpe,cnom,establishmentTypeLabel}
+    cabinetLogoBase64 / cabinetLogoMime / cabinetLogoPosition
+    doctor.fullName     — Nom complet du médecin (ex. "Dr. Prénom NOM")
+    specialty           — Spécialité du médecin (nullable)
+    patient.fullName    — Nom complet patient (MAJUSCULES)
+    patient.cin         — CIN (nullable / vide si absent)
+    exam.kindLabel      — Libellé du type d'échographie
+    exam.performedAt    — Date de réalisation (dd/MM/yyyy)
+    exam.terme          — Terme à l'examen ("12 SA + 2 j")
+    exam.dpa            — DPA grossesse (dd/MM/yyyy, nullable)
+    exam.correctsDueDate — boolean
+    biometry            — Map<String,String> clés : bip, pc, dat, lf, eg, percentile (nullable, clés manquantes ignorées)
+    findings            — Texte libre du compte-rendu (nullable)
+    dateJour            — Date d'impression (dd/MM/yyyy)
+    signatureBase64     — Signature scannée (nullable)
+    signatureMime       — MIME de la signature (nullable)
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+        }
+        .page {
+            padding: 20mm 22mm 28mm 22mm;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 18px;
+            display: table;
+            width: 100%;
+        }
+        .header-left {
+            display: table-cell;
+            width: 60%;
+        }
+        .header-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .cabinet-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .cabinet-meta {
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.5;
+        }
+        .doc-title {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #2563eb;
+            text-align: center;
+            letter-spacing: 0.06em;
+            margin: 20px 0 16px 0;
+        }
+        .issue-date {
+            text-align: right;
+            font-size: 10pt;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2563eb;
+            margin: 16px 0 6px 0;
+            border-bottom: 1px solid #c7d2fe;
+            padding-bottom: 3px;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11pt;
+            margin-bottom: 12px;
+        }
+        .info-table td {
+            padding: 4px 8px;
+            vertical-align: top;
+        }
+        .info-table td.label {
+            font-weight: bold;
+            color: #374151;
+            width: 38%;
+            white-space: nowrap;
+        }
+        .info-table td.value {
+            color: #1a1a1a;
+        }
+        table.biometry {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10pt;
+            margin-bottom: 12px;
+        }
+        table.biometry th {
+            background: #f1f5fb;
+            border: 1px solid #d7dde8;
+            padding: 5px 8px;
+            text-align: left;
+        }
+        table.biometry td {
+            border: 1px solid #d7dde8;
+            padding: 5px 8px;
+        }
+        .findings {
+            font-size: 11pt;
+            line-height: 1.9;
+            text-align: justify;
+            white-space: pre-wrap;
+            margin-bottom: 40px;
+            min-height: 30px;
+        }
+        .footer {
+            border-top: 1px solid #c7d2fe;
+            padding-top: 10px;
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left {
+            display: table-cell;
+            width: 60%;
+            font-size: 9pt;
+            color: #777;
+        }
+        .footer-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+        }
+        .signature-area {
+            border: 1px dashed #aaa;
+            height: 50px;
+            width: 160px;
+            margin-left: auto;
+            display: block;
+            text-align: center;
+            padding-top: 16px;
+            font-size: 9pt;
+            color: #888;
+        }
+        .dpa-corrected {
+            font-size: 9pt;
+            color: #2563eb;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- WATERMARK (alpha baked server-side — openhtmltopdf ignore CSS opacity sur rasters) -->
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:fixed;left:0;right:0;top:90mm;text-align:center;pointer-events:none;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="width:110mm;max-height:90mm;opacity:0.1;" alt=""/>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;" alt="Logo"/>
+            <div class="cabinet-name"
+                 th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">
+                Cabinet Médical
+            </div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                <span>Tél : </span><span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom NOM</strong><br/>
+                <th:block th:if="${specialty != null and !#strings.isEmpty(specialty)}">
+                    <em style="color:#2563eb;" th:text="${specialty}">Spécialité</em><br/>
+                </th:block>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCUMENT TITLE -->
+    <div class="doc-title">COMPTE-RENDU D'ÉCHOGRAPHIE OBSTÉTRICALE</div>
+
+    <!-- ISSUE DATE -->
+    <div class="issue-date">
+        Édité le : <span th:text="${dateJour}">01/01/2026</span>
+    </div>
+
+    <!-- PATIENT BLOCK -->
+    <div class="section-title">Patiente</div>
+    <table class="info-table">
+        <tr>
+            <td class="label">Nom complet :</td>
+            <td class="value" th:text="${patient.fullName}">PRÉNOM NOM</td>
+        </tr>
+        <tr th:if="${patient.cin != null and !#strings.isEmpty(patient.cin)}">
+            <td class="label">CIN :</td>
+            <td class="value" th:text="${patient.cin}">AB123456</td>
+        </tr>
+    </table>
+
+    <!-- EXAM BLOCK -->
+    <div class="section-title">Examen</div>
+    <table class="info-table">
+        <tr>
+            <td class="label">Type d'échographie :</td>
+            <td class="value" th:text="${exam.kindLabel}">Échographie de datation (T1)</td>
+        </tr>
+        <tr>
+            <td class="label">Date de réalisation :</td>
+            <td class="value" th:text="${exam.performedAt}">01/01/2026</td>
+        </tr>
+        <tr>
+            <td class="label">Terme à l'examen :</td>
+            <td class="value" th:text="${exam.terme}">12 SA + 2 j</td>
+        </tr>
+        <tr th:if="${exam.dpa != null and !#strings.isEmpty(exam.dpa)}">
+            <td class="label">DPA de la grossesse :</td>
+            <td class="value">
+                <span th:text="${exam.dpa}">01/09/2026</span>
+                <span class="dpa-corrected" th:if="${exam.correctsDueDate}"> (corrigée par cet examen)</span>
+            </td>
+        </tr>
+    </table>
+
+    <!-- BIOMETRY BLOCK -->
+    <div class="section-title" th:if="${biometry != null and !biometry.isEmpty()}">Biométrie</div>
+    <table class="biometry" th:if="${biometry != null and !biometry.isEmpty()}">
+        <thead>
+            <tr>
+                <th>Mesure</th>
+                <th>Valeur</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:if="${biometry['bip'] != null}">
+                <td>BIP (Diamètre bipariétal)</td>
+                <td th:text="${biometry['bip']} + ' mm'">— mm</td>
+            </tr>
+            <tr th:if="${biometry['pc'] != null}">
+                <td>PC (Périmètre céphalique)</td>
+                <td th:text="${biometry['pc']} + ' mm'">— mm</td>
+            </tr>
+            <tr th:if="${biometry['dat'] != null}">
+                <td>DAT/DABD (Diamètre abdominal transverse)</td>
+                <td th:text="${biometry['dat']} + ' mm'">— mm</td>
+            </tr>
+            <tr th:if="${biometry['lf'] != null}">
+                <td>LF (Longueur fémorale)</td>
+                <td th:text="${biometry['lf']} + ' mm'">— mm</td>
+            </tr>
+            <tr th:if="${biometry['eg'] != null}">
+                <td>EG (Âge gestationnel estimé)</td>
+                <td th:text="${biometry['eg']} + ' j'">— j</td>
+            </tr>
+            <tr th:if="${biometry['percentile'] != null}">
+                <td>Percentile</td>
+                <td th:text="${biometry['percentile']} + 'e percentile'">—</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- FINDINGS -->
+    <div class="section-title">Compte-rendu</div>
+    <div class="findings"
+         th:if="${findings != null and !#strings.isEmpty(findings)}"
+         th:text="${findings}">
+        Résultats de l'examen…
+    </div>
+    <div class="findings"
+         th:if="${findings == null or #strings.isEmpty(findings)}"
+         style="color:#888;font-style:italic;">
+        Aucun compte-rendu textuel saisi.
+    </div>
+
+    <!-- FOOTER : signature médecin -->
+    <div class="footer">
+        <div class="footer-left">
+            <img th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'FOOTER'}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:42px;max-width:120px;display:block;margin-bottom:4px;"
+                 alt="Logo"/>
+            Document généré par CarePlus &mdash; confidentiel médical
+        </div>
+        <div class="footer-right">
+            <th:block th:if="${signatureBase64 != null}">
+                <div style="text-align:right;font-size:9pt;color:#555;">
+                    <span th:text="${doctor.fullName}">Dr. Prénom NOM</span>
+                    <div th:if="${specialty != null and !#strings.isEmpty(specialty)}"
+                         style="font-style:italic;color:#2563eb;font-size:9pt;"
+                         th:text="${specialty}">Spécialité</div>
+                </div>
+                <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
+                     style="max-width:200px;max-height:80px;display:block;margin-left:auto;margin-top:4px;"
+                     alt="Signature du médecin"/>
+            </th:block>
+            <div class="signature-area" th:if="${signatureBase64 == null}">Cachet du médecin</div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

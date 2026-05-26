@@ -4,10 +4,19 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **QA9-14 HR/Personnel module LIVRÉ (V061, 11 IT verts)** sur `feat/qa9-backlog`.
-**Last update**: 2026-05-26 (session QA9-14 HR staff scaffold)
-**Build**: 11 IT verts (HrStaffIT, 32 s). Flyway à v061. Aucune régression.
+**Phase**: Post-pilote — **QA-grossesse PDF compte-rendu échographie LIVRÉ (aucune migration, 4 IT verts)** sur `feat/qa9-backlog`.
+**Last update**: 2026-05-26 (session QA-grossesse CR PDF)
+**Build**: 4 IT verts (UltrasoundCrPdfIT, 18 s). Flyway à v061. Aucune régression.
 **Next action**: frontend HR (UI gestion personnel — liste staff + fiche + solde congés) ou retour sur backlog QA10.
+
+### 2026-05-26 — Compte-rendu PDF échographie obstétricale (QA-grossesse)
+
+**Shipped** :
+- **Pas de migration** — toutes les données existent déjà (`pregnancy_ultrasound`, `pregnancy`, `patient_patient`).
+- **Template Thymeleaf** `src/main/resources/templates/echographie-cr.html` : en-tête cabinet + logo/watermark (alpha-baked), titre "COMPTE-RENDU D'ÉCHOGRAPHIE OBSTÉTRICALE", bloc patiente (nom, CIN), bloc examen (type FR, date, terme SA, DPA + flag correction), tableau biométrie (BIP/PC/DAT/LF/EG/percentile — clés manquantes ignorées), compte-rendu textuel (pre-wrap), signature médecin ou cachet.
+- **Service** `ma.careplus.pregnancy.application.UltrasoundPdfService` : `byte[] generate(UUID ultrasoundId, UUID pregnancyId, UUID practitionerId)` — miroir exact de `ConfrereLetterPdfService` (JdbcTemplate cross-module pour cabinet/logo/signature/patient, Jackson pour biometryJson, watermark alpha-bake, Thymeleaf + openhtmltopdf).
+- **Endpoint** `GET /api/pregnancies/{pregnancyId}/ultrasounds/{ultrasoundId}/cr-pdf` ajouté dans `PregnancyUltrasoundController` — RBAC : SECRETAIRE/ASSISTANT/MEDECIN/ADMIN (lecture), 404 si écho introuvable ou appartient à une autre grossesse.
+- **IT `UltrasoundCrPdfIT`** : 4 scénarios — happy path MEDECIN (200, application/pdf, %PDF, > 1 kB) ; unknown ultrasound 404 ; wrong pregnancyId 404 ; SECRETAIRE 200. **4/4 verts, 18 s.**
 
 ### 2026-05-26 — HR/Personnel module (QA9-14)
 

@@ -622,13 +622,29 @@ const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [
   { code: 'ADMIN',      label: 'Administrateur', readOnly: true },
 ];
 
+// Réceptionniste = bureau des admissions ; n'apparaît dans la matrice que
+// lorsque l'établissement hospitalise (clinique / hôpital).
+const RECEPTIONNISTE_ROLE: { code: RoleCode; label: string; readOnly: boolean } = {
+  code: 'RECEPTIONNISTE',
+  label: 'Réceptionniste',
+  readOnly: false,
+};
+
 function DroitsTab() {
   const { rows, isLoading, error } = useRolePermissions();
   const { update, isPending } = useUpdateRolePermissions();
+  const { settings } = useClinicSettings();
+  const hospitalizationEnabled =
+    settings?.hospitalizationEnabled === true ||
+    settings?.establishmentType === 'CLINIQUE' ||
+    settings?.establishmentType === 'HOPITAL';
+  const ROLES_VISIBLE = hospitalizationEnabled
+    ? [...ROLES, RECEPTIONNISTE_ROLE]
+    : ROLES;
 
   // Build a quick lookup: roleCode -> { permission -> granted }
   const matrix = new Map<string, Map<string, boolean>>();
-  for (const r of ROLES) matrix.set(r.code, new Map());
+  for (const r of ROLES_VISIBLE) matrix.set(r.code, new Map());
   for (const row of rows) {
     matrix.get(row.roleCode)?.set(row.permission, row.granted);
   }
@@ -671,7 +687,7 @@ function DroitsTab() {
                 <th style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                   Fonctionnalité
                 </th>
-                {ROLES.map((r) => (
+                {ROLES_VISIBLE.map((r) => (
                   <th key={r.code} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600, textAlign: 'center', minWidth: 100 }}>
                     {r.label}
                   </th>
@@ -682,7 +698,7 @@ function DroitsTab() {
               {[...grouped.entries()].map(([cat, perms]) => (
                 <Fragment key={cat}>
                   <tr>
-                    <td colSpan={ROLES.length + 1} style={{ padding: '10px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    <td colSpan={ROLES_VISIBLE.length + 1} style={{ padding: '10px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                       {cat}
                     </td>
                   </tr>
@@ -691,7 +707,7 @@ function DroitsTab() {
                       <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
                         {p.label}
                       </td>
-                      {ROLES.map((r) => {
+                      {ROLES_VISIBLE.map((r) => {
                         const granted = matrix.get(r.code)?.get(p.code) ?? false;
                         return (
                           <td key={r.code} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', textAlign: 'center' }}>

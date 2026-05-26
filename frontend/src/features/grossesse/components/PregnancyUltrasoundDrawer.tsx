@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
+import { usePatientDocuments } from '@/features/dossier-patient/hooks/usePatientDocuments';
 import { RecordUltrasoundSchema, type RecordUltrasoundValues } from '../schemas';
 import { useRecordUltrasound } from '../hooks/useRecordUltrasound';
 import {
@@ -44,7 +45,18 @@ export function PregnancyUltrasoundDrawer({
   onOpenChange,
 }: PregnancyUltrasoundDrawerProps) {
   const recordUs = useRecordUltrasound(pregnancy.id, pregnancy.patientId);
+  const { upload, isUploading } = usePatientDocuments(pregnancy.patientId);
   const [documentId, setDocumentId] = useState<string | null>(null);
+
+  async function handleUpload(file: File) {
+    try {
+      const doc = await upload({ file, type: 'IMAGERIE' });
+      setDocumentId(doc.id);
+      toast.success('Compte-rendu attaché.');
+    } catch {
+      toast.error('Échec du téléversement du compte-rendu.');
+    }
+  }
 
   const form = useForm<RecordUltrasoundValues>({
     resolver: zodResolver(RecordUltrasoundSchema),
@@ -270,12 +282,16 @@ export function PregnancyUltrasoundDrawer({
               <span className="gr-label">Compte-rendu PDF (optionnel)</span>
               <DocumentUploadButton
                 accept="application/pdf,image/*"
-                uploadLabel={documentId ? 'Document attaché' : 'Téléverser le compte-rendu'}
-                onFile={(_file) => {
-                  // Document upload route lives outside scope of Étape 4 — left
-                  // as a stub callback. Étape 5 wires DocumentUploadButton to
-                  // /patients/:id/documents and surfaces the returned id.
-                  toast.info('Téléversement de documents : fonctionnalité disponible prochainement.');
+                disabled={isUploading}
+                uploadLabel={
+                  isUploading
+                    ? 'Téléversement…'
+                    : documentId
+                      ? 'Document attaché'
+                      : 'Téléverser le compte-rendu'
+                }
+                onFile={(file) => {
+                  void handleUpload(file);
                 }}
               />
               {documentId && (

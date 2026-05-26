@@ -61,7 +61,8 @@ public class AdminUserController {
     private static final Logger log = LoggerFactory.getLogger(AdminUserController.class);
 
     private static final Set<String> ALLOWED_ROLE_CODES =
-            Set.of("SECRETAIRE", "ASSISTANT", "MEDECIN", "ADMIN", "LAB", "RADIO");
+            Set.of("SECRETAIRE", "ASSISTANT", "MEDECIN", "ADMIN", "LAB", "RADIO",
+                    "INFIRMIER", "RECEPTIONNISTE");
 
     /** Roles that require/accept practitioner assignments. */
     private static final Set<String> ASSISTANT_ROLES = Set.of("SECRETAIRE", "ASSISTANT");

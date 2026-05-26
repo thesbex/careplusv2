@@ -243,6 +243,7 @@ Adult edge-case: schedule entries where `today > targetDate + toleranceDays + 5 
 
 - `GET /api/pregnancies/{pregnancyId}/ultrasounds` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — liste par date d'examen asc. Retourne `List<UltrasoundView>`.
 - `POST /api/pregnancies/{pregnancyId}/ultrasounds` — MEDECIN/ADMIN — saisir écho `{kind, performedAt, saWeeksAtExam, saDaysAtExam, findings?, biometryJson?, documentId?, correctsDueDate}`. Si `correctsDueDate=true` et `kind=T1_DATATION` → ajuste `pregnancy.due_date = performedAt + (280 - eg)` + `due_date_source=ECHO_T1` + recalcule plan de 8 visites. Erreurs : 422 `SA_TOO_EARLY` (saWeeksAtExam < 6).
+- `GET /api/pregnancies/{pregnancyId}/ultrasounds/{ultrasoundId}/cr-pdf` — SECRETAIRE/ASSISTANT/MEDECIN/ADMIN — génère et télécharge le PDF du compte-rendu d'échographie obstétricale. `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="compte-rendu-echographie.pdf"`. 404 si l'écho est introuvable ou n'appartient pas à la grossesse. (QA-grossesse)
 
 `PregnancyView` : `{id, patientId, lmpDate, dueDate, dueDateSource, status, startedAt, endedAt, outcome, childPatientId, fetusesJson, notes, version, saWeeks, gravidity, parity}`.
 `PregnancyVisitPlanView` : `{id, pregnancyId, targetSaWeeks, targetDate, toleranceDays, status, appointmentId, consultationId, version}`.

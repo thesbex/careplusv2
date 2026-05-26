@@ -599,6 +599,85 @@ public class BillingService {
         return invoice;
     }
 
+    /**
+     * QA10-4 — absorbe les factures BROUILLON de consultation d'un patient dont la
+     * consultation tombe dans la fenêtre du séjour [windowStart, windowEnd]. Pour
+     * chaque facture brouillon trouvée :
+     *   1) on remonte ses lignes sous forme de {@link InvoiceLineRequest} (description
+     *      préfixée par la date de la consultation pour la lisibilité de la facture
+     *      de séjour), de sorte que l'appelant (module hospitalisation) puisse les
+     *      ajouter à la facture de séjour ;
+     *   2) on supprime ensuite cette facture brouillon (et ses lignes) afin d'éviter
+     *      tout double-comptage. Un BROUILLON n'a aucune immutabilité légale, on peut
+     *      donc le supprimer ; une facture ÉMISE/ENCAISSÉE est légalement immuable et
+     *      n'est JAMAIS touchée (la requête ne sélectionne que les BROUILLON ; on log
+     *      un avertissement pour toute facture non-brouillon trouvée dans la fenêtre).
+     *
+     * <p>Idempotent : un second appel ne trouve plus de brouillon (le premier les a
+     * supprimés) → renvoie une liste vide.
+     *
+     * @return les lignes à fusionner dans la facture de séjour (vide si aucune).
+     */
+    @Transactional
+    public List<InvoiceLineRequest> absorbConsultationDrafts(UUID patientId, OffsetDateTime windowStart, OffsetDateTime windowEnd) {
+        // Avertissement : factures de consultation déjà émises dans la fenêtre — on les
+        // laisse telles quelles (immuables) et on ne les fusionne pas.
+        List<Map<String, Object>> issued = jdbc.queryForList("""
+                SELECT bi.id, bi.number, bi.status
+                  FROM billing_invoice bi
+                  JOIN clinical_consultation cc ON cc.id = bi.consultation_id
+                 WHERE bi.patient_id = ?
+                   AND bi.consultation_id IS NOT NULL
+                   AND bi.status <> 'BROUILLON'
+                   AND COALESCE(cc.started_at, bi.created_at) BETWEEN ? AND ?
+                """, patientId, windowStart, windowEnd);
+        for (Map<String, Object> row : issued) {
+            log.warn("Stay invoice absorption: consultation invoice {} (status {}) in stay window is "
+                    + "already issued — left untouched, NOT merged into the stay invoice.",
+                    row.get("number"), row.get("status"));
+        }
+
+        // Brouillons de consultation dans la fenêtre, ordonnés par date de consultation.
+        List<Map<String, Object>> drafts = jdbc.queryForList("""
+                SELECT bi.id AS invoice_id, COALESCE(cc.started_at, bi.created_at) AS consult_date
+                  FROM billing_invoice bi
+                  JOIN clinical_consultation cc ON cc.id = bi.consultation_id
+                 WHERE bi.patient_id = ?
+                   AND bi.consultation_id IS NOT NULL
+                   AND bi.status = 'BROUILLON'
+                   AND COALESCE(cc.started_at, bi.created_at) BETWEEN ? AND ?
+                 ORDER BY COALESCE(cc.started_at, bi.created_at) ASC
+                """, patientId, windowStart, windowEnd);
+
+        if (drafts.isEmpty()) return List.of();
+
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
+        List<InvoiceLineRequest> absorbed = new java.util.ArrayList<>();
+        for (Map<String, Object> draft : drafts) {
+            UUID invoiceId = (UUID) draft.get("invoice_id");
+            Object rawDate = draft.get("consult_date");
+            String datePrefix = "Consultation";
+            if (rawDate instanceof java.sql.Timestamp ts) {
+                datePrefix = "Consultation " + ts.toLocalDateTime().toLocalDate().format(fmt);
+            } else if (rawDate instanceof OffsetDateTime odt) {
+                datePrefix = "Consultation " + odt.toLocalDate().format(fmt);
+            }
+            List<InvoiceLine> lines = invoiceLineRepository.findByInvoiceIdOrderByPosition(invoiceId);
+            for (InvoiceLine l : lines) {
+                BigDecimal qty = l.getQuantity() != null ? l.getQuantity() : BigDecimal.ONE;
+                String desc = datePrefix + " — " + l.getDescription();
+                if (desc.length() > 255) desc = desc.substring(0, 255);
+                absorbed.add(new InvoiceLineRequest(l.getActId(), desc, l.getUnitPrice(), qty));
+            }
+            // Suppression du brouillon absorbé (lignes puis en-tête) pour éviter le double comptage.
+            invoiceLineRepository.deleteByInvoiceId(invoiceId);
+            invoiceRepository.deleteById(invoiceId);
+            log.info("Stay invoice absorption: consultation draft invoice {} merged ({} line(s)) and deleted.",
+                    invoiceId, lines.size());
+        }
+        return absorbed;
+    }
+
     @Transactional
     public Invoice updateInvoice(UUID invoiceId, InvoiceUpdateRequest req, UUID actorId) {
         Invoice invoice = loadDraftOrThrow(invoiceId);

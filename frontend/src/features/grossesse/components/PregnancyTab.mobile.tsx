@@ -4,6 +4,7 @@
  * which are styled responsive via grossesse.css @media query).
  */
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { Plus } from '@/components/icons';
 import {
@@ -17,7 +18,7 @@ import {
 import { useCurrentPregnancy } from '../hooks/useCurrentPregnancy';
 import { usePregnancies } from '../hooks/usePregnancies';
 import { usePregnancyVisits } from '../hooks/usePregnancyVisits';
-import { usePregnancyUltrasounds } from '../hooks/usePregnancyUltrasounds';
+import { usePregnancyUltrasounds, downloadUltrasoundCrPdf } from '../hooks/usePregnancyUltrasounds';
 import { usePregnancyAlerts } from '../hooks/usePregnancyAlerts';
 import { usePregnancyPlan } from '../hooks/usePregnancyPlan';
 import { PregnancyAlertsBanner } from './PregnancyAlertsBanner';
@@ -352,11 +353,44 @@ function MobileBody({
                 {fmtDate(u.performedAt)} — SA {u.saWeeksAtExam}+{u.saDaysAtExam}
                 {u.correctsDueDate ? ' · DPA corrigée' : ''}
               </div>
+              <div style={{ marginTop: 6 }}>
+                <UltrasoundCrPdfButtonMobile
+                  pregnancyId={pregnancy.id}
+                  ultrasoundId={u.id}
+                />
+              </div>
             </div>
           ))
         )}
       </CollapsibleSection>
     </>
+  );
+}
+
+function UltrasoundCrPdfButtonMobile({
+  pregnancyId,
+  ultrasoundId,
+}: {
+  pregnancyId: string;
+  ultrasoundId: string;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="m-btn"
+      style={{ height: 32, fontSize: 12 }}
+      disabled={busy}
+      aria-label="Télécharger le compte-rendu PDF"
+      onClick={() => {
+        setBusy(true);
+        downloadUltrasoundCrPdf(pregnancyId, ultrasoundId)
+          .catch(() => toast.error('Compte-rendu PDF indisponible.'))
+          .finally(() => setBusy(false));
+      }}
+    >
+      {busy ? '…' : 'Compte-rendu PDF'}
+    </button>
   );
 }
 

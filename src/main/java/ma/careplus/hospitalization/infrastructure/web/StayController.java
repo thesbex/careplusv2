@@ -51,9 +51,9 @@ public class StayController {
     private static final String READ_ROLES =
             "hasAnyRole('SECRETAIRE','ASSISTANT','INFIRMIER','MEDECIN','ADMIN')";
     private static final String ADMIT_ROLES =
-            "hasAnyRole('SECRETAIRE','INFIRMIER','MEDECIN','ADMIN')";
+            "hasAnyRole('SECRETAIRE','INFIRMIER','RECEPTIONNISTE','MEDECIN','ADMIN')";
     private static final String DISCHARGE_ROLES = "hasAnyRole('MEDECIN','ADMIN')";
-    private static final String BILL_ROLES = "hasAnyRole('SECRETAIRE','MEDECIN','ADMIN')";
+    private static final String BILL_ROLES = "hasAnyRole('SECRETAIRE','RECEPTIONNISTE','MEDECIN','ADMIN')";
 
     private final StayService service;
     private final VitalsService vitalsService;

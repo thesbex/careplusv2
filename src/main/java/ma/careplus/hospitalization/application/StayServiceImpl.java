@@ -165,6 +165,19 @@ public class StayServiceImpl implements StayService {
                     sp.getUnitPrice(), sp.getQuantity()));
         }
 
+        // QA10-4 : englober les consultations effectuées pendant le séjour. On absorbe
+        // les factures BROUILLON de consultation du patient dont la consultation tombe
+        // dans la fenêtre du séjour [admittedAt, dischargedAt|now]. Leurs lignes (acte +
+        // labo/imagerie internes + médicaments internes) sont fusionnées dans la facture
+        // de séjour, et les brouillons absorbés sont supprimés (pas de double comptage).
+        // Les factures déjà ÉMISES sont laissées intactes (immuables) — voir log billing.
+        java.time.OffsetDateTime windowStart = stay.getAdmittedAt().atOffset(java.time.ZoneOffset.UTC);
+        java.time.OffsetDateTime windowEnd =
+                (stay.getDischargedAt() != null ? stay.getDischargedAt() : Instant.now())
+                        .atOffset(java.time.ZoneOffset.UTC);
+        lines.addAll(billingService.absorbConsultationDrafts(
+                stay.getPatientId(), windowStart, windowEnd));
+
         if (lines.isEmpty()) {
             throw new BusinessException("STAY_NO_CHARGES",
                     "Aucun montant facturable (prix de journée à 0 et aucune prestation).", 422);
