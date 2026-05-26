@@ -43,8 +43,14 @@ vi.mock('../hooks/useInvoiceSearch', () => ({
   filtersToParams: () => ({}),
 }));
 
+const useInvoiceMock = vi.fn((_id?: string) => ({
+  invoice: null as unknown,
+  isLoading: false,
+  error: null,
+  refetch: () => Promise.resolve(),
+}));
 vi.mock('../hooks/useInvoices', () => ({
-  useInvoice: () => ({ invoice: null, isLoading: false, error: null, refetch: () => Promise.resolve() }),
+  useInvoice: (id?: string) => useInvoiceMock(id),
   useInvoices: () => ({ invoices: [], isLoading: false, error: null, refetch: () => Promise.resolve() }),
   useInvoicesForPatient: () => ({ invoices: [], isLoading: false, error: null }),
   useInvoiceByConsultation: () => ({ invoice: null, isLoading: false }),
@@ -99,6 +105,7 @@ function renderWithRole(role: 'MEDECIN' | 'SECRETAIRE', initialUrl = '/facturati
 
 beforeEach(() => {
   useInvoiceSearchMock.mockClear();
+  useInvoiceMock.mockClear();
   exportInvoicesMock.mockClear();
   useInvoiceExportState.isExporting = false;
   useInvoiceExportState.error = null;
@@ -162,6 +169,15 @@ describe('<FacturationPage /> — advanced filters + export', () => {
       const last = (useInvoiceSearchMock.mock.calls.at(-1) as unknown[])[0] as { from: string | null; statuses: string[] };
       expect(last.from).toBe('2026-04-01');
       expect(last.statuses).toEqual(['EMISE']);
+    });
+  });
+
+  // QA10-4 — deep-link ?invoice=<id> (toast "Ouverture dans Facturation" après
+  // génération facture de séjour) doit ouvrir le tiroir de cette facture.
+  it('ouvre le tiroir de la facture passée en ?invoice=<id> (QA10-4)', async () => {
+    renderWithRole('MEDECIN', '/facturation?invoice=stay-inv-9');
+    await waitFor(() => {
+      expect(useInvoiceMock).toHaveBeenCalledWith('stay-inv-9');
     });
   });
 
