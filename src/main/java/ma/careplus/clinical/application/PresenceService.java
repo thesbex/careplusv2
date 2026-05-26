@@ -110,7 +110,7 @@ public class PresenceService {
         // the successful check-in (cf. ARRIVED-OFFDAY bug, 2026-05-20).
         StringBuilder sql = new StringBuilder("""
                 SELECT a.id, a.patient_id, p.first_name, p.last_name,
-                       p.birth_date, p.tier,
+                       p.birth_date, p.tier, a.practitioner_id,
                        a.start_at, a.end_at, a.status, a.arrived_at,
                        r.label AS reason_label,
                        u.first_name AS prac_first, u.last_name AS prac_last,
@@ -163,6 +163,7 @@ public class PresenceService {
                             rs.getBoolean("has_allergies"),
                             age,
                             rs.getString("reason_label"),
+                            (UUID) rs.getObject("practitioner_id"),
                             pracName,
                             duration,
                             "PREMIUM".equals(tier),

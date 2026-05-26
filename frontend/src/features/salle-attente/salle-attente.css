@@ -182,6 +182,88 @@
   color: var(--ink-4);
 }
 
+/* ── Per-doctor columns (QA9-11, ≥2 active practitioners) ─ */
+.sa-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.sa-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.sa-col-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.sa-col-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.sa-col-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.sa-col-empty {
+  padding: 20px 14px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.sa-col-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+/* ── Mobile: practitioner filter chips (QA9-11) ─────────── */
+.sa-m-doc-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sa-m-doc-chip {
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 550;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sa-m-doc-chip.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
 /* ── Mobile: stat grid ─────────────────────────────────── */
 /* (uses global .m-stat-grid + .m-stat classes from mobile.css) */
 

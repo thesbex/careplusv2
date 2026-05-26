@@ -36,7 +36,7 @@ export class AllergyConflictError extends Error {
   }
 }
 
-function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[], internal: boolean) {
+export function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[], internal: boolean) {
   return lines
     .filter((l) => l.item !== null || l.dosage.length > 0 || l.instructions.length > 0)
     .map((l) => {
@@ -53,8 +53,9 @@ function linesToApi(type: PrescriptionType, lines: PrescriptionLineDraft[], inte
         timing: null,
         quantity: l.quantity,
         instructions: l.instructions || null,
-        // V038 — only LAB / IMAGING lines participate in internal routing.
-        internal: (type === 'LAB' || type === 'IMAGING') && internal,
+        // V038 — LAB / IMAGING : routing file technicien interne.
+        // V057 (QA9-7) — DRUG : "fournir en interne" (pharmacie → facturation).
+        internal: (type === 'LAB' || type === 'IMAGING' || type === 'DRUG') && internal,
       };
     });
 }

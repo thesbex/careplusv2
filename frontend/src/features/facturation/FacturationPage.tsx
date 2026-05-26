@@ -99,6 +99,16 @@ export default function FacturationPage() {
   const [filters, setFilters] = useState<InvoiceSearchFilters>(() => filtersFromUrl(urlParams));
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // QA10-4 — deep-link `?invoice=<id>` (ex. après "Générer facture de séjour" :
+  // toast « Ouverture dans Facturation »). On ouvre directement le tiroir de
+  // cette facture : une facture séjour est en BROUILLON et tombe en bas de la
+  // liste (tri émission DESC NULLS LAST), donc l'utilisateur ne la « retrouvait »
+  // pas. Capturé une fois au montage avant que la synchro filtres→URL ne le retire.
+  const [deepLinkInvoice] = useState<string | null>(() => urlParams.get('invoice'));
+  useEffect(() => {
+    if (deepLinkInvoice) setSelectedId(deepLinkInvoice);
+  }, [deepLinkInvoice]);
+
   // Sync filter state → URL
   useEffect(() => {
     setUrlParams(filtersToUrl(filters), { replace: true });

@@ -42,6 +42,7 @@ import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import { ChambresLitsTab } from '@/features/hospitalisation/components/ChambresLitsTab';
+import { ConsentTemplatesTab } from '@/features/consent/components/ConsentTemplatesTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -61,7 +62,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements';
 
 function establishmentTabLabel(type: EstablishmentType | undefined): string {
   if (!type) return 'Cabinet';
@@ -79,12 +80,15 @@ const IDENTITY_HEADER: Record<EstablishmentType, string> = {
 function buildTabs(
   type: EstablishmentType | undefined,
   hospitalizationEnabled: boolean,
+  isAdmin: boolean,
 ): { id: Tab; label: string }[] {
   return [
     { id: 'cabinet', label: establishmentTabLabel(type) },
     { id: 'tarifs', label: 'Tarifs' },
     { id: 'prestations', label: 'Prestations' },
     { id: 'modeles', label: 'Modèles d’ordonnance' },
+    // QA9-13 — modèles de consentement : gestion réservée à l'ADMIN.
+    ...(isAdmin ? [{ id: 'consentements' as Tab, label: 'Consentements' }] : []),
     { id: 'utilisateurs', label: 'Utilisateurs' },
     { id: 'conges', label: 'Congés' },
     { id: 'droits', label: 'Droits d’accès' },
@@ -108,6 +112,7 @@ const EMPTY_FORM: ClinicSettingsForm = {
   establishmentType: 'CABINET',
   imagingInternal: false,
   labInternal: false,
+  pharmacyInternal: false,
   hospitalizationEnabled: false,
 };
 
@@ -142,6 +147,7 @@ function CabinetTab() {
         establishmentType: settings.establishmentType ?? 'CABINET',
         imagingInternal: settings.imagingInternal ?? false,
         labInternal: settings.labInternal ?? false,
+        pharmacyInternal: settings.pharmacyInternal ?? false,
         hospitalizationEnabled: settings.hospitalizationEnabled ?? false,
       });
       setHydrated(true);
@@ -286,13 +292,23 @@ function CabinetTab() {
             />
             Laboratoire d'analyses interne
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
             <input
               type="checkbox"
               checked={!!form.imagingInternal}
               onChange={(e) => setField('imagingInternal', e.target.checked)}
             />
             Service de radiologie interne
+          </label>
+          {/* V057 (QA9-5) — pharmacie interne : active le prix interne sur le catalogue
+              médicaments + l'option "fournir en interne" à la prescription. */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+            <input
+              type="checkbox"
+              checked={!!form.pharmacyInternal}
+              onChange={(e) => setField('pharmacyInternal', e.target.checked)}
+            />
+            Pharmacie interne (l'établissement fournit des médicaments)
           </label>
         </div>
         <div
@@ -713,7 +729,9 @@ export default function ParametragePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('cabinet');
   const { settings } = useClinicSettings();
-  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false);
+  const currentUser = useAuthStore((s) => s.user);
+  const isAdmin = (currentUser?.roles ?? []).includes('ADMIN');
+  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false, isAdmin);
 
   return (
     <Screen
@@ -761,6 +779,7 @@ export default function ParametragePage() {
         {tab === 'tarifs' && <TarifsTab />}
         {tab === 'prestations' && <PrestationsTab />}
         {tab === 'modeles' && <PrescriptionTemplatesTab />}
+        {tab === 'consentements' && isAdmin && <ConsentTemplatesTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}

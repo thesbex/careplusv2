@@ -58,7 +58,7 @@ export type SidebarScreen =
  * pas casser les `NAV_MAP` locaux (historiques) des pages, qui n'indexent que
  * les écrans de base. Le shell (Sidebar / navMap / AppLayout) utilise NavScreen.
  */
-export type NavScreen = SidebarScreen | 'sejours';
+export type NavScreen = SidebarScreen | 'sejours' | 'charges' | 'personnel';
 
 interface NavItem {
   id: NavScreen;
@@ -92,6 +92,10 @@ const ITEMS: NavItem[] = [
   { id: 'queueRadio', label: 'Radiologie', Icon: Stetho, section: 'flux', requiresRoles: ['RADIO'] },
   { id: 'messages', label: 'Messages', Icon: Chat, section: 'flux' },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
+  // QA9-15 — charges du cabinet (dépenses). ADMIN uniquement.
+  { id: 'charges', label: 'Charges', Icon: Invoice, section: 'config', requiresRoles: ['ADMIN'] },
+  // QA9-14 — personnel (RH) du cabinet. ADMIN uniquement.
+  { id: 'personnel', label: 'Personnel', Icon: Users, section: 'config', requiresRoles: ['ADMIN'] },
   { id: 'params', label: 'Paramètres', Icon: Settings, section: 'config', requiresRoles: ['ADMIN'] },
 ];
 

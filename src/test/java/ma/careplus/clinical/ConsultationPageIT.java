@@ -1,6 +1,7 @@
 package ma.careplus.clinical;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -392,6 +393,91 @@ class ConsultationPageIT {
         assertThat(count)
                 .as("Aucune prescription ne doit exister sur la consultation SIGNEE")
                 .isZero();
+    }
+
+    // ── Scénario 5bis — QA9-8 : suppression d'une prescription ────────────────
+    //
+    // Demande Y. Boutaleb (suivi .xlsx 2026-05-26) : « le médecin peut se tromper
+    // et prescrire une mauvaise prescription, je veux pouvoir la supprimer tant que
+    // la consultation n'est pas clôturée ». Le endpoint DELETE /api/prescriptions/{id}
+    // + la garde CONSULT_LOCKED existaient déjà ; ces deux tests verrouillent les
+    // deux branches (BROUILLON → 204 + purge DB ; SIGNEE → 400 sans suppression).
+
+    @Test
+    @DisplayName("QA9-8 — DELETE /prescriptions/{id} sur consultation BROUILLON : 204 "
+            + "et la prescription (+ ses lignes) disparaît de la DB")
+    void deletePrescription_onBrouillon_succeedsAndPurges() throws Exception {
+        MvcResult created = mockMvc.perform(
+                        post("/api/consultations/" + consultationId + "/prescriptions")
+                                .header("Authorization", medToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "type": "CERT",
+                                          "allergyOverride": false,
+                                          "lines": [
+                                            { "freeText": "Ordonnance erronee a supprimer en QA9-8." }
+                                          ]
+                                        }
+                                        """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String rxId = objectMapper.readTree(created.getResponse().getContentAsString())
+                .get("id").asText();
+
+        mockMvc.perform(delete("/api/prescriptions/" + rxId)
+                        .header("Authorization", medToken))
+                .andExpect(status().isNoContent());
+
+        Integer rx = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_prescription WHERE id = ?",
+                Integer.class, UUID.fromString(rxId));
+        assertThat(rx).as("La prescription doit être supprimée").isZero();
+        Integer lines = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_prescription_line WHERE prescription_id = ?",
+                Integer.class, UUID.fromString(rxId));
+        assertThat(lines).as("Les lignes filles doivent être supprimées en cascade").isZero();
+    }
+
+    @Test
+    @DisplayName("QA9-8 — DELETE /prescriptions/{id} après signature : 400 CONSULT_LOCKED "
+            + "et la prescription reste en DB (immuabilité légale)")
+    void deletePrescription_afterSign_isRejected() throws Exception {
+        // Créer la prescription pendant que la consultation est encore BROUILLON…
+        MvcResult created = mockMvc.perform(
+                        post("/api/consultations/" + consultationId + "/prescriptions")
+                                .header("Authorization", medToken)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("""
+                                        {
+                                          "type": "CERT",
+                                          "allergyOverride": false,
+                                          "lines": [
+                                            { "freeText": "Certificat valide a conserver apres cloture." }
+                                          ]
+                                        }
+                                        """))
+                .andExpect(status().isCreated())
+                .andReturn();
+        String rxId = objectMapper.readTree(created.getResponse().getContentAsString())
+                .get("id").asText();
+
+        // …puis clôturer la consultation.
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/sign")
+                        .header("Authorization", medToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SIGNEE"));
+
+        // La suppression doit désormais être refusée.
+        mockMvc.perform(delete("/api/prescriptions/" + rxId)
+                        .header("Authorization", medToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("CONSULT_LOCKED"));
+
+        Integer rx = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_prescription WHERE id = ?",
+                Integer.class, UUID.fromString(rxId));
+        assertThat(rx).as("La prescription doit survivre à la clôture").isOne();
     }
 
     // ── Scénario 6 — Backend ne valide pas le freeText vide (documentation) ──

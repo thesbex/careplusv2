@@ -65,6 +65,8 @@ public class SettingsController {
             boolean imagingInternal,
             /** V034 — true si le laboratoire d'analyses est interne. */
             boolean labInternal,
+            /** V057 — true si l'établissement fournit des médicaments en interne (pharmacie). */
+            boolean pharmacyInternal,
             /** V036 — codes de rôle autorisés à voir les patients sans médecin référent vaccination. */
             List<String> vaccinationOrphanVisibleRoles,
             /** V039 — codes de rôle autorisés à voir les grossesses sans médecin référent. */
@@ -110,6 +112,8 @@ public class SettingsController {
             Boolean imagingInternal,
             /** V034 — capacité laboratoire interne. Optional : null = pas de changement. */
             Boolean labInternal,
+            /** V057 — capacité pharmacie interne. Optional : null = pas de changement. */
+            Boolean pharmacyInternal,
             /**
              * V036 — codes de rôle autorisés à voir les patients sans médecin référent vaccination
              * (applicable seulement quand agenda_strict_isolation = TRUE). Valeurs acceptées :
@@ -156,6 +160,7 @@ public class SettingsController {
             ClinicSettingsView v = jdbc.queryForObject(
                     "SELECT id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + "agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
+                            + "pharmacy_internal, "
                             + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo, "
                             + "rc, if_no, legal_form, logo_position, hospitalization_enabled, "
@@ -176,6 +181,7 @@ public class SettingsController {
                             rs.getString("establishment_type"),
                             rs.getBoolean("imaging_internal"),
                             rs.getBoolean("lab_internal"),
+                            rs.getBoolean("pharmacy_internal"),
                             readStringArray(rs, "vaccination_orphan_visible_roles"),
                             readStringArray(rs, "pregnancy_orphan_visible_roles"),
                             rs.getBoolean("has_logo"),
@@ -206,6 +212,7 @@ public class SettingsController {
         String finalEstablishmentType;
         boolean finalImagingInternal;
         boolean finalLabInternal;
+        boolean finalPharmacyInternal;
         List<String> finalOrphanRoles;
         List<String> finalPregnancyOrphanRoles;
         boolean finalHospitalizationEnabled;
@@ -241,6 +248,13 @@ public class SettingsController {
                         Boolean.class, id));
             } else {
                 finalLabInternal = req.labInternal();
+            }
+            if (req.pharmacyInternal() == null) {
+                finalPharmacyInternal = Boolean.TRUE.equals(jdbc.queryForObject(
+                        "SELECT pharmacy_internal FROM configuration_clinic_settings WHERE id = ?",
+                        Boolean.class, id));
+            } else {
+                finalPharmacyInternal = req.pharmacyInternal();
             }
             if (req.vaccinationOrphanVisibleRoles() == null) {
                 finalOrphanRoles = jdbc.queryForObject(
@@ -281,7 +295,7 @@ public class SettingsController {
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
                             + "agenda_strict_isolation=?, establishment_type=?, "
-                            + "imaging_internal=?, lab_internal=?, "
+                            + "imaging_internal=?, lab_internal=?, pharmacy_internal=?, "
                             + "vaccination_orphan_visible_roles=?, "
                             + "pregnancy_orphan_visible_roles=?, "
                             + "rc=COALESCE(?, rc), if_no=COALESCE(?, if_no), "
@@ -296,6 +310,7 @@ public class SettingsController {
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                    finalPharmacyInternal,
                     finalOrphanRoles.toArray(String[]::new),
                     finalPregnancyOrphanRoles.toArray(String[]::new),
                     nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
@@ -310,6 +325,7 @@ public class SettingsController {
             finalEstablishmentType = req.establishmentType() != null ? req.establishmentType() : "CABINET";
             finalImagingInternal = Boolean.TRUE.equals(req.imagingInternal());
             finalLabInternal = Boolean.TRUE.equals(req.labInternal());
+            finalPharmacyInternal = Boolean.TRUE.equals(req.pharmacyInternal());
             finalOrphanRoles = req.vaccinationOrphanVisibleRoles() != null
                     ? List.copyOf(req.vaccinationOrphanVisibleRoles())
                     : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
@@ -325,15 +341,17 @@ public class SettingsController {
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
                             + " agenda_strict_isolation, establishment_type, imaging_internal, lab_internal, "
+                            + " pharmacy_internal, "
                             + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + " rc, if_no, legal_form, hospitalization_enabled, "
                             + " stay_billing_day_rule, hospitalization_orphan_visible_roles) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                     nullIfBlank(req.rib()), finalAgendaIsolation,
                     finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                    finalPharmacyInternal,
                     finalOrphanRoles.toArray(String[]::new),
                     finalPregnancyOrphanRoles.toArray(String[]::new),
                     nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
@@ -360,6 +378,7 @@ public class SettingsController {
                 nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
                 nullIfBlank(req.rib()), finalAgendaIsolation,
                 finalEstablishmentType, finalImagingInternal, finalLabInternal,
+                finalPharmacyInternal,
                 finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo,
                 finalReadback[0], finalReadback[1], finalReadback[2], finalReadback[3],
                 finalHospitalizationEnabled,

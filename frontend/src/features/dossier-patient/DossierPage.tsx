@@ -34,6 +34,7 @@ import { VitalsEvolutionPanel } from './components/VitalsEvolutionPanel';
 import { VaccinationCalendarTab } from '@/features/vaccination/components/VaccinationCalendarTab';
 import { PregnancyTab } from '@/features/grossesse/components/PregnancyTab';
 import { StaysTab } from '@/features/hospitalisation/components/StaysTab';
+import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -606,6 +607,7 @@ export default function DossierPage() {
   const { patient, raw, isLoading, error } = usePatient(id);
   const [tab, setTab] = useState<DossierTab>('timeline');
   const [showEdit, setShowEdit] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
   // QA3-3 v1 — backward-compat: allow when permissions absent.
   const userPerms = useAuthStore((s) => s.user?.permissions);
@@ -883,7 +885,13 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="docs">
-            <div style={{ padding: '20px 24px' }}>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* QA9-13 — génération d'un consentement éclairé (PDF rattaché au dossier). */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="primary" onClick={() => setShowConsent(true)}>
+                  <Plus style={{ width: 14, height: 14 }} /> Générer un consentement
+                </Button>
+              </div>
               <DocumentsPanel patientId={raw.id} />
             </div>
           </DossierTabPanel>
@@ -963,6 +971,12 @@ export default function DossierPage() {
             onClose={() => setShowEdit(false)}
           />
         )}
+
+        <ConsentDialog
+          open={showConsent}
+          onOpenChange={setShowConsent}
+          patientId={raw.id}
+        />
       </div>
     </Screen>
   );

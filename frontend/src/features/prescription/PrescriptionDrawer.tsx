@@ -72,7 +72,9 @@ export function PrescriptionDrawer({
   const { settings } = useClinicSettings();
   const internalToggleVisible =
     (type === 'LAB' && !!settings?.labInternal)
-    || (type === 'IMAGING' && !!settings?.imagingInternal);
+    || (type === 'IMAGING' && !!settings?.imagingInternal)
+    // V057 (QA9-7) — pharmacie interne : fournir les médicaments en interne (facturé à la signature).
+    || (type === 'DRUG' && !!settings?.pharmacyInternal);
 
   useEffect(() => {
     if (!suggestOpen) return;
@@ -335,14 +337,17 @@ export function PrescriptionDrawer({
                     type="checkbox"
                     checked={internalRouting}
                     onChange={(e) => setInternalRouting(e.target.checked)}
-                    aria-label="Réaliser en interne"
+                    aria-label={type === 'DRUG' ? 'Fournir en interne' : 'Réaliser en interne'}
                   />
-                  <strong>Réaliser en interne</strong>
+                  <strong>{type === 'DRUG' ? 'Fournir en interne (pharmacie)' : 'Réaliser en interne'}</strong>
                 </label>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
-                  Si coché, la demande part dans la queue du{' '}
-                  {type === 'LAB' ? 'laboratoire' : 'service de radiologie'} interne au lieu
-                  d'imprimer un bon papier pour le patient.
+                  {type === 'DRUG'
+                    ? "Si coché, les médicaments sont fournis par la pharmacie de l'établissement "
+                      + 'et ajoutés à la facture de la consultation (au prix interne du catalogue).'
+                    : 'Si coché, la demande part dans la queue du '
+                      + (type === 'LAB' ? 'laboratoire' : 'service de radiologie')
+                      + " interne au lieu d'imprimer un bon papier pour le patient."}
                 </div>
               </div>
             )}

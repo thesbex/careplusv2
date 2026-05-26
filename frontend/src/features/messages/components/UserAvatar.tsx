@@ -22,9 +22,11 @@ interface UserAvatarProps {
   size: number;
   /** Optional version / cache-buster — bump to re-fetch the photo after upload. */
   version?: number;
+  /** Optional style overrides merged last (e.g. circular shape + overlap in a stack). */
+  style?: React.CSSProperties;
 }
 
-export function UserAvatar({ userId, hasPhoto, initials, color, size, version = 0 }: UserAvatarProps) {
+export function UserAvatar({ userId, hasPhoto, initials, color, size, version = 0, style }: UserAvatarProps) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -65,6 +67,7 @@ export function UserAvatar({ userId, hasPhoto, initials, color, size, version = 
     background: color,
     overflow: 'hidden',
     flexShrink: 0,
+    ...style,
   };
 
   if (hasPhoto && blobUrl && !failed) {

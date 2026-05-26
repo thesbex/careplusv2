@@ -225,6 +225,104 @@ class BillingIT {
         );
     }
 
+    // ── QA9-7 (V057) : médicament fourni en interne → ligne sur la facture ────
+
+    @Test
+    void signConsultation_internalPharmacyLine_billedFromMedicationInternalPrice() throws Exception {
+        String token = bearer(medEmail);
+
+        // 1. Active la capacité pharmacie interne (ligne config seedée par V002).
+        int upd = jdbc.update("UPDATE configuration_clinic_settings SET pharmacy_internal = TRUE");
+        if (upd == 0) {
+            jdbc.update("""
+                    INSERT INTO configuration_clinic_settings (id, name, address, city, phone,
+                        pharmacy_internal)
+                    VALUES (?, 'Clinique', 'Addr', 'Casa', '+212', TRUE)
+                    """, UUID.randomUUID());
+        }
+
+        // 2. Médicament avec prix interne 45.00.
+        UUID medId2 = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO catalog_medication (id, commercial_name, dci, form, dosage,
+                    internal_price, active, created_at, updated_at)
+                VALUES (?, 'Doliprane', 'Paracétamol', 'comprimé', '1g', 45.00, TRUE, now(), now())
+                """, medId2);
+
+        // 3. Ordonnance DRUG, ligne fournie en interne, quantité 2.
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/prescriptions")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"DRUG\",\"allergyOverride\":false,\"lines\":["
+                                + "{\"medicationId\":\"" + medId2 + "\",\"quantity\":2,\"internal\":true}]}"))
+                .andExpect(status().isCreated());
+
+        // La ligne doit être marquée internal_dispense en DB.
+        Integer dispensed = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinical_prescription_line WHERE medication_id = ? AND internal_dispense = TRUE",
+                Integer.class, medId2);
+        assertThat(dispensed).isEqualTo(1);
+
+        // 4. Signature → facture brouillon avec une ligne médicament 45 × 2 = 90.
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/sign")
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            UUID invoiceId = jdbc.queryForObject(
+                    "SELECT id FROM billing_invoice WHERE consultation_id = ?",
+                    UUID.class, consultationId);
+            assertThat(invoiceId).isNotNull();
+            Integer medLines = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM billing_invoice_line WHERE invoice_id = ? "
+                            + "AND description LIKE 'Médicament (interne)%' AND line_total = 90.00",
+                    Integer.class, invoiceId);
+            assertThat(medLines).isEqualTo(1);
+            // Total = acte 350 + médicament 90 = 440.
+            java.math.BigDecimal total = jdbc.queryForObject(
+                    "SELECT total FROM billing_invoice WHERE id = ?",
+                    java.math.BigDecimal.class, invoiceId);
+            assertThat(total).isEqualByComparingTo("440.00");
+        });
+    }
+
+    @Test
+    void signConsultation_internalPharmacy_nullPrice_notBilled() throws Exception {
+        String token = bearer(medEmail);
+        jdbc.update("UPDATE configuration_clinic_settings SET pharmacy_internal = TRUE");
+
+        // Médicament SANS prix interne → pas de ligne facture (skip silencieux).
+        UUID medNoPrice = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO catalog_medication (id, commercial_name, dci, form, dosage,
+                    internal_price, active, created_at, updated_at)
+                VALUES (?, 'Amoxil', 'Amoxicilline', 'gélule', '500mg', NULL, TRUE, now(), now())
+                """, medNoPrice);
+
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/prescriptions")
+                        .header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"DRUG\",\"allergyOverride\":false,\"lines\":["
+                                + "{\"medicationId\":\"" + medNoPrice + "\",\"quantity\":1,\"internal\":true}]}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/consultations/" + consultationId + "/sign")
+                        .header("Authorization", token))
+                .andExpect(status().isOk());
+
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            UUID invoiceId = jdbc.queryForObject(
+                    "SELECT id FROM billing_invoice WHERE consultation_id = ?",
+                    UUID.class, consultationId);
+            assertThat(invoiceId).isNotNull();
+            Integer medLines = jdbc.queryForObject(
+                    "SELECT COUNT(*) FROM billing_invoice_line WHERE invoice_id = ? "
+                            + "AND description LIKE 'Médicament (interne)%'",
+                    Integer.class, invoiceId);
+            assertThat(medLines).isZero();
+        });
+    }
+
     // ── Test 2: PREMIUM patient gets discount applied ─────────────────────────
 
     @Test

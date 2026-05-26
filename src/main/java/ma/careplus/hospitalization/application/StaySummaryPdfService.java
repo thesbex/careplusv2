@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import ma.careplus.hospitalization.infrastructure.web.dto.StayDetailView;
 import ma.careplus.shared.error.NotFoundException;
+import ma.careplus.shared.pdf.LogoWatermarkRenderer;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -71,6 +72,20 @@ public class StaySummaryPdfService {
         ctx.setVariable("assignments", assignments);
 
         LogoBlob logo = fetchLogo();
+        // QA10-1 — openhtmltopdf ignore l'opacité CSS sur les images raster : pour le
+        // filigrane (WATERMARK) on cuit la transparence dans les octets PNG côté serveur,
+        // comme PrescriptionPdfService. Sans ça le logo s'affichait en pleine opacité
+        // (ou pas du tout) au lieu d'un fond léger.
+        if (logo != null && "WATERMARK".equals(logo.position())) {
+            byte[] raw = Base64.getDecoder().decode(logo.base64());
+            byte[] processed = LogoWatermarkRenderer.applyTransparency(raw, 0.10f);
+            if (processed != null) {
+                logo = new LogoBlob(
+                        Base64.getEncoder().encodeToString(processed),
+                        LogoWatermarkRenderer.WATERMARK_MIME,
+                        logo.position());
+            }
+        }
         ctx.setVariable("cabinetLogoBase64", logo != null ? logo.base64() : null);
         ctx.setVariable("cabinetLogoMime", logo != null ? logo.mime() : null);
         ctx.setVariable("cabinetLogoPosition", logo != null ? logo.position() : null);

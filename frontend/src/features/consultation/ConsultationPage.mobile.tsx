@@ -26,6 +26,7 @@ import { useInvoiceByConsultation } from '@/features/facturation/hooks/useInvoic
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
+import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
 import { VitalIcon } from './components/VitalIcon';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
@@ -98,6 +99,7 @@ export default function ConsultationMobilePage() {
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [certificatOpen, setCertificatOpen] = useState(false);
+  const [confrereOpen, setConfrereOpen] = useState(false);
   const [promoteOpen, setPromoteOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
 
@@ -463,6 +465,15 @@ export default function ConsultationMobilePage() {
             type="button"
             className="m-btn"
             style={{ height: 40, fontSize: 12 }}
+            disabled={isSigned || isSuspended || !consultation}
+            onClick={() => setConfrereOpen(true)}
+          >
+            Courrier
+          </button>
+          <button
+            type="button"
+            className="m-btn"
+            style={{ height: 40, fontSize: 12 }}
             disabled={!consultation}
             onClick={() => setFollowUpOpen(true)}
           >
@@ -606,6 +617,11 @@ export default function ConsultationMobilePage() {
           <CertificatDialog
             open={certificatOpen}
             onOpenChange={setCertificatOpen}
+            consultationId={id}
+          />
+          <ConfrereLetterDialog
+            open={confrereOpen}
+            onOpenChange={setConfrereOpen}
             consultationId={id}
           />
         </>

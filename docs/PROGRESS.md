@@ -4,10 +4,68 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Module hospitalisation COMPLET (Slices A→E + D2 + dossier + PDF) LIVRÉ + commité** sur `feat/hospitalisation-slice-a` (8 commits). Pas encore poussé.
-**Last update**: 2026-05-25 (session hospitalisation — module complet)
-**Build**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** ; **22 IT verts** (Référentiel 9 + Cycle 8 + Extras 5, Testcontainers).
-**Next action**: push branche + ouvrir PR. Module hospitalisation fonctionnellement complet.
+**Phase**: Post-pilote — **QA9-14 HR/Personnel module LIVRÉ (V061, 11 IT verts)** sur `feat/qa9-backlog`.
+**Last update**: 2026-05-26 (session QA9-14 HR staff scaffold)
+**Build**: 11 IT verts (HrStaffIT, 32 s). Flyway à v061. Aucune régression.
+**Next action**: frontend HR (UI gestion personnel — liste staff + fiche + solde congés) ou retour sur backlog QA10.
+
+### 2026-05-26 — HR/Personnel module (QA9-14)
+
+**Shipped** :
+- **V061 `hr_staff.sql`** : 3 tables — `hr_staff` (id UUID PK, full_name, role CHECK 7 valeurs, hire_date, monthly_salary, phone, user_id FK nullable, active, soft-delete, version optimistic lock) ; `hr_leave_entry` (CONGE/ABSENCE/RETARD, days ≥ 0) ; `hr_salary_payment` (period YYYY-MM, amount, paid_at). 6 index.
+- **Backend `ma.careplus.hr`** : `HrStaff`/`HrLeaveEntry`/`HrSalaryPayment` entities + 3 repositories + `HrService` interface + `HrServiceImpl` (accrual formula : `ChronoUnit.MONTHS.between(hireDate, today) × 1.5`) + `HrMapper` (MapStruct) + `HrController` (12 endpoints `/api/hr/**`, ADMIN-only via `@PreAuthorize` at class level).
+- **RBAC** : toutes les routes ADMIN uniquement (class-level `@PreAuthorize("hasRole('ADMIN')")`). MEDECIN et SECRETAIRE → 403 (testé IT scénarios 2+3).
+- **Accrual** : `HrServiceImpl.getSummary()` — `monthsWorked = Math.max(0, ChronoUnit.MONTHS.between(hireDate, LocalDate.now()))` ; `accrued = monthsWorked × 1.5` ; `taken = Σ days(CONGE)` ; `balance = accrued − taken` ; `absencesCount = COUNT(ABSENCE)` ; `latenessCount = COUNT(RETARD)`.
+- **IT `HrStaffIT`** : 11 scénarios — create ADMIN 201, MEDECIN 403, SECRETAIRE 403, list+active+role filters, update+DB persist, soft-delete exclus liste+404, accrual 10m hire→accrued=15/taken=5/balance=10, absences+lateness counts (6m hire→accrued=9), delete leave 204+physique, add+list payment, delete payment 204+physique. **11/11 verts, 32 s.**
+
+---
+
+### 2026-05-26 — Prestations de séjour (QA10-2)
+
+**Shipped** :
+- **V060 `stay_prestation.sql`** : table `hospitalization_stay_prestation` (id UUID PK, stay_id FK, act_id FK nullable, label, unit_price ≥ 0, quantity > 0, performed_at, created_by, audit cols). Index sur `(stay_id, performed_at)`.
+- **Backend `ma.careplus.hospitalization`** : `StayPrestation` entity + `StayPrestationRepository` (1 finder) + `StayPrestationService` interface + `StayPrestationServiceImpl` + `StayPrestationController` (3 endpoints).
+- **Wiring facturation** : `StayServiceImpl.generateInvoice()` appende les lignes prestation après les lignes hébergement → facture de séjour = nuits × prix_journée + Σ prestations.
+- **StayDetailView étendu** : 2 nouveaux champs `prestations: PrestationLine[]` + `prestationsTotal: BigDecimal` (aperçu avant facturation dans le détail séjour).
+- **RBAC** : GET = SECRETAIRE/ASSISTANT/INFIRMIER/MEDECIN/ADMIN ; POST/DELETE = SECRETAIRE/INFIRMIER/MEDECIN/ADMIN. Miroir exact des ADMIT_ROLES/READ_ROLES du StayController.
+- **IT `StayPrestationIT`** : 7 scénarios — add 201, list, delete 204, delete after invoice 409, RBAC ASSISTANT 403, invoice includes prestations (640 = 400+240), StayDetailView expose prestations. **7/7 verts, 20 s.** Aucune régression (StayLifecycleIT 8, StayExtrasIT 6 tous verts).
+
+### 2026-05-26 — Courrier confrère (QA9-10)
+
+**Shipped** :
+- **Pas de migration** : `patient_document.type` est `VARCHAR(32)` sans CHECK (V009+V059 confirmés). `LETTRE_CONFRERE` ajouté à l'enum `DocumentType` côté Java uniquement.
+- **Backend `ma.careplus.confrere`** : `ConfrereLetterPdfService` (Thymeleaf+openhtmltopdf, logo/watermark alpha-baked, signature médecin) + `ConfrereLetterService` (charge la consultation via JdbcTemplate cross-module, génère PDF, stocke dans `patient_document` type=LETTRE_CONFRERE, lien consultationId dans `notes`) + `ConfrereLetterController` (POST + GET).
+- **Template Thymeleaf** : `templates/lettre-confrere.html` — en-tête cabinet + logo/watermark + bloc destinataire ("À l'attention du Dr {recipientName}" + specialty + city) + corps libre + signature médecin (scannée ou cachet).
+- **`PatientDocumentRepository`** : méthode `findConfrereLettersByPatientAndConsultation` ajoutée.
+- **RBAC** : POST + GET = MEDECIN+ADMIN ; SECRETAIRE → 403.
+- **IT `ConfrereLetterIT`** : 6 scénarios — generate 200+documentId, GET content → %PDF, DB type=LETTRE_CONFRERE, list includes letter, SECRETAIRE 403, unknown consultationId 404. **6/6 verts, 22 s.**
+
+---
+
+### 2026-05-26 — Consent module (QA9-13)
+
+**Shipped** :
+- **V059 `consent_template.sql`** : table `clinical_consent_template` (id UUID PK, type CHECK 7 valeurs, title VARCHAR(200), body TEXT, active BOOLEAN, soft-delete `deleted_at`, index type+active+title). Commentaire `patient_document.type` mis à jour pour inclure `CONSENTEMENT`.
+- **Backend `ma.careplus.consent`** : `ConsentTemplate` entity + `ConsentTemplateRepository` (3 finders JPQL) + `ConsentTemplateService` interface + `ConsentTemplateServiceImpl` + `ConsentPdfService` (Thymeleaf+openhtmltopdf, logo/watermark alpha-baked) + `PatientConsentService` (génère PDF + stocke dans `patient_document` type=CONSENTEMENT) + `ConsentTemplateController` (5 endpoints) + `PatientConsentController` (2 endpoints).
+- **DocumentType** : enum étendu avec `CONSENTEMENT`. `PatientDocumentRepository` : méthode `findConsentsByPatient` ajoutée.
+- **Template Thymeleaf** : `templates/consentement.html` — en-tête cabinet + logo/watermark + patient box + corps du texte + bloc signatures médecin/patient.
+- **RBAC** : GET templates = MEDECIN+ADMIN (actifs seulement pour MEDECIN, tout pour ADMIN) ; POST/PUT/DELETE templates = ADMIN only. Génération/liste consentements patient = MEDECIN+ADMIN.
+- **IT `ConsentTemplateIT`** : 11 scénarios — ADMIN create 201, SECRETAIRE create 403, list, update, soft-delete, invalid type 400, generate consent → 200+documentId, GET content → %PDF, DB type=CONSENTEMENT, list consents du patient, ADMIN voit tout vs MEDECIN voit actifs. **11/11 verts, 27.5 s.**
+
+---
+
+### 2026-05-26 — Finance module (QA9-15)
+
+**Shipped** :
+- **V058 `finance_expense.sql`** : table `finance_expense` (id UUID PK, category/periodicity CHECK, amount ≥ 0, soft-delete `deleted_at`, index date + catégorie).
+- **Backend `ma.careplus.finance`** : `Expense` entity + `ExpenseCategory`/`ExpensePeriodicity` enums + `ExpenseRepository` (JPQL filter + native monthly summary) + `ExpenseService`/`ExpenseServiceImpl` + `ExpenseMapper` (MapStruct) + `ExpenseController` 5 endpoints.
+- **RBAC** : GET/summary = MEDECIN+ADMIN ; POST/PUT/DELETE = ADMIN only.
+- **IT `FinanceExpenseIT`** : 8 scénarios — create 201, SECRETAIRE 403, list, filter category, update, soft-delete, summary monthly totals, invalid category 400. **8/8 verts, 22.1 s.**
+
+---
+
+**Phase précédente**: **Module hospitalisation COMPLET (Slices A→E + D2 + dossier + PDF) LIVRÉ + commité** sur `feat/hospitalisation-slice-a` (8 commits). Pas encore poussé.
+**Build précédente**: compile BE ✓ ; build prod FE ✓ (tsc strict) ; **QA IHM Playwright bout-en-bout verte** ; **22 IT verts** (Référentiel 9 + Cycle 8 + Extras 5, Testcontainers).
 
 ### 2026-05-25 (suite 2) — Hospitalisation reste : Slices C/E + D2 + dossier + PDF
 

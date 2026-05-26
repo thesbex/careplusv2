@@ -122,6 +122,8 @@ public class PrescriptionService {
         // V038 — flags services internes (lus une fois par requête, single-row).
         boolean labInternalActive = readBooleanFlag("lab_internal");
         boolean imagingInternalActive = readBooleanFlag("imaging_internal");
+        // V057 (QA9-7) — pharmacie interne : autorise le flag "fournir en interne" sur les lignes DRUG.
+        boolean pharmacyInternalActive = readBooleanFlag("pharmacy_internal");
 
         // Save lines
         if (req.lines() != null) {
@@ -149,9 +151,14 @@ public class PrescriptionService {
                 if (Boolean.TRUE.equals(lineReq.internal())) {
                     boolean isLab = lineReq.labTestId() != null;
                     boolean isImaging = lineReq.imagingExamId() != null;
+                    boolean isDrug = lineReq.medicationId() != null;
                     if ((isLab && labInternalActive) || (isImaging && imagingInternalActive)) {
                         line.setInternalStatus("PENDING");
                         line.setInternalAssignedAt(OffsetDateTime.now());
+                    } else if (isDrug && pharmacyInternalActive) {
+                        // V057 (QA9-7) — pas de file technicien pour un médicament :
+                        // simple drapeau de facturation, consommé à la signature.
+                        line.setInternalDispense(true);
                     }
                 }
                 prescriptionLineRepository.save(line);

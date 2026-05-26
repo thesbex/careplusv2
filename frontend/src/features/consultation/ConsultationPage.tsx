@@ -32,6 +32,7 @@ import { useAdjustInvoiceTotal } from '@/features/facturation/hooks/useInvoiceMu
 import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
+import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
@@ -93,6 +94,7 @@ export default function ConsultationPage() {
   const [vitalsOpen, setVitalsOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [certificatOpen, setCertificatOpen] = useState(false);
+  const [confrereOpen, setConfrereOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
   const isSuspended = consultation?.status === 'SUSPENDUE' && !isSigned;
@@ -376,6 +378,13 @@ export default function ConsultationPage() {
               onClick={() => setCertificatOpen(true)}
             />
             <ActionBtn
+              icon="Doc"
+              label="Courrier confrère"
+              sub="Lettre à un médecin externe"
+              disabled={!consultation || isSigned || isSuspended}
+              onClick={() => setConfrereOpen(true)}
+            />
+            <ActionBtn
               icon="Calendar"
               label="Prochain RDV"
               sub="Contrôle / suivi"
@@ -562,6 +571,11 @@ export default function ConsultationPage() {
           <CertificatDialog
             open={certificatOpen}
             onOpenChange={setCertificatOpen}
+            consultationId={id}
+          />
+          <ConfrereLetterDialog
+            open={confrereOpen}
+            onOpenChange={setConfrereOpen}
             consultationId={id}
           />
         </>
