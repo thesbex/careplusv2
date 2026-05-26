@@ -12,6 +12,7 @@ interface QueueEntryApi {
   hasAllergies: boolean;
   age: number | null;
   reasonLabel: string | null;
+  practitionerId: string | null;
   practitionerName: string | null;
   durationMinutes: number | null;
   isPremium: boolean;
@@ -53,6 +54,7 @@ function adapt(e: QueueEntryApi): QueueEntry {
     roomName: e.roomName ?? null,
     age: e.age ?? 0,
     reason: e.reasonLabel ?? '',
+    practitionerId: e.practitionerId ?? null,
     practitionerName: e.practitionerName ?? null,
     durationMinutes: e.durationMinutes ?? null,
     isPremium: e.isPremium,

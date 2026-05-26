@@ -36,6 +36,8 @@ export interface QueueEntry {
   reason: string;
   /** Practitioner display name (Dr. xxx). */
   practitionerName?: string | null;
+  /** Practitioner id — drives the per-doctor column grouping (QA9-11). */
+  practitionerId?: string | null;
   /** Slot duration in minutes (from start_at..end_at). */
   durationMinutes?: number | null;
   /** Whether the patient is on the PREMIUM tier (renders 🌟). */

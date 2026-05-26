@@ -15,6 +15,9 @@ import { useCheckIn } from './hooks/useCheckIn';
 import { api } from '@/lib/api/client';
 import { useUpcomingToday } from './hooks/useUpcomingToday';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
+import { AddWalkInDialog } from './components/AddWalkInDialog';
+import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
+import { groupQueueByPractitioner } from './queueGrouping';
 import { useAuthStore } from '@/lib/auth/authStore';
 import type { QueueEntry, WaitingPatientStatus } from './types';
 import './salle-attente.css';
@@ -41,7 +44,18 @@ export default function SalleAttenteMobilePage() {
   const { upcoming } = useUpcomingToday();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
+  const { data: practitioners } = usePractitioners();
   const [cancelTarget, setCancelTarget] = useState<QueueEntry | null>(null);
+  const [walkInOpen, setWalkInOpen] = useState(false);
+  // QA9-11 mobile — no room for side-by-side columns at 390px, so we render a
+  // horizontal chip filter to switch which doctor's queue is shown. Same ≥2
+  // active-practitioners threshold as desktop. `selectedDoc === null` = "Tous".
+  const [selectedDoc, setSelectedDoc] = useState<string | null>(null);
+  const activePractitioners = practitioners.filter((p) => p.active);
+  const showDocFilter = activePractitioners.length >= 2;
+  const columns = showDocFilter
+    ? groupQueueByPractitioner(queue, activePractitioners)
+    : [];
   // Constantes non-obligatoires : un MEDECIN qui tape un patient « arrivé » va
   // directement en consultation (les constantes restent saisissables depuis
   // la consultation). Les ASSISTANT/SECRETAIRE — dont c'est le rôle de saisir
@@ -136,6 +150,13 @@ export default function SalleAttenteMobilePage() {
   const enConsult = queue.filter((q) => q.status === 'consult').length;
   const avgWait = kpis.find((k) => k.label === 'Attente moy.')?.value ?? '0';
 
+  // When the doctor filter is active and a specific doctor is picked, narrow
+  // the rendered list to that doctor's column. "Tous" (null) keeps everyone.
+  const visibleQueue =
+    showDocFilter && selectedDoc !== null
+      ? (columns.find((c) => c.practitionerId === selectedDoc)?.entries ?? [])
+      : queue;
+
   return (
     <MScreen
       tab="salle"
@@ -154,8 +175,41 @@ export default function SalleAttenteMobilePage() {
     >
       <div className="mb-pad">
         {/* Screen heading */}
-        <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 2 }}>
-          Salle d'attente
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: 2,
+          }}
+        >
+          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            Salle d'attente
+          </div>
+          <button
+            type="button"
+            onClick={() => setWalkInOpen(true)}
+            aria-label="Ajouter un patient sans RDV"
+            style={{
+              flexShrink: 0,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              height: 34,
+              padding: '0 12px',
+              borderRadius: 999,
+              border: '1px solid var(--primary)',
+              background: 'var(--primary-soft)',
+              color: 'var(--primary)',
+              fontSize: 12.5,
+              fontWeight: 600,
+              fontFamily: 'inherit',
+              cursor: 'pointer',
+            }}
+          >
+            <Plus /> Sans RDV
+          </button>
         </div>
         <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 14 }}>
           {todayLabel} · {updatedLabel}
@@ -189,8 +243,33 @@ export default function SalleAttenteMobilePage() {
           <span className="more">Trier</span>
         </div>
 
+        {/* QA9-11 — doctor filter chips (≥2 active practitioners). */}
+        {showDocFilter && (
+          <div className="sa-m-doc-chips" role="group" aria-label="Filtrer par médecin">
+            <button
+              type="button"
+              className={`sa-m-doc-chip${selectedDoc === null ? ' active' : ''}`}
+              aria-pressed={selectedDoc === null}
+              onClick={() => setSelectedDoc(null)}
+            >
+              Tous ({queue.length})
+            </button>
+            {columns.map((col) => (
+              <button
+                key={col.practitionerId ?? 'unassigned'}
+                type="button"
+                className={`sa-m-doc-chip${selectedDoc === col.practitionerId ? ' active' : ''}`}
+                aria-pressed={selectedDoc === col.practitionerId}
+                onClick={() => setSelectedDoc(col.practitionerId)}
+              >
+                {col.label} ({col.entries.length})
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="m-card">
-          {queue.length === 0 ? (
+          {visibleQueue.length === 0 ? (
             <div
               style={{
                 padding: '32px 16px',
@@ -202,7 +281,7 @@ export default function SalleAttenteMobilePage() {
               Aucun patient présent
             </div>
           ) : (
-            queue.map((p, i) => {
+            visibleQueue.map((p, i) => {
               const isDone = p.status === 'done';
               const isArrived = p.status === 'arrived';
               const isVitals = p.status === 'vitals';
@@ -324,6 +403,8 @@ export default function SalleAttenteMobilePage() {
           appointmentId={cancelTarget?.appointmentId ?? null}
           patientName={cancelTarget?.name ?? null}
         />
+
+        <AddWalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
 
         {/* Upcoming today — not-yet-arrived appointments. Tap → check-in. */}
         {upcoming.length > 0 && (

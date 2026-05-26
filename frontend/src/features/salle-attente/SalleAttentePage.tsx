@@ -13,10 +13,13 @@ import { Print, Plus } from '@/components/icons';
 import { KpiTile } from './components/KpiTile';
 import { QueueRow } from './components/QueueRow';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
+import { AddWalkInDialog } from './components/AddWalkInDialog';
 import { useQueue } from './hooks/useQueue';
 import { useUpcomingToday } from './hooks/useUpcomingToday';
 import { useCheckIn } from './hooks/useCheckIn';
 import { useStartConsultation } from './hooks/useStartConsultation';
+import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
+import { groupQueueByPractitioner } from './queueGrouping';
 import type { QueueEntry } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
@@ -28,12 +31,23 @@ export default function SalleAttentePage() {
   const { upcoming } = useUpcomingToday();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
   const { startConsultation, isPending: isStarting } = useStartConsultation();
+  const { data: practitioners } = usePractitioners();
   // QA3-3 v1 — backward-compat: legacy sessions keep all CTAs visible.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canDeclareArrival = userPerms == null || userPerms.includes('ARRIVAL_DECLARE');
   const canRecordVitals = userPerms == null || userPerms.includes('VITALS_RECORD');
 
   const [cancelTarget, setCancelTarget] = useState<QueueEntry | null>(null);
+  const [walkInOpen, setWalkInOpen] = useState(false);
+
+  // QA9-11 — split the queue into per-doctor columns once the cabinet runs
+  // ≥2 active practitioners. Below that threshold (solo cabinet, or a cloisonné
+  // MEDECIN who only sees themselves), keep the original flat table.
+  const activePractitioners = practitioners.filter((p) => p.active);
+  const showColumns = activePractitioners.length >= 2;
+  const columns = showColumns
+    ? groupQueueByPractitioner(queue, activePractitioners)
+    : [];
 
   function handleTakeVitals(appointmentId: string) {
     navigate(`/constantes/${appointmentId}`);
@@ -87,6 +101,54 @@ export default function SalleAttentePage() {
     year: 'numeric',
   });
 
+  function renderRow(p: QueueEntry, i: number) {
+    return (
+      <QueueRow
+        key={p.appointmentId ?? `${p.name}-${i}`}
+        patient={p}
+        canRecordVitals={canRecordVitals}
+        onTakeVitals={handleTakeVitals}
+        onStartConsult={(entry) => {
+          void handleStartConsult(entry);
+        }}
+        onOpenConsult={(entry) => {
+          void handleOpenConsult(entry);
+        }}
+        onCancel={(entry) => setCancelTarget(entry)}
+        busy={isCheckingIn || isStarting}
+      />
+    );
+  }
+
+  const tableHead = (
+    <thead className="sa-queue-thead">
+      <tr>
+        {['Patient', 'RDV', 'Arrivé à', 'Attente', 'Motif', 'Statut', 'Salle'].map((h, i) => (
+          <th key={i} scope="col">
+            {h}
+          </th>
+        ))}
+        <th scope="col">
+          <span
+            style={{
+              position: 'absolute',
+              width: 1,
+              height: 1,
+              padding: 0,
+              margin: -1,
+              overflow: 'hidden',
+              clip: 'rect(0,0,0,0)',
+              whiteSpace: 'nowrap',
+              border: 0,
+            }}
+          >
+            Actions
+          </span>
+        </th>
+      </tr>
+    </thead>
+  );
+
   return (
     <Screen
       active="salle"
@@ -96,6 +158,9 @@ export default function SalleAttentePage() {
         <>
           <Button onClick={() => window.print()}>
             <Print /> Liste
+          </Button>
+          <Button onClick={() => setWalkInOpen(true)}>
+            <Plus /> Ajouter un patient sans RDV
           </Button>
           <Button variant="primary" onClick={() => navigate('/agenda')}>
             <Plus /> Déclarer arrivée
@@ -129,73 +194,59 @@ export default function SalleAttentePage() {
           ))}
         </div>
 
-        <Panel>
-          <PanelHeader>
-            <span>File d'attente</span>
-            <span className="sa-panel-sort">Trié par heure d'arrivée</span>
-          </PanelHeader>
-          <table className="sa-queue-table" aria-label="File d'attente">
-            <thead className="sa-queue-thead">
-              <tr>
-                {['Patient', 'RDV', 'Arrivé à', 'Attente', 'Motif', 'Statut', 'Salle'].map((h, i) => (
-                  <th key={i} scope="col">
-                    {h}
-                  </th>
-                ))}
-                <th scope="col">
-                  <span
-                    style={{
-                      position: 'absolute',
-                      width: 1,
-                      height: 1,
-                      padding: 0,
-                      margin: -1,
-                      overflow: 'hidden',
-                      clip: 'rect(0,0,0,0)',
-                      whiteSpace: 'nowrap',
-                      border: 0,
-                    }}
-                  >
-                    Actions
+        {showColumns ? (
+          <div className="sa-columns" role="region" aria-label="File d'attente par médecin">
+            {columns.map((col) => (
+              <Panel key={col.practitionerId ?? 'unassigned'} className="sa-col">
+                <div className="sa-col-head">
+                  <span className="sa-col-title">{col.label}</span>
+                  <span className="sa-col-count">
+                    {col.entries.length} patient{col.entries.length > 1 ? 's' : ''}
                   </span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={8}
-                    style={{
-                      padding: 24,
-                      textAlign: 'center',
-                      color: 'var(--ink-3)',
-                      fontSize: 13,
-                    }}
+                </div>
+                {col.entries.length === 0 ? (
+                  <div className="sa-col-empty">Aucun patient présent.</div>
+                ) : (
+                  <table
+                    className="sa-col-table"
+                    aria-label={`File d'attente — ${col.label}`}
                   >
-                    Aucun patient présent pour le moment.
-                  </td>
-                </tr>
-              )}
-              {queue.map((p, i) => (
-                <QueueRow
-                  key={p.appointmentId ?? `${p.name}-${i}`}
-                  patient={p}
-                  canRecordVitals={canRecordVitals}
-                  onTakeVitals={handleTakeVitals}
-                  onStartConsult={(entry) => {
-                    void handleStartConsult(entry);
-                  }}
-                  onOpenConsult={(entry) => {
-                    void handleOpenConsult(entry);
-                  }}
-                  onCancel={(entry) => setCancelTarget(entry)}
-                  busy={isCheckingIn || isStarting}
-                />
-              ))}
-            </tbody>
-          </table>
-        </Panel>
+                    {tableHead}
+                    <tbody>{col.entries.map((p, i) => renderRow(p, i))}</tbody>
+                  </table>
+                )}
+              </Panel>
+            ))}
+          </div>
+        ) : (
+          <Panel>
+            <PanelHeader>
+              <span>File d'attente</span>
+              <span className="sa-panel-sort">Trié par heure d'arrivée</span>
+            </PanelHeader>
+            <table className="sa-queue-table" aria-label="File d'attente">
+              {tableHead}
+              <tbody>
+                {queue.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      style={{
+                        padding: 24,
+                        textAlign: 'center',
+                        color: 'var(--ink-3)',
+                        fontSize: 13,
+                      }}
+                    >
+                      Aucun patient présent pour le moment.
+                    </td>
+                  </tr>
+                )}
+                {queue.map((p, i) => renderRow(p, i))}
+              </tbody>
+            </table>
+          </Panel>
+        )}
 
         <CancelAppointmentDialog
           open={cancelTarget !== null}
@@ -205,6 +256,8 @@ export default function SalleAttentePage() {
           appointmentId={cancelTarget?.appointmentId ?? null}
           patientName={cancelTarget?.name ?? null}
         />
+
+        <AddWalkInDialog open={walkInOpen} onOpenChange={setWalkInOpen} />
 
         {upcoming.length > 0 && (
           <>

@@ -17,6 +17,7 @@ public record QueueEntryView(
         boolean hasAllergies,
         Integer age,
         String reasonLabel,
+        UUID practitionerId,
         String practitionerName,
         Integer durationMinutes,
         boolean isPremium,
