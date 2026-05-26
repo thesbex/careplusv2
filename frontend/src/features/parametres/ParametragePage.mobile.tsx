@@ -24,6 +24,7 @@ import {
   Users,
   Chat as ChatIcon,
   Activity as ActivityIcon,
+  Invoice as InvoiceIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -49,6 +50,8 @@ export default function ParametrageMobilePage() {
 
   const isAdminOrDoctor =
     !!user && (user.roles.includes('ADMIN') || user.roles.includes('MEDECIN'));
+  // QA9-15 — les charges (dépenses) du cabinet sont réservées à l'ADMIN.
+  const isAdmin = !!user && user.roles.includes('ADMIN');
   // Pure-tech : on n'affiche que Messages + Mon profil + Déconnexion.
   // Pas de Dashboard, Cabinet, Suivi clinique, Catalogue.
   const pureTech = isPureTech(user?.roles);
@@ -134,6 +137,14 @@ export default function ParametrageMobilePage() {
                   window.location.href = '/parametres?desktop=1';
                 }}
               />
+              {isAdmin && (
+                <MenuRow
+                  Icon={InvoiceIcon}
+                  label="Charges"
+                  hint="Dépenses du cabinet — récapitulatif annuel"
+                  onClick={() => navigate('/charges')}
+                />
+              )}
             </div>
           </>
         ) : (

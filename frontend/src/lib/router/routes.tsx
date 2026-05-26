@@ -24,6 +24,7 @@ import StockArticlesRoute from '@/features/stock/StockArticlesRoute';
 import HospitalisationRoute from '@/features/hospitalisation/HospitalisationRoute';
 import StockArticleDetailRoute from '@/features/stock/StockArticleDetailRoute';
 import CataloguePage from '@/features/catalogue/CatalogueRoute';
+import ChargesPage from '@/features/charges/ChargesRoute';
 import LabCatalogueRoute from '@/features/catalogue/LabCatalogueRoute';
 import ImagingCatalogueRoute from '@/features/catalogue/ImagingCatalogueRoute';
 import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
@@ -304,6 +305,15 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <ImagingCatalogueRoute />
             </RequireAuth>
+          ),
+        },
+        {
+          // QA9-15 — charges du cabinet. Réservé ADMIN.
+          path: '/charges',
+          element: (
+            <RequireRole roles={['ADMIN']}>
+              <ChargesPage />
+            </RequireRole>
           ),
         },
         {

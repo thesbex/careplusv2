@@ -25,6 +25,7 @@ export const NAV_MAP: Record<NavScreen, string> = {
   messages: '/messages',
   sejours: '/hospitalisation',
   catalogue: '/catalogue',
+  charges: '/charges',
   params: '/parametres',
 };
 
