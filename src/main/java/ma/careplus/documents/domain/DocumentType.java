@@ -17,5 +17,7 @@ public enum DocumentType {
     /** Résultat (PDF analyse, image radio) attaché à une ligne de prescription. V015. */
     RESULTAT,
     /** Document de consentement patient généré à partir d'un modèle ou composé manuellement. QA9-13. */
-    CONSENTEMENT
+    CONSENTEMENT,
+    /** Courrier professionnel adressé à un confrère externe. QA9-10. */
+    LETTRE_CONFRERE
 }

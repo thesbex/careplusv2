@@ -73,4 +73,23 @@ public interface PatientDocumentRepository extends JpaRepository<PatientDocument
              ORDER BY d.uploadedAt DESC
             """)
     List<PatientDocument> findConsentsByPatient(@Param("patientId") UUID patientId);
+
+    /**
+     * Courriers confrère (LETTRE_CONFRERE) d'un patient filtrés par consultation,
+     * triés du plus récent au plus ancien. QA9-10.
+     *
+     * <p>La colonne {@code notes} contient {@code "consultationId=<uuid>"} car
+     * {@code patient_document} n'a pas de colonne {@code consultation_id}.
+     */
+    @Query("""
+            SELECT d FROM PatientDocument d
+             WHERE d.patientId = :patientId
+               AND d.deletedAt IS NULL
+               AND d.type = ma.careplus.documents.domain.DocumentType.LETTRE_CONFRERE
+               AND d.notes = :notesFilter
+             ORDER BY d.uploadedAt DESC
+            """)
+    List<PatientDocument> findConfrereLettersByPatientAndConsultation(
+            @Param("patientId") UUID patientId,
+            @Param("notesFilter") String notesFilter);
 }

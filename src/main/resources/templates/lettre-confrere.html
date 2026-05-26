@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<!--
+  Template PDF — Courrier au confrère. QA9-10.
+  Variables :
+    cabinet.{name,address,city,phone,inpe,cnom,establishmentTypeLabel}
+    cabinetLogoBase64 / cabinetLogoMime / cabinetLogoPosition
+    doctor.fullName     — Nom complet du médecin émetteur (ex. "Dr. Prénom NOM")
+    specialty           — Spécialité du médecin (nullable)
+    recipientName       — Nom du confrère destinataire
+    recipientSpecialty  — Spécialité du confrère (nullable)
+    recipientCity       — Ville du confrère (nullable)
+    body                — Corps de la lettre (texte libre rédigé par le médecin)
+    dateJour            — Date du jour (dd/MM/yyyy)
+    signatureBase64     — Signature scannée du médecin (nullable)
+    signatureMime       — MIME de la signature (nullable)
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-size: 11pt;
+            margin: 0;
+            padding: 0;
+            color: #1a1a1a;
+        }
+        .page {
+            padding: 20mm 22mm 28mm 22mm;
+        }
+        .header {
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 8px;
+            margin-bottom: 18px;
+            display: table;
+            width: 100%;
+        }
+        .header-left {
+            display: table-cell;
+            width: 60%;
+        }
+        .header-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+            vertical-align: top;
+        }
+        .cabinet-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2563eb;
+        }
+        .cabinet-meta {
+            font-size: 9pt;
+            color: #555;
+            line-height: 1.5;
+        }
+        .doc-title {
+            font-size: 14pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #2563eb;
+            text-align: center;
+            letter-spacing: 0.06em;
+            margin: 20px 0 16px 0;
+        }
+        .issue-date {
+            text-align: right;
+            font-size: 10pt;
+            color: #555;
+            margin-bottom: 20px;
+        }
+        .recipient-block {
+            margin-bottom: 22px;
+            font-size: 11pt;
+            line-height: 1.6;
+        }
+        .recipient-label {
+            font-size: 10pt;
+            color: #555;
+            margin-bottom: 2px;
+        }
+        .recipient-name {
+            font-weight: bold;
+            font-size: 12pt;
+        }
+        .recipient-meta {
+            font-size: 10pt;
+            color: #444;
+        }
+        .letter-body {
+            font-size: 11pt;
+            line-height: 1.9;
+            text-align: justify;
+            white-space: pre-wrap;
+            margin-bottom: 40px;
+        }
+        .footer {
+            border-top: 1px solid #c7d2fe;
+            padding-top: 10px;
+            margin-top: 40px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left {
+            display: table-cell;
+            width: 60%;
+            font-size: 9pt;
+            color: #777;
+        }
+        .footer-right {
+            display: table-cell;
+            width: 40%;
+            text-align: right;
+        }
+        .signature-area {
+            border: 1px dashed #aaa;
+            height: 50px;
+            width: 160px;
+            margin-left: auto;
+            display: block;
+            text-align: center;
+            padding-top: 16px;
+            font-size: 9pt;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <!-- WATERMARK (alpha baked server-side — openhtmltopdf ignore CSS opacity sur rasters) -->
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:fixed;left:0;right:0;top:90mm;text-align:center;pointer-events:none;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="width:110mm;max-height:90mm;opacity:0.1;" alt=""/>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;" alt="Logo"/>
+            <div class="cabinet-name"
+                 th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">
+                Cabinet Médical
+            </div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                <span>Tél : </span><span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom NOM</strong><br/>
+                <th:block th:if="${specialty != null and !#strings.isEmpty(specialty)}">
+                    <em style="color:#2563eb;" th:text="${specialty}">Spécialité</em><br/>
+                </th:block>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DOCUMENT TITLE -->
+    <div class="doc-title">COURRIER MÉDICAL CONFIDENTIEL</div>
+
+    <!-- ISSUE DATE -->
+    <div class="issue-date">
+        Fait le : <span th:text="${dateJour}">01/01/2026</span>
+    </div>
+
+    <!-- RECIPIENT BLOCK -->
+    <div class="recipient-block">
+        <div class="recipient-label">À l'attention de :</div>
+        <div class="recipient-name">
+            Dr <span th:text="${recipientName}">Nom du confrère</span>
+        </div>
+        <div class="recipient-meta"
+             th:if="${recipientSpecialty != null and !#strings.isEmpty(recipientSpecialty)}">
+            <span th:text="${recipientSpecialty}">Spécialité</span>
+        </div>
+        <div class="recipient-meta"
+             th:if="${recipientCity != null and !#strings.isEmpty(recipientCity)}">
+            <span th:text="${recipientCity}">Ville</span>
+        </div>
+    </div>
+
+    <!-- LETTER BODY -->
+    <div class="letter-body" th:text="${body}">
+        Corps de la lettre…
+    </div>
+
+    <!-- FOOTER : signature médecin (miroir ordonnance.html) -->
+    <div class="footer">
+        <div class="footer-left">
+            <img th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'FOOTER'}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:42px;max-width:120px;display:block;margin-bottom:4px;"
+                 alt="Logo"/>
+            Document généré par CarePlus &mdash; confidentiel médical
+        </div>
+        <div class="footer-right">
+            <th:block th:if="${signatureBase64 != null}">
+                <div style="text-align:right;font-size:9pt;color:#555;">
+                    <span th:text="${doctor.fullName}">Dr. Prénom NOM</span>
+                    <div th:if="${specialty != null and !#strings.isEmpty(specialty)}"
+                         style="font-style:italic;color:#2563eb;font-size:9pt;"
+                         th:text="${specialty}">Spécialité</div>
+                </div>
+                <img th:src="'data:' + ${signatureMime} + ';base64,' + ${signatureBase64}"
+                     style="max-width:200px;max-height:80px;display:block;margin-left:auto;margin-top:4px;"
+                     alt="Signature du médecin"/>
+            </th:block>
+            <div class="signature-area" th:if="${signatureBase64 == null}">Cachet du médecin</div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
