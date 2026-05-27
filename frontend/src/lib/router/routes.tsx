@@ -34,6 +34,7 @@ import InternalRequestsQueuePage from '@/features/internal-requests/QueuePage';
 // urgent, pinned, threading). `features/messages/` consomme les hooks `useChannels`,
 // `useDirectMessages`, `usePatientThreads`, `useConversation`, `useSendMessage`.
 import MessagesRoute from '@/features/messages';
+import AssistantRoute from '@/features/assistant/AssistantRoute';
 import { AppLayout } from '@/components/shell/AppLayout';
 import { RequireAuth, RequireRole, RequirePermission, GuestOnly, RequireOnboardingComplete } from '@/lib/auth/RequireAuth';
 
@@ -349,6 +350,15 @@ export const router = createBrowserRouter(
             <RequireAuth>
               <MessagesRoute />
             </RequireAuth>
+          ),
+        },
+        {
+          // Assistant IA (V064) — chat médical + contexte dossier. MEDECIN / ADMIN.
+          path: '/assistant',
+          element: (
+            <RequireRole roles={['MEDECIN', 'ADMIN']}>
+              <AssistantRoute />
+            </RequireRole>
           ),
         },
       ],

@@ -17,6 +17,7 @@ import {
   Eye,
   Chat,
   Activity,
+  Sparkles,
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -58,7 +59,7 @@ export type SidebarScreen =
  * pas casser les `NAV_MAP` locaux (historiques) des pages, qui n'indexent que
  * les écrans de base. Le shell (Sidebar / navMap / AppLayout) utilise NavScreen.
  */
-export type NavScreen = SidebarScreen | 'sejours' | 'charges' | 'personnel';
+export type NavScreen = SidebarScreen | 'sejours' | 'charges' | 'personnel' | 'assistant';
 
 interface NavItem {
   id: NavScreen;
@@ -91,6 +92,8 @@ const ITEMS: NavItem[] = [
   { id: 'queueLab', label: 'Laboratoire', Icon: Stetho, section: 'flux', requiresRoles: ['LAB'] },
   { id: 'queueRadio', label: 'Radiologie', Icon: Stetho, section: 'flux', requiresRoles: ['RADIO'] },
   { id: 'messages', label: 'Messages', Icon: Chat, section: 'flux' },
+  // Assistant IA — aide à la décision clinique. Réservé MEDECIN / ADMIN.
+  { id: 'assistant', label: 'Assistant IA', Icon: Sparkles, section: 'flux', requiresRoles: ['MEDECIN', 'ADMIN'] },
   { id: 'catalogue', label: 'Catalogue', Icon: Pill, section: 'config' },
   // QA9-15 — charges du cabinet (dépenses). ADMIN uniquement.
   { id: 'charges', label: 'Charges', Icon: Invoice, section: 'config', requiresRoles: ['ADMIN'] },

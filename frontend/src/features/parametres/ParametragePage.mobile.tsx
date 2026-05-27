@@ -25,6 +25,7 @@ import {
   Chat as ChatIcon,
   Activity as ActivityIcon,
   Invoice as InvoiceIcon,
+  Sparkles as SparklesIcon,
 } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
@@ -228,6 +229,14 @@ export default function ParametrageMobilePage() {
             badge={messagesBadge}
             onClick={() => navigate('/messages')}
           />
+          {isAdminOrDoctor && (
+            <MenuRow
+              Icon={SparklesIcon}
+              label="Assistant IA"
+              hint="Aide à la décision clinique"
+              onClick={() => navigate('/assistant')}
+            />
+          )}
         </div>
 
         {!pureTech && (

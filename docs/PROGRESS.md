@@ -4,10 +4,21 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **backlog Suivi : lot 1 (mergé main) + lot 2** corrigés.
-**Last update**: 2026-05-27 (session bugfix backlog lot 2 : grossesse / hospit / chat / pharmacie)
-**Build**: frontend `npm run build` vert ; vitest grossesse 27/27, salle 34/34, hospit 5/5. Flyway à v063 (aucune nouvelle migration lot 2). 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées.
-**Next action**: merge lot 2 + push (sur demande). Reste backlog : aucun item ouvert connu.
+**Phase**: Post-pilote — **Assistant IA médecin v1 livré** (module `assistant`, V064, ADR-039).
+**Last update**: 2026-05-27 (session assistant IA : chat médical + contexte dossier)
+**Build**: frontend `npm run build` vert (tsc strict) ; **AssistantIT 10/10 vert** (Testcontainers, provider stubé). Flyway à **v064**. 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées.
+**QA IHM** : walké au navigateur (Dr El Amrani, MEDECIN+ADMIN, :5173) — ✅ item sidebar « Assistant IA » ; ✅ page rend topbar « Google Gemini · gemini-2.5-flash » + bandeau « Assistant non configuré » (pas de `GEMINI_API_KEY`) + composer désactivé (dégradation propre sans clé) ; ✅ bouton « Demander à l'IA » dans le dossier → `/assistant?patient=…` ; ✅ bandeau « Contexte joint : dossier de <patient> » + bouton Retirer. Round-trip modèle réel non testable sans clé — couvert par l'IT via stub.
+**Next action**: configurer `GEMINI_API_KEY` côté serveur pour activer le round-trip ; commit (feature + IT + docs). Pas de régression connue.
+
+### 2026-05-27 — Assistant IA médecin v1 (module `assistant`, V064, ADR-039)
+
+**Shipped** :
+- **V064 `assistant_module.sql`** : `assistant_conversation` (owner_id, patient_id nullable, title, audit) + `assistant_message` (role CHECK USER/ASSISTANT/SYSTEM, content, created_at). Index owner+updated_at desc et conversation+created_at.
+- **Backend `ma.careplus.assistant`** : `AiProperties` (`careplus.ai.*`) + abstraction `AiChatClient` + impl `OpenAiCompatibleChatClient` (Spring `RestClient`, protocole OpenAI Chat Completions → couvre Gemini/OpenAI/Groq/Ollama ; Claude = future impl) + `AssistantService`/Impl (JdbcTemplate, persistance + contexte patient anonymisé + appel modèle) + `AssistantController` 5 endpoints `/api/assistant/**` (config, list, get, ask, delete), RBAC MEDECIN+ADMIN.
+- **Provider défaut Gemini `gemini-2.5-flash`**, clé `GEMINI_API_KEY` (env). Sans clé → 503 propre + IHM dégradée. Contexte patient exclut CIN/téléphone/adresse/nom (minimisation cloud). Horodatage `clock_timestamp()` pour ordre USER→ASSISTANT déterministe.
+- **`AssistantIT`** : 10 scénarios (config, ask create/continue, contexte patient injecté, cloisonnement owner, get, delete, RBAC SECRETAIRE 403, 404, 401) — provider stubé, aucun réseau. **10/10 verts, ~23 s.**
+- **Frontend `features/assistant/`** : types + hooks + `AssistantPage` (desktop 2-cols rail+thread+composer) + `.mobile` + `AssistantRoute` responsive + `MessageThread` + `assistant.css`. Icône maison `Sparkles`.
+- **Navigation** : item Sidebar « Assistant IA » (MEDECIN/ADMIN) + `NavScreen`/`NAV_MAP` + route `/assistant` (RequireRole) + entrée menu « Plus » mobile + bouton « Demander à l'IA » dans le dossier patient.
 
 ### 2026-05-27 — Bugfix backlog Suivi (lot 2 : grossesse, hospit, chat, pharmacie)
 

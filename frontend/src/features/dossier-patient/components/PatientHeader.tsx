@@ -5,7 +5,7 @@
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
-import { Print, Edit, Plus, Warn } from '@/components/icons';
+import { Print, Edit, Plus, Warn, Sparkles } from '@/components/icons';
 import type { PatientSummary } from '../types';
 import { useInsurances } from '../hooks/useInsurances';
 
@@ -13,6 +13,7 @@ interface PatientHeaderProps {
   patient: PatientSummary;
   onEdit?: () => void;
   onNewConsultation?: () => void;
+  onAskAi?: () => void;
   isStartingConsult?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function PatientHeader({
   patient,
   onEdit,
   onNewConsultation,
+  onAskAi,
   isStartingConsult,
 }: PatientHeaderProps) {
   // V044/coverage-fix — render the actual mutuelle name + policy number from
@@ -88,6 +90,11 @@ export function PatientHeader({
         {onEdit && (
           <Button onClick={onEdit}>
             <Edit /> Modifier
+          </Button>
+        )}
+        {onAskAi && (
+          <Button onClick={onAskAi} title="Synthèse / aide à la décision sur ce dossier">
+            <Sparkles /> Demander à l'IA
           </Button>
         )}
         {onNewConsultation && (

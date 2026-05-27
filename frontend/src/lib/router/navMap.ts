@@ -23,6 +23,7 @@ export const NAV_MAP: Record<NavScreen, string> = {
   queueLab: '/queue/lab',
   queueRadio: '/queue/radio',
   messages: '/messages',
+  assistant: '/assistant',
   sejours: '/hospitalisation',
   catalogue: '/catalogue',
   charges: '/charges',
