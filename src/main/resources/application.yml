@@ -35,6 +35,14 @@ server:
     include-message: always
     include-stacktrace: never
   forward-headers-strategy: framework
+  # Compression HTTP des réponses servies par Tomcat embarqué — couvre le bundle
+  # SPA (JS ~2.4 Mo → ~645 Ko gz, CSS ~220 Ko → ~68 Ko) ET le worker pdf.js
+  # (~1 Mo → ~300 Ko) chargé au 1er affichage d'un PDF. Principal levier sur le
+  # « chargement lent » côté cabinet on-premise (aucun Nginx devant — ADR-020).
+  compression:
+    enabled: true
+    mime-types: "text/html,text/css,text/plain,text/javascript,application/javascript,application/json,image/svg+xml,application/wasm,application/manifest+json"
+    min-response-size: 1024
 
 careplus:
   documents:
@@ -65,6 +73,23 @@ careplus:
       enabled: false
     backup:
       enabled: false
+  # Assistant IA (module ma.careplus.assistant) — provider configurable.
+  # Défaut : Gemini (free tier Google) via son endpoint OpenAI-compatible.
+  # Pour basculer vers GPT : provider=openai, base-url=https://api.openai.com/v1,
+  #   model=gpt-4o-mini, api-key=${OPENAI_API_KEY}.
+  # Pour Groq (gratuit) : provider=groq, base-url=https://api.groq.com/openai/v1,
+  #   model=llama-3.3-70b-versatile, api-key=${GROQ_API_KEY}.
+  # Pour Ollama (local, on-premise, aucune donnée ne sort) : provider=ollama,
+  #   base-url=http://localhost:11434/v1, model=llama3.1 (pas de clé).
+  ai:
+    enabled: ${CAREPLUS_AI_ENABLED:true}
+    provider: ${CAREPLUS_AI_PROVIDER:gemini}
+    base-url: ${CAREPLUS_AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+    model: ${CAREPLUS_AI_MODEL:gemini-1.5-flash}
+    api-key: ${GEMINI_API_KEY:}
+    temperature: 0.3
+    max-tokens: 1024
+    timeout-seconds: 60
 
 springdoc:
   api-docs:
