@@ -201,7 +201,7 @@ export function Sidebar({
   return (
     <nav className="cp-sidebar" aria-label="Navigation principale">
       <div className="cp-brand">
-        <BrandMark size="md" />
+        <BrandMark size="md" variant="tile" />
         <div className="cp-brand-name">
           {resolvedCabinet.name === 'careplus' ? (
             <BrandWordmark />

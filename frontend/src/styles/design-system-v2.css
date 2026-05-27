@@ -1,0 +1,65 @@
+/*
+ * careplus — Design System v2 (« DS2 ») — aligné sur le design officiel
+ * (Claude Design — careplus-v2.css + DESIGN_SYSTEM v2.md). 2026-05-27.
+ *
+ * RÈGLE COULEUR (ne jamais casser) :
+ *   saphir  #1E4DAB  → actif · live · planifié · navigation · CTA primaire
+ *   vert    #0E5B3E  → médication · traitement · complétion · succès
+ *   corail  #E1593C  → allergie · urgence · en retard · destructif
+ *
+ * Police : Geist (UI) + Geist Mono (heures, montants, IDs).
+ *
+ * Stratégie : tokens globaux `--ds2-*` + override de --font-sans/--font-mono.
+ * Appliqué progressivement (dashboard, navbar/topbar, agenda) ; à promouvoir
+ * dans tokens.css quand tous les écrans sont migrés. Doc : docs/DESIGN_SYSTEM_V2.md
+ */
+
+@import '@fontsource/geist-sans/400.css';
+@import '@fontsource/geist-sans/500.css';
+@import '@fontsource/geist-sans/600.css';
+@import '@fontsource/geist-sans/700.css';
+@import '@fontsource/geist-mono/400.css';
+@import '@fontsource/geist-mono/500.css';
+
+:root {
+  /* ── Surfaces & fond ─────────────────────────── */
+  --ds2-bg: #edf2fa;
+  --ds2-surface: #ffffff;
+  --ds2-surface-2: #f4f7fc;
+  --ds2-border: #e2e7ef;
+  --ds2-border-strong: #d2dceb;
+
+  /* ── Encre ───────────────────────────────────── */
+  --ds2-ink: #0b1410;
+  --ds2-ink-2: #2f3a35;
+  --ds2-ink-3: #646d67;
+  --ds2-ink-4: #9aa29d;
+
+  /* ── Saphir (actif / navigation / graphes / CTA) ─ */
+  --ds2-navy: #1e4dab;          /* « --blue » officiel */
+  --ds2-navy-hover: #163c85;
+  --ds2-navy-soft: #eaf0fa;     /* --blue-tint : fond nav actif / sélection */
+  --ds2-navy-chart-soft: #dce5f5; /* --blue-soft : barres inactives */
+  --ds2-primary: #1e4dab;       /* CTA = même saphir (une seule couleur bleue) */
+  --ds2-primary-hover: #163c85;
+
+  /* ── Sémantique (pastilles + deltas + statuts) ─── */
+  --ds2-blue: #1e4dab;
+  --ds2-indigo: #3672d8;        /* --blue-2 (variation) */
+  --ds2-green: #0e5b3e;         /* vert bouteille — traitement / delta positif */
+  --ds2-amber: #a86a0c;
+  --ds2-coral: #e1593c;
+  --ds2-danger: #e1593c;        /* alias corail (destructif / delta négatif) */
+
+  /* ── Élévation & rayons (officiels) ───────────── */
+  --ds2-shadow-sm: 0 1px 2px rgba(20, 40, 80, 0.04);
+  --ds2-shadow-pop: 0 8px 24px rgba(20, 40, 80, 0.12);
+  --ds2-radius: 12px;           /* --r-lg */
+  --ds2-radius-sm: 8px;         /* --r-md */
+
+  /* ── Police (override global — design officiel = Geist) ── */
+  --ds2-font: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  --ds2-font-mono: 'Geist Mono', ui-monospace, monospace;
+  --font-sans: var(--ds2-font);
+  --font-mono: var(--ds2-font-mono);
+}

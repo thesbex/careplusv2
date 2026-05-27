@@ -1,21 +1,29 @@
 /**
  * /dashboard — Dashboard hub (desktop).
  *
- * Affiche les KPIs cabinet selon le rôle :
- *  - MEDECIN / ADMIN : clinical + agenda + financial
- *  - SECRETAIRE / ASSISTANT : clinical (sans bloc financial) + agenda
+ * DESIGN REFRESH PILOT (2026-05-27) : nouveau design system « dx » (cartes
+ * douces fond bleu-gris, graphes recharts navy, KPI à pastille + delta coloré,
+ * listes numérotées), porté sur la maquette cible. Scopé sous `.dx` pour ne pas
+ * toucher les autres écrans tant que le pilote n'est pas validé.
  *
- * Les 3 hooks (`useDashboardClinical`, `useDashboardAgenda`,
- * `useDashboardFinancial`) sont auto-désactivés selon le rôle, donc on
- * affiche/masque simplement les sections sans gating supplémentaire.
- *
- * MVP : pas de graphes, listes simples + cards stylés. Les bibliothèques
- * recharts/d3 sont déjà disponibles ; un éventuel F1.bis ajoutera les
- * courbes/histogrammes (BACKLOG).
+ * Rôles : MEDECIN/ADMIN voient clinical+agenda+financial ; SECRETAIRE/ASSISTANT
+ * voient clinical+agenda (bloc financier masqué). Hooks auto-désactivés par rôle.
  */
+import { type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  Tooltip,
+} from 'recharts';
 import { Screen } from '@/components/shell/Screen';
-import { Panel, PanelHeader } from '@/components/ui/Panel';
+import { Button } from '@/components/ui/Button';
+import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { useDashboardClinical } from './hooks/useDashboardClinical';
 import { useDashboardAgenda } from './hooks/useDashboardAgenda';
@@ -47,245 +55,217 @@ const NAV_MAP = {
 } as const;
 
 const FINANCIAL_ROLES = ['MEDECIN', 'ADMIN'];
+const DX_NAVY = '#1e4dab';
+const DX_NAVY_SOFT = '#dce5f5';
+
+const MONTHS_FR = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
 
 function formatNumber(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return '—';
   return new Intl.NumberFormat('fr-MA').format(n);
 }
-
 function formatMoney(n: number | null | undefined): string {
   if (n == null || Number.isNaN(n)) return '—';
-  return `${new Intl.NumberFormat('fr-MA', { maximumFractionDigits: 0 }).format(n)} MAD`;
+  return new Intl.NumberFormat('fr-MA', { maximumFractionDigits: 0 }).format(n);
 }
-
 function formatPct(ratio: number | null | undefined): string {
   if (ratio == null || Number.isNaN(ratio)) return '—';
-  return `${Math.round(ratio * 100)} %`;
+  return `${Math.round(ratio * 100)}`;
+}
+function monthLabel(yyyymm: string): string {
+  const m = Number(yyyymm.slice(5, 7));
+  return MONTHS_FR[m - 1] ?? yyyymm.slice(5);
+}
+function hourLabel(slot: string): string {
+  // "08:00" / "08:00:00" / ISO → garde HH
+  const hh = slot.includes('T') ? slot.split('T')[1]?.slice(0, 2) : slot.slice(0, 2);
+  return hh ?? slot;
 }
 
-function formatUpdatedAt(ms: number): string {
-  if (!ms) return 'jamais';
-  const d = new Date(ms);
-  return d.toLocaleTimeString('fr-MA', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
+// ── KPI card ────────────────────────────────────────────────────────────────
 
-// ── Building blocks ─────────────────────────────────────────────────────────
+type Tone = 'blue' | 'indigo' | 'amber' | 'green';
+type DeltaTone = 'pos' | 'neg' | 'warn' | 'muted';
 
-interface KpiCardProps {
+function KpiCard({
+  label,
+  value,
+  unit,
+  delta,
+  deltaTone = 'muted',
+  dot = 'blue',
+  accent = false,
+  loading = false,
+  testId,
+}: {
   label: string;
   value: string;
-  hint?: string | undefined;
+  unit?: string | undefined;
+  delta?: string | undefined;
+  deltaTone?: DeltaTone | undefined;
+  dot?: Tone | undefined;
+  accent?: boolean | undefined;
   loading?: boolean | undefined;
   testId?: string | undefined;
-}
-
-function KpiCard({ label, value, hint, loading, testId }: KpiCardProps) {
+}) {
   return (
-    <div data-testid={testId} className="dash-kpi">
-      <div className="dash-kpi-label">{label}</div>
-      <div className="dash-kpi-value">
+    <div data-testid={testId} className={`dx-kpi${accent ? ' is-accent' : ''}`}>
+      <div className="dx-kpi-top">
+        <span className={`dx-dot dx-dot-${dot}`} aria-hidden="true" />
+        <span className="dx-kpi-label">{label}</span>
+      </div>
+      <div className="dx-kpi-val">
         {loading ? (
-          <span className="dash-kpi-skeleton" aria-hidden="true" />
+          <span className="dx-skel" aria-hidden="true" />
         ) : (
-          value
+          <>
+            {value}
+            {unit && <span className="dx-kpi-unit">{unit}</span>}
+          </>
         )}
       </div>
-      {hint && <div className="dash-kpi-hint">{hint}</div>}
+      {delta && <div className={`dx-kpi-delta dx-${deltaTone}`}>{delta}</div>}
     </div>
   );
 }
 
-function MiniSparkline({ points }: { points: ActivityPoint[] }) {
-  if (points.length === 0) {
-    return (
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: 12 }}>
-        Aucune activité.
-      </div>
-    );
-  }
-  const max = Math.max(1, ...points.map((p) => p.count));
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'flex-end',
-        gap: 3,
-        padding: '12px 16px',
-        height: 110,
-      }}
-      role="img"
-      aria-label={`Activité : ${points.length} jours`}
-    >
-      {points.map((p) => {
-        const ratio = p.count / max;
-        return (
-          <div
-            key={p.date}
-            title={`${p.date} : ${p.count} consult.`}
-            style={{
-              flex: 1,
-              minWidth: 4,
-              height: `${Math.max(4, ratio * 100)}%`,
-              background:
-                p.count > 0 ? 'var(--primary)' : 'var(--border)',
-              borderRadius: '2px 2px 0 0',
-              opacity: p.count > 0 ? 0.85 : 0.4,
-            }}
-          />
-        );
-      })}
-    </div>
-  );
-}
+// ── Cards / charts ────────────────────────────────────────────────────────────
 
-function HourlyBars({ points }: { points: HourlyLoadPoint[] }) {
-  if (points.length === 0) {
-    return (
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: 12 }}>
-        Aucun rendez-vous prévu.
-      </div>
-    );
-  }
-  const max = Math.max(1, ...points.map((p) => p.count));
-  return (
-    <div style={{ padding: '12px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
-        {points.map((p) => (
-          <div
-            key={p.slotStart}
-            title={`${p.slotStart} : ${p.count} RDV`}
-            style={{
-              flex: 1,
-              minWidth: 6,
-              height: `${(p.count / max) * 100}%`,
-              background: 'var(--primary)',
-              borderRadius: '2px 2px 0 0',
-              opacity: 0.8,
-            }}
-          />
-        ))}
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          gap: 4,
-          marginTop: 6,
-          fontSize: 10,
-          color: 'var(--ink-3)',
-        }}
-      >
-        {points.map((p, i) => (
-          <div
-            key={p.slotStart}
-            style={{ flex: 1, textAlign: 'center', minWidth: 6 }}
-          >
-            {i % Math.max(1, Math.floor(points.length / 6)) === 0 ? p.slotStart : ''}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HBars({
-  rows,
-  total,
+function Card({
+  title,
+  sub,
+  right,
+  children,
 }: {
-  rows: { label: string; value: number; sub?: string }[];
-  total?: number;
+  title: string;
+  sub?: string;
+  right?: ReactNode;
+  children: ReactNode;
 }) {
-  if (rows.length === 0) {
-    return (
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: 16 }}>
-        Aucune donnée.
-      </div>
-    );
-  }
-  const max = total ?? Math.max(1, ...rows.map((r) => r.value));
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: '12px 16px',
-      }}
-    >
-      {rows.map((r) => (
-        <div key={r.label}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              fontSize: 12,
-              color: 'var(--ink-2)',
-              marginBottom: 3,
-            }}
-          >
-            <span style={{ fontWeight: 500 }}>{r.label}</span>
-            <span style={{ color: 'var(--ink-3)' }}>{r.sub ?? r.value}</span>
-          </div>
-          <div
-            style={{
-              height: 6,
-              background: 'var(--border)',
-              borderRadius: 3,
-              overflow: 'hidden',
-            }}
-          >
-            <div
-              style={{
-                width: `${(r.value / max) * 100}%`,
-                height: '100%',
-                background: 'var(--primary)',
-                opacity: 0.85,
-              }}
-            />
-          </div>
+    <div className="dx-card">
+      <div className="dx-card-h">
+        <div>
+          <div className="dx-card-title">{title}</div>
+          {sub && <div className="dx-card-sub">{sub}</div>}
         </div>
-      ))}
+        {right}
+      </div>
+      {children}
     </div>
   );
 }
 
-function MonthlyRevenueList({ points }: { points: MonthlyRevenuePoint[] }) {
-  if (points.length === 0) {
-    return (
-      <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: 16 }}>
-        Aucune donnée sur 12 mois.
-      </div>
-    );
-  }
-  const max = Math.max(1, ...points.map((p) => p.amount));
+function AreaTrend({ points }: { points: ActivityPoint[] }) {
+  if (points.length === 0) return <div className="dx-empty">Aucune activité.</div>;
   return (
-    <div style={{ padding: '12px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110 }}>
-        {points.map((p) => (
-          <div
-            key={p.month}
-            title={`${p.month} : ${formatMoney(p.amount)}`}
-            style={{
-              flex: 1,
-              minWidth: 8,
-              height: `${(p.amount / max) * 100}%`,
-              background: 'var(--primary)',
-              borderRadius: '2px 2px 0 0',
-              opacity: 0.85,
-            }}
+    <div className="dx-chart" style={{ height: 96 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={points} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
+          <defs>
+            <linearGradient id="dxArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={DX_NAVY} stopOpacity={0.18} />
+              <stop offset="100%" stopColor={DX_NAVY} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Tooltip
+            cursor={{ stroke: DX_NAVY_SOFT }}
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7ecf3' }}
+            labelFormatter={(d) => String(d)}
+            formatter={(v) => [`${v} consult.`, '']}
           />
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 4, marginTop: 6, fontSize: 10, color: 'var(--ink-3)' }}>
-        {points.map((p) => (
-          <div key={p.month} style={{ flex: 1, textAlign: 'center', minWidth: 8 }}>
-            {p.month.slice(5)}
-          </div>
-        ))}
-      </div>
+          <Area
+            type="monotone"
+            dataKey="count"
+            stroke={DX_NAVY}
+            strokeWidth={2}
+            fill="url(#dxArea)"
+            dot={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
+  );
+}
+
+function HourlyChart({ points }: { points: HourlyLoadPoint[] }) {
+  if (points.length === 0) return <div className="dx-empty">Aucun rendez-vous prévu.</div>;
+  const max = Math.max(...points.map((p) => p.count));
+  const data = points.map((p) => ({ ...p, h: hourLabel(p.slotStart) }));
+  return (
+    <div className="dx-chart" style={{ height: 150 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }} barCategoryGap="22%">
+          <XAxis
+            dataKey="h"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 10, fill: '#8a94a6' }}
+            interval={0}
+          />
+          <Tooltip
+            cursor={{ fill: 'rgba(30,58,138,.05)' }}
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7ecf3' }}
+            formatter={(v) => [`${v} RDV`, '']}
+          />
+          <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+            {data.map((p, i) => (
+              <Cell key={i} fill={p.count >= max && max > 0 ? DX_NAVY : p.count > 0 ? '#3b5bb5' : DX_NAVY_SOFT} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function MonthlyChart({ points }: { points: MonthlyRevenuePoint[] }) {
+  if (points.length === 0) return <div className="dx-empty">Aucune donnée sur 12 mois.</div>;
+  const data = points.map((p, i) => ({ ...p, m: monthLabel(p.month), recent: i >= points.length - 3 }));
+  return (
+    <div className="dx-chart" style={{ height: 150 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 4 }} barCategoryGap="28%">
+          <XAxis
+            dataKey="m"
+            tickLine={false}
+            axisLine={false}
+            tick={{ fontSize: 10, fill: '#8a94a6' }}
+            interval={0}
+          />
+          <Tooltip
+            cursor={{ fill: 'rgba(30,58,138,.05)' }}
+            contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e7ecf3' }}
+            formatter={(v) => [`${formatMoney(Number(v))} MAD`, '']}
+          />
+          <Bar dataKey="amount" radius={[3, 3, 0, 0]}>
+            {data.map((p, i) => (
+              <Cell key={i} fill={p.recent ? DX_NAVY : DX_NAVY_SOFT} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function RankedList({
+  rows,
+}: {
+  rows: { label: string; value: string; pct?: string | undefined }[];
+}) {
+  if (rows.length === 0) return <div className="dx-empty">Aucune donnée.</div>;
+  return (
+    <ol className="dx-rank">
+      {rows.map((r, i) => (
+        <li key={r.label + i} className="dx-rank-row">
+          <span className="dx-rank-n">{String(i + 1).padStart(2, '0')}</span>
+          <span className="dx-rank-label">{r.label}</span>
+          <span className="dx-rank-val">{r.value}</span>
+          {r.pct && <span className="dx-rank-pct">{r.pct}</span>}
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -300,162 +280,222 @@ export default function DashboardPage() {
   const agenda = useDashboardAgenda();
   const financial = useDashboardFinancial();
 
-  const lastUpdate = Math.max(
-    clinical.dataUpdatedAt ?? 0,
-    agenda.dataUpdatedAt ?? 0,
-    showFinancial ? financial.dataUpdatedAt ?? 0 : 0,
-  );
+  const todayLabel = (() => {
+    const s = new Date().toLocaleDateString('fr-MA', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  })();
 
   const topPathologies: TopPathologyEntry[] = clinical.data?.topPathologies ?? [];
   const caParActe: RevenueByActe[] = financial.data?.caParActe ?? [];
 
+  // Activité 30 j : total + tendance (7 derniers jours vs 7 précédents).
+  const act = clinical.data?.activite30j ?? [];
+  const total30 = act.reduce((s, p) => s + p.count, 0);
+  const last7 = act.slice(-7).reduce((s, p) => s + p.count, 0);
+  const prev7 = act.slice(-14, -7).reduce((s, p) => s + p.count, 0);
+  const trendPct = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 1000) / 10 : null;
+  const pathoTotal = topPathologies.reduce((s, p) => s + p.count, 0);
+
+  // CA mois vs n-1.
+  const caMois = financial.data?.caMois ?? 0;
+  const caN1 = financial.data?.caMoisN1 ?? 0;
+  const caDeltaPct = caN1 > 0 ? Math.round(((caMois - caN1) / caN1) * 1000) / 10 : null;
+
   return (
     <Screen
       active="dashboard"
-      title="Dashboard"
-      sub="Indicateurs cabinet — vue synthétique"
+      title="Tableau de bord"
+      sub={todayLabel}
       onNavigate={(id) => {
         const path = NAV_MAP[id as keyof typeof NAV_MAP];
         if (path) navigate(path);
       }}
       topbarRight={
-        lastUpdate > 0 ? (
-          <span className="dash-last-update" data-testid="dash-last-update">
-            Mise à jour {formatUpdatedAt(lastUpdate)}
-          </span>
-        ) : undefined
+        <Button className="cp-ds2-primary" onClick={() => navigate('/agenda')}>
+          <Plus /> Nouveau RDV
+        </Button>
       }
     >
-      <div className="dash-root">
-        {/* ── Section Aujourd'hui ─────────────────────────────────────── */}
+      <div className="dx dash-root">
+        {/* ── AUJOURD'HUI ─────────────────────────────────────────────── */}
         <section data-testid="dash-section-today">
-          <h2 className="dash-section-h">Aujourd'hui</h2>
-          <div
-            className="dash-grid-today"
-            style={{ ['--cols' as string]: showFinancial ? 4 : 3 }}
-          >
+          <h2 className="dx-section-h">Aujourd'hui</h2>
+          <div className="dx-grid" style={{ ['--cols' as string]: showFinancial ? 4 : 3 }}>
             <KpiCard
               testId="kpi-patients-actifs"
+              dot="blue"
+              accent
               label="Patients actifs"
               value={formatNumber(clinical.data?.patientsActifsTotal)}
-              hint={
-                clinical.data
-                  ? `${formatNumber(clinical.data.patientsActifs30j)} sur 30 j`
-                  : undefined
-              }
+              delta={clinical.data ? `${formatNumber(clinical.data.patientsActifs30j)} actifs sur 30 j` : undefined}
               loading={clinical.isLoading && clinical.isEnabled}
             />
             <KpiCard
               testId="kpi-consultations-jour"
+              dot="indigo"
               label="Consultations du jour"
               value={formatNumber(clinical.data?.consultationsAujourdhui)}
-              hint={
-                clinical.data
-                  ? `${formatNumber(clinical.data.consultationsSemaine)} cette semaine`
-                  : undefined
-              }
+              delta={clinical.data ? `${formatNumber(clinical.data.consultationsSemaine)} cette semaine` : undefined}
               loading={clinical.isLoading && clinical.isEnabled}
             />
             <KpiCard
               testId="kpi-rdv-jour"
+              dot="amber"
               label="RDV du jour"
               value={formatNumber(agenda.data?.rdvAujourdhui)}
-              hint={
-                agenda.data
-                  ? `Remplissage : ${formatPct(agenda.data.tauxRemplissageJour)}`
-                  : undefined
-              }
+              delta={agenda.data ? `Remplissage ${formatPct(agenda.data.tauxRemplissageJour)} %` : undefined}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             {showFinancial && (
               <KpiCard
                 testId="kpi-ca-jour"
+                dot="green"
                 label="CA du jour"
                 value={formatMoney(financial.data?.caJour)}
-                hint={
-                  financial.data
-                    ? `${formatMoney(financial.data.caMois)} ce mois`
-                    : undefined
-                }
+                unit="MAD"
+                delta={financial.data ? `${formatMoney(financial.data.caMois)} MAD ce mois` : undefined}
+                deltaTone="pos"
                 loading={financial.isLoading && financial.isEnabled}
               />
             )}
           </div>
         </section>
 
-        {/* ── Section Activité ────────────────────────────────────────── */}
-        <section data-testid="dash-section-activity">
-          <h2 className="dash-section-h">Activité</h2>
-          <div className="dash-grid-activity">
-            <Panel style={{ padding: 0 }}>
-              <PanelHeader>Activité 30 derniers jours</PanelHeader>
+        {/* ── 2 colonnes : Activité | Performance financière ───────────── */}
+        <div className={`dx-main${showFinancial ? '' : ' is-solo'}`}>
+          {/* LEFT — Activité */}
+          <section data-testid="dash-section-activity" className="dx-col">
+            <h2 className="dx-section-h">Activité</h2>
+            <Card
+              title="Consultations · 30 derniers jours"
+              sub="Tendance hebdomadaire"
+              right={
+                <div className="dx-card-big">
+                  <span className="dx-card-bignum">{clinical.data ? formatNumber(total30) : '—'}</span>
+                  {trendPct != null && (
+                    <span className={`dx-trend dx-${trendPct >= 0 ? 'pos' : 'neg'}`}>
+                      {trendPct >= 0 ? '↑' : '↓'} {Math.abs(trendPct)}%
+                    </span>
+                  )}
+                </div>
+              }
+            >
+              {clinical.data ? <AreaTrend points={act} /> : <div className="dx-empty">{clinical.isLoading ? 'Chargement…' : '—'}</div>}
+            </Card>
+
+            <Card title="Charge horaire — aujourd'hui" sub="Patients par tranche d'heure">
+              {agenda.data ? <HourlyChart points={agenda.data.chargeHoraire} /> : <div className="dx-empty">{agenda.isLoading ? 'Chargement…' : '—'}</div>}
+            </Card>
+
+            <Card title="Top pathologies · 30 jours" sub="Diagnostics les plus fréquents">
               {clinical.data ? (
-                <MiniSparkline points={clinical.data.activite30j} />
-              ) : (
-                <div className="dash-empty">
-                  {clinical.isLoading ? 'Chargement…' : '—'}
-                </div>
-              )}
-            </Panel>
-
-            <Panel style={{ padding: 0 }}>
-              <PanelHeader>Charge horaire (jour)</PanelHeader>
-              {agenda.data ? (
-                <HourlyBars points={agenda.data.chargeHoraire} />
-              ) : (
-                <div className="dash-empty">
-                  {agenda.isLoading ? 'Chargement…' : '—'}
-                </div>
-              )}
-            </Panel>
-
-            <Panel style={{ padding: 0 }}>
-              <PanelHeader>Top pathologies</PanelHeader>
-              {clinical.data && clinical.data.topPathologies.length > 0 ? (
-                <HBars
+                <RankedList
                   rows={topPathologies.slice(0, 5).map((p) => ({
                     label: p.label,
-                    value: p.count,
+                    value: String(p.count),
+                    pct: pathoTotal > 0 ? `${Math.round((p.count / pathoTotal) * 1000) / 10}%` : undefined,
                   }))}
                 />
               ) : (
-                <div className="dash-empty">
-                  {clinical.isLoading ? 'Chargement…' : '—'}
-                </div>
+                <div className="dx-empty">{clinical.isLoading ? 'Chargement…' : '—'}</div>
               )}
-            </Panel>
-          </div>
-        </section>
+            </Card>
+          </section>
 
-        {/* ── Section Agenda ──────────────────────────────────────────── */}
+          {/* RIGHT — Performance financière */}
+          {showFinancial && (
+            <section data-testid="dash-section-financial" className="dx-col">
+              <h2 className="dx-section-h">Performance financière</h2>
+              <div className="dx-grid" style={{ ['--cols' as string]: 2 }}>
+                <KpiCard
+                  testId="kpi-ca-mois"
+                  dot="green"
+                  label="CA du mois"
+                  value={formatMoney(financial.data?.caMois)}
+                  unit="MAD"
+                  delta={caDeltaPct != null ? `${caDeltaPct >= 0 ? '+' : ''}${caDeltaPct}% vs n-1` : undefined}
+                  deltaTone={caDeltaPct != null && caDeltaPct < 0 ? 'neg' : 'pos'}
+                  loading={financial.isLoading && financial.isEnabled}
+                />
+                <KpiCard
+                  testId="kpi-ca-ytd"
+                  dot="indigo"
+                  label="CA YTD"
+                  value={formatMoney(financial.data?.caYTD)}
+                  unit="MAD"
+                  loading={financial.isLoading && financial.isEnabled}
+                />
+                <KpiCard
+                  testId="kpi-impayes"
+                  dot="amber"
+                  label="Impayés"
+                  value={formatMoney(financial.data?.impayesTotal)}
+                  unit="MAD"
+                  delta={financial.data ? `${formatNumber(financial.data.impayesCount)} facture${(financial.data.impayesCount ?? 0) > 1 ? 's' : ''} en attente` : undefined}
+                  deltaTone="warn"
+                  loading={financial.isLoading && financial.isEnabled}
+                />
+                <KpiCard
+                  testId="kpi-encaissement"
+                  dot="green"
+                  label="Taux encaissement"
+                  value={formatPct(financial.data?.tauxEncaissement)}
+                  unit="%"
+                  delta="Moyenne 90 jours"
+                  loading={financial.isLoading && financial.isEnabled}
+                />
+              </div>
+
+              <Card title="CA — 12 derniers mois" sub="En milliers de MAD">
+                {financial.data ? <MonthlyChart points={financial.data.ca12Mois} /> : <div className="dx-empty">{financial.isLoading ? 'Chargement…' : '—'}</div>}
+              </Card>
+
+              <Card title="CA par acte · top 6" sub="Mois en cours">
+                {financial.data ? (
+                  <RankedList
+                    rows={caParActe.slice(0, 6).map((a) => ({
+                      label: a.label || a.acteCode,
+                      value: `${formatMoney(a.amount)} MAD`,
+                      pct: `${a.count}×`,
+                    }))}
+                  />
+                ) : (
+                  <div className="dx-empty">{financial.isLoading ? 'Chargement…' : '—'}</div>
+                )}
+              </Card>
+            </section>
+          )}
+        </div>
+
+        {/* ── AGENDA — semaine (bandeau secondaire) ────────────────────── */}
         <section data-testid="dash-section-agenda">
-          <h2 className="dash-section-h">Agenda — semaine</h2>
-          <div className="dash-grid-week">
+          <h2 className="dx-section-h">Agenda — semaine</h2>
+          <div className="dx-grid" style={{ ['--cols' as string]: 4 }}>
             <KpiCard
               testId="kpi-rdv-semaine"
+              dot="blue"
               label="RDV semaine"
               value={formatNumber(agenda.data?.rdvSemaine)}
-              hint={
-                agenda.data
-                  ? `Remplissage : ${formatPct(agenda.data.tauxRemplissageSemaine)}`
-                  : undefined
-              }
+              delta={agenda.data ? `Remplissage ${formatPct(agenda.data.tauxRemplissageSemaine)} %` : undefined}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-no-shows"
+              dot="amber"
               label="No-shows"
               value={formatNumber(agenda.data?.noShowsSemaine)}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-annulations"
+              dot="amber"
               label="Annulations"
               value={formatNumber(agenda.data?.annulationsSemaine)}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-nouveaux-patients"
+              dot="green"
               label="Nouveaux patients (mois)"
               value={formatNumber(agenda.data?.nouveauxPatientsMois)}
               loading={agenda.isLoading && agenda.isEnabled}
@@ -463,80 +503,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* ── Section Performance financière (MEDECIN/ADMIN) ─────────── */}
-        {showFinancial && (
-          <section data-testid="dash-section-financial">
-            <h2 className="dash-section-h">Performance financière</h2>
-            <div className="dash-grid-week" style={{ marginBottom: 12 }}>
-              <KpiCard
-                testId="kpi-ca-mois"
-                label="CA du mois"
-                value={formatMoney(financial.data?.caMois)}
-                hint={
-                  financial.data
-                    ? `vs ${formatMoney(financial.data.caMoisN1)} (n-1)`
-                    : undefined
-                }
-                loading={financial.isLoading && financial.isEnabled}
-              />
-              <KpiCard
-                testId="kpi-ca-ytd"
-                label="CA YTD"
-                value={formatMoney(financial.data?.caYTD)}
-                loading={financial.isLoading && financial.isEnabled}
-              />
-              <KpiCard
-                testId="kpi-impayes"
-                label="Impayés"
-                value={formatMoney(financial.data?.impayesTotal)}
-                hint={
-                  financial.data
-                    ? `${formatNumber(financial.data.impayesCount)} facture${
-                        (financial.data.impayesCount ?? 0) > 1 ? 's' : ''
-                      }`
-                    : undefined
-                }
-                loading={financial.isLoading && financial.isEnabled}
-              />
-              <KpiCard
-                testId="kpi-encaissement"
-                label="Taux d'encaissement"
-                value={formatPct(financial.data?.tauxEncaissement)}
-                loading={financial.isLoading && financial.isEnabled}
-              />
-            </div>
-            <div className="dash-grid-financial-bottom">
-              <Panel style={{ padding: 0 }}>
-                <PanelHeader>CA 12 derniers mois</PanelHeader>
-                {financial.data ? (
-                  <MonthlyRevenueList points={financial.data.ca12Mois} />
-                ) : (
-                  <div className="dash-empty">
-                    {financial.isLoading ? 'Chargement…' : '—'}
-                  </div>
-                )}
-              </Panel>
-              <Panel style={{ padding: 0 }}>
-                <PanelHeader>CA par acte (mois courant)</PanelHeader>
-                {financial.data && caParActe.length > 0 ? (
-                  <HBars
-                    rows={caParActe.slice(0, 6).map((a) => ({
-                      label: a.label || a.acteCode,
-                      value: a.amount,
-                      sub: `${formatMoney(a.amount)} · ${a.count}×`,
-                    }))}
-                  />
-                ) : (
-                  <div className="dash-empty">
-                    {financial.isLoading ? 'Chargement…' : '—'}
-                  </div>
-                )}
-              </Panel>
-            </div>
-          </section>
-        )}
-
-        {/* ── Errors (sous-jacents : afficher discrètement) ───────────── */}
         {(clinical.error || agenda.error || (showFinancial && financial.error)) && (
           <div data-testid="dash-errors" className="dash-error-banner">
             {clinical.error || agenda.error || financial.error}
