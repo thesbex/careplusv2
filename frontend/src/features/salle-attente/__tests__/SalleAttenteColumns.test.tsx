@@ -123,9 +123,10 @@ describe('SalleAttentePage — colonnes par médecin (QA9-11)', () => {
     expect(screen.getByText('Karim Idrissi')).toBeInTheDocument();
     expect(screen.getByText('Nadia Tazi')).toBeInTheDocument();
 
-    // La colonne Alami a sa propre table aria-label-ée.
+    // La colonne Alami a sa propre liste de cartes aria-label-ée (cartes
+    // compactes, plus la table large à 8 colonnes qui débordait à ~300px).
     expect(
-      screen.getByRole('table', { name: /File d'attente — Dr Alami/i }),
+      screen.getByRole('list', { name: /File d'attente — Dr Alami/i }),
     ).toBeInTheDocument();
   });
 

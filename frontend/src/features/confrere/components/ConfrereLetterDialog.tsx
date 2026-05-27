@@ -16,6 +16,7 @@ import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useReferralContacts } from '@/features/profil/hooks/useReferralContacts';
 import { useGenerateConfrereLetter } from '../hooks/useConfrereLetters';
+import { useLetterTemplates } from '../hooks/useLetterTemplates';
 import type { ConfrereLetterRequest } from '../types';
 
 interface ConfrereLetterDialogProps {
@@ -50,9 +51,11 @@ export function ConfrereLetterDialog({
   consultationId,
 }: ConfrereLetterDialogProps) {
   const { contacts } = useReferralContacts();
+  const { templates } = useLetterTemplates();
   const { generate, isPending } = useGenerateConfrereLetter(consultationId);
 
   const [contactId, setContactId] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [recipientName, setRecipientName] = useState('');
   const [recipientSpecialty, setRecipientSpecialty] = useState('');
   const [recipientCity, setRecipientCity] = useState('');
@@ -62,6 +65,7 @@ export function ConfrereLetterDialog({
   useEffect(() => {
     if (open) {
       setContactId('');
+      setTemplateId('');
       setRecipientName('');
       setRecipientSpecialty('');
       setRecipientCity('');
@@ -77,6 +81,14 @@ export function ConfrereLetterDialog({
       setRecipientSpecialty(c.specialty ?? '');
       setRecipientCity(c.city ?? '');
     }
+  }
+
+  // Charger un modèle pré-remplit le corps de la lettre (le destinataire reste
+  // celui choisi dans le carnet ou saisi à la main).
+  function pickTemplate(id: string) {
+    setTemplateId(id);
+    const t = templates.find((x) => x.id === id);
+    if (t) setBody(t.body);
   }
 
   async function submit() {
@@ -99,18 +111,28 @@ export function ConfrereLetterDialog({
     setDownloading(true);
     try {
       const { documentId } = await generate(payload);
-      toast.success('Courrier généré.');
-      // Téléchargement immédiat du PDF — même mécanisme que ConsentDialog
-      // (blob via axios car le JWT est en mémoire, pas en cookie).
+      toast.success('Courrier généré et rattaché à la consultation.');
+      // Téléchargement immédiat du PDF. On évite `window.open` : appelé après
+      // un `await`, il sort du geste utilisateur et se fait bloquer par le
+      // bloqueur de pop-ups (« rien ne se passe »). Un <a download> cliqué
+      // par programme n'est PAS soumis au blocage de pop-up — même mécanisme
+      // que downloadDocument() du dossier patient.
       try {
         const res = await api.get<Blob>(`/documents/${documentId}/content`, {
           responseType: 'blob',
         });
         const url = URL.createObjectURL(res.data as Blob);
-        window.open(url, '_blank', 'noopener,noreferrer');
+        const a = document.createElement('a');
+        a.href = url;
+        const slug = recipientName.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+        a.download = `courrier-confrere-${slug || 'destinataire'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        // Defer revoke: Safari a besoin que l'URL reste vivante le temps du clic.
         setTimeout(() => URL.revokeObjectURL(url), 1_000);
       } catch {
-        toast.error('Aperçu PDF impossible (courrier enregistré dans le dossier).');
+        toast.error('Téléchargement PDF impossible (courrier enregistré dans le dossier).');
       }
       onOpenChange(false);
     } catch (e: unknown) {
@@ -181,6 +203,25 @@ export function ConfrereLetterDialog({
               ))}
             </select>
           </label>
+
+          {templates.length > 0 && (
+            <label style={labelStyle}>
+              <span style={labelTitleStyle}>Modèle de courrier</span>
+              <select
+                value={templateId}
+                onChange={(e) => pickTemplate(e.target.value)}
+                aria-label="Modèle de courrier"
+                style={inputStyle}
+              >
+                <option value="">— Rédaction libre —</option>
+                {templates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label style={labelStyle}>
             <span style={labelTitleStyle}>Destinataire *</span>

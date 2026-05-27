@@ -9,6 +9,7 @@
  *   - envoi de message → `useSendMessage`
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import {
   Search,
@@ -42,6 +43,7 @@ import type {
   Channel,
   Conversation,
   DirectMessage,
+  PatientAttach,
   PatientThread,
   TeamMember,
 } from './types';
@@ -1060,7 +1062,8 @@ function MessageBody({ text }: { text: string }) {
   );
 }
 
-function PatientAttachCard({ p }: { p: { name: string; id: string; age: number } }) {
+function PatientAttachCard({ p }: { p: PatientAttach }) {
+  const navigate = useNavigate();
   const initials = p.name
     .split(' ')
     .map((w) => w[0])
@@ -1090,7 +1093,7 @@ function PatientAttachCard({ p }: { p: { name: string; id: string; age: number }
           {p.id} · {p.age} ans
         </div>
       </div>
-      <Button variant="primary" size="sm">
+      <Button variant="primary" size="sm" onClick={() => navigate(`/patients/${p.recordId}`)}>
         Ouvrir dossier
       </Button>
     </div>
@@ -1698,12 +1701,16 @@ function RightRail({
   // Patients référencés dans les messages de la conversation — dédupliqués.
   const linkedPatients = (() => {
     if (!convo?.messages) return [];
-    const seen = new Map<string, { id: string; name: string; tag: string; tagColor: string }>();
+    const seen = new Map<
+      string,
+      { id: string; recordId: string; name: string; tag: string; tagColor: string }
+    >();
     for (const day of convo.messages) {
       for (const m of day.msgs) {
         if (m.patient && !seen.has(m.patient.id)) {
           seen.set(m.patient.id, {
             id: m.patient.id,
+            recordId: m.patient.recordId,
             name: m.patient.name,
             tag: 'Patient',
             tagColor: 'var(--primary)',
@@ -1797,6 +1804,7 @@ function RightRail({
                 key={p.id}
                 name={p.name}
                 id={p.id}
+                recordId={p.recordId}
                 tag={p.tag}
                 tagColor={p.tagColor}
               />
@@ -1922,14 +1930,17 @@ function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) =>
 function LinkedPatient({
   name,
   id,
+  recordId,
   tag,
   tagColor,
 }: {
   name: string;
   id: string;
+  recordId: string;
   tag: string;
   tagColor: string;
 }) {
+  const navigate = useNavigate();
   const initials = name
     .split(' ')
     .map((w) => w[0])
@@ -1937,6 +1948,15 @@ function LinkedPatient({
     .join('');
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onClick={() => navigate(`/patients/${recordId}`)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          navigate(`/patients/${recordId}`);
+        }
+      }}
       style={{
         padding: '8px 10px',
         background: 'var(--surface)',

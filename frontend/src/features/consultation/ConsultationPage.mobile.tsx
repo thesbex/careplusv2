@@ -27,6 +27,8 @@ import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
 import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
+import { useConfrereLetters } from '@/features/confrere/hooks/useConfrereLetters';
+import { api } from '@/lib/api/client';
 import { VitalIcon } from './components/VitalIcon';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
@@ -76,6 +78,25 @@ export default function ConsultationMobilePage() {
   const { vitals } = useLatestVitals(consultation?.patientId, consultation?.id);
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { prescriptions } = usePrescriptions(id);
+  const { letters: confrereLetters } = useConfrereLetters(id);
+
+  // Téléchargement courrier confrère (parité desktop, ADR-038) : <a download>.
+  async function downloadConfrereLetter(documentId: string, recipient?: string) {
+    try {
+      const res = await api.get<Blob>(`/documents/${documentId}/content`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const slug = (recipient ?? 'courrier').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+      a.download = `courrier-confrere-${slug || 'document'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    } catch {
+      toast.error('Téléchargement du courrier impossible.');
+    }
+  }
   const { remove: removePrescription } = useDeletePrescription(id, consultation?.patientId);
 
   function handleDeletePrescription(prescriptionId: string, label: string) {
@@ -484,11 +505,13 @@ export default function ConsultationMobilePage() {
         {/* Documents générés — list of prescriptions for this consultation. */}
         <div className="m-section-h" style={{ marginTop: 18 }}>
           <h3>Documents générés</h3>
-          {prescriptions.length > 0 && <span className="more">{prescriptions.length}</span>}
+          {prescriptions.length + confrereLetters.length > 0 && (
+            <span className="more">{prescriptions.length + confrereLetters.length}</span>
+          )}
         </div>
-        {prescriptions.length === 0 ? (
+        {prescriptions.length === 0 && confrereLetters.length === 0 ? (
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-            Aucune ordonnance créée pour cette consultation.
+            Aucun document généré pour cette consultation.
           </div>
         ) : (
           <div className="m-card">
@@ -572,6 +595,31 @@ export default function ConsultationMobilePage() {
                 </div>
               );
             })}
+            {confrereLetters.map((letter, i) => (
+              <button
+                key={letter.id}
+                type="button"
+                onClick={() => { void downloadConfrereLetter(letter.id, letter.title); }}
+                className="m-row"
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  border: 0,
+                  borderTop: prescriptions.length === 0 && i === 0 ? 'none' : '1px solid var(--border-soft)',
+                  fontFamily: 'inherit',
+                  font: 'inherit',
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <div className="m-row-pri">
+                  <div className="m-row-main">{letter.title ?? 'Courrier au confrère'}</div>
+                  <div className="m-row-sub">Courrier confrère</div>
+                </div>
+                <ChevronRight aria-hidden="true" />
+              </button>
+            ))}
           </div>
         )}
 

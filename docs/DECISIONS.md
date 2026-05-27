@@ -371,6 +371,35 @@ Endpoint dédié `GET /api/chat/colleagues` pour le picker "Nouveau message" (`/
 
 ---
 
+## ADR-036 — Modèles de courrier confrère : module dédié (miroir consentement), pas d'extension du carnet
+
+**Date**: 2026-05-27
+**Status**: accepted
+**Context**: Bug backlog — « quand un médecin charge un modèle pour courrier confrère, le texte de la lettre ne se charge pas ». La modale « Courrier confrère » n'avait qu'un sélecteur « Confrère (carnet) » (pré-remplit le destinataire). Aucun système de modèles de lettre n'existait. Le médecin attend un comportement type consentement : choisir un modèle → remplir le corps.
+**Choice**:
+1. **Nouveau module `confrere_letter_template`** (V063) plutôt que stocker le texte dans le carnet (`referral_contact.notes`) : un modèle de lettre est un texte réutilisable indépendant du destinataire, alors qu'un contact est une personne. Mélanger les deux aurait lié 1 modèle à 1 confrère.
+2. **Miroir exact des modèles de consentement** (entité + repo + service + controller CRUD + onglet Paramétrage ADMIN), **sans champ `type`** (une lettre n'a pas de catégorie métier). RBAC : lecture MEDECIN+ADMIN (médecin = actifs seuls), écriture ADMIN.
+3. **Pas de placeholders** en v1 (texte brut). Le PDF de la lettre vit déjà dans `ConfrereLetterService` (QA9-10) ; le modèle n'alimente que le corps côté UI.
+**Consequence**: V063 + module `ma.careplus.confrere.*LetterTemplate*` + 6 IT verts. Frontend : `useLetterTemplates`, select « Modèle de courrier » dans la modale, onglet « Courriers confrère ». Extension placeholders/variables traçable plus tard sans casser le contrat.
+
+## ADR-037 — Salle d'attente multi-médecin : cartes compactes par colonne, pas la table plate
+
+**Date**: 2026-05-27
+**Status**: accepted
+**Context**: Bug backlog — affichage décalé / sauts de ligne injustifiés quand la secrétaire gère ≥2 médecins. Les colonnes par médecin (QA9-11) réutilisaient la table plate à 8 colonnes (`tableHead`) dans un conteneur ~300 px → cellules et boutons d'action qui débordent, hauteurs de lignes irrégulières entre colonnes.
+**Choice**: rendre le contenu de chaque colonne en **cartes verticales compactes** (`QueueColumnCard` : identité+statut sur une ligne, méta sur la 2e, actions en pied avec `flex-wrap`) au lieu d'une table large. La table plate reste utilisée en mode solo (1 praticien actif) où la largeur le permet. Colonne = `role="list"` (test ajusté de `table` → `list`).
+**Consequence**: nouveau composant + CSS `.sa-col-list/.sa-col-card*`. Pas de changement de contrat ni de données. Mode solo intact.
+
+## ADR-038 — Téléchargement PDF post-`await` : `<a download>`, pas `window.open`
+
+**Date**: 2026-05-27
+**Status**: accepted
+**Context**: Bug backlog — la génération du courrier confrère ouvrait un `window.open(blobUrl)` APRÈS deux `await` (POST génération + GET blob). Hors du geste utilisateur, les navigateurs bloquent la pop-up → « rien ne se passe ».
+**Choice**: livrer le blob via un `<a download>` créé/cliqué par programme (pattern `downloadDocument()` du dossier patient), qui n'est PAS soumis au blocage de pop-up même après un `await`. Le document restait rattaché côté serveur ; seul l'aperçu était bloqué. Pattern à privilégier pour toute livraison PDF différée (les autres modales — consentement, certificat, écho — gardent `window.open` pour l'instant ; à migrer si le même retour terrain remonte).
+**Consequence**: fix local `ConfrereLetterDialog`, toast clarifié « généré et rattaché à la consultation ».
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).

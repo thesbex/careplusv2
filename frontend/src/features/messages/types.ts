@@ -58,7 +58,10 @@ export interface MessageReply {
 
 export interface PatientAttach {
   name: string;
+  /** Code patient affiché (ex. PT-00489). */
   id: string;
+  /** UUID navigable du dossier (route /patients/:recordId). */
+  recordId: string;
   age: number;
 }
 

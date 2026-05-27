@@ -33,6 +33,8 @@ import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
 import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
+import { useConfrereLetters } from '@/features/confrere/hooks/useConfrereLetters';
+import { api } from '@/lib/api/client';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
@@ -85,7 +87,27 @@ export default function ConsultationPage() {
   const { sign, isSigning, signed } = useSignConsultation(id);
   const { suspend, isSuspending } = useSuspendConsultation(id);
   const { prescriptions } = usePrescriptions(id);
+  const { letters: confrereLetters } = useConfrereLetters(id);
   const { remove: removePrescription } = useDeletePrescription(id, consultation?.patientId);
+
+  // Télécharge un courrier confrère (document patient) via le JWT en mémoire,
+  // sans pop-up bloqué (cf. ADR-038) : <a download> cliqué par programme.
+  async function downloadConfrereLetter(documentId: string, recipient?: string) {
+    try {
+      const res = await api.get<Blob>(`/documents/${documentId}/content`, { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const slug = (recipient ?? 'courrier').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+      a.download = `courrier-confrere-${slug || 'document'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    } catch {
+      toast.error('Téléchargement du courrier impossible.');
+    }
+  }
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
   const { invoice } = useInvoiceByConsultation(id, { pollUntilFound: postSignDialogOpen });
   const { adjustTotal, isPending: isAdjusting } = useAdjustInvoiceTotal();
@@ -397,7 +419,7 @@ export default function ConsultationPage() {
             Documents générés
           </div>
           <div className="cs-docs-list" style={{ fontSize: 12 }}>
-            {prescriptions.length === 0 && (
+            {prescriptions.length === 0 && confrereLetters.length === 0 && (
               <div style={{ color: 'var(--ink-3)' }}>Aucun document généré.</div>
             )}
             {prescriptions.map((p) => {
@@ -466,6 +488,16 @@ export default function ConsultationPage() {
               </div>
               );
             })}
+            {/* Courriers au confrère (documents patient type LETTRE_CONFRERE) —
+                rattachés à la consultation, listés ici pour la traçabilité. */}
+            {confrereLetters.map((letter) => (
+              <DocRow
+                key={letter.id}
+                title={letter.title ?? 'Courrier au confrère'}
+                meta="Courrier confrère"
+                onClick={() => { void downloadConfrereLetter(letter.id, letter.title); }}
+              />
+            ))}
           </div>
 
           {id && <ConsultationPrestationsPanel consultationId={id} readOnly={isSigned} />}

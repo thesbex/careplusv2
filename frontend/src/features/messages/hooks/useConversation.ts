@@ -87,6 +87,7 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
       cm.patient = {
         name: m.patient.name,
         id: m.patient.pid,
+        recordId: m.patient.id,
         age: m.patient.age ?? 0,
       };
     }
