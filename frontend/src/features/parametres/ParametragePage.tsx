@@ -43,6 +43,7 @@ import { VaccinationParamTab } from '@/features/vaccination/components/Vaccinati
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import { ChambresLitsTab } from '@/features/hospitalisation/components/ChambresLitsTab';
 import { ConsentTemplatesTab } from '@/features/consent/components/ConsentTemplatesTab';
+import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -62,7 +63,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers';
 
 function establishmentTabLabel(type: EstablishmentType | undefined): string {
   if (!type) return 'Cabinet';
@@ -89,6 +90,8 @@ function buildTabs(
     { id: 'modeles', label: 'Modèles d’ordonnance' },
     // QA9-13 — modèles de consentement : gestion réservée à l'ADMIN.
     ...(isAdmin ? [{ id: 'consentements' as Tab, label: 'Consentements' }] : []),
+    // Modèles de courrier au confrère : gestion réservée à l'ADMIN.
+    ...(isAdmin ? [{ id: 'courriers' as Tab, label: 'Courriers confrère' }] : []),
     { id: 'utilisateurs', label: 'Utilisateurs' },
     { id: 'conges', label: 'Congés' },
     { id: 'droits', label: 'Droits d’accès' },
@@ -796,6 +799,7 @@ export default function ParametragePage() {
         {tab === 'prestations' && <PrestationsTab />}
         {tab === 'modeles' && <PrescriptionTemplatesTab />}
         {tab === 'consentements' && isAdmin && <ConsentTemplatesTab />}
+        {tab === 'courriers' && isAdmin && <LetterTemplatesTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}

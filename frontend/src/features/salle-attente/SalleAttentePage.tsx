@@ -12,6 +12,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Print, Plus } from '@/components/icons';
 import { KpiTile } from './components/KpiTile';
 import { QueueRow } from './components/QueueRow';
+import { QueueColumnCard } from './components/QueueColumnCard';
 import { CancelAppointmentDialog } from './components/CancelAppointmentDialog';
 import { AddWalkInDialog } from './components/AddWalkInDialog';
 import { useQueue } from './hooks/useQueue';
@@ -120,6 +121,25 @@ export default function SalleAttentePage() {
     );
   }
 
+  function renderCard(p: QueueEntry, i: number) {
+    return (
+      <QueueColumnCard
+        key={p.appointmentId ?? `${p.name}-${i}`}
+        patient={p}
+        canRecordVitals={canRecordVitals}
+        onTakeVitals={handleTakeVitals}
+        onStartConsult={(entry) => {
+          void handleStartConsult(entry);
+        }}
+        onOpenConsult={(entry) => {
+          void handleOpenConsult(entry);
+        }}
+        onCancel={(entry) => setCancelTarget(entry)}
+        busy={isCheckingIn || isStarting}
+      />
+    );
+  }
+
   const tableHead = (
     <thead className="sa-queue-thead">
       <tr>
@@ -207,13 +227,13 @@ export default function SalleAttentePage() {
                 {col.entries.length === 0 ? (
                   <div className="sa-col-empty">Aucun patient présent.</div>
                 ) : (
-                  <table
-                    className="sa-col-table"
+                  <div
+                    className="sa-col-list"
+                    role="list"
                     aria-label={`File d'attente — ${col.label}`}
                   >
-                    {tableHead}
-                    <tbody>{col.entries.map((p, i) => renderRow(p, i))}</tbody>
-                  </table>
+                    {col.entries.map((p, i) => renderCard(p, i))}
+                  </div>
                 )}
               </Panel>
             ))}

@@ -228,10 +228,69 @@
   font-size: 12px;
 }
 
-.sa-col-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12.5px;
+/* Per-doctor column body = a vertical stack of compact patient cards.
+   Replaces the old wide 8-column table that wrapped/misaligned at ~300px. */
+.sa-col-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.sa-col-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.sa-col-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sa-col-card-id {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Nom sur une seule ligne (ellipsis) : garde le haut de carte à hauteur
+   constante d'une carte à l'autre — pas de décalage quand le nom est long. */
+.sa-col-card-name {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sa-col-card-top > .pill {
+  flex-shrink: 0;
+}
+
+/* Allergie sortie de la ligne du nom → placée sous l'en-tête, alignée à gauche,
+   pour ne pas faire varier la hauteur du bloc identité. */
+.sa-col-card-allergy {
+  align-self: flex-start;
+}
+
+.sa-col-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+.sa-col-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 
 /* ── Mobile: practitioner filter chips (QA9-11) ─────────── */

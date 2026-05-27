@@ -4,10 +4,23 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **QA-grossesse PDF compte-rendu échographie LIVRÉ (aucune migration, 4 IT verts)** sur `feat/qa9-backlog`.
-**Last update**: 2026-05-26 (session QA-grossesse CR PDF)
-**Build**: 4 IT verts (UltrasoundCrPdfIT, 18 s). Flyway à v061. Aucune régression.
-**Next action**: frontend HR (UI gestion personnel — liste staff + fiche + solde congés) ou retour sur backlog QA10.
+**Phase**: Post-pilote — **4 bugs backlog Suivi corrigés** (messages, courrier confrère ×2, salle d'attente colonnes).
+**Last update**: 2026-05-27 (session bugfix backlog : messages / confrère / salle)
+**Build**: frontend `npm run build` vert ; vitest salle 34/34 ; ConfrereLetterTemplateIT 6/6 vert. Flyway à v063. 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées à cette session.
+**QA IHM** : les 4 fix walkés au navigateur (Dr El Amrani, MEDECIN+ADMIN) — ✅ mention patient → `/patients/:id` ; ✅ modèle courrier charge le corps ; ✅ génération PDF en téléchargement `<a download>` (pas de pop-up) + visible dans « Documents générés » de la consultation ; ✅ colonnes salle multi-médecin en cartes compactes (desktop + mobile 390 px). Retour terrain : cartes salle ré-alignées (nom 1 ligne, avatar centré, allergie sortie de l'en-tête).
+**Next action**: commit (feature + docs). Pas de régression connue.
+
+### 2026-05-27 — Bugfix backlog Suivi (4 bugs)
+
+**Shipped** :
+- **Bug 1 — Messages : bouton « Ouvrir dossier » inerte.** `PatientAttach` portait le code patient (PT-xxxx) mais pas l'UUID navigable. Ajout de `recordId` (mappé depuis `m.patient.id` API) ; `PatientAttachCard` et `LinkedPatient` câblés à `navigate(/patients/:recordId)` (desktop ; le mobile ne rend pas la carte patient). Aucune migration.
+- **Bug 2 — Courrier confrère : modèle ne charge pas le texte.** Nouveau module **modèles de courrier** (texte type réutilisable), miroir des modèles de consentement : **V063 `confrere_letter_template`** (id/title/body/active/audit/soft-delete, index partiel `(active,title)`), entité `LetterTemplate` + repo/service/controller `/api/confrere-letter-templates` (GET MEDECIN+ADMIN, POST/PUT/DELETE ADMIN), **ConfrereLetterTemplateIT 6/6 vert**. Frontend : `useLetterTemplates` + select « Modèle de courrier » dans la modale (charge le corps) + onglet ADMIN « Courriers confrère » dans Paramétrage.
+- **Bug 3 — Salle d'attente : colonnes multi-médecin décalées.** Les colonnes par médecin (~300 px) réutilisaient la table plate à 8 colonnes → retours à la ligne / hauteurs irrégulières. Nouveau `QueueColumnCard` (carte compacte verticale : identité + statut, méta, actions en pied) rendu en `role="list"` par colonne. Table plate inchangée en mode solo (1 praticien). **Affinage retour terrain** : nom sur 1 ligne (ellipsis), avatar centré verticalement, pastille statut alignée à droite, chip allergie sortie de l'en-tête (sur sa propre ligne) → en-têtes de cartes à hauteur constante, plus de décalage.
+- **Bug 4 — Courrier confrère : pop-up bloqué.** `window.open` appelé après `await` → hors geste utilisateur → bloqué (« rien ne se passe »). Remplacé par un `<a download>` cliqué par programme (non soumis au blocage), filename `courrier-confrere-<destinataire>.pdf`. Le document était déjà rattaché côté serveur ; toast clarifié « généré et rattaché à la consultation ».
+
+### 2026-05-26 — Compte-rendu PDF échographie obstétricale (QA-grossesse)
+
+**Shipped** :
 
 ### 2026-05-26 — Compte-rendu PDF échographie obstétricale (QA-grossesse)
 

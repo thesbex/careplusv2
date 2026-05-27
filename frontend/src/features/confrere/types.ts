@@ -33,3 +33,29 @@ export interface ConfrereLetterDocument {
   fileName?: string;
   createdAt?: string;
 }
+
+/**
+ * Modèle de courrier confrère (texte type réutilisable), géré par l'ADMIN
+ * dans Paramétrage et chargé par le médecin dans la modale « Courrier confrère »
+ * pour pré-remplir le corps de la lettre.
+ *
+ * Contrat backend (base axios = /api) :
+ *   GET    /confrere-letter-templates           (MEDECIN actifs / ADMIN tout)
+ *   POST   /confrere-letter-templates            (ADMIN)
+ *   PUT    /confrere-letter-templates/{id}       (ADMIN)
+ *   DELETE /confrere-letter-templates/{id}       (ADMIN, soft-delete)
+ */
+export interface LetterTemplateView {
+  id: string;
+  title: string;
+  body: string;
+  active: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LetterTemplateWriteRequest {
+  title: string;
+  body: string;
+  active: boolean;
+}
