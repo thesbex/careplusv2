@@ -4,11 +4,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **4 bugs backlog Suivi corrigés** (messages, courrier confrère ×2, salle d'attente colonnes).
-**Last update**: 2026-05-27 (session bugfix backlog : messages / confrère / salle)
-**Build**: frontend `npm run build` vert ; vitest salle 34/34 ; ConfrereLetterTemplateIT 6/6 vert. Flyway à v063. 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées à cette session.
-**QA IHM** : les 4 fix walkés au navigateur (Dr El Amrani, MEDECIN+ADMIN) — ✅ mention patient → `/patients/:id` ; ✅ modèle courrier charge le corps ; ✅ génération PDF en téléchargement `<a download>` (pas de pop-up) + visible dans « Documents générés » de la consultation ; ✅ colonnes salle multi-médecin en cartes compactes (desktop + mobile 390 px). Retour terrain : cartes salle ré-alignées (nom 1 ligne, avatar centré, allergie sortie de l'en-tête).
-**Next action**: commit (feature + docs). Pas de régression connue.
+**Phase**: Post-pilote — **backlog Suivi : lot 1 (mergé main) + lot 2** corrigés.
+**Last update**: 2026-05-27 (session bugfix backlog lot 2 : grossesse / hospit / chat / pharmacie)
+**Build**: frontend `npm run build` vert ; vitest grossesse 27/27, salle 34/34, hospit 5/5. Flyway à v063 (aucune nouvelle migration lot 2). 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées.
+**Next action**: merge lot 2 + push (sur demande). Reste backlog : aucun item ouvert connu.
+
+### 2026-05-27 — Bugfix backlog Suivi (lot 2 : grossesse, hospit, chat, pharmacie)
+
+QA IHM Playwright (Dr El Amrani, MEDECIN+ADMIN) sur stack locale.
+
+**Fixes livrés** :
+- **Échographie (grossesse)** : bug réel derrière « CR écho dispo prochainement ». Les champs biométrie vides → NaN (valueAsNumber) rejeté par `z.number()` → l'écho ne s'enregistrait PAS (sans message). Preprocess NaN/'' → undefined sur les mesures facultatives (`schemas.ts`). + `downloadUltrasoundCrPdf` : `window.open` post-await → `<a download>` (ADR-038). QA : écho enregistrée biométrie vide + CR PDF téléchargé.
+- **Hospitalisation — historique** : séjour clôturé (Sorti/Facturé) inatteignable une fois sorti de la worklist EN_COURS. Cartes de l'onglet « Séjours » du dossier rendues cliquables → `StayDetailPanel` (affectations, aperçu facturation hébergement + prestations, Voir la facture, CR PDF) pour tout statut. + `doPdf` séjour : `window.open` → `<a download>` (ADR-038). QA : détail d'un séjour Facturé ouvert depuis le dossier + CR PDF téléchargé.
+
+**Vérifiés déjà fonctionnels (rapports périmés, aucun code)** :
+- **Photos de profil dans contacts chat** (V052) : `/chat/colleagues` + team renvoient `hasPhoto` ; `UserAvatar` rend la photo. QA : photo de Lina LabTech affichée dans le picker « Nouveau message » ET le rail Membres (GET /users/:id/photo → 200).
+- **Médicaments fournis en interne** (V057/QA9-7) : prix de cession au catalogue (`catalog_medication.internal_price`), toggle « Fournir en interne (pharmacie) » au DRUG quand `pharmacy_internal` actif (`internal_dispense`), facturation auto à la signature (BillingService step 2quater). QA bout-en-bout : prix 45 sur Aspégic → prescription cochée interne → signature → facture = Consultation 200 + « Médicament (interne) : Aspégic 500mg » 45 MAD.
 
 ### 2026-05-27 — Bugfix backlog Suivi (4 bugs)
 

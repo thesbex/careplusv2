@@ -326,7 +326,15 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
     try {
       const r = await api.get(`/hospitalization/stays/${stayId}/summary-pdf`, { responseType: 'blob' });
       const url = URL.createObjectURL(r.data as Blob);
-      window.open(url, '_blank');
+      // <a download> plutôt que window.open : appelé après l'await, window.open
+      // est bloqué par le bloqueur de pop-up (ADR-038).
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `compte-rendu-sejour-${stayId.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
     } catch (err) { reportError(err); }
   }
 

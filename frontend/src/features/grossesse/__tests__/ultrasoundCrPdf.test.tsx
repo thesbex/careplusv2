@@ -184,12 +184,11 @@ describe('PregnancyTab — compte-rendu PDF échographie', () => {
         { responseType: 'blob' },
       );
     });
+    // Livraison via <a download> (ADR-038) : on vérifie qu'une URL objet a été
+    // créée à partir du blob téléchargé (le clic anchor n'est pas bloqué par le
+    // bloqueur de pop-ups, contrairement à window.open après await).
     await waitFor(() => {
-      expect(window.open).toHaveBeenCalledWith(
-        'blob:cr-pdf',
-        '_blank',
-        'noopener,noreferrer',
-      );
+      expect(URL.createObjectURL).toHaveBeenCalled();
     });
   });
 });
