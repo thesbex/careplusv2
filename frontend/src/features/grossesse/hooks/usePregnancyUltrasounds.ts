@@ -46,8 +46,12 @@ export function usePregnancyUltrasounds(pregnancyId?: string) {
  *
  * GET /api/pregnancies/:pregnancyId/ultrasounds/:ultrasoundId/cr-pdf →
  * application/pdf. Le JWT vit en mémoire (ADR-019), donc on récupère le
- * binaire en blob via axios puis on ouvre l'URL objet — même mécanisme que
- * DocumentsPanel / ConsentDialog.
+ * binaire en blob via axios.
+ *
+ * Livraison via un `<a download>` cliqué par programme (ADR-038) plutôt que
+ * `window.open` : appelé après l'`await`, window.open sort du geste
+ * utilisateur et se fait bloquer par le bloqueur de pop-ups (« rien ne se
+ * passe »).
  */
 export async function downloadUltrasoundCrPdf(
   pregnancyId: string,
@@ -58,7 +62,12 @@ export async function downloadUltrasoundCrPdf(
     { responseType: 'blob' },
   );
   const url = URL.createObjectURL(res.data as Blob);
-  window.open(url, '_blank', 'noopener,noreferrer');
-  // Defer revoke: Safari needs the URL live until the new tab consumes it.
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `compte-rendu-echographie-${ultrasoundId.slice(0, 8)}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Defer revoke: Safari a besoin que l'URL reste vivante le temps du clic.
   setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }

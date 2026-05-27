@@ -125,6 +125,20 @@ export type RecordVisitValues = z.infer<typeof RecordVisitSchema>;
 
 const kindEnum = z.enum(['T1_DATATION', 'T2_MORPHO', 'T3_CROISSANCE', 'AUTRE']);
 
+/**
+ * Mesure numérique facultative tolérante aux champs vides : un
+ * `<input type="number">` vide produit `NaN` (via react-hook-form
+ * `valueAsNumber`), que `z.number()` rejette. On mappe NaN / '' / null →
+ * undefined avant la validation.
+ */
+const optionalMeasure = z.preprocess(
+  (v) =>
+    v === '' || v === null || (typeof v === 'number' && Number.isNaN(v))
+      ? undefined
+      : v,
+  z.number().optional(),
+);
+
 export const RecordUltrasoundSchema = z.object({
   kind: kindEnum,
   performedAt: isoDate,
@@ -141,12 +155,16 @@ export const RecordUltrasoundSchema = z.object({
   findings: z.string().max(4000).optional(),
   biometry: z
     .object({
-      bip: z.number().optional(),
-      pc: z.number().optional(),
-      dat: z.number().optional(),
-      lf: z.number().optional(),
-      eg: z.number().optional(),
-      percentile: z.number().optional(),
+      // Champs de biométrie facultatifs. Les <input type="number"> vides
+      // renvoient NaN via `valueAsNumber` ; z.number() rejette NaN, ce qui
+      // bloquait silencieusement l'enregistrement tant que les 6 champs
+      // n'étaient pas tous remplis. On normalise NaN/'' → undefined.
+      bip: optionalMeasure,
+      pc: optionalMeasure,
+      dat: optionalMeasure,
+      lf: optionalMeasure,
+      eg: optionalMeasure,
+      percentile: optionalMeasure,
     })
     .optional(),
   correctsDueDate: z.boolean(),
