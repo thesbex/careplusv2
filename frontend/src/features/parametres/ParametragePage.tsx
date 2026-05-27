@@ -44,6 +44,7 @@ import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import { ChambresLitsTab } from '@/features/hospitalisation/components/ChambresLitsTab';
 import { ConsentTemplatesTab } from '@/features/consent/components/ConsentTemplatesTab';
 import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
+import { NotificationTemplatesTab } from '@/features/notifications/components/NotificationTemplatesTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -63,7 +64,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'notifications';
 
 function establishmentTabLabel(type: EstablishmentType | undefined): string {
   if (!type) return 'Cabinet';
@@ -92,6 +93,8 @@ function buildTabs(
     ...(isAdmin ? [{ id: 'consentements' as Tab, label: 'Consentements' }] : []),
     // Modèles de courrier au confrère : gestion réservée à l'ADMIN.
     ...(isAdmin ? [{ id: 'courriers' as Tab, label: 'Courriers confrère' }] : []),
+    // Notifications sortantes (WhatsApp/email) : gestion réservée à l'ADMIN.
+    ...(isAdmin ? [{ id: 'notifications' as Tab, label: 'Notifications' }] : []),
     { id: 'utilisateurs', label: 'Utilisateurs' },
     { id: 'conges', label: 'Congés' },
     { id: 'droits', label: 'Droits d’accès' },
@@ -800,6 +803,7 @@ export default function ParametragePage() {
         {tab === 'modeles' && <PrescriptionTemplatesTab />}
         {tab === 'consentements' && isAdmin && <ConsentTemplatesTab />}
         {tab === 'courriers' && isAdmin && <LetterTemplatesTab />}
+        {tab === 'notifications' && isAdmin && <NotificationTemplatesTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
         {tab === 'droits' && <DroitsTab />}
