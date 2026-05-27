@@ -365,6 +365,16 @@ Module RH : gestion des employés sans accès applicatif (gardien, ménage, infi
 - `GET /v3/api-docs` — public — OpenAPI JSON (springdoc-openapi). **Import this URL directly into Postman** to get a ready-made collection of every endpoint.
 - `GET /swagger-ui.html` — public — Swagger UI
 
+## Assistant IA (`ma.careplus.assistant`, V064) ✅ — MEDECIN + ADMIN
+
+Provider configurable (`careplus.ai.*`), Gemini par défaut. Voir ADR-039.
+
+- `GET /api/assistant/config` — MEDECIN/ADMIN — état du provider `{enabled, configured, provider, model}` (aucun secret).
+- `GET /api/assistant/conversations` — MEDECIN/ADMIN — mes conversations (plus récentes d'abord), cloisonnées owner.
+- `GET /api/assistant/conversations/{id}` — MEDECIN/ADMIN — détail + fil de messages (404 si pas la mienne).
+- `POST /api/assistant/ask` — MEDECIN/ADMIN — `{conversationId?, patientId?, message}` → conversation à jour. Crée la conversation si `conversationId` absent ; injecte un résumé clinique anonymisé si `patientId` présent. 503 si non configuré.
+- `DELETE /api/assistant/conversations/{id}` — MEDECIN/ADMIN — supprime une conversation (cascade messages); 204.
+
 ## How to update this file
 
 When a controller ships, update the section: remove "Not yet implemented", list each endpoint with its final method/path/role/description. If the endpoint differs from the expected list, note why in the same line.

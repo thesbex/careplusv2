@@ -612,6 +612,9 @@ export default function DossierPage() {
   // QA3-3 v1 — backward-compat: allow when permissions absent.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canEditPatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
+  // Assistant IA (V064) — réservé MEDECIN / ADMIN.
+  const userRoles = useAuthStore((s) => s.user?.roles);
+  const canUseAi = !!userRoles && (userRoles.includes('MEDECIN') || userRoles.includes('ADMIN'));
   const { consultations: patientConsultations } = useConsultations(
     raw?.id ? { patientId: raw.id } : {},
   );
@@ -712,6 +715,14 @@ export default function DossierPage() {
         <PatientHeader
           patient={patient}
           {...(canEditPatient ? { onEdit: () => setShowEdit((v) => !v) } : {})}
+          {...(canUseAi && raw?.id
+            ? {
+                onAskAi: () =>
+                  navigate(
+                    `/assistant?patient=${raw.id}&patientName=${encodeURIComponent(patient.fullName)}`,
+                  ),
+              }
+            : {})}
           onNewConsultation={() => {
             void handleNewConsultation();
           }}

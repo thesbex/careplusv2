@@ -85,7 +85,9 @@ careplus:
     enabled: ${CAREPLUS_AI_ENABLED:true}
     provider: ${CAREPLUS_AI_PROVIDER:gemini}
     base-url: ${CAREPLUS_AI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
-    model: ${CAREPLUS_AI_MODEL:gemini-1.5-flash}
+    # gemini-2.5-flash : modèle gratuit/rapide courant (les 1.x sont retirés pour
+    # les nouvelles clés). `gemini-flash-latest` = alias auto-suiveur si souhaité.
+    model: ${CAREPLUS_AI_MODEL:gemini-2.5-flash}
     api-key: ${GEMINI_API_KEY:}
     temperature: 0.3
     max-tokens: 1024

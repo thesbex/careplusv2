@@ -433,6 +433,14 @@ export const Send = (p: IconProps) => (
   </Base>
 );
 
+/* Assistant IA — étincelle (aide à la décision). */
+export const Sparkles = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M8 2.5l1.4 3.1L12.5 7 9.4 8.4 8 11.5 6.6 8.4 3.5 7l3.1-1.4L8 2.5z" />
+    <path d="M12.5 11.5l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6.6-1.4z" />
+  </Base>
+);
+
 export const Paperclip = (p: IconProps) => (
   <Base {...p}>
     <path d="M11.5 7L7 11.5a2.5 2.5 0 01-3.5-3.5l5-5a1.7 1.7 0 012.4 2.4L6 10.4" />

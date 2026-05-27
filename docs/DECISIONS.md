@@ -398,6 +398,36 @@ Endpoint dédié `GET /api/chat/colleagues` pour le picker "Nouveau message" (`/
 **Choice**: livrer le blob via un `<a download>` créé/cliqué par programme (pattern `downloadDocument()` du dossier patient), qui n'est PAS soumis au blocage de pop-up même après un `await`. Le document restait rattaché côté serveur ; seul l'aperçu était bloqué. Pattern à privilégier pour toute livraison PDF différée (les autres modales — consentement, certificat, écho — gardent `window.open` pour l'instant ; à migrer si le même retour terrain remonte).
 **Consequence**: fix local `ConfrereLetterDialog`, toast clarifié « généré et rattaché à la consultation ».
 
+## ADR-039 — Assistant IA médecin : provider abstrait OpenAI-compatible, Gemini par défaut
+
+**Date**: 2026-05-27
+**Status**: accepted
+**Context**: Besoin d'un assistant IA pour les médecins (chat médical général + aide contextuelle sur le dossier patient). Exigence : « une IA gratuite pour l'instant, mais configurable pour basculer vers Claude/GPT ». Contraintes careplus : déploiement on-premise possible, données médicales sensibles, pas de nouvelle dépendance lourde (ADR-015/016/017).
+**Choice**:
+1. **Abstraction `AiChatClient`** comme unique point de couplage au fournisseur. Implémentation par défaut `OpenAiCompatibleChatClient` parlant le protocole *OpenAI Chat Completions* — couvre d'emblée **Gemini** (endpoint de compatibilité OpenAI de Google), **OpenAI/GPT**, **Groq** et **Ollama** (local) par simple reconfiguration `careplus.ai.{provider,base-url,model,api-key}`. **Claude** (schéma Anthropic différent) = future 2e implémentation de la même interface, zéro changement applicatif.
+2. **Provider par défaut = Gemini `gemini-2.5-flash`** (free tier), clé via `GEMINI_API_KEY` (env, jamais commitée). Sans clé → module « non configuré » : endpoints 503 propres, IHM affiche un bandeau + composer désactivé.
+3. **Client HTTP = Spring `RestClient`** (déjà fourni par `spring-boot-starter-web`, pas de WebFlux/feign à ajouter) ; parsing par `JsonNode` (tolérant aux variations entre providers).
+4. **Persistance JdbcTemplate** (pattern dashboard/chat), 2 tables V064 (`assistant_conversation` + `assistant_message`), cloisonnées par `owner_id`. Messages horodatés `clock_timestamp()` (et non `now()`, figé en transaction) pour un ordre USER→ASSISTANT déterministe.
+5. **Contexte patient anonymisant** : le résumé clinique injecté (prénom, âge, sexe, groupe, allergies, antécédents, dernières constantes/consultations) **exclut** les identifiants directs (CIN, téléphone, adresse, nom de famille) — minimise ce qui transite vers un provider cloud.
+6. **RBAC MEDECIN + ADMIN** uniquement (aide à la décision clinique, pas outil de secrétariat).
+**Consequence**: module `ma.careplus.assistant` (config + abstraction + impl + service + controller 5 endpoints `/api/assistant/**`) + V064 + `AssistantIT` 10/10 verts (provider stubé, aucun appel réseau en test). Frontend `features/assistant/` (chat desktop 2-cols + mobile + bouton « Demander à l'IA » dans le dossier). Le seul chemin non testé en automatique = l'appel HTTP réel au modèle (nécessite une clé + réseau) ; le reste de la logique est couvert par le stub.
+
+---
+
+## ADR-040 — Notifications sortantes : module event-driven + provider SPI, WhatsApp Meta Cloud API + email SMTP
+
+**Date**: 2026-05-27
+**Status**: accepted (socle + trigger RDV créé livrés ; providers réels + UI en phases suivantes)
+**Context**: demande client — notifier le patient à la création d'un RDV, rappel J-1, et (différé) envoyer l'ordonnance à la clôture. Canal **WhatsApp** (pas SMS) + email **gratuit**. Cabinet on-premise (pas de broker — ADR-020), PII médicale sensible.
+**Choice**:
+1. **WhatsApp = Meta Cloud API** (palier gratuit ~1000 conv/mois, officiel). Pas d'API WhatsApp gratuite illimitée ; les libs non-officielles (Baileys) violent les CGU → écartées pour un produit médical. Messages business-initiated → **templates Meta approuvés** (setup cabinet, hors code).
+2. **Email = SMTP configurable** (`spring-boot-starter-mail`) : le cabinet branche son fournisseur gratuit (Gmail/Brevo/propre). Aucun couplage fournisseur.
+3. **Module `ma.careplus.notification` event-driven** : `AppointmentCreatedEvent` (publié par scheduling) + `@TransactionalEventListener(AFTER_COMMIT)` → jamais bloquant pour le métier. **Provider SPI** (`NotificationSender` par canal) ; sans envoyeur réel configuré → **NoOp** (statut `SENT_SIMULATED`, aucun envoi). Master switch `careplus.notifications.enabled` (OFF par défaut).
+4. **Outbox** (`notification_outbox`) : journal + file, idempotence via `dedupe_key` UNIQUE, retry borné, tolérance hors-ligne.
+5. **Templates** (`notification_template`) par (event_key, channel), placeholders `{{patientNom}}…`, admin-managed (UI phase 4).
+6. **Confidentialité** : envoi seulement si `patient.notifications_opt_in` + contact présent ; documents médicaux (ordonnance, v2) par **lien signé**, jamais le PDF en clair.
+**Consequence**: V065 (templates+outbox+opt-in patient) + module + `AppointmentCreatedEvent` câblé dans `SchedulingService.create()` + NotificationOutboxIT 5/5. Phases restantes : rappel J-1 (`@Scheduled`), providers réels (SMTP+Meta, derrière config) + onglet Paramétrage Notifications + case opt-in dossier patient. Envoi réel non testable en CI (identifiants Meta/SMTP cabinet) → couvert par provider stub + futur test de contrat du payload Meta.
+
 ---
 
 ## How to add an entry
