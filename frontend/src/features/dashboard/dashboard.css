@@ -121,6 +121,233 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* ════════════════════════════════════════════════════════════════════
+ * DESIGN REFRESH PILOT — scope `.dx` (2026-05-27)
+ * Tokens locaux pour ne pas toucher le reste de l'app. À promouvoir dans
+ * tokens.css quand le pilote est validé sur les 2 pages.
+ * ════════════════════════════════════════════════════════════════════ */
+.dx {
+  /* DS2 — réfère les tokens partagés (frontend/src/styles/design-system-v2.css). */
+  --dx-bg: var(--ds2-bg);
+  --dx-card: var(--ds2-surface);
+  --dx-bd: var(--ds2-border);
+  --dx-ink: var(--ds2-ink);
+  --dx-ink2: var(--ds2-ink-2);
+  --dx-ink3: var(--ds2-ink-3);
+  --dx-navy: var(--ds2-navy);
+  --dx-shadow: var(--ds2-shadow-sm);
+  --dx-radius: var(--ds2-radius);
+  background: var(--dx-bg);
+  /* fond frais sur toute la zone + marge intérieure G/D confortable (iso maquette) */
+  padding: 22px 32px;
+  min-height: calc(100vh - 56px);
+  color: var(--dx-ink);
+}
+
+.dx .dx-section-h {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dx-ink3);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+}
+
+/* ── Grilles ─────────────────────────────────────────────────────── */
+.dx .dx-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 4), 1fr);
+  gap: 14px;
+}
+.dx-main {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 22px;
+  margin: 24px 0;
+}
+.dx-main.is-solo {
+  grid-template-columns: 1fr;
+}
+.dx-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.dx-col .dx-section-h {
+  margin-bottom: 2px;
+}
+
+/* ── KPI ─────────────────────────────────────────────────────────── */
+.dx-kpi {
+  position: relative;
+  background: var(--dx-card);
+  border: 1px solid var(--dx-bd);
+  border-radius: var(--dx-radius);
+  box-shadow: var(--dx-shadow);
+  padding: 16px 18px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-height: 104px;
+  overflow: hidden;
+}
+.dx-kpi.is-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--dx-navy);
+}
+.dx-kpi-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.dx-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dx-dot-blue { background: var(--ds2-blue); }
+.dx-dot-indigo { background: var(--ds2-indigo); }
+.dx-dot-amber { background: var(--ds2-amber); }
+.dx-dot-green { background: var(--ds2-green); }
+.dx-kpi-label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--dx-ink2);
+}
+.dx-kpi-val {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--dx-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dx-kpi-unit {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dx-ink3);
+  margin-left: 5px;
+}
+.dx-kpi-delta {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dx-pos { color: var(--ds2-green); }
+.dx-neg { color: var(--ds2-coral); }
+.dx-warn { color: var(--ds2-amber); }
+.dx-muted { color: var(--dx-ink3); }
+.dx-skel {
+  display: inline-block;
+  width: 72px;
+  height: 26px;
+  border-radius: 5px;
+  background: var(--dx-bd);
+  animation: dash-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Cards ───────────────────────────────────────────────────────── */
+.dx-card {
+  background: var(--dx-card);
+  border: 1px solid var(--dx-bd);
+  border-radius: var(--dx-radius);
+  box-shadow: var(--dx-shadow);
+  padding: 16px 18px;
+}
+.dx-card-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.dx-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dx-ink);
+}
+.dx-card-sub {
+  font-size: 12px;
+  color: var(--dx-ink3);
+  margin-top: 2px;
+}
+.dx-card-big {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.dx-card-bignum {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--dx-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dx-trend {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.dx-chart {
+  width: 100%;
+}
+.dx-empty {
+  font-size: 12px;
+  color: var(--dx-ink3);
+  padding: 18px 2px;
+}
+
+/* ── Listes numérotées ───────────────────────────────────────────── */
+.dx-rank {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0;
+}
+.dx-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 1px solid var(--dx-bd);
+  font-size: 13px;
+}
+.dx-rank-row:first-child {
+  border-top: none;
+}
+.dx-rank-n {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dx-ink3);
+  font-variant-numeric: tabular-nums;
+  min-width: 16px;
+}
+.dx-rank-label {
+  flex: 1;
+  color: var(--dx-ink2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dx-rank-val {
+  font-weight: 700;
+  color: var(--dx-ink);
+  font-variant-numeric: tabular-nums;
+}
+.dx-rank-pct {
+  font-size: 12px;
+  color: var(--dx-ink3);
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1100px) {
+  .dx-main { grid-template-columns: 1fr; }
+}
+
 /* ── Mobile variants (DashboardPage.mobile.tsx) ─────────────────── */
 .dash-kpi-m {
   background: var(--surface);

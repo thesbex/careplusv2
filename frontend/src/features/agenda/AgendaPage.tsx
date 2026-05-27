@@ -8,9 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
-import { Phone, Plus } from '@/components/icons';
+import { Print, Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { AgendaToolbar } from './components/AgendaToolbar';
+import { AgendaToolbar, AgendaLegend } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { MonthGrid } from './components/MonthGrid';
@@ -379,11 +379,11 @@ export default function AgendaPage() {
         topbarRight={
           <>
             <Button>
-              <Phone /> Appel rapide
+              <Print /> Imprimer
             </Button>
             {canCreateRdv && (
               <Button
-                variant="primary"
+                className="cp-ds2-primary"
                 onClick={() => {
                   setRdvPrefill(null);
                   setShowRDV(true);
@@ -525,19 +525,22 @@ export default function AgendaPage() {
             onSelectDay={handleMonthDayClick}
           />
         ) : (
-          <AgendaGrid
-            days={visibleDays}
-            appointments={appointments}
-            onSelect={setSelected}
-            onSlotClick={handleSlotClick}
-            onMove={(id, dayKey, time) => void handleDragMove(id, dayKey, time)}
-            leaveDays={leaveDays}
-            jourMode={view === 'jour'}
-            {...(todayKey ? { today: todayKey } : {})}
-            reasonColors={Object.fromEntries(
-              Object.entries(reasonsById).map(([id, r]) => [id, r.colorHex]),
-            )}
-          />
+          <>
+            <AgendaGrid
+              days={visibleDays}
+              appointments={appointments}
+              onSelect={setSelected}
+              onSlotClick={handleSlotClick}
+              onMove={(id, dayKey, time) => void handleDragMove(id, dayKey, time)}
+              leaveDays={leaveDays}
+              jourMode={view === 'jour'}
+              {...(todayKey ? { today: todayKey } : {})}
+              reasonColors={Object.fromEntries(
+                Object.entries(reasonsById).map(([id, r]) => [id, r.colorHex]),
+              )}
+            />
+            <AgendaLegend />
+          </>
         )}
       </Screen>
       {showRDV && (

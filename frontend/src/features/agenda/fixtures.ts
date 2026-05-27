@@ -51,8 +51,8 @@ export const ARRIVALS: Arrival[] = [
   { name: 'Ahmed Cherkaoui', apt: '15:00', status: 'arrived', since: '—', allergy: 'Aspirine' },
 ];
 
-/** Pixel scale used by the agenda grid (same constant as the prototype). */
-export const ROW_PX = 72;
+/** Pixel scale used by the agenda grid. DS2 : 84px → cartes RDV plus grandes. */
+export const ROW_PX = 84;
 
 /** "hh:mm" → minutes from 08:00. */
 export const toMin = (t: string): number => {

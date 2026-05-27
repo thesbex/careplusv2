@@ -16,32 +16,36 @@
 @import '@fontsource/jetbrains-mono/500.css';
 
 :root {
+  /* ── DESIGN REFRESH (DS2) : valeurs officielles promues sur les tokens de
+   * base (mêmes NOMS, couleurs officielles). Mapping iso-sémantique :
+   * --primary (bleu app) → saphir ; --success (vert app) → vert bouteille ;
+   * --danger → corail ; fonds frais. Toutes les pages basculent d'un coup. */
   /* ── Surface & ink ──────────────────────────── */
-  --bg: #f7f5f1;
-  --bg-alt: #efebe3;
+  --bg: #edf2fa;
+  --bg-alt: #f4f7fc;
   --surface: #ffffff;
-  --surface-2: #fbfaf7;
-  --ink: #1a1a1a;
-  --ink-2: #3d3d3d;
-  --ink-3: #6b6b6b;
-  --ink-4: #9b9b9b;
-  --border: #e8e4dc;
-  --border-strong: #d6d0c3;
-  --border-soft: #efebe3;
+  --surface-2: #f4f7fc;
+  --ink: #0b1410;
+  --ink-2: #2f3a35;
+  --ink-3: #646d67;
+  --ink-4: #9aa29d;
+  --border: #e2e7ef;
+  --border-strong: #d2dceb;
+  --border-soft: #eef2f8;
 
-  /* ── Brand (careplus blue) ──────────────────── */
-  --primary: #2a7ce7;
-  --primary-hover: #1b5bc7;
-  --primary-soft: #e4eefa;
+  /* ── Brand (saphir officiel) ────────────────── */
+  --primary: #1e4dab;
+  --primary-hover: #163c85;
+  --primary-soft: #dce5f5;
   --primary-ink: #ffffff;
 
-  /* ── Semantic ───────────────────────────────── */
-  --amber: #b8500c;
-  --amber-soft: #fbeadb;
-  --danger: #a8321e;
-  --danger-soft: #f5e1dc;
-  --success: #3f7a3a;
-  --success-soft: #e1ecde;
+  /* ── Semantic (officiels) ───────────────────── */
+  --amber: #a86a0c;
+  --amber-soft: #f4e4c4;
+  --danger: #e1593c;
+  --danger-soft: #f8ddd2;
+  --success: #0e5b3e;
+  --success-soft: #d9eae0;
 
   /* ── Patient-status palette (pills + agenda blocks) ──
    * Synced with the AgendaBlock palette so the legend chip / pill /
@@ -51,27 +55,27 @@
    *   vitals  → amber   (same — "en attente constantes")
    *   consult → blue    (--primary)
    *   done    → red     (--danger / --danger-soft) */
-  --status-arrived: #def0e6;
-  --status-arrived-ink: #2f8f6b;
-  --status-waiting: #fbefe3;
-  --status-waiting-ink: #c68a2e;
-  --status-vitals: #fbefe3;
-  --status-vitals-ink: #c68a2e;
-  --status-consult: #c9d9ee;
-  --status-consult-ink: #1e5aa8;
-  --status-done: #f5e1dc;
-  --status-done-ink: #a8321e;
+  --status-arrived: #d9eae0;
+  --status-arrived-ink: #0a4630;
+  --status-waiting: #f4e4c4;
+  --status-waiting-ink: #6e4a0a;
+  --status-vitals: #f4e4c4;
+  --status-vitals-ink: #6e4a0a;
+  --status-consult: #dce5f5;
+  --status-consult-ink: #1e4dab;
+  --status-done: #d9eae0;
+  --status-done-ink: #0a4630;
 
   /* ── Typography ─────────────────────────────── */
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
   --font-serif: 'Instrument Serif', Georgia, serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* ── Radii ──────────────────────────────────── */
-  --r-xs: 3px;
-  --r-sm: 4px;
-  --r-md: 6px;
-  --r-lg: 10px;
+  /* ── Radii (officiels) ──────────────────────── */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
 }
 
 * {

@@ -93,7 +93,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--surface);
-  --ag-row: 72px;
+  --ag-row: 84px;
 }
 
 .ag-header {
@@ -615,3 +615,142 @@ select.ag-filter-select {
   height: 100%;
   background: var(--primary);
 }
+
+/* ════════════════════════════════════════════════════════════════════
+ * DESIGN REFRESH — agenda aligné sur le design officiel (DS2).
+ * Tokens : saphir #1E4DAB (planifié/actif), vert #0E5B3E (arrivé/terminé),
+ * ambre (attente constantes), corail (annulé/urgence). Surfaces fraîches.
+ * Override ciblé (les classes .ag-* sont propres à l'agenda).
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Barre d'outils + filtres : fond frais, blend avec le contenu */
+.ag-toolbar {
+  background: var(--ds2-bg);
+  border-bottom: 1px solid var(--ds2-border);
+}
+.ag-grid-wrap,
+.ag-scroll,
+.ag-grid,
+.ag-month {
+  background: var(--ds2-surface);
+}
+
+/* Segmented control « Semaine / Jour / Mois » — actif = saphir */
+.ag-view-toggle {
+  border-color: var(--ds2-border);
+  background: var(--ds2-surface-2);
+  border-radius: var(--ds2-radius-sm);
+}
+.ag-view-toggle button.on {
+  background: var(--ds2-navy);
+  color: #fff;
+  box-shadow: none;
+}
+
+/* Navigation semaine + boutons */
+.ag-week-nav { border-color: var(--ds2-border); border-radius: var(--ds2-radius-sm); }
+.ag-week-nav button { color: var(--ds2-ink-2); }
+.ag-week-nav button:hover { background: var(--ds2-surface-2); }
+
+/* En-têtes de jours */
+.ag-header { background: var(--ds2-surface-2); border-bottom: 1px solid var(--ds2-border); }
+.ag-header-cell { border-left: 1px solid var(--ds2-border); color: var(--ds2-ink-3); }
+.ag-header-cell .d-num { color: var(--ds2-ink); }
+.ag-header-cell.today {
+  background: linear-gradient(180deg, var(--ds2-navy-soft), transparent 70%);
+}
+.ag-header-cell.today .d-num { color: var(--ds2-navy); }
+
+/* Grille : lignes hairline fraîches */
+.ag-hourcol { border-right: 1px solid var(--ds2-border); }
+.ag-hour-label { color: var(--ds2-ink-4); font-family: var(--ds2-font-mono); }
+.ag-daycol { border-left: 1px solid var(--ds2-border); }
+.ag-hour-cell { border-bottom: 1px solid var(--ds2-border); }
+.ag-hour-cell.half { border-bottom: 1px dashed var(--ds2-border); }
+.ag-daycol.today { background: linear-gradient(180deg, rgba(30,77,171,0.04), transparent 200px); }
+
+/* Ligne « maintenant » — corail (design officiel) */
+.ag-now { border-top: 1.5px solid var(--ds2-coral); }
+.ag-now::before { background: var(--ds2-coral); }
+.ag-now-lbl { color: var(--ds2-coral); background: var(--ds2-surface); }
+
+/* Blocs RDV — schéma de statut officiel */
+.ag-block {
+  border-radius: var(--ds2-radius-sm);
+  border-color: var(--ds2-border);
+  background: var(--ds2-surface);
+}
+.ag-block .ag-name { color: var(--ds2-ink); }
+.ag-block .ag-reason { color: var(--ds2-ink-3); }
+.ag-block .ag-time { color: var(--ds2-ink-2); font-family: var(--ds2-font-mono); }
+
+/* Confirmé / planifié → saphir */
+.ag-confirmed { border-left-color: var(--ds2-navy); background: var(--ds2-navy-soft); }
+.ag-confirmed .ag-time { color: var(--ds2-navy); }
+/* Arrivé → vert */
+.ag-arrived { border-left-color: var(--ds2-green); background: #d9eae0; }
+.ag-arrived .ag-time { color: var(--ds2-green); }
+/* Attente constantes → ambre */
+.ag-vitals { border-left-color: var(--ds2-amber); background: #f4e4c4; }
+.ag-vitals .ag-time { color: #6e4a0a; }
+/* En consultation (live) → saphir plein */
+.ag-consult { border-left-color: var(--ds2-navy); background: var(--ds2-navy-soft); }
+.ag-consult .ag-time { color: var(--ds2-navy); }
+/* Terminé → vert doux */
+.ag-done { border-left-color: var(--ds2-green); background: #e1f0e8; color: var(--ds2-ink-2); }
+.ag-done .ag-name { color: var(--ds2-ink); }
+.ag-block:focus-visible { outline: 2px solid var(--ds2-navy); }
+
+/* Pastille allergie → corail (jamais rouge) */
+.ag-block .ag-allergy { background: var(--ds2-coral-soft, #f8ddd2); color: var(--ds2-coral); }
+.ag-block.ag-compact .ag-allergy-dot { color: var(--ds2-coral); }
+
+/* Panneau droit (arrivées) */
+.ag-arrivals-h, .ag-arrivals-f { border-color: var(--ds2-border); background: var(--ds2-surface); }
+.ag-arrival-card { background: var(--ds2-surface); border: 1px solid var(--ds2-border); border-radius: var(--ds2-radius-sm); }
+
+/* Mois — aujourd'hui saphir, intensité saphir */
+.ag-month-head { border-bottom: 1px solid var(--ds2-border); }
+.ag-month-head-cell { border-left: 1px solid var(--ds2-border); color: var(--ds2-ink-3); }
+.ag-month-cell { border-left: 1px solid var(--ds2-border); border-bottom: 1px solid var(--ds2-border); background: var(--ds2-surface); }
+.ag-month-cell:hover { background: var(--ds2-surface-2); }
+.ag-month-cell.weekend { background: #fbfcfe; }
+.ag-month-cell.today { background: linear-gradient(180deg, var(--ds2-navy-soft), transparent 60%); }
+.ag-month-cell.today .ag-month-date { color: var(--ds2-navy); }
+.ag-month-blank { background: var(--ds2-surface-2); }
+.ag-month-date { color: var(--ds2-ink); }
+.ag-month-count { color: var(--ds2-ink-2); }
+.ag-month-bar { background: var(--ds2-navy-chart-soft); }
+.ag-month-bar > span { background: var(--ds2-navy); }
+
+/* ── Légende des statuts — bandeau bas, carte (design officiel batch 1) ── */
+.ag-legend-bottom {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 16px 6px;
+  padding: 10px 14px;
+  background: var(--ds2-surface);
+  border: 1px solid var(--ds2-border);
+  border-radius: var(--ds2-radius-sm);
+  font-size: 11.5px;
+  color: var(--ds2-ink-3);
+}
+.ag-legend-title { font-weight: 600; color: var(--ds2-ink-2); margin-right: 4px; }
+.ag-leg-item { display: inline-flex; align-items: center; gap: 7px; }
+.ag-leg-item > span { color: var(--ds2-ink-3); }
+.ag-leg-sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border-left: 3px solid currentColor;
+  display: inline-block;
+}
+.ag-legend-hint { margin-left: auto; color: var(--ds2-ink-3); font-size: 11px; }
+
+/* ── Cartes RDV plus grandes (design officiel) ───────────────────────── */
+.ag-block { padding: 7px 10px; }
+.ag-block .ag-name { font-size: 13px; }
+.ag-block .ag-reason { font-size: 11px; }
+.ag-block .ag-time { font-size: 11px; }

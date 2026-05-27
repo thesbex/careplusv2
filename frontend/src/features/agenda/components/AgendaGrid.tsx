@@ -32,7 +32,7 @@ const SNAP_MIN = 5;
 
 function snapTimeFromY(yPx: number, totalRows: number): string {
   const max = totalRows * 60;
-  const totalMin = Math.max(0, Math.min(max - SNAP_MIN, (yPx / 72) * 60));
+  const totalMin = Math.max(0, Math.min(max - SNAP_MIN, (yPx / ROW_PX) * 60));
   const snapped = Math.round(totalMin / SNAP_MIN) * SNAP_MIN;
   const h = FIRST_HOUR + Math.floor(snapped / 60);
   const m = snapped % 60;

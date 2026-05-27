@@ -2,6 +2,7 @@ import type { HTMLAttributes } from 'react';
 
 export type BrandMarkSize = 'sm' | 'md' | 'lg';
 export type BrandMarkTone = 'primary' | 'inverted';
+export type BrandMarkVariant = 'glyph' | 'tile';
 
 interface BrandMarkProps extends HTMLAttributes<HTMLDivElement> {
   size?: BrandMarkSize;
@@ -10,6 +11,11 @@ interface BrandMarkProps extends HTMLAttributes<HTMLDivElement> {
    * 'inverted' = solid white mark (for dark heroes / footers).
    */
   tone?: BrandMarkTone;
+  /**
+   * 'glyph' = C-shape + plus (logo historique).
+   * 'tile' = DS2 : carré navy arrondi + plus blanc (cf. maquette dashboard).
+   */
+  variant?: BrandMarkVariant;
 }
 
 const sizePx: Record<BrandMarkSize, number> = {
@@ -17,6 +23,33 @@ const sizePx: Record<BrandMarkSize, number> = {
   md: 28,
   lg: 34,
 };
+
+/**
+ * DS2 — logo « tuile » : carré navy arrondi avec un plus blanc, repris de la
+ * maquette dashboard. Utilisé dans la sidebar (shell).
+ */
+function BrandTile() {
+  return (
+    <div
+      className="cp-brand-mark"
+      aria-hidden="true"
+      style={{
+        width: 32,
+        height: 32,
+        borderRadius: 9,
+        background: 'var(--ds2-navy, #1e3a8a)',
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        boxShadow: '0 1px 3px rgba(30, 58, 138, 0.22)',
+      }}
+    >
+      <svg width="32" height="32" viewBox="0 0 32 32" style={{ display: 'block' }}>
+        <path d="M16 10 V22 M10 16 H22" stroke="#fff" strokeWidth="4.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
 
 /**
  * careplus logo : C-shape + plus glyph in a blue gradient. Inlined SVG
@@ -35,8 +68,8 @@ export function BrandWordmark({ tone = 'primary' }: { tone?: BrandMarkTone }) {
   const inverted = tone === 'inverted';
   return (
     <>
-      <span style={{ color: inverted ? '#fff' : 'var(--ink)' }}>care</span>
-      <span style={{ color: inverted ? '#fff' : 'var(--primary)' }}>plus</span>
+      <span style={{ color: inverted ? '#fff' : 'var(--ds2-ink, var(--ink))' }}>care</span>
+      <span style={{ color: inverted ? '#fff' : 'var(--ds2-primary, var(--primary))' }}>plus</span>
     </>
   );
 }
@@ -44,11 +77,13 @@ export function BrandWordmark({ tone = 'primary' }: { tone?: BrandMarkTone }) {
 export function BrandMark({
   size = 'md',
   tone = 'primary',
+  variant = 'glyph',
   style,
   className,
   ...rest
 }: BrandMarkProps) {
   const box = sizePx[size];
+  if (variant === 'tile') return <BrandTile />;
   const inverted = tone === 'inverted';
   const gradId = `cp-brand-${size}-${tone}`;
   const cId = `${gradId}-c`;
