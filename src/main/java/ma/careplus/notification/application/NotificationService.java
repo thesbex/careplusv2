@@ -40,6 +40,7 @@ public class NotificationService {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.FRENCH);
     private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm", Locale.FRENCH);
     private static final String EVENT_APPOINTMENT_CREATED = "APPOINTMENT_CREATED";
+    private static final String EVENT_APPOINTMENT_REMINDER = "APPOINTMENT_REMINDER";
 
     private final JdbcTemplate jdbc;
     private final NotificationTemplateRepository templates;
@@ -80,21 +81,35 @@ public class NotificationService {
 
     /** Visible pour les tests : compose et dispatch sans dépendre de l'AFTER_COMMIT. */
     public void composeAppointmentCreated(AppointmentCreatedEvent event) {
+        compose(EVENT_APPOINTMENT_CREATED, event.appointmentId(), event.patientId(),
+                event.practitionerId(), event.reasonId(), event.startAt());
+    }
+
+    /** Rappel J-1 (appelé par le scheduler). Idempotent via dedupe_key. */
+    public void composeAppointmentReminder(java.util.UUID appointmentId, java.util.UUID patientId,
+                                           java.util.UUID practitionerId, java.util.UUID reasonId,
+                                           java.time.OffsetDateTime startAt) {
+        compose(EVENT_APPOINTMENT_REMINDER, appointmentId, patientId, practitionerId, reasonId, startAt);
+    }
+
+    /** Logique commune : rendu + outbox + dispatch pour un (event, RDV) donné. */
+    private void compose(String eventKey, UUID appointmentId, UUID patientId,
+                         UUID practitionerId, UUID reasonId, java.time.OffsetDateTime startAt) {
         if (!props.isEnabled()) {
             return;
         }
-        Patient patient = loadPatient(event.patientId());
+        Patient patient = loadPatient(patientId);
         if (patient == null || !patient.optIn) {
             return; // pas de consentement → rien.
         }
 
-        Map<String, String> ctx = buildContext(patient, event);
+        Map<String, String> ctx = buildContext(patient, practitionerId, reasonId, startAt);
         for (NotificationChannel channel : resolveChannels(patient)) {
-            String dedupe = EVENT_APPOINTMENT_CREATED + ":" + event.appointmentId() + ":" + channel.name();
+            String dedupe = eventKey + ":" + appointmentId + ":" + channel.name();
             if (outbox.existsByDedupeKey(dedupe)) {
                 continue; // idempotent
             }
-            List<NotificationTemplate> found = templates.findActive(EVENT_APPOINTMENT_CREATED, channel.name());
+            List<NotificationTemplate> found = templates.findActive(eventKey, channel.name());
             if (found.isEmpty()) {
                 continue; // pas de modèle actif pour ce canal
             }
@@ -105,7 +120,7 @@ public class NotificationService {
             }
 
             NotificationOutbox row = new NotificationOutbox();
-            row.setEventKey(EVENT_APPOINTMENT_CREATED);
+            row.setEventKey(eventKey);
             row.setChannel(channel.name());
             row.setRecipientPatientId(patient.id);
             row.setToAddress(to.trim());
@@ -120,16 +135,17 @@ public class NotificationService {
 
     // ── Contexte ────────────────────────────────────────────────────────────
 
-    private Map<String, String> buildContext(Patient patient, AppointmentCreatedEvent event) {
+    private Map<String, String> buildContext(Patient patient, UUID practitionerId,
+                                              UUID reasonId, java.time.OffsetDateTime startAt) {
         Map<String, String> ctx = new HashMap<>();
         ctx.put("patientNom", patient.lastName == null ? "" : patient.lastName);
         ctx.put("patientPrenom", patient.firstName == null ? "" : patient.firstName);
-        var z = event.startAt().atZoneSameInstant(ZONE);
+        var z = startAt.atZoneSameInstant(ZONE);
         ctx.put("date", z.format(DATE_FMT));
         ctx.put("heure", z.format(TIME_FMT));
-        ctx.put("medecin", practitionerName(event.practitionerId()));
+        ctx.put("medecin", practitionerName(practitionerId));
         ctx.put("cabinet", cabinetName());
-        ctx.put("motif", reasonLabel(event.reasonId()));
+        ctx.put("motif", reasonLabel(reasonId));
         return ctx;
     }
 

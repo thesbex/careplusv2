@@ -7,6 +7,8 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.time.LocalDate;
+import ma.careplus.notification.application.AppointmentReminderScheduler;
 import ma.careplus.notification.application.NotificationService;
 import ma.careplus.scheduling.application.SchedulingService;
 import ma.careplus.scheduling.domain.Appointment;
@@ -51,6 +53,7 @@ class NotificationOutboxIT {
 
     @Autowired NotificationService notificationService;
     @Autowired SchedulingService schedulingService;
+    @Autowired AppointmentReminderScheduler reminderScheduler;
     @Autowired JdbcTemplate jdbc;
 
     UUID optInPatient;
@@ -161,5 +164,37 @@ class NotificationOutboxIT {
                 "SELECT channel FROM notification_outbox");
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).get("channel")).isEqualTo("EMAIL");
+    }
+
+    @Test
+    @DisplayName("6. rappel J-1 : seuls les RDV actifs du lendemain → outbox REMINDER")
+    void reminderJ1_activeNextDayOnly() {
+        LocalDate day = LocalDate.of(2030, 6, 12);
+        OffsetDateTime at = OffsetDateTime.of(2030, 6, 12, 9, 0, 0, 0, ZoneOffset.ofHours(1));
+        // RDV actif (PLANIFIE) du jour cible pour le patient opt-in.
+        insertAppointment(optInPatient, at, "PLANIFIE");
+        // RDV annulé le même jour → ignoré.
+        insertAppointment(optInPatient, at.plusHours(1), "ANNULE");
+
+        int processed = reminderScheduler.sendRemindersFor(day);
+
+        assertThat(processed).isEqualTo(1); // seul le PLANIFIE
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT channel, event_key, rendered_body FROM notification_outbox");
+        assertThat(rows).hasSize(2); // WHATSAPP + EMAIL
+        assertThat(rows).allSatisfy(r -> {
+            assertThat(r.get("event_key")).isEqualTo("APPOINTMENT_REMINDER");
+            assertThat((String) r.get("rendered_body")).contains("demain");
+        });
+    }
+
+    private void insertAppointment(UUID patientId, OffsetDateTime startAt, String status) {
+        jdbc.update("""
+                INSERT INTO scheduling_appointment
+                    (id, patient_id, practitioner_id, start_at, end_at, status,
+                     walk_in, urgency, version, created_at, updated_at, type)
+                VALUES (?, ?, ?, ?, ?, ?, false, false, 0, now(), now(), 'CONSULTATION')
+                """,
+                UUID.randomUUID(), patientId, practitioner, startAt, startAt.plusMinutes(30), status);
     }
 }
