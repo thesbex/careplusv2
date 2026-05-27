@@ -124,9 +124,9 @@ class CatalogIT {
         amoxicillineId = UUID.randomUUID();
         jdbc.update("""
                 INSERT INTO catalog_medication (id, commercial_name, dci, form, dosage, tags, favorite, active,
-                    created_at, updated_at)
+                    internal_price, created_at, updated_at)
                 VALUES (?, 'Amoxicilline 500', 'Amoxicilline', 'gélule', '500mg', 'penicillines',
-                        TRUE, TRUE, now(), now())
+                        TRUE, TRUE, 30.00, now(), now())
                 """, amoxicillineId);
 
         paracetamolId = UUID.randomUUID();
@@ -273,6 +273,24 @@ class CatalogIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(1)))
                 .andExpect(jsonPath("$[0].molecule").value("Amoxicilline"));
+    }
+
+    /**
+     * V057 — le type-ahead médicaments expose internalPrice : prix défini pour
+     * Amoxicilline (30.00), null pour un médicament sans prix interne. Permet à
+     * la modale de prescription d'avertir quand « fournir en interne » est coché
+     * sur un médicament non facturable (prix manquant → skip silencieux billing).
+     */
+    @Test
+    void searchMedications_exposesInternalPrice() throws Exception {
+        String token = bearer(medEmail);
+        mockMvc.perform(get("/api/catalog/medications?q=amox").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].internalPrice").value(30.00));
+        // Doliprane seedé sans internal_price → null exposé (pas de prix).
+        mockMvc.perform(get("/api/catalog/medications?q=doliprane").header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].internalPrice").doesNotExist());
     }
 
     // ── Prescription tests ────────────────────────────────────────────────────
