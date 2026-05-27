@@ -45,7 +45,7 @@ Nouveau module `ma.careplus.notification` (bounded context), event-driven, miroi
 
 **Provider SPI** : interface `NotificationChannelProvider { boolean supports(Channel); SendResult send(OutboxMessage); }`. Sélection par `careplus.notifications.<channel>.provider`. Si non configuré → `NoOpProvider` (log, statut `SKIPPED`), jamais d'échec bloquant côté métier.
 
-## 4. Modèle de données (Flyway V064)
+## 4. Modèle de données (Flyway V065 — V064 pris par le module assistant)
 
 - **`notification_template`** : modèle de message géré par l'ADMIN.
   `id UUID, event_key VARCHAR(40) (APPOINTMENT_CREATED | APPOINTMENT_REMINDER | PRESCRIPTION_READY),

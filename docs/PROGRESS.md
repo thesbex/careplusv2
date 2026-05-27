@@ -4,11 +4,22 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Assistant IA médecin v1 livré** (module `assistant`, V064, ADR-039).
-**Last update**: 2026-05-27 (session assistant IA : chat médical + contexte dossier)
-**Build**: frontend `npm run build` vert (tsc strict) ; **AssistantIT 10/10 vert** (Testcontainers, provider stubé). Flyway à **v064**. 2 suites pré-existantes rouges sur `main` (DocumentPdfViewer, routes) — non liées.
-**QA IHM** : walké au navigateur (Dr El Amrani, MEDECIN+ADMIN, :5173) — ✅ item sidebar « Assistant IA » ; ✅ page rend topbar « Google Gemini · gemini-2.5-flash » + bandeau « Assistant non configuré » (pas de `GEMINI_API_KEY`) + composer désactivé (dégradation propre sans clé) ; ✅ bouton « Demander à l'IA » dans le dossier → `/assistant?patient=…` ; ✅ bandeau « Contexte joint : dossier de <patient> » + bouton Retirer. Round-trip modèle réel non testable sans clé — couvert par l'IT via stub.
-**Next action**: configurer `GEMINI_API_KEY` côté serveur pour activer le round-trip ; commit (feature + IT + docs). Pas de régression connue.
+**Phase**: Post-pilote — **Notifications sortantes : socle + trigger RDV créé** (module `notification`, V065, ADR-040) sur `feat/notifications`.
+**Last update**: 2026-05-27 (session notifications — phases 1+2)
+**Build**: `mvn -o compile` vert ; **NotificationOutboxIT 5/5 vert** (Testcontainers). Flyway à **v065**. 2 suites pré-existantes rouges (DocumentPdfViewer, routes) — non liées.
+**Next action**: phases restantes notifications — rappel J-1 (`@Scheduled`), providers réels SMTP+Meta (config) + onglet Paramétrage Notifications + opt-in dossier patient. Setup cabinet requis pour envoi réel (compte Meta + templates approuvés, SMTP).
+
+### 2026-05-27 — Notifications sortantes (phases 1+2 : socle + RDV créé)
+
+Design : `docs/plans/2026-05-27-notifications-design.md`. ADR-040.
+
+**Livré** :
+- **V065** : `notification_template` (par event_key×channel, placeholders, soft-delete, 4 modèles seedés APPOINTMENT_CREATED/REMINDER × EMAIL/WHATSAPP), `notification_outbox` (journal+file, `dedupe_key` UNIQUE, statuts PENDING/SENT/FAILED/SKIPPED/SENT_SIMULATED, retry), + `patient_patient.notifications_opt_in/notifications_channel`.
+- **Module `ma.careplus.notification`** : entités + repos + **provider SPI** `NotificationSender` (par canal) + **NoOp** (dispatcher → `SENT_SIMULATED` si aucun envoyeur réel) + `NotificationDispatcher` + `TemplateRenderer` (jetons `{{…}}`) + `NotificationService` (lecture contexte JdbcTemplate cross-module, opt-in/consentement, idempotence) + `NotificationProperties` (`careplus.notifications.enabled`, OFF par défaut).
+- **Trigger RDV créé** : `AppointmentCreatedEvent` publié par `SchedulingService.create()` ; `@TransactionalEventListener(AFTER_COMMIT)` → compose la confirmation (jamais bloquant pour le RDV).
+- **NotificationOutboxIT 5/5** : opt-in BOTH → 2 lignes rendues+simulées ; opt-out → 0 ; idempotence (compose ×2 → pas de doublon) ; bout-en-bout `create()` → outbox (AFTER_COMMIT) ; canal EMAIL → 1 ligne.
+
+**Non livré (phases 3-4)** : rappel J-1 (`@Scheduled`), `EmailSender` SMTP + `WhatsAppSender` Meta Cloud API (derrière config) + test de contrat payload Meta, onglet Paramétrage « Notifications » + case opt-in dans le dossier patient. Envoi réel non vérifiable en CI (identifiants cabinet).
 
 ### 2026-05-27 — Assistant IA médecin v1 (module `assistant`, V064, ADR-039)
 

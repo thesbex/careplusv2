@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import ma.careplus.scheduling.domain.Appointment;
+import ma.careplus.scheduling.domain.AppointmentCreatedEvent;
 import ma.careplus.scheduling.domain.AppointmentReason;
 import ma.careplus.scheduling.domain.AppointmentStatus;
 import ma.careplus.scheduling.domain.PractitionerLeave;
@@ -26,6 +27,7 @@ import ma.careplus.scheduling.infrastructure.web.dto.MoveAppointmentRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.RoomConflictView;
 import ma.careplus.shared.error.BusinessException;
 import ma.careplus.shared.error.NotFoundException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -58,17 +60,20 @@ public class SchedulingService {
     private final WorkingHoursRepository workingHoursRepository;
     private final HolidayRepository holidayRepository;
     private final PractitionerLeaveRepository leaveRepository;
+    private final ApplicationEventPublisher events;
 
     public SchedulingService(AppointmentRepository appointmentRepository,
                              AppointmentReasonRepository reasonRepository,
                              WorkingHoursRepository workingHoursRepository,
                              HolidayRepository holidayRepository,
-                             PractitionerLeaveRepository leaveRepository) {
+                             PractitionerLeaveRepository leaveRepository,
+                             ApplicationEventPublisher events) {
         this.appointmentRepository = appointmentRepository;
         this.reasonRepository = reasonRepository;
         this.workingHoursRepository = workingHoursRepository;
         this.holidayRepository = holidayRepository;
         this.leaveRepository = leaveRepository;
+        this.events = events;
     }
 
     // ── Create ─────────────────────────────────────────────────────
@@ -114,7 +119,12 @@ public class SchedulingService {
         a.setWalkIn(Boolean.TRUE.equals(req.walkIn()));
         a.setUrgency(urgency);
         a.setRoomId(req.roomId());
-        return appointmentRepository.save(a);
+        Appointment saved = appointmentRepository.save(a);
+        // Notification de confirmation (module notification, AFTER_COMMIT).
+        events.publishEvent(AppointmentCreatedEvent.of(
+                saved.getId(), saved.getPatientId(), saved.getPractitionerId(),
+                saved.getReasonId(), saved.getStartAt()));
+        return saved;
     }
 
     // ── Read ───────────────────────────────────────────────────────
