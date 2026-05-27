@@ -4,10 +4,17 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 
 ## Current status
 
-**Phase**: Post-pilote — **Notifications sortantes : socle + trigger RDV créé** (module `notification`, V065, ADR-040) sur `feat/notifications`.
-**Last update**: 2026-05-27 (session notifications — phases 1+2)
-**Build**: `mvn -o compile` vert ; **NotificationOutboxIT 5/5 vert** (Testcontainers). Flyway à **v065**. 2 suites pré-existantes rouges (DocumentPdfViewer, routes) — non liées.
-**Next action**: phases restantes notifications — rappel J-1 (`@Scheduled`), providers réels SMTP+Meta (config) + onglet Paramétrage Notifications + opt-in dossier patient. Setup cabinet requis pour envoi réel (compte Meta + templates approuvés, SMTP).
+**Phase**: Post-pilote — **Notifications sortantes : feature COMPLÈTE (phases 1-4)** (module `notification`, V065, ADR-040) sur `feat/notifications`.
+**Last update**: 2026-05-27 (session notifications — phases 1-4 + UI)
+**Build**: backend `mvn -o compile` vert ; **NotificationOutboxIT 6/6, NotificationTemplateIT 4/4, WhatsAppPayloadTest 1/1**. Frontend `npm run build` (tsc strict) vert. Flyway à **v065**.
+**Next action**: setup cabinet requis pour l'envoi réel (compte Meta WhatsApp + templates approuvés, identifiants SMTP) ; `careplus.notifications.enabled=true`. Reste optionnel : opt-in patient dans l'UI dossier (endpoint backend prêt), rappel J-1 = job planifié déjà en place. Merger `feat/notifications` → main quand voulu.
+
+### 2026-05-27 — Notifications phases 3-4 (rappel J-1, providers, UI admin)
+
+- **Phase 3** : `AppointmentReminderScheduler` (@Scheduled 18h, @EnableScheduling) → rappel J-1 idempotent ; `sendRemindersFor(LocalDate)` testable.
+- **Phase 4 backend** : `EmailSender` (SMTP, conditionnel `spring.mail.host`) + `WhatsAppSender` (Meta Cloud API, conditionnel token) + `buildTextPayload` (test de contrat) ; NotificationProperties étendu. Sans creds → simulation (SENT_SIMULATED).
+- **Phase 4 CRUD** : `NotificationTemplateController` `/api/notification-templates` (ADMIN) + `PatientNotificationController` `/api/patients/{id}/notification-preferences` (opt-in/canal). `NotificationTemplateIT` 4/4.
+- **Phase 4 UI** : onglet Paramétrage « Notifications » (`NotificationTemplatesTab` : table événement×canal + tiroir d'édition) + hooks `useNotificationTemplates` / `usePatientNotificationPrefs`.
 
 ### 2026-05-27 — Notifications sortantes (phases 1+2 : socle + RDV créé)
 
