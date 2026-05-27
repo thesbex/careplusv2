@@ -10,6 +10,16 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **QA IHM** : walké au navigateur (Dr El Amrani, MEDECIN+ADMIN, :5173) — ✅ item sidebar « Assistant IA » ; ✅ page rend topbar « Google Gemini · gemini-2.5-flash » + bandeau « Assistant non configuré » (pas de `GEMINI_API_KEY`) + composer désactivé (dégradation propre sans clé) ; ✅ bouton « Demander à l'IA » dans le dossier → `/assistant?patient=…` ; ✅ bandeau « Contexte joint : dossier de <patient> » + bouton Retirer. Round-trip modèle réel non testable sans clé — couvert par l'IT via stub.
 **Next action**: configurer `GEMINI_API_KEY` côté serveur pour activer le round-trip ; commit (feature + IT + docs). Pas de régression connue.
 
+### 2026-05-27 — Pharmacie interne : avertir si médicament fourni en interne sans prix
+
+**Contexte** : 2 items backlog « pharmacie interne » signalés KO. **Re-test IHM** : le module est en fait **déjà livré** (V057/QA9-6/QA9-7) et fonctionne bout-en-bout — prix au catalogue → prescription « fournir en interne » → ligne ajoutée à la facture de consultation (vérifié live : `Médicament (interne) : … → MAD`). Seul vrai défaut : un médicament fourni en interne **sans prix** était ignoré silencieusement à la facturation (skip `internal_price NULL` côté `BillingService`).
+
+**Shipped** (`feat/internal-pharmacy-price-warning`, 2 commits) :
+- **catalog** : `Medication` entity + `MedicationResponse` exposent `internalPrice` ; le type-ahead `/api/catalog/medications` le renvoie. Pas de migration (colonne `internal_price` déjà en V057).
+- **prescription** : la modale affiche un avertissement ambre listant les médicaments « fournis en interne » sans prix interne (« …ne sera pas facturé : X. Définissez le prix dans Catalogue »). Discrimination par médicament.
+- **CatalogIT** : `searchMedications_exposesInternalPrice` (30.00 vs null). 1 rouge pré-existant `createLabBon_then_pdf` (code lab 'NFS' en double, échoue en isolation, non lié).
+- **QA IHM** (Dr El Amrani, :5173) : prix posé via catalogue (Sectral 25 MAD, persistant) ; Xanax (sans prix) coché interne → averti ; Sectral (avec prix) exclu de l'avertissement ; type-ahead live renvoie `internalPrice`.
+
 ### 2026-05-27 — Assistant IA médecin v1 (module `assistant`, V064, ADR-039)
 
 **Shipped** :
