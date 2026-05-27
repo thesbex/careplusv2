@@ -4,6 +4,8 @@ export interface MedicationApi {
   molecule: string | null;
   form: string | null;
   strength: string | null;
+  /** V057 — prix de cession en interne (null = pas de prix → non facturable). */
+  internalPrice: number | null;
 }
 
 export interface LabTestApi {
@@ -25,6 +27,12 @@ export interface CatalogItem {
   id: string;
   name: string;
   sub?: string | null;
+  /**
+   * V057 — pour les médicaments : prix de cession interne. `null` = pas de prix
+   * (ne sera pas facturé en interne) ; `undefined` = inconnu (ligne issue d'un
+   * modèle, prix non chargé) → pas d'avertissement.
+   */
+  internalPrice?: number | null;
 }
 
 export interface PrescriptionLineApi {

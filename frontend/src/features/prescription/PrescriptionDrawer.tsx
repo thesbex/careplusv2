@@ -76,6 +76,16 @@ export function PrescriptionDrawer({
     // V057 (QA9-7) — pharmacie interne : fournir les médicaments en interne (facturé à la signature).
     || (type === 'DRUG' && !!settings?.pharmacyInternal);
 
+  // Médicaments fournis en interne mais SANS prix au catalogue : la facturation
+  // les ignore silencieusement. On avertit le prescripteur. `internalPrice`
+  // undefined (ligne issue d'un modèle, prix non chargé) → pas d'avertissement.
+  const internalDrugsWithoutPrice =
+    type === 'DRUG' && internalRouting
+      ? lines.filter(
+          (l) => l.item && (l.item.internalPrice === null || l.item.internalPrice === 0),
+        )
+      : [];
+
   useEffect(() => {
     if (!suggestOpen) return;
     function onDocMouseDown(e: MouseEvent) {
@@ -349,6 +359,39 @@ export function PrescriptionDrawer({
                       + (type === 'LAB' ? 'laboratoire' : 'service de radiologie')
                       + " interne au lieu d'imprimer un bon papier pour le patient."}
                 </div>
+              </div>
+            )}
+
+            {/* V057 — avertissement : médicament « fourni en interne » sans prix au
+                catalogue ne sera pas ajouté à la facture (skip silencieux côté billing). */}
+            {internalDrugsWithoutPrice.length > 0 && (
+              <div
+                role="alert"
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 8,
+                  border: '1px solid var(--amber, #e0a23a)',
+                  background: 'var(--amber-soft, #fff4e0)',
+                  borderRadius: 'var(--r-md)',
+                  padding: '10px 12px',
+                  margin: '0 0 12px',
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                  color: 'var(--ink-2)',
+                }}
+              >
+                <span style={{ color: 'var(--amber, #e0a23a)', flexShrink: 0, marginTop: 1 }}>
+                  <Warn aria-hidden="true" />
+                </span>
+                <span>
+                  {internalDrugsWithoutPrice.length > 1 ? 'Ces médicaments n’ont' : 'Ce médicament n’a'}{' '}
+                  pas de prix interne au catalogue —{' '}
+                  {internalDrugsWithoutPrice.length > 1 ? 'ils ne seront' : 'il ne sera'} pas{' '}
+                  {internalDrugsWithoutPrice.length > 1 ? 'facturés' : 'facturé'} :{' '}
+                  <strong>{internalDrugsWithoutPrice.map((l) => l.item?.name).join(', ')}</strong>.
+                  Définissez le prix dans Catalogue → Médicaments pour le facturer.
+                </span>
               </div>
             )}
             <div className="pr-section-h">

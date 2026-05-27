@@ -458,6 +458,7 @@ public class CatalogController {
                 m.getCommercialName(),
                 m.getDci(),
                 m.getForm(),
-                m.getDosage());
+                m.getDosage(),
+                m.getInternalPrice());
     }
 }

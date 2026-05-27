@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -48,6 +49,10 @@ public class Medication {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    /** V057 — prix de cession en interne (NULL = non facturable en interne). */
+    @Column(name = "internal_price")
+    private BigDecimal internalPrice;
+
     @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime createdAt;
 
@@ -85,6 +90,8 @@ public class Medication {
     public void setFavorite(boolean favorite) { this.favorite = favorite; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+    public BigDecimal getInternalPrice() { return internalPrice; }
+    public void setInternalPrice(BigDecimal internalPrice) { this.internalPrice = internalPrice; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public OffsetDateTime getUpdatedAt() { return updatedAt; }
 }

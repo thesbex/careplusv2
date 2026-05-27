@@ -14,6 +14,7 @@ function toItem(
       id: m.id,
       name: m.name,
       sub: [m.molecule, m.form, m.strength].filter(Boolean).join(' · ') || null,
+      internalPrice: m.internalPrice ?? null,
     };
   }
   if (type === 'LAB') {
