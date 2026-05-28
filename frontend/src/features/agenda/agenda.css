@@ -778,6 +778,51 @@ select.ag-filter-select:hover:not(:disabled) {
 .ag-month-bar { background: var(--ds2-navy-chart-soft); }
 .ag-month-bar > span { background: var(--ds2-navy); }
 
+/* ─── Event lozenges dans les cellules mois (iso maquette user 2026-05-28) ──
+ * Chaque cellule rend max 3 mini-cartes RDV (heure + nom patient + bord coloré
+ * selon statut), puis "+N autres". Pas de bar/count : on lit les RDV vrais.
+ */
+.ag-month-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  width: 100%;
+  min-width: 0;
+}
+.ag-month-event {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  padding: 2px 4px 2px 5px;
+  border-radius: 3px;
+  line-height: 1.25;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-align: left;
+}
+.ag-month-event-time {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.ag-month-event-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  font-weight: 600;
+}
+.ag-month-overflow {
+  font-size: 10px;
+  color: var(--ds2-ink-3);
+  padding: 1px 4px;
+  font-weight: 500;
+}
+
 /* ── Cartes RDV plus grandes (design officiel) ───────────────────────── */
 .ag-block { padding: 7px 10px; }
 .ag-block .ag-name { font-size: 13px; }

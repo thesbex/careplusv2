@@ -21,10 +21,19 @@ interface MonthSidebarProps {
 const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avril', 'mai', 'juin', 'juill.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
+const sectionTitle: React.CSSProperties = {
+  fontSize: 11.5,
+  fontWeight: 600,
+  color: 'var(--ink-2)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.06em',
+  margin: '4px 0 8px',
+};
+
 export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
   const total = appointments.length;
 
-  // Top 4 busiest days in the month.
+  // Per-day count : drives both « Jours les plus chargés » AND la densité heatmap.
   const byDay = new Map<string, number>();
   const labelByDay = new Map<string, string>();
   for (const a of appointments) {
@@ -39,6 +48,47 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 4)
     .map(([iso, n]) => ({ iso, label: labelByDay.get(iso) ?? iso, n }));
+
+  // Top motifs : iso maquette user 2026-05-28 « TOP MOTIFS » list.
+  const byReason = new Map<string, number>();
+  for (const a of appointments) {
+    const r = a.reasonLabel?.trim() || 'Sans motif';
+    byReason.set(r, (byReason.get(r) ?? 0) + 1);
+  }
+  const maxReason = Array.from(byReason.values()).reduce((m, v) => Math.max(m, v), 0);
+  const topMotifs = Array.from(byReason.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // Densité heatmap : 7 cols × N rows, 1 carré par jour du mois affiché.
+  // Couleur intensifiée selon le count, blanc pour 0.
+  const heatmapCells = (() => {
+    // On reconstitue le mois depuis monthLabel ("Mai 2026"). Fallback : maintenant.
+    const monthIdx = MONTH_LABELS.findIndex((m) => monthLabel.toLowerCase().startsWith(m.replace('.', '')));
+    const year = parseInt(monthLabel.split(/\s+/)[1] ?? String(new Date().getFullYear()), 10) || new Date().getFullYear();
+    const month = monthIdx >= 0 ? monthIdx : new Date().getMonth();
+    const first = new Date(year, month, 1);
+    const dowMon0 = (first.getDay() + 6) % 7;
+    const last = new Date(year, month + 1, 0);
+    const cells: Array<{ iso: string | null; day: number | null; count: number }> = [];
+    for (let i = 0; i < dowMon0; i++) cells.push({ iso: null, day: null, count: 0 });
+    for (let d = 1; d <= last.getDate(); d++) {
+      const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      cells.push({ iso, day: d, count: byDay.get(iso) ?? 0 });
+    }
+    while (cells.length % 7 !== 0) cells.push({ iso: null, day: null, count: 0 });
+    return cells;
+  })();
+  const maxDay = Array.from(byDay.values()).reduce((m, v) => Math.max(m, v), 0);
+  function heatColor(count: number): string {
+    if (count === 0) return 'var(--ds2-surface-2)';
+    const ratio = maxDay > 0 ? count / maxDay : 0;
+    // 4 paliers d'intensité saphir : 25/50/75/100 %.
+    if (ratio < 0.25) return 'rgba(30, 77, 171, 0.18)';
+    if (ratio < 0.5) return 'rgba(30, 77, 171, 0.35)';
+    if (ratio < 0.75) return 'rgba(30, 77, 171, 0.6)';
+    return 'rgba(30, 77, 171, 0.92)';
+  }
 
   // KPI cards : on calcule ce qu'on peut depuis les RDV du mois — plus de
   // placeholders "—" sur des métriques dérivables. Iso maquette user 2026-05-28.
@@ -163,18 +213,81 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
             </div>
           ))}
         </div>
-        <div
-          style={{
-            fontSize: 11.5,
-            fontWeight: 600,
-            color: 'var(--ink-2)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            margin: '4px 0 8px',
-          }}
-        >
-          Jours les plus chargés
-        </div>
+        {/* Densité heatmap — iso maquette user 2026-05-28 « DENSITÉ ».
+            Mini calendrier 7 colonnes × N rangs, intensité saphir = charge. */}
+        {total > 0 && (
+          <>
+            <div style={sectionTitle}>Densité</div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(7, 1fr)',
+              gap: 3,
+              marginBottom: 4,
+            }}>
+              {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => (
+                <div key={i} style={{ fontSize: 9, color: 'var(--ink-3)', textAlign: 'center', fontWeight: 600 }}>{d}</div>
+              ))}
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(7, 1fr)',
+                gap: 3,
+                marginBottom: 14,
+              }}
+              aria-label="Carte de densité du mois"
+            >
+              {heatmapCells.map((c, i) => (
+                <div
+                  key={i}
+                  style={{
+                    aspectRatio: '1',
+                    background: c.day === null ? 'transparent' : heatColor(c.count),
+                    borderRadius: 3,
+                    border: c.day === null ? 'none' : '1px solid var(--border)',
+                  }}
+                  title={c.iso ? `${c.iso} : ${c.count} RDV` : ''}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--ink-3)', marginBottom: 16 }}>
+              <span>Moins</span>
+              {[0, 0.2, 0.4, 0.7, 1].map((r, i) => (
+                <span key={i} style={{
+                  width: 10, height: 10, borderRadius: 2,
+                  background: r === 0 ? 'var(--ds2-surface-2)' : `rgba(30, 77, 171, ${0.18 + r * 0.7})`,
+                  border: '1px solid var(--border)',
+                }} />
+              ))}
+              <span>Plus</span>
+            </div>
+
+            {/* Top motifs — iso maquette user 2026-05-28 « TOP MOTIFS ». */}
+            {topMotifs.length > 0 && (
+              <>
+                <div style={sectionTitle}>Top motifs</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
+                  {topMotifs.map(([label, n]) => {
+                    const pct = maxReason > 0 ? Math.round((n / maxReason) * 100) : 0;
+                    return (
+                      <div key={label} style={{ fontSize: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                          <span style={{ color: 'var(--ink-2)' }}>{label}</span>
+                          <span className="tnum" style={{ fontWeight: 600 }}>{n}</span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--ds2-surface-2)', borderRadius: 2, overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: 'var(--ds2-navy, var(--primary))' }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        <div style={sectionTitle}>Jours les plus chargés</div>
         {topDays.length === 0 && (
           <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
             Aucun rendez-vous ce mois.
