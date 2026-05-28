@@ -75,10 +75,38 @@ describe('<AgendaPage /> (desktop)', () => {
     expect(container.querySelector('.cp-topbar-sub')).not.toBeEmptyDOMElement();
   });
 
-  it('renders Appel rapide and Nouveau RDV actions in the topbar', () => {
+  it('topbar carries Nouveau RDV only — Appel rapide + Imprimer retirés 2026-05-28', () => {
     renderAgenda();
-    expect(screen.getByRole('button', { name: /Appel rapide/ })).toBeInTheDocument();
+    // Seul Nouveau RDV reste — Appel rapide (redondant avec la search topbar)
+    // et Imprimer (non utilisé, pas de print agenda dans le flux secrétaire)
+    // ont été supprimés. Ne pas réintroduire sans demande explicite.
     expect(screen.getByRole('button', { name: /Nouveau RDV/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Appel rapide/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Imprimer$/ })).toBeNull();
+  });
+
+  it('inline legend in toolbar RETIRÉE (2026-05-28) — la bottom legend la remplace en multi-praticien', () => {
+    const { container } = renderAgenda();
+    // L'ancien `.ag-legend` inline du toolbar a été supprimé : il faisait
+    // doublon avec `.ag-week-legend` (qui rend Médecins + Statuts en
+    // multi-praticien). Ni l'un ni l'autre ne doit apparaître ici car le
+    // test renderAgenda mock 0 praticiens — donc même la bottom legend ne
+    // s'affiche pas (condition activePractitioners.length >= 2).
+    const toolbar = container.querySelector('.ag-toolbar');
+    expect(toolbar).not.toBeNull();
+    expect(toolbar?.querySelector('.ag-legend')).toBeNull();
+    expect(container.querySelector('.ag-legend-bottom')).toBeNull();
+  });
+
+  it('renders the pageDate in the topbar ("Weekday DD month YYYY · HH:MM")', () => {
+    const { container } = renderAgenda();
+    // .cp-topbar-right contient pageDate en première position devant la cloche.
+    // Le format vient de toLocaleDateString('fr-FR', {weekday, day, month, year})
+    // + " · HH:MM". On valide la forme, pas la valeur (test agnostique de la date).
+    const topbarRight = container.querySelector('.cp-topbar-right');
+    expect(topbarRight).not.toBeNull();
+    const firstChild = topbarRight?.firstElementChild;
+    expect(firstChild?.textContent).toMatch(/^[A-ZÀ-Ý][a-zà-ÿ]+ \d{1,2} \p{L}+ \d{4} · \d{2}:\d{2}$/u);
   });
 
   it('renders the week toolbar with Jour/Semaine/Mois view toggle', () => {

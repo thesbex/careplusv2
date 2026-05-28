@@ -14,6 +14,17 @@ interface AgendaBlockProps {
    * porté par le fond.
    */
   reasonColor?: string;
+  /** RDV planifié mais passé l'heure → bord/temps corail. Calculé en amont. */
+  late?: boolean;
+  /** Indice de colonne (0..colCount-1) calculé par assignColumns pour le rendu
+      côte-à-côte en cas de chevauchement. Par défaut 0. */
+  colIndex?: number;
+  /** Nombre de colonnes du cluster de chevauchement. Par défaut 1. */
+  colCount?: number;
+  /** Mini-avatar médecin (iso maquette user 2026-05-28 vue Semaine multi-doc).
+      Initiales + couleur dans une pastille à gauche du temps. Affiché seulement
+      si fourni par AgendaGrid (qui ne le passe qu'en multi-praticien). */
+  practitioner?: { initials: string; color: string; name: string };
 }
 
 /**
@@ -22,7 +33,21 @@ interface AgendaBlockProps {
  * inline because a 15-min slot is only 18px tall.
  * Ported from design/prototype/screens/agenda.jsx:AgendaBlock.
  */
-export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockProps) {
+/**
+ * Libellé FR du statut affiché dans le tooltip hover. Doublon assumé avec la
+ * légende couleur (qui code la même chose visuellement) — le tooltip rend la
+ * sémantique explicite pour l'utilisateur qui survole une carte trop étroite
+ * pour montrer tous ses détails (cas low-res / collisions 3+).
+ */
+const STATUS_FR: Record<string, string> = {
+  confirmed: 'Confirmé',
+  arrived: 'Arrivé',
+  vitals: 'En attente constantes',
+  consult: 'En consultation',
+  done: 'Terminé',
+};
+
+export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, colIndex = 0, colCount = 1, practitioner }: AgendaBlockProps) {
   // 1px inset top + bottom (was 2+2). Borders on the block already provide
   // visual separation between adjacent slots, so a 2px total gap is enough —
   // the 4px reservation was eating into the per-block padding budget and
@@ -37,7 +62,27 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockP
   // overflows their 32px box — the reason line crashed into the next slot.
   const compact = a.dur <= 15;
   const medium = !compact && a.dur <= 30;
-  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}${medium ? ' ag-medium' : ''}`;
+  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}${medium ? ' ag-medium' : ''}${late ? ' ag-late' : ''}`;
+  // Layout côte-à-côte : pourcentage de la colonne occupé par ce bloc + offset
+  // selon colIndex. Plus le cluster est dense, plus chaque bloc est étroit.
+  // Inset latéral de 4px conservé (ag-block left: 4px) pour le rendu mono-bloc.
+  const widthPct = 100 / Math.max(1, colCount);
+  const leftPct = widthPct * colIndex;
+  const colStyle = colCount > 1
+    ? { left: `calc(${leftPct}% + 4px)`, width: `calc(${widthPct}% - 8px)`, right: 'auto' as const }
+    : {};
+  // Tooltip hover natif — couvre le cas low-res / collisions 3+ où le texte
+  // tronqué cache l'info (cf. user feedback 2026-05-28). Pas de JS, pas de
+  // CSS popover : le browser fait le rendu, accessible OS-natif, gratuit.
+  const statusLabel = late ? 'En retard' : (STATUS_FR[a.status] ?? a.status);
+  const titleLines = [
+    `${a.patient}`,
+    `${a.start} · ${a.dur} min — ${statusLabel}`,
+    a.reason ? `Motif : ${a.reason}` : null,
+    practitioner ? `Médecin : ${practitioner.name}` : null,
+    a.allergy ? `⚠ Allergie : ${a.allergy}` : null,
+  ].filter(Boolean);
+  const tooltip = titleLines.join('\n');
   return (
     <button
       type="button"
@@ -45,10 +90,12 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockP
       style={{
         top,
         height,
+        ...colStyle,
         ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}` } : {}),
       }}
       onClick={() => onClick?.(a)}
-      aria-label={`${a.patient} à ${a.start}, ${a.reason}`}
+      title={tooltip}
+      aria-label={`${a.patient} à ${a.start}, ${a.reason}${late ? ' (en retard)' : ''}`}
       draggable={draggable && !!a.id}
       onDragStart={(e) => {
         if (!draggable || !a.id) return;
@@ -59,6 +106,16 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockP
     >
       {compact ? (
         <>
+          {practitioner && (
+            <span
+              className="ag-doctor-avatar"
+              style={{ background: practitioner.color }}
+              title={practitioner.name}
+              aria-label={practitioner.name}
+            >
+              {practitioner.initials}
+            </span>
+          )}
           <div className="ag-time tnum">{a.start}</div>
           <div className="ag-name">{a.patient}</div>
           {a.allergy && (
@@ -69,8 +126,20 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor }: AgendaBlockP
         </>
       ) : (
         <>
-          <div className="ag-time tnum">
-            {a.start} · {a.dur}min
+          <div className="ag-block-head">
+            {practitioner && (
+              <span
+                className="ag-doctor-avatar"
+                style={{ background: practitioner.color }}
+                title={practitioner.name}
+                aria-label={practitioner.name}
+              >
+                {practitioner.initials}
+              </span>
+            )}
+            <div className="ag-time tnum">
+              {a.start} · {a.dur}min
+            </div>
           </div>
           <div className="ag-name">{a.patient}</div>
           <div className="ag-reason">{a.reason}</div>

@@ -93,7 +93,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--surface);
-  --ag-row: 84px;
+  --ag-row: 104px;
 }
 
 .ag-header {
@@ -393,24 +393,34 @@
   justify-content: space-between;
   gap: 8px;
 }
-/* Médecin / Salle filter selectors above the agenda grid. Compact (28px)
- * variant of the global .select class — shares the chevron + appearance
- * reset, just shorter and tighter. */
+/* Médecin / Salle / Motif filter selectors — iso maquette « filter-pill »
+ * (batch 1 : .ag-toolbar .filter-pill, height 34px / border-radius 8px /
+ * font-size 12.5px). On garde le natif <select> (interaction OS-native,
+ * accessibilité gratuite) mais on adopte les dimensions de la pill design.
+ */
 .ag-filter-label {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--ink-2);
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
 }
 /* Specificity bump (select.ag-filter-select) so this wins the cascade vs
- * the global `.input, .select, .textarea` rule regardless of CSS load order. */
+ * the global `.input, .select, .textarea` rule. */
 select.ag-filter-select {
-  height: 28px;
+  height: 34px;
   width: auto;
+  min-width: 168px;
   font-size: 12.5px;
-  padding: 0 28px 0 8px;
-  background-position: right 8px center;
+  font-weight: 500;
+  padding: 0 32px 0 12px;
+  background-position: right 12px center;
+  border-radius: 8px;
+  color: var(--ds2-ink, var(--ink-2));
+}
+select.ag-filter-select:hover:not(:disabled) {
+  border-color: var(--ds2-border-strong, var(--border-strong));
 }
 
 .ag-arrival-foot {
@@ -684,8 +694,8 @@ select.ag-filter-select {
 .ag-block .ag-reason { color: var(--ds2-ink-3); }
 .ag-block .ag-time { color: var(--ds2-ink-2); font-family: var(--ds2-font-mono); }
 
-/* Confirmé / planifié → saphir */
-.ag-confirmed { border-left-color: var(--ds2-navy); background: var(--ds2-navy-soft); }
+/* Confirmé / planifié → saphir très clair (iso maquette #F4F7FC) */
+.ag-confirmed { border-left-color: var(--ds2-navy); background: #F4F7FC; }
 .ag-confirmed .ag-time { color: var(--ds2-navy); }
 /* Arrivé → vert */
 .ag-arrived { border-left-color: var(--ds2-green); background: #d9eae0; }
@@ -693,12 +703,37 @@ select.ag-filter-select {
 /* Attente constantes → ambre */
 .ag-vitals { border-left-color: var(--ds2-amber); background: #f4e4c4; }
 .ag-vitals .ag-time { color: #6e4a0a; }
-/* En consultation (live) → saphir plein */
-.ag-consult { border-left-color: var(--ds2-navy); background: var(--ds2-navy-soft); }
-.ag-consult .ag-time { color: var(--ds2-navy); }
-/* Terminé → vert doux */
-.ag-done { border-left-color: var(--ds2-green); background: #e1f0e8; color: var(--ds2-ink-2); }
-.ag-done .ag-name { color: var(--ds2-ink); }
+/* En consultation (live) → saphir PLEIN, texte blanc — se démarque clairement
+ * du Confirmé (saphir très clair) pour qu'« en cours » se voie au premier
+ * coup d'œil. Mimique du traitement mobile (.m-tl-block.consult). */
+.ag-consult {
+  border-left-color: var(--ds2-navy);
+  background: var(--ds2-navy);
+  color: #fff;
+}
+.ag-consult .ag-time,
+.ag-consult .ag-name,
+.ag-consult .ag-reason {
+  color: #fff;
+}
+.ag-consult .ag-allergy { background: rgba(255,255,255,0.22); color: #fff; }
+/* Terminé → gris (iso maquette : #F2F1EC bg, #9B9B9B border) */
+.ag-done {
+  border-left-color: #9B9B9B;
+  background: #F2F1EC;
+  color: var(--ds2-ink-3);
+}
+.ag-done .ag-name { color: var(--ds2-ink-2); }
+.ag-done .ag-time { color: var(--ds2-ink-3); }
+/* En retard → bordure corail (PLANIFIE/CONFIRME && start_at < now côté JS).
+   Le fond reste saphir light comme un Confirmé pour ne pas le confondre
+   avec « Arrivé » ; seule la bordure et la pastille temps virent corail. */
+.ag-block.ag-late {
+  border-left-color: var(--ds2-coral, #C2553A) !important;
+}
+.ag-block.ag-late .ag-time {
+  color: var(--ds2-coral, #C2553A);
+}
 .ag-block:focus-visible { outline: 2px solid var(--ds2-navy); }
 
 /* Pastille allergie → corail (jamais rouge) */
@@ -723,34 +758,222 @@ select.ag-filter-select {
 .ag-month-bar { background: var(--ds2-navy-chart-soft); }
 .ag-month-bar > span { background: var(--ds2-navy); }
 
-/* ── Légende des statuts — bandeau bas, carte (design officiel batch 1) ── */
-.ag-legend-bottom {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin: 12px 16px 6px;
-  padding: 10px 14px;
-  background: var(--ds2-surface);
-  border: 1px solid var(--ds2-border);
-  border-radius: var(--ds2-radius-sm);
-  font-size: 11.5px;
-  color: var(--ds2-ink-3);
-}
-.ag-legend-title { font-weight: 600; color: var(--ds2-ink-2); margin-right: 4px; }
-.ag-leg-item { display: inline-flex; align-items: center; gap: 7px; }
-.ag-leg-item > span { color: var(--ds2-ink-3); }
-.ag-leg-sw {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  border-left: 3px solid currentColor;
-  display: inline-block;
-}
-.ag-legend-hint { margin-left: auto; color: var(--ds2-ink-3); font-size: 11px; }
-
 /* ── Cartes RDV plus grandes (design officiel) ───────────────────────── */
 .ag-block { padding: 7px 10px; }
 .ag-block .ag-name { font-size: 13px; }
 .ag-block .ag-reason { font-size: 11px; }
 .ag-block .ag-time { font-size: 11px; }
+
+/* ── Multi-doctor day lanes (iso batch 3 maquette) ──────────────────────
+ * Quand l'agenda Jour affiche « Tous les médecins », on rend N colonnes
+ * (une par praticien) avec un en-tête « ● Dr <Nom> · spécialité   X RDV ».
+ * La pastille code la même couleur que la légende batch3 (saphir/vert/…).
+ */
+.ag-header-cell.ag-lane-header {
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ds2-ink);
+  padding: 12px 12px;
+}
+.ag-lane-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ag-header-cell.ag-lane-header .ag-lane-name {
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ag-header-cell.ag-lane-header .ag-day-count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ds2-ink-3);
+}
+.ag-daycol.ag-lane {
+  /* Petit fond bleuté très léger pour signaler la track « doctor » sans
+   * dominer ; identique à .ag-daycol.today pour rester cohérent. */
+  background: linear-gradient(180deg, rgba(30,77,171,0.02), transparent 200px);
+}
+
+/* ── Pause déjeuner (12-14h) — iso maquette user 2026-05-28 ────────────
+ * Bloc visuel qui occupe les 2h de pause. Rayures diagonales discrètes
+ * + libellé centré. z-index 0 → reste sous les cartes RDV au cas où il
+ * y aurait quand même un RDV planifié sur ce créneau (rare mais possible).
+ */
+.ag-pause-block {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 8px,
+    rgba(30, 77, 171, 0.04) 8px,
+    rgba(30, 77, 171, 0.04) 16px
+  );
+  background-color: #FAFBFD;
+  border-top: 1px dashed var(--ds2-border);
+  border-bottom: 1px dashed var(--ds2-border);
+  pointer-events: none;
+}
+.ag-pause-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ds2-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(255,255,255,0.7);
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ── Mini-avatar médecin sur la carte RDV (iso maquette user 2026-05-28) ─
+ * Pastille colorée 18×18 avec initiales blanches, posée à gauche du temps.
+ * Affichée uniquement en mode multi-praticien — pour du solo ce serait du
+ * bruit visuel (1 seule couleur, redondant avec le médecin connecté).
+ */
+.ag-doctor-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+  font-family: var(--ds2-font-sans, var(--font-sans));
+  line-height: 1;
+}
+.ag-block.ag-compact .ag-doctor-avatar {
+  width: 16px;
+  height: 16px;
+  font-size: 8px;
+}
+.ag-block-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 1px;
+}
+.ag-block-head .ag-time {
+  margin: 0;
+}
+/* En mode "en cours" (saphir plein, texte blanc), l'avatar doit rester
+ * lisible : on le fond en blanc avec couleur médecin pour conserver
+ * l'identification, sinon il disparaît contre le bg saphir. */
+.ag-consult .ag-doctor-avatar {
+  outline: 1.5px solid rgba(255,255,255,0.85);
+  outline-offset: -1.5px;
+}
+
+/* ── Bandeau légende bas (iso maquette user 2026-05-28) ─────────────────
+ * Visible en vue Semaine multi-praticien : « Médecins · ●Dr X · ●Dr Y ... »
+ * puis « Statuts · Confirmé · Arrivé · ... ». Le rendu reste discret pour
+ * ne pas voler la vedette à la grille — juste un rappel de la sémantique
+ * couleur des pastilles d'avatar et du bord gauche des cartes RDV.
+ */
+.ag-week-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--ds2-border);
+  background: var(--ds2-surface);
+  font-size: 12px;
+  color: var(--ds2-ink-3);
+  flex-shrink: 0;
+}
+.ag-week-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.ag-week-legend-title {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ds2-ink-2);
+  font-size: 10.5px;
+  margin-right: 2px;
+}
+.ag-week-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ds2-ink-2);
+  font-size: 11.5px;
+}
+.ag-week-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.ag-week-legend .ag-leg-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+  background-clip: padding-box;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * AGENDA MOBILE — iso maquette refresh (carte "en cours" saphir plein
+ * + bandeau corail au-dessus, comme la « now-line »).
+ * Override ciblé .m-tl-block.consult (le statut « en consultation »
+ * sur la liste mobile de la journée).
+ * ════════════════════════════════════════════════════════════════════ */
+.m-tl-block.late {
+  /* PLANIFIE/CONFIRME passé l'heure de RDV sans arrivée enregistrée :
+   * bord corail (alerte) sur fond saphir very-light (reste un confirmé). */
+  border-left-color: var(--ds2-coral, #C2553A) !important;
+}
+.m-pill.late {
+  background: var(--ds2-coral-soft, #F8DDD2);
+  color: var(--ds2-coral, #C2553A);
+}
+.m-tl-block.consult {
+  background: var(--ds2-navy, var(--primary));
+  border-left-color: var(--ds2-navy, var(--primary));
+  color: #fff;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(30, 77, 171, 0.22);
+}
+.m-tl-block.consult::before {
+  /* « now-line » corail collée au-dessus de la carte, mime le marqueur
+   * temps réel desktop sans pousser la grille. */
+  content: '';
+  position: absolute;
+  left: -3px;
+  right: 0;
+  top: -6px;
+  height: 2px;
+  background: var(--ds2-coral, #e07a5f);
+  border-radius: 1px;
+}
+.m-tl-block.consult .m-tl-block-time,
+.m-tl-block.consult .m-tl-block-name,
+.m-tl-block.consult .m-tl-block-reason {
+  color: #fff;
+}
+.m-tl-block.consult .m-pill.consult {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}

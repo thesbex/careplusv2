@@ -8,9 +8,9 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
-import { Print, Plus } from '@/components/icons';
+import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
-import { AgendaToolbar, AgendaLegend } from './components/AgendaToolbar';
+import { AgendaToolbar } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
 import { MonthGrid } from './components/MonthGrid';
@@ -37,6 +37,24 @@ import './agenda.css';
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
 const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+
+/**
+ * Pause déjeuner configurable par jour — user 2026-05-28 a explicitement
+ * demandé que ce ne soit PAS figé pour tous les jours. Heuristique Maroc :
+ * Lun-Ven 12:00-14:00 ; samedi pas de pause (cabinet ferme tôt l'après-midi).
+ *
+ * À déplacer dans une table `cabinet_lunch_break` (jour → start/end) côté
+ * backend quand le module Paramètres → Horaires sera prêt. La constante
+ * suivante est un placeholder local en attendant.
+ */
+const DEFAULT_LUNCH_BREAKS: Partial<Record<DayKey, { start: string; end: string }>> = {
+  lun: { start: '12:00', end: '14:00' },
+  mar: { start: '12:00', end: '14:00' },
+  mer: { start: '12:00', end: '14:00' },
+  jeu: { start: '12:00', end: '14:00' },
+  ven: { start: '12:00', end: '14:00' },
+  // sam: pas de pause par défaut.
+};
 const MONTHS_FR = [
   'janvier','février','mars','avril','mai','juin',
   'juillet','août','septembre','octobre','novembre','décembre',
@@ -51,11 +69,23 @@ function isoOfDate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function formatPageDate(d: Date): string {
+  const dateFmt = d.toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${dateFmt.charAt(0).toUpperCase()}${dateFmt.slice(1)} · ${time}`;
+}
+
 export default function AgendaPage() {
   const navigate = useNavigate();
   const [weekOffset, setWeekOffset] = useState(0);
   const [view, setView] = useState<AgendaView>('semaine');
   const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
+  const pageDate = formatPageDate(new Date());
 
   // ── Multi-doctor + room selectors (Wave 1, 2026-05-07) ──────────────
   const currentUser = useAuthStore((s) => s.user);
@@ -65,6 +95,27 @@ export default function AgendaPage() {
     () => practitioners.filter((p) => p.active),
     [practitioners],
   );
+  // Palette stable par ordre d'apparition (saphir, vert, ambre, corail, indigo).
+  // Source de vérité unique pour : pastille colonne lane (multi-doc Jour),
+  // mini-avatar carte RDV (Semaine multi-doc), pastille bandeau légende bas.
+  const DOCTOR_PALETTE = ['#1E4DAB', '#2F8F6B', '#C68A2E', '#C2553A', '#5A4FCF'];
+  const practitionerMap = useMemo(() => {
+    const m: Record<string, { initials: string; color: string; name: string }> = {};
+    activePractitioners.forEach((p, i) => {
+      // Initiales = première lettre du prénom + première lettre du nom
+      // (« Youssef El Amrani » → « YE »). En l'absence de prénom ou de nom,
+      // on retombe sur les 2 premières lettres du nom dispo.
+      const fn = (p.firstName || '').trim();
+      const ln = (p.lastName || '').trim();
+      const initials = ((fn[0] ?? ln[0] ?? '?') + (ln[0] ?? fn[1] ?? '')).toUpperCase();
+      m[p.id] = {
+        initials,
+        color: DOCTOR_PALETTE[i % DOCTOR_PALETTE.length] ?? '#1E4DAB',
+        name: `Dr ${ln} ${fn}`.trim(),
+      };
+    });
+    return m;
+  }, [activePractitioners]);
   const activeRooms = useMemo(() => rooms.filter((r) => r.active), [rooms]);
   const showPractitionerSelector = activePractitioners.length >= 2;
   const showRoomSelector = activeRooms.length >= 2;
@@ -145,6 +196,7 @@ export default function AgendaPage() {
             since: e.arrived,
           };
           if (e.allergy) a.allergy = e.allergy;
+          if (e.practitionerId) a.practitionerId = e.practitionerId;
           return a;
         }),
     [queue],
@@ -376,23 +428,19 @@ export default function AgendaPage() {
         active="agenda"
         title="Agenda"
         sub={headerLabel}
+        pageDate={pageDate}
         topbarRight={
-          <>
-            <Button>
-              <Print /> Imprimer
+          canCreateRdv ? (
+            <Button
+              className="cp-ds2-primary"
+              onClick={() => {
+                setRdvPrefill(null);
+                setShowRDV(true);
+              }}
+            >
+              <Plus /> Nouveau RDV
             </Button>
-            {canCreateRdv && (
-              <Button
-                className="cp-ds2-primary"
-                onClick={() => {
-                  setRdvPrefill(null);
-                  setShowRDV(true);
-                }}
-              >
-                <Plus /> Nouveau RDV
-              </Button>
-            )}
-          </>
+          ) : undefined
         }
         right={
           view === 'mois' ? (
@@ -401,6 +449,7 @@ export default function AgendaPage() {
             <TodayArrivals
               arrivals={arrivals}
               remaining={Math.max(0, todayRdvCount - arrivals.length)}
+              {...(activePractitioners.length >= 2 ? { practitionerMap } : {})}
             />
           )
         }
@@ -538,8 +587,52 @@ export default function AgendaPage() {
               reasonColors={Object.fromEntries(
                 Object.entries(reasonsById).map(([id, r]) => [id, r.colorHex]),
               )}
+              {...(view === 'jour' && practitionerFilter === ALL_PRACTITIONERS && activePractitioners.length >= 2
+                ? {
+                    doctorLanes: activePractitioners.map((p) => ({
+                      id: p.id,
+                      name: `Dr ${p.lastName}${p.specialty ? ` · ${p.specialty}` : ''}`,
+                      // Couleur prise de la même palette que practitionerMap pour
+                      // garder une cohérence visuelle entre pastille lane et avatar.
+                      dotColor: practitionerMap[p.id]?.color ?? '#1E4DAB',
+                    })),
+                  }
+                : {})}
+              {...(activePractitioners.length >= 2 && Object.keys(practitionerMap).length > 0
+                ? { practitionerMap }
+                : {})}
+              lunchBreaks={DEFAULT_LUNCH_BREAKS}
             />
-            <AgendaLegend />
+            {/* Bandeau légende bas (iso maquette user 2026-05-28) : visible en
+                vue Semaine + multi-praticien. Liste Médecins (pastille couleur
+                + nom) puis Statuts. La légende inline du toolbar reste pour
+                les écrans single-doctor où la rangée médecin n'a pas de sens. */}
+            {view === 'semaine' && activePractitioners.length >= 2 && (
+              <div className="ag-week-legend" aria-label="Légende médecins et statuts">
+                <div className="ag-week-legend-row">
+                  <span className="ag-week-legend-title">Médecins</span>
+                  {activePractitioners.map((p) => {
+                    const meta = practitionerMap[p.id];
+                    if (!meta) return null;
+                    return (
+                      <span key={p.id} className="ag-week-legend-item">
+                        <span className="ag-week-legend-dot" style={{ background: meta.color }} />
+                        {meta.name}
+                      </span>
+                    );
+                  })}
+                </div>
+                <div className="ag-week-legend-row">
+                  <span className="ag-week-legend-title">Statuts</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />Confirmé</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DEF0E6', borderLeftColor: '#2F8F6B' }} />Arrivé</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#FBEFE3', borderLeftColor: '#C68A2E' }} />En attente</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: 'var(--ds2-navy, #1E4DAB)', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />En cours</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-coral, #C2553A)' }} />En retard</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#F2F1EC', borderLeftColor: '#9B9B9B' }} />Terminé</span>
+                </div>
+              </div>
+            )}
           </>
         )}
       </Screen>

@@ -45,9 +45,16 @@ function renderMobileAgenda() {
 }
 
 describe('<AgendaMobilePage />', () => {
-  it('renders the mobile shell with brand topbar and bottom tabs', () => {
+  it('renders the topbar with title "Agenda" + sub + Filter/Search icons (iso maquette mobile)', () => {
     const { container } = renderMobileAgenda();
-    expect(container.querySelector('.mt-brand-name')).toHaveTextContent('careplus');
+    // Iso maquette : la topbar mobile porte "Agenda" + sous-titre + 2 icônes
+    // à droite (Filter, Search). L'ancien rendu « brand » (logo careplus) est
+    // remplacé — le branding vit dans la sidebar/onboarding, pas sur chaque
+    // écran. Le sub est dérivé de la date sélectionnée.
+    expect(container.querySelector('.mt-title')).toHaveTextContent('Agenda');
+    expect(container.querySelector('.mt-sub')).not.toBeEmptyDOMElement();
+    expect(screen.getByRole('button', { name: /filtres/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Rechercher un patient/i })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: 'Navigation mobile' })).toBeInTheDocument();
   });
 
@@ -61,11 +68,16 @@ describe('<AgendaMobilePage />', () => {
     expect(selected).toHaveLength(1);
   });
 
-  it('renders all 6 day labels', () => {
+  it('renders 1-letter day labels (L M M J V S) per maquette + full a11y name', () => {
     renderMobileAgenda();
-    ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'].forEach((label) => {
-      expect(screen.getByText(label)).toBeInTheDocument();
-    });
+    const tabs = screen.getAllByRole('tab');
+    // 1-letter visual labels (M apparaît 2× pour Mardi+Mercredi — c'est OK,
+    // les tests sélectionnent par index ou aria-label).
+    const visualLabels = tabs.map((t) => t.querySelector('.dl')?.textContent);
+    expect(visualLabels).toEqual(['L', 'M', 'M', 'J', 'V', 'S']);
+    // Le nom accessible doit rester complet (« Lundi 21 », « Mardi 22 »…).
+    expect(tabs[0]?.getAttribute('aria-label')).toMatch(/Lundi/);
+    expect(tabs[2]?.getAttribute('aria-label')).toMatch(/Mercredi/);
   });
 
   it('renders appointments for the selected day', () => {
@@ -77,8 +89,12 @@ describe('<AgendaMobilePage />', () => {
 
   it('switching to Mercredi shows Ahmed Cherkaoui with Aspirine allergy', () => {
     renderMobileAgenda();
-    const tabs = screen.getAllByRole('tab');
-    const merTab = tabs.find((t) => t.textContent?.includes('Mer'));
+    // Sélection par aria-label complet — les tabs n'ont plus que la lettre
+    // « M » dans leur textContent, donc on ne peut plus filtrer par texte
+    // visible (collision Mardi/Mercredi).
+    const merTab = screen.getAllByRole('tab').find(
+      (t) => (t.getAttribute('aria-label') ?? '').startsWith('Mercredi'),
+    );
     expect(merTab).toBeDefined();
     fireEvent.click(merTab!);
     expect(screen.getByText('Ahmed Cherkaoui')).toBeInTheDocument();
@@ -87,8 +103,9 @@ describe('<AgendaMobilePage />', () => {
 
   it('switching to Lundi shows Mohamed Alami', () => {
     renderMobileAgenda();
-    const tabs = screen.getAllByRole('tab');
-    const lunTab = tabs.find((t) => t.textContent?.includes('Lun'));
+    const lunTab = screen.getAllByRole('tab').find(
+      (t) => (t.getAttribute('aria-label') ?? '').startsWith('Lundi'),
+    );
     expect(lunTab).toBeDefined();
     fireEvent.click(lunTab!);
     expect(screen.getByText('Mohamed Alami')).toBeInTheDocument();

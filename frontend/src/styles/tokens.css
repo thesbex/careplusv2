@@ -63,8 +63,10 @@
   --status-vitals-ink: #6e4a0a;
   --status-consult: #dce5f5;
   --status-consult-ink: #1e4dab;
-  --status-done: #d9eae0;
-  --status-done-ink: #0a4630;
+  /* Iso maquette : done = gris (#F2F1EC / #9B9B9B), pas vert.
+     Le vert reste pour « arrivé », qui est un statut actif. */
+  --status-done: #F2F1EC;
+  --status-done-ink: #6B6B6B;
 
   /* ── Typography ─────────────────────────────── */
   --font-sans: 'Plus Jakarta Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
