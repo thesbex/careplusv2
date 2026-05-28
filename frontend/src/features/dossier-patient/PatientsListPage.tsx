@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
-import { ChevronDown, ChevronLeft, ChevronRight, Close, Filter as FilterIcon, Plus, Warn } from '@/components/icons';
+import { ChevronLeft, ChevronRight, Close, Plus, Search, Warn } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { usePatientList, type PatientListItem, type Segment } from './hooks/usePatientList';
@@ -883,20 +883,46 @@ function relativeDays(iso: string | null | undefined): string {
   return '';
 }
 
-function FilterChip({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+/** KPI tile cliquable — sert ET de carte d'aperçu ET de filtre rapide (active si segment courant). */
+function KpiTile({
+  label,
+  value,
+  sub,
+  active,
+  onClick,
+}: {
+  label: string;
+  value: number | string;
+  sub?: string;
+  active?: boolean;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
+      onClick={onClick}
+      aria-pressed={active}
       style={{
-        height: 28, padding: '0 10px', border: '1px solid var(--border)', borderRadius: 14,
-        background: 'var(--surface)', display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 11.5, cursor: 'pointer', color: muted ? 'var(--ink-3)' : 'var(--ink)',
+        flex: 1, minWidth: 0, textAlign: 'left',
+        background: active ? 'var(--ds2-navy-soft, var(--primary-soft))' : 'var(--surface)',
+        border: `1px solid ${active ? 'var(--ds2-navy, var(--primary))' : 'var(--border)'}`,
+        borderRadius: 'var(--r-md)',
+        padding: '12px 14px',
+        cursor: 'pointer',
         fontFamily: 'inherit',
+        transition: 'border-color 0.12s, background 0.12s',
       }}
     >
-      <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>{label}</span>
-      <span style={{ fontWeight: 600 }}>{value}</span>
-      <ChevronDown />
+      <div style={{
+        fontSize: 10.5, color: active ? 'var(--ds2-navy)' : 'var(--ink-3)',
+        fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
+      }}>{label}</div>
+      <div className="tnum" style={{
+        fontSize: 22, fontWeight: 700,
+        color: active ? 'var(--ds2-navy)' : 'var(--ds2-ink, var(--ink))',
+        letterSpacing: '-0.02em', marginTop: 2,
+      }}>{value}</div>
+      {sub && <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{sub}</div>}
     </button>
   );
 }
@@ -1026,11 +1052,48 @@ export default function PatientsListPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
 
+  // Refonte 2026-05-28 : recherche inline + filtres Sexe + tranche d'âge
+  // (déjà supportés par l'API mais sans UI). Search debouncé pour ne pas
+  // spam la API à chaque frappe.
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [genderFilter, setGenderFilter] = useState<'' | 'M' | 'F' | 'O'>('');
+  const [ageRange, setAgeRange] = useState<'' | 'CHILD' | 'ADULT' | 'SENIOR'>('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  // Mapping tranche d'âge → bornes (ageMin/ageMax côté API).
+  const ageBounds: { min?: number; max?: number } = (() => {
+    if (ageRange === 'CHILD') return { max: 14 };
+    if (ageRange === 'ADULT') return { min: 15, max: 64 };
+    if (ageRange === 'SENIOR') return { min: 65 };
+    return {};
+  })();
+
   const { patients, total, totalPages, counts, isLoading, error } = usePatientList({
     segment: seg,
     page,
     size: PAGE_SIZE,
+    ...(debouncedSearch.trim() ? { q: debouncedSearch.trim() } : {}),
+    ...(genderFilter ? { gender: genderFilter } : {}),
+    ...(ageBounds.min != null ? { ageMin: ageBounds.min } : {}),
+    ...(ageBounds.max != null ? { ageMax: ageBounds.max } : {}),
   });
+
+  // Reset page on filter change pour éviter d'atterrir sur une page vide.
+  useEffect(() => {
+    setPage(0);
+  }, [seg, debouncedSearch, genderFilter, ageRange]);
+
+  const hasActiveFilter = !!debouncedSearch.trim() || !!genderFilter || !!ageRange;
+  function resetFilters() {
+    setSearchInput('');
+    setDebouncedSearch('');
+    setGenderFilter('');
+    setAgeRange('');
+  }
 
   // QA3-3 v1 — back-compat gate on PATIENT_CREATE.
   const userPerms = useAuthStore((s) => s.user?.permissions);
@@ -1043,18 +1106,15 @@ export default function PatientsListPage() {
 
   const topRight = (
     <>
-      <button className="btn" type="button">
-        <FilterIcon /> Filtres
-      </button>
       {canCreatePatient && (
-        <button
-          className="btn primary"
+        <Button
+          className="cp-ds2-primary"
           type="button"
           onClick={() => setShowNew((v) => !v)}
           aria-pressed={showNew}
         >
           <Plus /> Nouveau patient
-        </button>
+        </Button>
       )}
     </>
   );
@@ -1068,89 +1128,112 @@ export default function PatientsListPage() {
     >
       <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {/* Toolbar row 1: segmented + sort */}
-        <div
-          style={{
-            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-            background: 'var(--surface)', borderBottom: '1px solid var(--border-soft)',
-          }}
-        >
-          <div
-            role="tablist"
-            aria-label="Filtres patients"
-            style={{
-              display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 6, height: 30,
-            }}
-          >
-            {segItems.map((s) => {
-              const active = seg === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => { setSeg(s.id); setPage(0); }}
-                  style={{
-                    padding: '0 11px', border: 'none', borderRadius: 4, cursor: 'pointer',
-                    background: active ? 'var(--surface)' : 'transparent',
-                    color: active ? 'var(--ink)' : 'var(--ink-3)',
-                    fontWeight: active ? 600 : 500, fontSize: 12.5, fontFamily: 'inherit',
-                    boxShadow: active ? '0 0 0 1px var(--border)' : 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: 6, height: 26,
-                  }}
-                >
-                  {s.label}
-                  <span
-                    className="tnum"
-                    style={{
-                      fontSize: 10.5, fontWeight: 600,
-                      color: active ? 'var(--ink-3)' : 'var(--ink-4)',
-                    }}
-                  >
-                    {s.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 12, height: 30 }}>
-            <span>Trier par</span>
-            <button
-              type="button"
-              style={{
-                height: 28, padding: '0 10px', border: '1px solid var(--border)', borderRadius: 14,
-                background: 'var(--surface)', display: 'inline-flex', alignItems: 'center', gap: 6,
-                fontSize: 11.5, cursor: 'pointer', color: 'var(--ink)', fontWeight: 600, fontFamily: 'inherit',
-              }}
-            >
-              Dernière visite
-              <ChevronDown />
-            </button>
-          </div>
+        {/* KPI tiles (cliquables = segments) — refonte 2026-05-28 iso DS2 */}
+        <div style={{ padding: '16px 20px 0', display: 'flex', gap: 12, flexShrink: 0 }}>
+          {segItems.map((s) => (
+            <KpiTile
+              key={s.id}
+              label={s.label}
+              value={s.count}
+              active={seg === s.id}
+              onClick={() => setSeg(s.id)}
+              {...(s.id === 'nouveaux'
+                ? { sub: 'créés ces 30 derniers jours' }
+                : s.id === 'chroniques'
+                ? { sub: 'maladies chroniques' }
+                : s.id === 'recent'
+                ? { sub: 'vus < 30 jours' }
+                : { sub: 'dossiers du cabinet' })}
+            />
+          ))}
         </div>
 
-        {/* Toolbar row 2: filter chips */}
+        {/* Barre filtres fonctionnels : recherche + sexe + tranche d'âge */}
         <div
           style={{
-            padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+            padding: '12px 20px', display: 'grid', flexShrink: 0,
+            gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10, alignItems: 'end',
             background: 'var(--surface)', borderBottom: '1px solid var(--border)',
           }}
         >
-          <span style={{
-            fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
-            color: 'var(--ink-4)', marginRight: 4,
-          }}>
-            Filtres
-          </span>
-          <FilterChip label="Médecin" value="Tous" />
-          <FilterChip label="Sexe" value="Tous" />
-          <FilterChip label="Tranche d'âge" value="Toutes" />
-          <FilterChip label="Tags" value="—" muted />
-          <button className="btn sm ghost" type="button" style={{ marginLeft: 4, color: 'var(--ink-3)' }}>
-            <Plus /> Ajouter un filtre
-          </button>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Rechercher
+            </span>
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--ink-4)', display: 'inline-flex', alignItems: 'center', pointerEvents: 'none',
+              }}>
+                <Search />
+              </span>
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Nom, prénom, CIN, téléphone…"
+                aria-label="Rechercher un patient"
+                style={{
+                  width: '100%', height: 34, padding: '0 12px 0 30px',
+                  border: '1px solid var(--border)', borderRadius: 8,
+                  fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
+                }}
+              />
+            </div>
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Sexe
+            </span>
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value as '' | 'M' | 'F' | 'O')}
+              aria-label="Filtrer par sexe"
+              style={{
+                height: 34, padding: '0 10px',
+                border: '1px solid var(--border)', borderRadius: 8,
+                fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
+              }}
+            >
+              <option value="">Tous</option>
+              <option value="M">Homme</option>
+              <option value="F">Femme</option>
+              <option value="O">Autre</option>
+            </select>
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Tranche d'âge
+            </span>
+            <select
+              value={ageRange}
+              onChange={(e) => setAgeRange(e.target.value as '' | 'CHILD' | 'ADULT' | 'SENIOR')}
+              aria-label="Filtrer par tranche d'âge"
+              style={{
+                height: 34, padding: '0 10px',
+                border: '1px solid var(--border)', borderRadius: 8,
+                fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
+              }}
+            >
+              <option value="">Toutes</option>
+              <option value="CHILD">Enfant (0-14)</option>
+              <option value="ADULT">Adulte (15-64)</option>
+              <option value="SENIOR">Senior (65+)</option>
+            </select>
+          </label>
+          {hasActiveFilter && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              style={{
+                height: 34, padding: '0 14px',
+                background: 'none', border: '1px solid var(--border)', borderRadius: 8,
+                cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--primary)',
+              }}
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
 
         {/* Table */}
