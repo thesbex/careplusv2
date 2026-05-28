@@ -43,6 +43,13 @@ public class LetterTemplate {
     @Column(name = "created_by")
     private UUID createdBy;
 
+    /** V065 — propriétaire du modèle :
+     *  NULL  → modèle partagé cabinet-wide (visible par tous les médecins),
+     *  UUID  → modèle privé d'un médecin (visible seulement par lui).
+     */
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
     @Column(name = "deleted_at", columnDefinition = "TIMESTAMPTZ")
     private OffsetDateTime deletedAt;
 
@@ -77,6 +84,9 @@ public class LetterTemplate {
 
     public UUID getCreatedBy() { return createdBy; }
     public void setCreatedBy(UUID createdBy) { this.createdBy = createdBy; }
+
+    public UUID getOwnerUserId() { return ownerUserId; }
+    public void setOwnerUserId(UUID ownerUserId) { this.ownerUserId = ownerUserId; }
 
     public OffsetDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(OffsetDateTime deletedAt) { this.deletedAt = deletedAt; }

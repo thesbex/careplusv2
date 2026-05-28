@@ -16,21 +16,26 @@ import {
   useUpdateLetterTemplate,
   useDeleteLetterTemplate,
 } from '../hooks/useLetterTemplates';
+import { usePractitioners } from '@/features/parametres/hooks/usePractitioners';
 import type { LetterTemplateView, LetterTemplateWriteRequest } from '../types';
 
 interface FormState {
   title: string;
   body: string;
   active: boolean;
+  /** V065 — "" = modèle partagé cabinet-wide, sinon UUID du médecin. */
+  ownerUserId: string;
 }
 
-const EMPTY_FORM: FormState = { title: '', body: '', active: true };
+const EMPTY_FORM: FormState = { title: '', body: '', active: true, ownerUserId: '' };
 
 export function LetterTemplatesTab() {
   const { templates, isLoading, error } = useLetterTemplates();
   const { create, isPending: creating } = useCreateLetterTemplate();
   const { update, isPending: updating } = useUpdateLetterTemplate();
   const { remove } = useDeleteLetterTemplate();
+  const { practitioners } = usePractitioners();
+  const practById = new Map(practitioners.map((p) => [p.id, p]));
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -43,7 +48,7 @@ export function LetterTemplatesTab() {
   }
   function openEdit(t: LetterTemplateView) {
     setEditingId(t.id);
-    setForm({ title: t.title, body: t.body, active: t.active });
+    setForm({ title: t.title, body: t.body, active: t.active, ownerUserId: t.ownerUserId ?? '' });
     setDrawerOpen(true);
   }
 
@@ -60,6 +65,7 @@ export function LetterTemplatesTab() {
       title: form.title.trim(),
       body: form.body.trim(),
       active: form.active,
+      ownerUserId: form.ownerUserId || null,
     };
     try {
       if (editingId) {
@@ -121,15 +127,33 @@ export function LetterTemplatesTab() {
             <thead style={{ background: 'var(--surface-2)' }}>
               <tr>
                 <Th>Titre</Th>
+                <Th style={{ width: 220 }}>Portée</Th>
                 <Th style={{ width: 100 }}>Statut</Th>
                 <Th style={{ width: 120 }}> </Th>
               </tr>
             </thead>
             <tbody>
-              {templates.map((t) => (
+              {templates.map((t) => {
+                const ownerPract = t.ownerUserId ? practById.get(t.ownerUserId) : undefined;
+                const scopeLabel = !t.ownerUserId
+                  ? 'Cabinet (partagé)'
+                  : ownerPract
+                  ? `Dr ${ownerPract.lastName} ${ownerPract.firstName}`
+                  : 'Médecin inconnu';
+                return (
                 <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
                   <Td>
                     <div style={{ fontWeight: 600 }}>{t.title}</div>
+                  </Td>
+                  <Td>
+                    <span style={{
+                      fontSize: 11, padding: '2px 8px', borderRadius: 12,
+                      background: t.ownerUserId ? 'var(--primary-soft)' : 'var(--surface-2)',
+                      color: t.ownerUserId ? 'var(--primary)' : 'var(--ink-2)',
+                      border: `1px solid ${t.ownerUserId ? 'var(--primary)' : 'var(--border)'}`,
+                    }}>
+                      {scopeLabel}
+                    </span>
                   </Td>
                   <Td>
                     <span
@@ -162,7 +186,8 @@ export function LetterTemplatesTab() {
                     </div>
                   </Td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -230,6 +255,31 @@ export function LetterTemplatesTab() {
                     fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)', resize: 'vertical',
                   }}
                 />
+              </label>
+              {/* V065 — owner picker. Vide = partagé (visible par tous les
+                  médecins), un médecin sélectionné = modèle privé visible
+                  seulement par lui. */}
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Portée</span>
+                <select
+                  value={form.ownerUserId}
+                  onChange={(e) => setForm({ ...form, ownerUserId: e.target.value })}
+                  style={{
+                    height: 34, padding: '0 10px',
+                    border: '1px solid var(--border)', borderRadius: 6,
+                    fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
+                  }}
+                >
+                  <option value="">Cabinet — partagé entre tous les médecins</option>
+                  {practitioners.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      Dr {p.lastName} {p.firstName}{p.specialty ? ` · ${p.specialty}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>
+                  Modèle privé : visible uniquement par le médecin choisi (et par les admins).
+                </span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
                 <input

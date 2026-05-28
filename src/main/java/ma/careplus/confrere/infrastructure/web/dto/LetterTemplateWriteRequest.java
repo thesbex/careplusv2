@@ -2,6 +2,7 @@ package ma.careplus.confrere.infrastructure.web.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 
 /**
  * Corps de requête pour créer ou mettre à jour un modèle de courrier confrère.
@@ -16,5 +17,8 @@ public record LetterTemplateWriteRequest(
         @NotBlank(message = "Le corps du texte est obligatoire.")
         String body,
 
-        boolean active
+        boolean active,
+
+        /** V065 — null = modèle partagé cabinet-wide, UUID = modèle privé d'un médecin. */
+        UUID ownerUserId
 ) {}
