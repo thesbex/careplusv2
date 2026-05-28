@@ -94,8 +94,9 @@ describe('<ChargesPage />', () => {
     // so assert at least one occurrence (table chip) exists.
     expect(screen.getAllByText('Loyer').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Eau / Électricité').length).toBeGreaterThan(0);
-    // FR periodicity label (table only)
-    expect(screen.getByText('Mensuelle')).toBeInTheDocument();
+    // FR periodicity label — apparaît aussi dans le nouveau filtre périodicité
+    // (advanced filters bar 2026-05-28). On vérifie au moins 1 occurrence.
+    expect(screen.getAllByText('Mensuelle').length).toBeGreaterThan(0);
     // MAD formatting (comma decimal)
     expect(screen.getByText('5000,00 MAD')).toBeInTheDocument();
     expect(screen.getByText('1250,50 MAD')).toBeInTheDocument();
@@ -114,9 +115,10 @@ describe('<ChargesPage />', () => {
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
     expect(screen.getByText('Nouvelle charge')).toBeInTheDocument();
-    // Form controls are present
-    expect(screen.getByLabelText(/Libellé/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Montant/i)).toBeInTheDocument();
+    // Form controls are present — on cible le label exact "Libellé *" pour ne
+    // pas matcher le filtre "Fournisseur / libellé" de la barre avancée.
+    expect(screen.getByLabelText('Libellé *')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Montant \(MAD\) \*/i)).toBeInTheDocument();
     // "Catégorie *" (form) — distinct from the "Filtrer par catégorie" select.
     expect(screen.getByLabelText('Catégorie *')).toBeInTheDocument();
   });
