@@ -197,11 +197,105 @@ select:not(.select-bare):disabled {
 }
 .select::-ms-expand,
 select::-ms-expand { display: none; }
+
+/* ── SelectMenu (custom select replacing OS-native dropdown) ─────────────── */
+.selm {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  min-width: 0;
+  letter-spacing: -0.005em;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.selm:hover:not(:disabled) { border-color: var(--border-strong); }
+.selm:focus-visible {
+  outline: none;
+  border-color: var(--ds2-navy, var(--primary));
+  box-shadow: 0 0 0 2px rgba(30, 77, 171, 0.12);
+}
+.selm:disabled { cursor: not-allowed; opacity: 0.55; }
+.selm[aria-expanded="true"] {
+  border-color: var(--ds2-navy, var(--primary));
+  box-shadow: 0 0 0 2px rgba(30, 77, 171, 0.12);
+}
+.selm[data-empty] .selm-val { color: var(--ink-3); }
+.selm .selm-val {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.selm .selm-chev {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  transition: transform 140ms ease;
+}
+.selm[aria-expanded="true"] .selm-chev { transform: rotate(180deg); }
+
+.selm-pop {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px -8px rgba(11, 20, 16, 0.18), 0 4px 10px -2px rgba(11, 20, 16, 0.08);
+  padding: 5px;
+  z-index: 1000;
+  max-height: 280px;
+  overflow-y: auto;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  letter-spacing: -0.005em;
+}
+.selm-opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.selm-opt.hi { background: var(--ds2-navy-chart-soft, #EDF2FA); }
+.selm-opt.on { font-weight: 600; color: var(--ds2-navy, var(--primary)); }
+.selm-opt.on.hi { background: var(--ds2-navy-chart-soft, #DCE5F5); }
+.selm-opt.dis { opacity: 0.45; cursor: not-allowed; }
+.selm-opt-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.selm-opt-check { flex-shrink: 0; color: var(--ds2-navy, var(--primary)); }
+
 .textarea {
   height: auto;
-  padding: 8px 10px;
-  min-height: 70px;
+  padding: 9px 12px;
+  min-height: 72px;
   resize: vertical;
+  background: #fff;
+  border-color: var(--border-strong, #B0B6C2);
+  color: var(--ink);
+  line-height: 1.55;
+}
+.textarea::placeholder {
+  color: var(--ink-3);
+  opacity: 0.8;
 }
 .help {
   font-size: 10.5px;
