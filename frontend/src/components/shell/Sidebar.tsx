@@ -21,6 +21,7 @@ import {
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
+import { UserAvatar } from '@/features/messages/components/UserAvatar';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
 import { useVaccinationOverdueCount } from '@/features/vaccination/hooks/useVaccinationOverdueCount';
@@ -106,7 +107,9 @@ export interface SidebarProps {
   active?: NavScreen;
   counts?: { salle?: number; vaccinations?: number; stock?: number; grossesses?: number };
   cabinet?: { name: string; city: string };
-  user?: { name: string; role: string; initials: string };
+  /** `id` ajouté (2026-05-28) pour le rendu UserAvatar avec photo de profil
+      bas-gauche. Absent → on retombe sur les initiales (tests / cold boot). */
+  user?: { id?: string; name: string; role: string; initials: string };
   onNavigate?: (id: NavScreen) => void;
 }
 
@@ -189,6 +192,7 @@ export function Sidebar({
     user ??
     (sessionUser
       ? {
+          id: sessionUser.id,
           name: `${sessionUser.firstName} ${sessionUser.lastName}`.trim(),
           role:
             ROLE_LABELS[
@@ -252,7 +256,7 @@ export function Sidebar({
   );
 }
 
-function UserChip({ user }: { user: { name: string; role: string; initials: string } }) {
+function UserChip({ user }: { user: { id?: string; name: string; role: string; initials: string } }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -281,7 +285,23 @@ function UserChip({ user }: { user: { name: string; role: string; initials: stri
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <Avatar initials={user.initials} />
+        {/* 2026-05-28 — user request: afficher la photo de profil si dispo
+            (sinon UserAvatar retombe silencieusement sur les initiales). On
+            tente toujours le fetch quand on a un userId — coût d'un 404 si
+            pas de photo, négligeable. Plus tard, étendre AuthUser avec
+            hasPhoto depuis /users/me évite le 404. */}
+        {user.id ? (
+          <UserAvatar
+            userId={user.id}
+            hasPhoto={true}
+            initials={user.initials}
+            color="var(--ds2-navy, var(--primary))"
+            size={36}
+            style={{ borderRadius: 8 }}
+          />
+        ) : (
+          <Avatar initials={user.initials} />
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="cp-user-name">{user.name}</div>
           <div className="cp-user-role">{user.role}</div>

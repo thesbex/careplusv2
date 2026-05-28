@@ -12,6 +12,8 @@ public record LetterTemplateView(
         String title,
         String body,
         boolean active,
+        /** V065 — null = modèle partagé cabinet-wide, UUID = modèle privé d'un médecin. */
+        UUID ownerUserId,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {
@@ -21,6 +23,7 @@ public record LetterTemplateView(
                 t.getTitle(),
                 t.getBody(),
                 t.isActive(),
+                t.getOwnerUserId(),
                 t.getCreatedAt(),
                 t.getUpdatedAt()
         );

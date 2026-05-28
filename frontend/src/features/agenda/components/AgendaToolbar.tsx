@@ -56,35 +56,12 @@ export function AgendaToolbar({
           </button>
         ))}
       </div>
-    </div>
-  );
-}
 
-/**
- * Légende des statuts — bandeau bas (design officiel : la légende vit SOUS la
- * grille, pas dans la barre d'outils). Couleurs DS2 : saphir = en consultation,
- * vert = arrivé/terminé, ambre = attente constantes, corail = annulé/urgence.
- */
-export function AgendaLegend() {
-  return (
-    <div className="ag-legend-bottom" aria-label="Légende des statuts">
-      <span className="ag-legend-title">Légende</span>
-      <span className="ag-leg-item" style={{ color: 'var(--ds2-navy)' }}>
-        <i className="ag-leg-sw" style={{ background: 'var(--ds2-navy-soft)' }} /><span>Consultation</span>
-      </span>
-      <span className="ag-leg-item" style={{ color: 'var(--ds2-green)' }}>
-        <i className="ag-leg-sw" style={{ background: '#d9eae0' }} /><span>Vaccination · arrivé</span>
-      </span>
-      <span className="ag-leg-item" style={{ color: 'var(--ds2-amber)' }}>
-        <i className="ag-leg-sw" style={{ background: '#f4e4c4' }} /><span>En attente</span>
-      </span>
-      <span className="ag-leg-item" style={{ color: 'var(--ds2-coral)' }}>
-        <i className="ag-leg-sw" style={{ background: '#f8ddd2' }} /><span>Urgent · retard</span>
-      </span>
-      <span className="ag-leg-item" style={{ color: '#7f7a6b' }}>
-        <i className="ag-leg-sw" style={{ background: '#e1ded2' }} /><span>Indisponible · annulé</span>
-      </span>
-      <span className="ag-legend-hint">Glisser-déposer pour replanifier</span>
+      {/* Légende inline RETIRÉE (2026-05-28, demande user) : doublon avec le
+          bandeau légende bas (.ag-week-legend) qui rend Médecins ET Statuts
+          en multi-praticien. En single-doctor il n'y a pas de légende toolbar
+          non plus — les couleurs sont apprises à l'usage, le besoin réel de
+          décodage vient surtout du multi-doctor (et la bottom legend le couvre). */}
     </div>
   );
 }

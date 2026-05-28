@@ -46,7 +46,13 @@ public class LetterTemplateController {
     public List<LetterTemplateView> list(Authentication auth) {
         boolean isAdmin = auth.getAuthorities().stream()
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-        return service.list(isAdmin);
+        if (isAdmin) {
+            // L'ADMIN voit tout (cabinet-wide + privés de chaque médecin) pour la gestion.
+            return service.list(true);
+        }
+        // V065 — le MEDECIN ne voit que les modèles partagés + ses modèles privés.
+        UUID userId = UUID.fromString(auth.getName());
+        return service.listVisibleForUser(userId);
     }
 
     @GetMapping("/{id}")

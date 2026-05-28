@@ -36,6 +36,14 @@ public class LetterTemplateServiceImpl implements LetterTemplateService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<LetterTemplateView> listVisibleForUser(UUID userId) {
+        return repository.findVisibleForUser(userId).stream()
+                .map(LetterTemplateView::of)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public LetterTemplateView get(UUID id) {
         return LetterTemplateView.of(findOrThrow(id));
     }
@@ -47,6 +55,7 @@ public class LetterTemplateServiceImpl implements LetterTemplateService {
         t.setBody(req.body());
         t.setActive(req.active());
         t.setCreatedBy(createdBy);
+        t.setOwnerUserId(req.ownerUserId()); // V065 — null = cabinet-wide
         return LetterTemplateView.of(repository.save(t));
     }
 
@@ -56,6 +65,7 @@ public class LetterTemplateServiceImpl implements LetterTemplateService {
         t.setTitle(req.title().trim());
         t.setBody(req.body());
         t.setActive(req.active());
+        t.setOwnerUserId(req.ownerUserId()); // V065 — réassignation possible
         return LetterTemplateView.of(repository.saveAndFlush(t));
     }
 

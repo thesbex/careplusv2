@@ -50,6 +50,8 @@ export interface LetterTemplateView {
   title: string;
   body: string;
   active: boolean;
+  /** V065 — null = modèle partagé cabinet-wide, UUID = modèle privé d'un médecin. */
+  ownerUserId?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -58,4 +60,6 @@ export interface LetterTemplateWriteRequest {
   title: string;
   body: string;
   active: boolean;
+  /** V065 — null/undefined = modèle partagé, sinon UUID du médecin propriétaire. */
+  ownerUserId?: string | null;
 }

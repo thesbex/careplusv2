@@ -33,6 +33,8 @@ import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { FollowUpDialog } from './components/FollowUpDialog';
 import { CertificatDialog } from './components/CertificatDialog';
 import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
+import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
+import { ConsentUploadDialog } from '@/features/consent/components/ConsentUploadDialog';
 import { useConfrereLetters } from '@/features/confrere/hooks/useConfrereLetters';
 import { api } from '@/lib/api/client';
 import { PatientContextCard } from './components/PatientContextCard';
@@ -117,6 +119,8 @@ export default function ConsultationPage() {
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [certificatOpen, setCertificatOpen] = useState(false);
   const [confrereOpen, setConfrereOpen] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [consentUploadOpen, setConsentUploadOpen] = useState(false);
 
   const isSigned = consultation?.status === 'SIGNEE' || signed;
   const isSuspended = consultation?.status === 'SUSPENDUE' && !isSigned;
@@ -413,6 +417,25 @@ export default function ConsultationPage() {
               disabled={!consultation}
               onClick={() => setFollowUpOpen(true)}
             />
+            {/* Consentement éclairé — user request 2026-05-28 :
+                « charger un consentement pour le faire signer par le patient,
+                puis le scanner et l'intégrer au dossier ». Deux flux :
+                  1) Générer un PDF vierge (imprimable + signable manuellement)
+                  2) Importer le scan signé (PDF/photo) → attache au dossier. */}
+            <ActionBtn
+              icon="Doc"
+              label="Consentement éclairé"
+              sub="Générer un PDF à signer"
+              disabled={!consultation || !consultation.patientId}
+              onClick={() => setConsentOpen(true)}
+            />
+            <ActionBtn
+              icon="Upload"
+              label="Importer consentement signé"
+              sub="Scan / photo du consentement"
+              disabled={!consultation || !consultation.patientId}
+              onClick={() => setConsentUploadOpen(true)}
+            />
           </div>
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
@@ -609,6 +632,21 @@ export default function ConsultationPage() {
             open={confrereOpen}
             onOpenChange={setConfrereOpen}
             consultationId={id}
+          />
+        </>
+      )}
+      {consultation?.patientId && (
+        <>
+          <ConsentDialog
+            open={consentOpen}
+            onOpenChange={setConsentOpen}
+            patientId={consultation.patientId}
+          />
+          <ConsentUploadDialog
+            open={consentUploadOpen}
+            onOpenChange={setConsentUploadOpen}
+            patientId={consultation.patientId}
+            consultationId={consultation.id}
           />
         </>
       )}

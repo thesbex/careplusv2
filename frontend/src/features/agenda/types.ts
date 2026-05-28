@@ -45,4 +45,8 @@ export interface Arrival {
   status: Extract<AppointmentStatus, 'arrived' | 'vitals' | 'consult'>;
   since: string;
   allergy?: string;
+  /** Id du médecin qui recevra le patient — sert à rendre la pastille
+      avatar « initiales + couleur » à côté du nom dans la TodayArrivals card.
+      Undefined si le RDV n'est pas assigné à un médecin connu. */
+  practitionerId?: string;
 }

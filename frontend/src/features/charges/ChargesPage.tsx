@@ -68,11 +68,94 @@ const EMPTY_FORM: FormState = {
 
 export default function ChargesPage() {
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | ''>('');
-  const { expenses, isLoading } = useExpenses(
-    categoryFilter ? { category: categoryFilter } : {},
-  );
+  const [periodicityFilter, setPeriodicityFilter] = useState<ExpensePeriodicity | ''>('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
+  const [supplierSearch, setSupplierSearch] = useState('');
+
+  // Filtres serveur (catégorie + plage de dates) — le backend supporte déjà.
+  const serverFilters = useMemo(() => {
+    const f: { category?: ExpenseCategory; from?: string; to?: string } = {};
+    if (categoryFilter) f.category = categoryFilter;
+    if (fromDate) f.from = fromDate;
+    if (toDate) f.to = toDate;
+    return f;
+  }, [categoryFilter, fromDate, toDate]);
+
+  const { expenses: rawExpenses, isLoading } = useExpenses(serverFilters);
   const year = new Date().getFullYear();
   const { summary } = useExpenseSummary(year);
+
+  // Filtres client (périodicité / montant / fournisseur — pas besoin d'un round-trip).
+  const expenses = useMemo(() => {
+    let out = rawExpenses;
+    if (periodicityFilter) out = out.filter((e) => e.periodicity === periodicityFilter);
+    if (amountMin) {
+      const min = parseFloat(amountMin);
+      if (!Number.isNaN(min)) out = out.filter((e) => e.amount >= min);
+    }
+    if (amountMax) {
+      const max = parseFloat(amountMax);
+      if (!Number.isNaN(max)) out = out.filter((e) => e.amount <= max);
+    }
+    if (supplierSearch.trim()) {
+      const needle = supplierSearch.trim().toLowerCase();
+      out = out.filter(
+        (e) =>
+          (e.supplier ?? '').toLowerCase().includes(needle) ||
+          (e.label ?? '').toLowerCase().includes(needle),
+      );
+    }
+    return out;
+  }, [rawExpenses, periodicityFilter, amountMin, amountMax, supplierSearch]);
+
+  const hasActiveFilter =
+    !!categoryFilter ||
+    !!periodicityFilter ||
+    !!fromDate ||
+    !!toDate ||
+    !!amountMin ||
+    !!amountMax ||
+    !!supplierSearch.trim();
+
+  function resetFilters() {
+    setCategoryFilter('');
+    setPeriodicityFilter('');
+    setFromDate('');
+    setToDate('');
+    setAmountMin('');
+    setAmountMax('');
+    setSupplierSearch('');
+  }
+
+  /** Génère un CSV des charges actuellement filtrées + déclenche le download. */
+  function exportCsv() {
+    const headers = ['Date', 'Catégorie', 'Libellé', 'Montant (MAD)', 'Périodicité', 'Fournisseur', 'Notes'];
+    const rows = expenses.map((e) => [
+      e.expenseDate,
+      CATEGORY_LABELS[e.category] ?? e.category,
+      e.label,
+      String(e.amount),
+      PERIODICITY_LABELS[e.periodicity] ?? e.periodicity,
+      e.supplier ?? '',
+      (e.notes ?? '').replace(/\s+/g, ' '),
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = `charges-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   const { createExpense, isPending: creating } = useCreateExpense();
   const { updateExpense, isPending: updating } = useUpdateExpense();
@@ -176,9 +259,19 @@ export default function ChargesPage() {
       title="Charges"
       sub={`${expenses.length} charge${expenses.length > 1 ? 's' : ''}`}
       topbarRight={
-        <Button variant="primary" onClick={openCreate}>
-          <Plus /> Ajouter une charge
-        </Button>
+        <>
+          <Button
+            type="button"
+            onClick={exportCsv}
+            disabled={expenses.length === 0}
+            title={expenses.length === 0 ? 'Aucune ligne à exporter avec les filtres actuels' : 'Exporter en CSV'}
+          >
+            <InvoiceIcon /> Exporter CSV
+          </Button>
+          <Button variant="primary" onClick={openCreate}>
+            <Plus /> Ajouter une charge
+          </Button>
+        </>
       }
     >
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0 }}>
@@ -229,36 +322,109 @@ export default function ChargesPage() {
           </div>
         </Panel>
 
-        {/* Filtre catégorie */}
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
-            aria-label="Filtrer par catégorie"
-            style={{
-              height: 36, padding: '0 10px',
-              border: '1px solid var(--border)', borderRadius: 6,
-              fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
-            }}
-          >
-            <option value="">Toutes les catégories</option>
-            {CATEGORY_ORDER.map((c) => (
-              <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-            ))}
-          </select>
-          {categoryFilter && (
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('')}
-              style={{
-                background: 'none', border: '1px solid var(--border)', borderRadius: 6,
-                padding: '6px 12px', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit',
-              }}
-            >
-              Réinitialiser
-            </button>
+        {/* Barre de filtres avancés — user request 2026-05-28 :
+            « possibilité de faire des filtres plus avancés sur les charges ».
+            Catégorie + Périodicité serveur-side (re-fetch), Date range serveur,
+            Min/Max montant + recherche fournisseur côté client. */}
+        <Panel style={{ padding: '12px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, alignItems: 'end' }}>
+            <FilterField label="Catégorie">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
+                aria-label="Filtrer par catégorie"
+                style={filterCtl}
+              >
+                <option value="">Toutes</option>
+                {CATEGORY_ORDER.map((c) => (
+                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Périodicité">
+              <select
+                value={periodicityFilter}
+                onChange={(e) => setPeriodicityFilter(e.target.value as ExpensePeriodicity | '')}
+                aria-label="Filtrer par périodicité"
+                style={filterCtl}
+              >
+                <option value="">Toutes</option>
+                {PERIODICITY_ORDER.map((p) => (
+                  <option key={p} value={p}>{PERIODICITY_LABELS[p]}</option>
+                ))}
+              </select>
+            </FilterField>
+            <FilterField label="Date du">
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                aria-label="Date début"
+                style={filterCtl}
+              />
+            </FilterField>
+            <FilterField label="Date au">
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                aria-label="Date fin"
+                style={filterCtl}
+              />
+            </FilterField>
+            <FilterField label="Montant min">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={amountMin}
+                onChange={(e) => setAmountMin(e.target.value)}
+                placeholder="0"
+                aria-label="Montant minimum"
+                style={filterCtl}
+              />
+            </FilterField>
+            <FilterField label="Montant max">
+              <input
+                type="number"
+                inputMode="decimal"
+                value={amountMax}
+                onChange={(e) => setAmountMax(e.target.value)}
+                placeholder="∞"
+                aria-label="Montant maximum"
+                style={filterCtl}
+              />
+            </FilterField>
+            <FilterField label="Fournisseur / libellé">
+              <input
+                type="search"
+                value={supplierSearch}
+                onChange={(e) => setSupplierSearch(e.target.value)}
+                placeholder="ex. Lydec, IAM…"
+                aria-label="Rechercher fournisseur ou libellé"
+                style={filterCtl}
+              />
+            </FilterField>
+          </div>
+          {hasActiveFilter && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11.5, color: 'var(--ink-3)' }}>
+              <span>
+                {expenses.length} résultat{expenses.length > 1 ? 's' : ''} après filtres
+                {rawExpenses.length !== expenses.length && ` (sur ${rawExpenses.length})`}
+              </span>
+              <button
+                type="button"
+                onClick={resetFilters}
+                style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                  padding: '4px 10px', cursor: 'pointer', fontSize: 11.5, fontFamily: 'inherit',
+                  color: 'var(--primary)',
+                }}
+              >
+                Réinitialiser les filtres
+              </button>
+            </div>
           )}
-        </div>
+        </Panel>
 
         {/* Tableau */}
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
@@ -449,6 +615,29 @@ const btnLink: React.CSSProperties = {
   fontSize: 11.5, padding: '4px 8px', borderRadius: 4,
   color: 'var(--primary)', fontFamily: 'inherit',
 };
+
+const filterCtl: React.CSSProperties = {
+  height: 32,
+  padding: '0 8px',
+  border: '1px solid var(--border)',
+  borderRadius: 6,
+  fontFamily: 'inherit',
+  fontSize: 12.5,
+  background: 'var(--surface)',
+  color: 'var(--ink)',
+  width: '100%',
+};
+
+function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+      <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {label}
+      </span>
+      {children}
+    </label>
+  );
+}
 
 function Th({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (

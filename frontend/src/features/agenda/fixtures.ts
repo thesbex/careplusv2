@@ -51,8 +51,11 @@ export const ARRIVALS: Arrival[] = [
   { name: 'Ahmed Cherkaoui', apt: '15:00', status: 'arrived', since: '—', allergy: 'Aspirine' },
 ];
 
-/** Pixel scale used by the agenda grid. DS2 : 84px → cartes RDV plus grandes. */
-export const ROW_PX = 84;
+/** Pixel scale used by the agenda grid.
+ * Iso maquette user 2026-05-28 : bump 84 → 104 pour donner aux cartes RDV
+ * la place de respirer (avatar médecin + temps + nom + raison sans tronquer).
+ * 104 = 13×8 = 6.5×16, garde les multiples 30min lisibles. */
+export const ROW_PX = 104;
 
 /** "hh:mm" → minutes from 08:00. */
 export const toMin = (t: string): number => {

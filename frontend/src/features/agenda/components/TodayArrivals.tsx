@@ -16,6 +16,9 @@ interface TodayArrivalsProps {
   updatedAt?: string;
   /** How many other RDVs are expected today (count minus the visible arrivals). */
   remaining?: number;
+  /** Map id → { initials, color, name } pour rendre la pastille médecin
+      à côté du nom patient (multi-praticien only, iso maquette 2026-05-28). */
+  practitionerMap?: Record<string, { initials: string; color: string; name: string }>;
 }
 
 function defaultDate(): string {
@@ -39,6 +42,7 @@ export function TodayArrivals({
   date,
   updatedAt,
   remaining = 5,
+  practitionerMap,
 }: TodayArrivalsProps) {
   const displayDate = date ?? defaultDate();
   const displayUpdatedAt = updatedAt ?? defaultUpdatedAt();
@@ -58,11 +62,27 @@ export function TodayArrivals({
       </div>
 
       <div className="ag-arrivals-list scroll">
-        {arrivals.map((p) => (
+        {arrivals.map((p) => {
+          const pract = p.practitionerId ? practitionerMap?.[p.practitionerId] : undefined;
+          return (
           <div key={p.name} className="ag-arrival-card">
             <div className="ag-arrival-row">
-              <div style={{ fontWeight: 600, fontSize: 12.5 }}>{p.name}</div>
-              <span className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)' }}>
+              <div style={{ fontWeight: 600, fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                {pract && (
+                  <span
+                    className="ag-doctor-avatar"
+                    style={{ background: pract.color, width: 20, height: 20, fontSize: 9.5 }}
+                    title={pract.name}
+                    aria-label={pract.name}
+                  >
+                    {pract.initials}
+                  </span>
+                )}
+                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+                  {p.name}
+                </span>
+              </div>
+              <span className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)', flexShrink: 0 }}>
                 RDV {p.apt}
               </span>
             </div>
@@ -86,7 +106,8 @@ export function TodayArrivals({
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
 
         <div className="ag-arrivals-more">{remaining} autres RDV attendus aujourd'hui</div>
       </div>

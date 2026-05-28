@@ -9,7 +9,7 @@
  *
  * Endpoints : /api/hr/staff (+ /{id}/summary, /{id}/leave, /{id}/payments).
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
@@ -80,17 +80,73 @@ const EMPTY_STAFF_FORM: StaffFormState = {
 };
 
 export default function PersonnelPage() {
-  const { staff, isLoading } = useStaffList();
+  const { staff: rawStaff, isLoading } = useStaffList();
   const { createStaff, isPending: creating } = useCreateStaff();
   const { updateStaff, isPending: updating } = useUpdateStaff();
   const { deleteStaff } = useDeleteStaff();
+
+  // Filtres user-request 2026-05-28 : nom, rôle, statut actif. Client-side
+  // (la liste personnel reste petite, pas de pagination).
+  const [nameSearch, setNameSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState<StaffRole | ''>('');
+  const [statusFilter, setStatusFilter] = useState<'' | 'active' | 'inactive'>('');
+
+  const staff = useMemo(() => {
+    let out = rawStaff;
+    if (nameSearch.trim()) {
+      const needle = nameSearch.trim().toLowerCase();
+      out = out.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(needle) ||
+          (s.phone ?? '').toLowerCase().includes(needle),
+      );
+    }
+    if (roleFilter) out = out.filter((s) => s.role === roleFilter);
+    if (statusFilter === 'active') out = out.filter((s) => s.active);
+    if (statusFilter === 'inactive') out = out.filter((s) => !s.active);
+    return out;
+  }, [rawStaff, nameSearch, roleFilter, statusFilter]);
+
+  const hasActiveFilter = !!nameSearch.trim() || !!roleFilter || !!statusFilter;
+  function resetFilters() {
+    setNameSearch('');
+    setRoleFilter('');
+    setStatusFilter('');
+  }
+
+  /** Export du personnel filtré + récap par membre (rôle, recrutement, salaire). */
+  function exportStaffCsv() {
+    const headers = ['Nom', 'Poste', 'Recrutement', 'Salaire mensuel (MAD)', 'Téléphone', 'Statut', 'Notes'];
+    const rows = staff.map((s) => [
+      s.fullName,
+      ROLE_LABELS[s.role] ?? s.role,
+      s.hireDate,
+      s.monthlySalary != null ? String(s.monthlySalary) : '',
+      s.phone ?? '',
+      s.active ? 'Actif' : 'Inactif',
+      (s.notes ?? '').replace(/\s+/g, ' '),
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.download = `personnel-${stamp}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<StaffFormState>(EMPTY_STAFF_FORM);
 
   const [detailId, setDetailId] = useState<string | null>(null);
-  const detailMember = staff.find((s) => s.id === detailId) ?? null;
+  const detailMember = rawStaff.find((s) => s.id === detailId) ?? null;
 
   function openCreate() {
     setEditingId(null);
@@ -177,12 +233,91 @@ export default function PersonnelPage() {
       title="Personnel"
       sub={`${staff.length} membre${staff.length > 1 ? 's' : ''}`}
       topbarRight={
-        <Button variant="primary" onClick={openCreate}>
-          <Plus /> Ajouter un membre
-        </Button>
+        <>
+          <Button
+            type="button"
+            onClick={exportStaffCsv}
+            disabled={staff.length === 0}
+            title={staff.length === 0 ? 'Aucune ligne à exporter' : 'Exporter en CSV'}
+          >
+            Exporter CSV
+          </Button>
+          <Button variant="primary" onClick={openCreate}>
+            <Plus /> Ajouter un membre
+          </Button>
+        </>
       }
     >
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0 }}>
+        {/* Barre de filtres avancés — user request 2026-05-28 :
+            recherche personnel + filtres rôle/statut. */}
+        <Panel style={{ padding: '12px 16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, alignItems: 'end' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Rechercher
+              </span>
+              <input
+                type="search"
+                value={nameSearch}
+                onChange={(e) => setNameSearch(e.target.value)}
+                placeholder="Nom, prénom, téléphone…"
+                aria-label="Rechercher un membre"
+                style={inputStyle}
+              />
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Poste
+              </span>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value as StaffRole | '')}
+                aria-label="Filtrer par poste"
+                style={inputStyle}
+              >
+                <option value="">Tous</option>
+                {ROLE_ORDER.map((r) => (
+                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                ))}
+              </select>
+            </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Statut
+              </span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
+                aria-label="Filtrer par statut"
+                style={inputStyle}
+              >
+                <option value="">Tous</option>
+                <option value="active">Actifs</option>
+                <option value="inactive">Inactifs</option>
+              </select>
+            </label>
+          </div>
+          {hasActiveFilter && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11.5, color: 'var(--ink-3)' }}>
+              <span>
+                {staff.length} résultat{staff.length > 1 ? 's' : ''} après filtres (sur {rawStaff.length})
+              </span>
+              <button
+                type="button"
+                onClick={resetFilters}
+                style={{
+                  background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                  padding: '4px 10px', cursor: 'pointer', fontSize: 11.5, fontFamily: 'inherit',
+                  color: 'var(--primary)',
+                }}
+              >
+                Réinitialiser
+              </button>
+            </div>
+          )}
+        </Panel>
+
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {isLoading && (
             <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
@@ -475,6 +610,51 @@ function StaffDetailDrawer({
     }
   }
 
+  function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]) {
+    const csv = [headers, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function exportLeaves() {
+    const slug = member.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    downloadCsv(
+      `conges-${slug}.csv`,
+      ['Type', 'Date', 'Jours', 'Notes'],
+      entries.map((e) => [LEAVE_TYPE_LABELS[e.type] ?? e.type, e.startDate, e.days, (e.notes ?? '').replace(/\s+/g, ' ')]),
+    );
+  }
+  function exportPayments() {
+    const slug = member.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    downloadCsv(
+      `salaires-${slug}.csv`,
+      ['Période', 'Montant (MAD)', 'Payé le', 'Notes'],
+      payments.map((p) => [p.period, p.amount, p.paidAt, (p.notes ?? '').replace(/\s+/g, ' ')]),
+    );
+  }
+
+  // Filtrage par plage de dates dans le détail — secrétaire RH peut limiter la
+  // vue à un mois/trimestre avant export ("salaires Q2 2026" par ex.).
+  const [historyFrom, setHistoryFrom] = useState('');
+  const [historyTo, setHistoryTo] = useState('');
+  const filteredEntries = useMemo(
+    () => entries.filter((e) => (!historyFrom || e.startDate >= historyFrom) && (!historyTo || e.startDate <= historyTo)),
+    [entries, historyFrom, historyTo],
+  );
+  const filteredPayments = useMemo(
+    () => payments.filter((p) => (!historyFrom || p.paidAt >= historyFrom) && (!historyTo || p.paidAt <= historyTo)),
+    [payments, historyFrom, historyTo],
+  );
+
   return (
     <DrawerShell title={member.fullName} sub={ROLE_LABELS[member.role]} onClose={onClose}>
       {/* Récap congés */}
@@ -497,14 +677,51 @@ function StaffDetailDrawer({
         )}
       </section>
 
+      {/* Filtre date range + exports — user request 2026-05-28 :
+          rechercher historique salaires/absences/retards + exports. */}
+      <section>
+        <h3 style={sectionTitle}>Période d'historique</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <DateField label="Du" value={historyFrom} onChange={setHistoryFrom} />
+          <DateField label="Au" value={historyTo} onChange={setHistoryTo} />
+        </div>
+        {(historyFrom || historyTo) && (
+          <button
+            type="button"
+            onClick={() => { setHistoryFrom(''); setHistoryTo(''); }}
+            style={{
+              marginTop: 6, background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 11.5, padding: 0, color: 'var(--primary)', fontFamily: 'inherit',
+            }}
+          >
+            Réinitialiser la période
+          </button>
+        )}
+      </section>
+
       {/* Liste des entrées congé/absence/retard */}
       <section>
-        <h3 style={sectionTitle}>Congés, absences & retards</h3>
-        {entries.length === 0 ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucune entrée.</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <h3 style={sectionTitle}>Congés, absences & retards</h3>
+          <button
+            type="button"
+            onClick={exportLeaves}
+            disabled={filteredEntries.length === 0}
+            style={{
+              background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+              padding: '4px 10px', cursor: filteredEntries.length === 0 ? 'not-allowed' : 'pointer',
+              fontSize: 11.5, fontFamily: 'inherit', color: 'var(--primary)',
+              opacity: filteredEntries.length === 0 ? 0.5 : 1,
+            }}
+          >
+            Exporter CSV
+          </button>
+        </div>
+        {filteredEntries.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucune entrée{historyFrom || historyTo ? ' sur la période' : ''}.</div>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {entries.map((e) => (
+            {filteredEntries.map((e) => (
               <li
                 key={e.id}
                 style={{
@@ -563,12 +780,27 @@ function StaffDetailDrawer({
 
       {/* Paiements de salaire */}
       <section>
-        <h3 style={sectionTitle}>Paiements de salaire</h3>
-        {payments.length === 0 ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucun paiement.</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <h3 style={sectionTitle}>Paiements de salaire</h3>
+          <button
+            type="button"
+            onClick={exportPayments}
+            disabled={filteredPayments.length === 0}
+            style={{
+              background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+              padding: '4px 10px', cursor: filteredPayments.length === 0 ? 'not-allowed' : 'pointer',
+              fontSize: 11.5, fontFamily: 'inherit', color: 'var(--primary)',
+              opacity: filteredPayments.length === 0 ? 0.5 : 1,
+            }}
+          >
+            Exporter CSV
+          </button>
+        </div>
+        {filteredPayments.length === 0 ? (
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucun paiement{historyFrom || historyTo ? ' sur la période' : ''}.</div>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {payments.map((p) => (
+            {filteredPayments.map((p) => (
               <li
                 key={p.id}
                 style={{

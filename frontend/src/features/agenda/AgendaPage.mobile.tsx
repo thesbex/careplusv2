@@ -5,10 +5,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
-import { MTopbar } from '@/components/shell/MTopbar';
+import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
-import { Plus, Warn } from '@/components/icons';
+import { Plus, Warn, ChevronRight } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useSpotlight } from '@/components/shell/spotlightContext';
+import { toMin } from './fixtures';
 import {
   ALL_PRACTITIONERS,
   type PractitionerIdFilter,
@@ -18,6 +20,10 @@ import { usePractitioners } from './hooks/usePractitioners';
 import { useRooms } from './hooks/useRooms';
 import { useReasonsForAgenda } from './hooks/useReasonsForAgenda';
 import type { DayKey } from './types';
+// Mobile override « en cours » saphir + bandeau corail vivent dans agenda.css
+// (block AGENDA MOBILE en bas). Import nécessaire car ce composant peut être
+// rendu seul sans avoir chargé la version desktop.
+import './agenda.css';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
@@ -31,14 +37,25 @@ function todayKey(): DayKey {
 const STATUS_LABEL: Record<string, string> = {
   confirmed: 'Confirmé',
   arrived: 'Arrivé',
-  vitals: 'Arrivé',
+  vitals: 'Constantes',
   consult: 'En consult.',
   done: 'Terminé',
 };
 
+const MONTHS_FR = [
+  'janvier','février','mars','avril','mai','juin',
+  'juillet','août','septembre','octobre','novembre','décembre',
+];
+
 export default function AgendaMobilePage() {
   const navigate = useNavigate();
+  const { openSpotlight } = useSpotlight();
   const [weekOffset, setWeekOffset] = useState(0);
+  // Iso maquette mobile : le rail filtres est caché par défaut, révélé par
+  // l'icône « Filter » de la topbar. Si l'utilisateur a un filtre actif
+  // (médecin/salle/motif ≠ défaut), on le laisse visible quoi qu'il arrive
+  // pour pas planquer une sélection en cours.
+  const [showFilters, setShowFilters] = useState(false);
 
   // Multi-doctor + room (Wave 1, 2026-05-07).
   const currentUser = useAuthStore((s) => s.user);
@@ -115,12 +132,67 @@ export default function AgendaMobilePage() {
     [rawAppointments, roomFilter, reasonFilter],
   );
   const dayAppointments = filteredAppointments.filter((a) => a.day === selectedDay);
-  const selectedDayInfo = days.find((d) => d.key === selectedDay);
+  // Count "en cours" for the stats line ("N RDV · M en cours") per maquette.
+  const inProgressCount = dayAppointments.filter((a) => a.status === 'consult').length;
+
+  // « En retard » dérivé pour le jour courant (mirror desktop : PLANIFIE/CONFIRME
+  // dont le créneau a passé 5 min sans arrivée enregistrée). Calculé une fois ;
+  // refresh à chaque re-render du composant (suffisant pour cet usage).
+  const nowMinutes = (() => {
+    const d = new Date();
+    return (d.getHours() - 8) * 60 + d.getMinutes();
+  })();
+  const isLateMobile = (a: { start: string; status: string }) =>
+    a.status === 'confirmed' && selectedDay === todayKey() && toMin(a.start) + 5 < nowMinutes;
+
+  // Iso maquette sub : « <Jour> <date> <mois> » (ex. « Jeudi 28 mai »).
+  // Calculée à partir du jour sélectionné du strip, pas du jour réel — quand
+  // l'utilisateur scrolle la semaine, le sub doit suivre.
+  const subDate = (() => {
+    const now = new Date();
+    const dow = now.getDay();
+    const diffToMon = dow === 0 ? -6 : 1 - dow;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + diffToMon + weekOffset * 7);
+    monday.setHours(0, 0, 0, 0);
+    const idx = DAY_KEYS.indexOf(selectedDay);
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + (idx === -1 ? 0 : idx));
+    const wkLabel = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return wkLabel.charAt(0).toUpperCase() + wkLabel.slice(1);
+  })();
+
+  // True si l'utilisateur a un filtre actif (autre que la valeur par défaut).
+  // Dans ce cas on garde le rail filtres visible quoi qu'il arrive — planquer
+  // une sélection active derrière l'icône topbar serait piégeux.
+  const hasActiveFilter =
+    practitionerFilter !== defaultPractitionerFilter ||
+    roomFilter !== 'ALL' ||
+    reasonFilter !== 'ALL';
+  const filtersVisible = showFilters || hasActiveFilter;
+  // Eviter "unused variable" — MONTHS_FR sera utile pour la sous-ligne mois
+  // si on stabilise une autre formulation plus tard.
+  void MONTHS_FR;
 
   return (
     <MScreen
       tab="agenda"
-      topbar={<MTopbar brand />}
+      topbar={
+        <MTopbar
+          title="Agenda"
+          sub={subDate}
+          right={
+            <>
+              <MIconBtn
+                icon="Filter"
+                label={filtersVisible ? 'Masquer les filtres' : 'Afficher les filtres'}
+                onClick={() => setShowFilters((v) => !v)}
+              />
+              <MIconBtn icon="Search" label="Rechercher un patient" onClick={openSpotlight} />
+            </>
+          }
+        />
+      }
       onTabChange={(tab: MobileTab) => {
         const map: Record<MobileTab, string> = {
           agenda: '/agenda',
@@ -223,7 +295,7 @@ export default function AgendaMobilePage() {
         </div>
       </div>
 
-      {(showPractitionerSelector || showRoomSelector || reasons.length > 0) && (
+      {filtersVisible && (showPractitionerSelector || showRoomSelector || reasons.length > 0) && (
         <div
           style={{
             display: 'flex',
@@ -323,11 +395,15 @@ export default function AgendaMobilePage() {
             className={`m-daytab ${d.key === selectedDay ? 'on' : ''}`}
             role="tab"
             aria-selected={d.key === selectedDay}
+            // a11y : 1 lettre côté visuel (iso maquette) mais nom complet
+            // côté lecteur d'écran + tests (« Lundi 25 », pas « L 25 »).
+            aria-label={`${d.label} ${d.date}`}
             style={{ border: 0, cursor: 'pointer', fontFamily: 'inherit' }}
             onClick={() => setSelectedDay(d.key)}
           >
-            <div className="dl">{d.label.slice(0, 3)}</div>
-            <div className="dn">{d.date}</div>
+            {/* Iso maquette : label sur 1 lettre (L, M, M, J, V, S). */}
+            <div className="dl" aria-hidden="true">{d.label.charAt(0)}</div>
+            <div className="dn" aria-hidden="true">{d.date}</div>
           </button>
         ))}
       </div>
@@ -337,10 +413,45 @@ export default function AgendaMobilePage() {
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>Chargement…</div>
         ) : (
           <>
+            {/* Iso maquette mobile : « N RDV · M en cours » + « Voir tout » lien
+                aligné à droite vers la salle d'attente. Affiché uniquement si
+                M > 0 — sinon "Voir tout" pointe nulle part d'utile. */}
             <div className="m-section-h">
-              <h3>
-                {selectedDayInfo?.label} {selectedDayInfo?.date} · {dayAppointments.length} rendez-vous
+              <h3 className="tnum">
+                {dayAppointments.length} RDV
+                {inProgressCount > 0 && (
+                  <>
+                    {' · '}
+                    <span style={{ color: 'var(--ds2-navy, var(--primary))', fontWeight: 600 }}>
+                      {inProgressCount} EN COURS
+                    </span>
+                  </>
+                )}
               </h3>
+              {inProgressCount > 0 && (
+                <button
+                  type="button"
+                  className="more"
+                  onClick={() => navigate('/salle')}
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    fontFamily: 'inherit',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: 'var(--ds2-navy, var(--primary))',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                  aria-label="Voir tous les patients en cours"
+                >
+                  Voir tout
+                  <ChevronRight />
+                </button>
+              )}
             </div>
 
             <div className="m-tl">
@@ -357,7 +468,7 @@ export default function AgendaMobilePage() {
                     <div className="m-tl-col filled">
                       <button
                         type="button"
-                        className={`m-tl-block ${r.status}`}
+                        className={`m-tl-block ${r.status}${isLateMobile(r) ? ' late' : ''}`}
                         onClick={() => {
                           if (r.patientId) navigate(`/patients/${r.patientId}`);
                         }}
@@ -380,8 +491,8 @@ export default function AgendaMobilePage() {
                           <span className="m-tl-block-time">
                             {r.start} · {r.dur} min
                           </span>
-                          <span className={`m-pill ${r.status}`} style={{ marginLeft: 'auto' }}>
-                            {STATUS_LABEL[r.status] ?? r.status}
+                          <span className={`m-pill ${isLateMobile(r) ? 'late' : r.status}`} style={{ marginLeft: 'auto' }}>
+                            {isLateMobile(r) ? 'En retard' : (STATUS_LABEL[r.status] ?? r.status)}
                           </span>
                         </div>
                         <div className="m-tl-block-name">{r.patient}</div>

@@ -33,6 +33,21 @@ public interface LetterTemplateRepository extends JpaRepository<LetterTemplate, 
             """)
     List<LetterTemplate> findActiveOnly();
 
+    /**
+     * V065 — Liste limitée aux modèles visibles pour un médecin donné :
+     * partagés (owner_user_id IS NULL) + ses modèles privés (owner_user_id = ?).
+     * Toujours actifs et non-supprimés. Utilisé par le dialog ConfrereLetter
+     * pour ne montrer au médecin que ce qui le concerne.
+     */
+    @Query("""
+            SELECT t FROM LetterTemplate t
+             WHERE t.deletedAt IS NULL
+               AND t.active = TRUE
+               AND (t.ownerUserId IS NULL OR t.ownerUserId = :userId)
+             ORDER BY t.ownerUserId NULLS LAST, t.title ASC
+            """)
+    List<LetterTemplate> findVisibleForUser(@Param("userId") UUID userId);
+
     @Query("""
             SELECT t FROM LetterTemplate t
              WHERE t.id = :id

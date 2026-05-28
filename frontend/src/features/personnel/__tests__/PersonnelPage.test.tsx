@@ -112,9 +112,10 @@ describe('<PersonnelPage />', () => {
     renderPage();
     expect(screen.getByText('Fatima Zahra Bennani')).toBeInTheDocument();
     expect(screen.getByText('Ahmed Idrissi')).toBeInTheDocument();
-    // FR role label
-    expect(screen.getByText('Secrétaire')).toBeInTheDocument();
-    expect(screen.getByText('Agent de sécurité')).toBeInTheDocument();
+    // FR role label — apparaît dans la table ET dans le filtre Poste de la
+    // barre avancée (2026-05-28). On vérifie au moins 1 occurrence.
+    expect(screen.getAllByText('Secrétaire').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Agent de sécurité').length).toBeGreaterThan(0);
     // MAD salary formatting (comma decimal)
     expect(screen.getByText('4500,00 MAD')).toBeInTheDocument();
     // active / inactive chips
