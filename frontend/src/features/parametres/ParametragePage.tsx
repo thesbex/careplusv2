@@ -44,6 +44,7 @@ import { StockParamTab } from '@/features/stock/components/StockParamTab';
 import { ChambresLitsTab } from '@/features/hospitalisation/components/ChambresLitsTab';
 import { ConsentTemplatesTab } from '@/features/consent/components/ConsentTemplatesTab';
 import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
+import { SupportTab } from './components/SupportTab';
 import './parametres.css';
 
 const NAV_MAP = {
@@ -63,7 +64,7 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'support';
 
 function establishmentTabLabel(type: EstablishmentType | undefined): string {
   if (!type) return 'Cabinet';
@@ -99,6 +100,8 @@ function buildTabs(
     { id: 'stock', label: 'Stock' },
     // V054 — onglet conditionnel : seulement si l'établissement hospitalise.
     ...(hospitalizationEnabled ? [{ id: 'hospitalisation' as Tab, label: 'Chambres & lits' }] : []),
+    // Support éditeur — ADMIN uniquement, dernier onglet.
+    ...(isAdmin ? [{ id: 'support' as Tab, label: 'Support' }] : []),
   ];
 }
 
@@ -806,6 +809,7 @@ export default function ParametragePage() {
         {tab === 'vaccinations' && <VaccinationParamTab />}
         {tab === 'stock' && <StockParamTab />}
         {tab === 'hospitalisation' && <ChambresLitsTab />}
+        {tab === 'support' && isAdmin && <SupportTab />}
       </div>
     </Screen>
   );

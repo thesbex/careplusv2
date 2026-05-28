@@ -323,6 +323,13 @@ export const Upload = (p: IconProps) => (
   </Base>
 );
 
+export const Mail = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="2" y="3.5" width="12" height="9" rx="1.5" />
+    <path d="M2.5 4.5l5.5 4 5.5-4" />
+  </Base>
+);
+
 export const Box = (p: IconProps) => (
   <Base {...p}>
     <path d="M2.5 5l5.5-2.5L13.5 5v7L8 14.5 2.5 12V5z" />
