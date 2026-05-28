@@ -10,6 +10,7 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronRight } from '@/components/icons';
+import { Select } from '@/components/ui/Input';
 import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
 import { useInvoiceSearch } from './hooks/useInvoiceSearch';
@@ -147,7 +148,7 @@ export default function FacturationMobilePage() {
             }}
           >
             Médecin
-            <select
+            <Select
               aria-label="Filtrer par médecin"
               value={filters.medecinId ?? 'ALL'}
               onChange={(e) =>
@@ -174,7 +175,7 @@ export default function FacturationMobilePage() {
                   {p.specialty ? ` — ${p.specialty}` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
 

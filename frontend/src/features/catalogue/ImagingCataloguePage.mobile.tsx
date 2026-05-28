@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Search } from '@/components/icons';
+import { Select } from '@/components/ui/Input';
 import { api } from '@/lib/api/client';
 
 interface ImagingExam {
@@ -90,7 +91,7 @@ export default function ImagingCatalogueMobilePage() {
           />
         </label>
 
-        <select
+        <Select
           value={modalityFilter}
           onChange={(e) => setModalityFilter(e.target.value)}
           className="m-input"
@@ -103,7 +104,7 @@ export default function ImagingCatalogueMobilePage() {
               {m}
             </option>
           ))}
-        </select>
+        </Select>
 
         <div className="m-card">
           {isLoading ? (

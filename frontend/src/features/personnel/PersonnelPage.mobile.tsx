@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import { Select } from '@/components/ui/Input';
 import {
   useStaffList,
   useStaffSummary,
@@ -235,7 +236,7 @@ export default function PersonnelMobilePage() {
             />
           </MField>
           <MField label="Poste *">
-            <select
+            <Select
               className="m-input"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as StaffRole })}
@@ -243,7 +244,7 @@ export default function PersonnelMobilePage() {
               {ROLE_ORDER.map((r) => (
                 <option key={r} value={r}>{ROLE_LABELS[r]}</option>
               ))}
-            </select>
+            </Select>
           </MField>
           <MField label="Date de recrutement *">
             <input
@@ -488,7 +489,7 @@ function DetailSheet({
         </div>
       )}
       <MField label="Type">
-        <select
+        <Select
           className="m-input"
           value={leaveForm.type}
           onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value as LeaveType })}
@@ -496,7 +497,7 @@ function DetailSheet({
           {LEAVE_TYPE_ORDER.map((t) => (
             <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>
           ))}
-        </select>
+        </Select>
       </MField>
       <MField label="Date">
         <input

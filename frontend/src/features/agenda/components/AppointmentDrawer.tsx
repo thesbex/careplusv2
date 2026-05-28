@@ -14,6 +14,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Close, Warn } from '@/components/icons';
 import { useCheckIn } from '@/features/salle-attente/hooks/useCheckIn';
 import {
@@ -368,7 +369,7 @@ export function AppointmentDrawer({
             {showPractitionerField && (
               <div className="field" style={{ marginTop: 12 }}>
                 <label htmlFor="ag-drawer-practitioner">Médecin</label>
-                <select
+                <Select
                   id="ag-drawer-practitioner"
                   className="select"
                   value={practitionerId}
@@ -384,14 +385,14 @@ export function AppointmentDrawer({
                       {formatPractitioner(p)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
             {showRoomField && (
               <div className="field" style={{ marginTop: 12 }}>
                 <label htmlFor="ag-drawer-room">Salle</label>
-                <select
+                <Select
                   id="ag-drawer-room"
                   className="select"
                   value={roomId}
@@ -406,7 +407,7 @@ export function AppointmentDrawer({
                       {r.capabilityTags.length > 0 ? ` (${r.capabilityTags.join(', ')})` : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 

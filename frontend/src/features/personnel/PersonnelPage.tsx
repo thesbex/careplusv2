@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus, Trash, Users as UsersIcon } from '@/components/icons';
 import {
   useStaffList,
@@ -270,7 +271,7 @@ export default function PersonnelPage() {
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Poste
               </span>
-              <select
+              <Select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as StaffRole | '')}
                 aria-label="Filtrer par poste"
@@ -280,13 +281,13 @@ export default function PersonnelPage() {
                 {ROLE_ORDER.map((r) => (
                   <option key={r} value={r}>{ROLE_LABELS[r]}</option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Statut
               </span>
-              <select
+              <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
                 aria-label="Filtrer par statut"
@@ -295,7 +296,7 @@ export default function PersonnelPage() {
                 <option value="">Tous</option>
                 <option value="active">Actifs</option>
                 <option value="inactive">Inactifs</option>
-              </select>
+              </Select>
             </label>
           </div>
           {hasActiveFilter && (
@@ -1018,11 +1019,11 @@ function SelectField({
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
       <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
+      <Select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

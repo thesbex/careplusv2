@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
@@ -121,10 +121,10 @@ export function AdmissionForm({ onDone }: { onDone: () => void }) {
         </Field>
         <Field>
           <FieldLabel htmlFor="adm-bed">Lit *</FieldLabel>
-          <select id="adm-bed" aria-label="Lit" value={bedId} onChange={(e) => setBedId(e.target.value)} style={SELECT_STYLE}>
+          <Select id="adm-bed" aria-label="Lit" value={bedId} onChange={(e) => setBedId(e.target.value)} style={SELECT_STYLE}>
             <option value="">— Choisir un lit libre —</option>
             {freeBeds.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-          </select>
+          </Select>
           {freeBeds.length === 0 && (
             <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Aucun lit libre. Configurez/libérez un lit d'abord.</span>
           )}
@@ -229,13 +229,13 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
           <div style={{ fontSize: 12, fontWeight: 600 }}>Ajouter une prestation</div>
           <Field>
             <FieldLabel htmlFor="pr-act">Acte du catalogue</FieldLabel>
-            <select id="pr-act" aria-label="Choisir une prestation" value={actId}
+            <Select id="pr-act" aria-label="Choisir une prestation" value={actId}
               onChange={(e) => pickAct(e.target.value)} style={SELECT_STYLE}>
               <option value="">— Saisie libre —</option>
               {catalog.map((c) => (
                 <option key={c.id} value={c.id}>{c.label} ({c.defaultPrice} MAD)</option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field>
             <FieldLabel htmlFor="pr-label">Libellé</FieldLabel>
@@ -376,11 +376,11 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <Field style={{ flex: 1 }}>
                 <FieldLabel htmlFor="tr-bed">Transférer vers</FieldLabel>
-                <select id="tr-bed" aria-label="Lit de transfert" value={transferBed}
+                <Select id="tr-bed" aria-label="Lit de transfert" value={transferBed}
                   onChange={(e) => setTransferBed(e.target.value)} style={SELECT_STYLE}>
                   <option value="">— Lit libre —</option>
                   {freeBeds.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
-                </select>
+                </Select>
               </Field>
               <Button type="button" disabled={transferring} onClick={() => void doTransfer()}>Transférer</Button>
             </div>
@@ -388,10 +388,10 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
               <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Sortie médicale</div>
               <Field>
                 <FieldLabel htmlFor="dis-type">Type de sortie</FieldLabel>
-                <select id="dis-type" aria-label="Type de sortie" value={dischargeType}
+                <Select id="dis-type" aria-label="Type de sortie" value={dischargeType}
                   onChange={(e) => setDischargeType(e.target.value as DischargeType)} style={SELECT_STYLE}>
                   {Object.entries(DISCHARGE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
+                </Select>
               </Field>
               <Field>
                 <FieldLabel htmlFor="dis-sum">Compte-rendu (optionnel)</FieldLabel>

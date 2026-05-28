@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useConsentTemplates, useGenerateConsent } from '../hooks/useConsentTemplates';
@@ -133,7 +134,7 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, marginBottom: 12 }}>
             <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Modèle</span>
-            <select
+            <Select
               value={templateId}
               onChange={(e) => pickTemplate(e.target.value)}
               aria-label="Modèle de consentement"
@@ -149,7 +150,7 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
                   {CONSENT_TYPE_LABELS[t.type]} — {t.title}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, marginBottom: 12 }}>

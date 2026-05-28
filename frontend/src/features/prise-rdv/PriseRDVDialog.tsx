@@ -265,23 +265,14 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
         />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 8, marginBottom: 8 }}>
-        <select
+        <Select
           value={gender}
           onChange={(e) => setGender(e.target.value as 'M' | 'F' | 'O')}
-          style={{
-            height: 34,
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            padding: '0 10px',
-            fontSize: 13,
-            fontFamily: 'inherit',
-            background: 'var(--surface)',
-          }}
         >
           <option value="M">Homme</option>
           <option value="F">Femme</option>
           <option value="O">Autre</option>
-        </select>
+        </Select>
         <input
           placeholder="Téléphone *"
           value={phone}

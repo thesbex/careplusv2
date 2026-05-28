@@ -14,7 +14,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Trash } from '@/components/icons';
 import { api } from '@/lib/api/client';
@@ -339,7 +339,7 @@ export function UtilisateursTab() {
             )}
             <Field>
               <FieldLabel htmlFor="user-role">Rôle</FieldLabel>
-              <select
+              <Select
                 id="user-role"
                 aria-label="Rôle"
                 value={draft.role}
@@ -373,7 +373,7 @@ export function UtilisateursTab() {
                 {(hospitalizationEnabled || draft.role === 'RECEPTIONNISTE') && (
                   <option value="RECEPTIONNISTE">Réceptionniste</option>
                 )}
-              </select>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="user-firstname">Prénom *</FieldLabel>

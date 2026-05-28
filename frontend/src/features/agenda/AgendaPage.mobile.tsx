@@ -23,6 +23,7 @@ import type { DayKey } from './types';
 // Mobile override « en cours » saphir + bandeau corail vivent dans agenda.css
 // (block AGENDA MOBILE en bas). Import nécessaire car ce composant peut être
 // rendu seul sans avoir chargé la version desktop.
+import { Select } from '@/components/ui/Input';
 import './agenda.css';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
@@ -308,7 +309,7 @@ export default function AgendaMobilePage() {
           }}
         >
           {showPractitionerSelector && (
-            <select
+            <Select
               aria-label="Filtrer par médecin"
               value={practitionerFilter}
               onChange={(e) =>
@@ -332,10 +333,10 @@ export default function AgendaMobilePage() {
                   Dr {p.lastName} {p.firstName}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {showRoomSelector && (
-            <select
+            <Select
               aria-label="Filtrer par salle"
               value={roomFilter}
               onChange={(e) => setRoomFilter(e.target.value)}
@@ -357,10 +358,10 @@ export default function AgendaMobilePage() {
                   {r.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {reasons.length > 0 && (
-            <select
+            <Select
               aria-label="Filtrer par motif de prestation"
               value={reasonFilter}
               onChange={(e) => setReasonFilter(e.target.value)}
@@ -382,7 +383,7 @@ export default function AgendaMobilePage() {
                   {r.label}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
       )}

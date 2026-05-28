@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useReferralContacts } from '@/features/profil/hooks/useReferralContacts';
@@ -187,7 +188,7 @@ export function ConfrereLetterDialog({
 
           <label style={labelStyle}>
             <span style={labelTitleStyle}>Confrère (carnet)</span>
-            <select
+            <Select
               value={contactId}
               onChange={(e) => pickContact(e.target.value)}
               aria-label="Confrère du carnet"
@@ -201,13 +202,13 @@ export function ConfrereLetterDialog({
                   {c.city ? ` (${c.city})` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           {templates.length > 0 && (
             <label style={labelStyle}>
               <span style={labelTitleStyle}>Modèle de courrier</span>
-              <select
+              <Select
                 value={templateId}
                 onChange={(e) => pickTemplate(e.target.value)}
                 aria-label="Modèle de courrier"
@@ -219,7 +220,7 @@ export function ConfrereLetterDialog({
                     {t.title}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           )}
 

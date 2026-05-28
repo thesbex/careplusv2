@@ -14,7 +14,7 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { UpsertArticleSchema } from '../schemas';
 import type { UpsertArticleValues } from '../schemas';
@@ -291,7 +291,7 @@ export function StockArticleFormDrawer({
               control={control}
               name="category"
               render={({ field }) => (
-                <select
+                <Select
                   id="art-category"
                   {...field}
                   disabled={mode === 'edit'}
@@ -313,7 +313,7 @@ export function StockArticleFormDrawer({
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               )}
             />
             {errors.category && (
@@ -383,7 +383,7 @@ export function StockArticleFormDrawer({
                 control={control}
                 name="supplierId"
                 render={({ field }) => (
-                  <select
+                  <Select
                     id="art-supplier"
                     value={field.value ?? ''}
                     onChange={(e) => field.onChange(e.target.value || undefined)}
@@ -407,7 +407,7 @@ export function StockArticleFormDrawer({
                           {s.name}
                         </option>
                       ))}
-                  </select>
+                  </Select>
                 )}
               />
             </div>

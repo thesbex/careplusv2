@@ -10,6 +10,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -283,7 +284,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
               </div>
 
               <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Motif</label>
-              <select
+              <Select
                 value={reasonId}
                 onChange={(e) => setReasonId(e.target.value)}
                 style={{
@@ -302,7 +303,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                     {r.label} ({r.durationMinutes} min)
                   </option>
                 ))}
-              </select>
+              </Select>
 
               <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Notes (optionnel)</label>
               <textarea

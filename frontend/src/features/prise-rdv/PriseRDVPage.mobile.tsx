@@ -15,6 +15,7 @@ import { useReasons } from './hooks/useReasons';
 import { useCreateAppointment } from './hooks/useCreateAppointment';
 import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { Select } from '@/components/ui/Input';
 import { rdvFormSchema } from './schema';
 import { DURATION_OPTIONS } from './fixtures';
 import type { RdvFormValues } from './types';
@@ -167,7 +168,7 @@ export default function PriseRDVMobilePage() {
           {/* Motif de consultation */}
           <div className="m-field">
             <label htmlFor="m-rdv-reason">Motif de consultation</label>
-            <select id="m-rdv-reason" className="m-input" {...register('reasonId')}>
+            <Select id="m-rdv-reason" className="m-input" {...register('reasonId')}>
               {reasons.length === 0 ? (
                 <option value="">Chargement…</option>
               ) : (
@@ -175,7 +176,7 @@ export default function PriseRDVMobilePage() {
                   <option key={r.id} value={r.id}>{r.label}</option>
                 ))
               )}
-            </select>
+            </Select>
           </div>
 
           {/* Durée */}

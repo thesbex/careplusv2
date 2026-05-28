@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus, Search, Trash, Pill as PillIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -242,7 +243,7 @@ export default function CataloguePage() {
               }}
             />
           </div>
-          <select
+          <Select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
             style={{
@@ -255,7 +256,7 @@ export default function CataloguePage() {
             {tags.map((t) => (
               <option key={t} value={t}>{t}</option>
             ))}
-          </select>
+          </Select>
           {(q || tagFilter) && (
             <button
               type="button"
