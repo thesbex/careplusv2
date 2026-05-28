@@ -12,9 +12,14 @@
 }
 
 /* ── Desktop 3-column layout ─────────────────────────── */
+/* User request 2026-05-28 : SOAP centre était trop large (1fr), colonne
+ * Action trop chargée. Rebalance : on rétrécit centre (minmax pour ne pas
+ * exploser), on agrandit Action de 320 → 420 pour aérer les groupements
+ * (consultation, prescriptions, examens, facturation). Le contexte patient
+ * reste à 280px (fixe — lisible mais pas dominant). */
 .cs-layout {
   display: grid;
-  grid-template-columns: 280px 1fr 320px;
+  grid-template-columns: 280px minmax(420px, 1fr) 420px;
   height: 100%;
   overflow: hidden;
 }
@@ -92,10 +97,21 @@
   margin-top: 18px;
 }
 
+/* User request 2026-05-28 : colonne Action chargée → réorganiser.
+ * Grid 2 colonnes (au lieu de la pile verticale) pour caser les 6 actions
+ * sur 3 rangs au lieu de 6 — plus dense, plus scannable. La colonne fait
+ * désormais 420px (largeur élargie) ce qui laisse ~190px par bouton. */
 .cs-actions-list {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
+}
+/* Panneau encadré autour de chaque section du rail Action — donne une
+ * hiérarchie visuelle entre Actions / Documents / Prestations / Facturation
+ * sans chambouler le markup existant. */
+.cs-actions-col .cs-section-h {
+  font-weight: 700;
+  color: var(--ds2-ink-2, var(--ink-2));
 }
 
 .cs-docs-list {

@@ -18,6 +18,7 @@ export type DocumentType =
   | 'ANALYSE'
   | 'IMAGERIE'
   | 'COMPTE_RENDU'
+  | 'CONSENTEMENT'
   | 'AUTRE';
 
 export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
@@ -25,6 +26,7 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   ANALYSE: "Résultat d'analyse",
   IMAGERIE: 'Imagerie / radio',
   COMPTE_RENDU: 'Compte rendu',
+  CONSENTEMENT: 'Consentement signé',
   AUTRE: 'Autre',
 };
 
