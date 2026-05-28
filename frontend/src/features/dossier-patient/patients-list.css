@@ -1,0 +1,935 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * Patients list — refonte iso maquette
+ * design/refresh source : « careplus refresh - liste patients.html ».
+ * Couleurs basées sur les tokens DS2 (saphir, bottle green, coral).
+ * Les classes sont LOCALES à cette page (préfixe .ws-patients) pour ne pas
+ * polluer le namespace global.
+ * ───────────────────────────────────────────────────────────────────────── */
+
+.ws-patients {
+  padding: 18px 22px 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Views (saved-view tabs) ─────────────────────────────────────────────── */
+.ws-patients .views {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--ds2-border, var(--border));
+  margin-bottom: 14px;
+  align-items: flex-end;
+}
+.ws-patients .views button {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ds2-ink-3, var(--ink-3));
+  padding: 9px 0;
+  margin-right: 22px;
+  cursor: pointer;
+  position: relative;
+  letter-spacing: -0.005em;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-patients .views button.on {
+  color: var(--ds2-ink, var(--ink));
+  font-weight: 600;
+}
+.ws-patients .views button.on::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--ds2-ink, var(--ink));
+  border-radius: 2px;
+}
+.ws-patients .views button .ct {
+  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .views button.on .ct {
+  background: var(--ds2-ink, var(--ink));
+  color: #fff;
+}
+.ws-patients .views .vside {
+  margin-left: auto;
+  padding-bottom: 8px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── KPI strip ───────────────────────────────────────────────────────────── */
+.ws-patients .kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.ws-patients .kpi {
+  background: var(--ds2-surface, var(--surface));
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 10px;
+  padding: 13px 16px;
+}
+.ws-patients .kpi .k {
+  font-size: 11.5px;
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: -0.005em;
+}
+.ws-patients .kpi .k .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.ws-patients .kpi .v {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 6px;
+  letter-spacing: -0.025em;
+  color: var(--ds2-ink, var(--ink));
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.ws-patients .kpi .v .u {
+  font-size: 12px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
+  margin-left: 4px;
+  letter-spacing: 0;
+}
+.ws-patients .kpi .d {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ds2-ink-3, var(--ink-3));
+}
+.ws-patients .kpi .d b {
+  color: var(--ds2-ink, var(--ink));
+  font-weight: 600;
+}
+.ws-patients .kpi .d b.warn {
+  color: var(--ds2-coral, #C2553A);
+}
+
+/* ── Filter bar (search + pills + tools) ─────────────────────────────────── */
+.ws-patients .fbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: nowrap;
+}
+.ws-patients .search-lg {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--ds2-surface, var(--surface));
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 38px;
+  font-size: 13px;
+  flex: 1;
+  max-width: 340px;
+}
+.ws-patients .search-lg input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ds2-ink, var(--ink));
+  min-width: 0;
+}
+.ws-patients .search-lg input::placeholder {
+  color: var(--ds2-ink-3, var(--ink-3));
+}
+.ws-patients .search-lg .search-ico {
+  width: 15px;
+  height: 15px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  flex-shrink: 0;
+}
+.ws-patients .fpill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--ds2-border, var(--border));
+  background: var(--ds2-surface, var(--surface));
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ws-patients .fpill .dim {
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
+}
+.ws-patients .fpill b {
+  color: var(--ds2-ink, var(--ink));
+  font-weight: 600;
+}
+.ws-patients .fpill svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.ws-patients .fpill .x {
+  color: var(--ds2-ink-3, var(--ink-3));
+  margin-left: 2px;
+  opacity: 0.7;
+  font-size: 13px;
+  line-height: 1;
+}
+.ws-patients .fpill.active {
+  border-color: var(--ds2-navy, var(--blue, var(--primary)));
+  background: var(--ds2-navy-soft, var(--blue-tint, var(--primary-soft)));
+  color: var(--ds2-navy, var(--primary));
+}
+.ws-patients .fpill.active b {
+  color: var(--ds2-navy, var(--primary));
+}
+.ws-patients .fpill.active svg {
+  opacity: 1;
+}
+.ws-patients .right-tools {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ws-patients .dens-tog {
+  display: inline-flex;
+  background: var(--ds2-surface, var(--surface));
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 6px;
+  overflow: hidden;
+  height: 30px;
+}
+.ws-patients .dens-tog button {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-left: 1px solid var(--ds2-border, var(--border));
+  background: none;
+  display: grid;
+  place-items: center;
+  color: var(--ds2-ink-3, var(--ink-3));
+  cursor: pointer;
+  font-family: inherit;
+}
+.ws-patients .dens-tog button:first-child { border-left: none; }
+.ws-patients .dens-tog button.on {
+  background: var(--ds2-ink, var(--ink));
+  color: #fff;
+}
+
+/* ── Bulk action bar (sticky when rows selected) ─────────────────────────── */
+.ws-patients .bulkbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #0B1410;
+  color: #F2EFE8;
+  padding: 9px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+}
+.ws-patients .bulkbar .cnt { font-weight: 600; letter-spacing: -0.005em; }
+.ws-patients .bulkbar .cnt b {
+  color: #7DB5FF;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .bulkbar .sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.ws-patients .bulkbar .act {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border-radius: 5px;
+  color: #C7D0DD;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12.5px;
+}
+.ws-patients .bulkbar .act:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+.ws-patients .bulkbar .clear {
+  margin-left: auto;
+  color: #8B948E;
+  font-size: 12px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Split: table + detail rail ──────────────────────────────────────────── */
+.ws-patients .pat-split {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.ws-patients .pat-split.no-rail {
+  grid-template-columns: 1fr;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.ws-patients .ptbl {
+  background: var(--ds2-surface, var(--surface));
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ws-patients .ptbl-head {
+  display: grid;
+  grid-template-columns: 30px 1.7fr 140px 1.4fr 110px 95px 100px 28px;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 16px;
+  background: var(--ds2-surface-2, var(--surface-2));
+  border-bottom: 1px solid var(--ds2-border, var(--border));
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ds2-ink-3, var(--ink-3));
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.ws-patients .ptbl-head .sortable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.ws-patients .ptbl-head .sortable.on { color: var(--ds2-ink, var(--ink)); }
+.ws-patients .ptbl-body {
+  overflow: auto;
+  flex: 1;
+}
+.ws-patients .ptr {
+  display: grid;
+  grid-template-columns: 30px 1.7fr 140px 1.4fr 110px 95px 100px 28px;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 16px;
+  border-top: 1px solid var(--ds2-border-soft, var(--border-soft));
+  font-size: 13px;
+  cursor: pointer;
+  position: relative;
+  background: var(--ds2-surface, var(--surface));
+}
+.ws-patients .ptr:first-child { border-top: none; }
+.ws-patients .ptr:hover { background: var(--ds2-navy-chart-soft, var(--blue-tint, #EDF2FA)); }
+.ws-patients .ptr.preview {
+  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
+  box-shadow: inset 3px 0 0 var(--ds2-navy, var(--primary));
+}
+.ws-patients .ptr.preview:hover { background: var(--ds2-navy-chart-soft, #DCE5F5); }
+
+/* Checkbox custom */
+.ws-patients .ck {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--ds2-border-strong, var(--border-strong, #B0B6C2));
+  border-radius: 3px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 10px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.ws-patients .ck.on {
+  background: var(--ds2-ink, var(--ink));
+  border-color: var(--ds2-ink, var(--ink));
+}
+.ws-patients .ck.dash {
+  background: var(--ds2-ink, var(--ink));
+  border-color: var(--ds2-ink, var(--ink));
+  position: relative;
+}
+.ws-patients .ck.dash::after {
+  content: "";
+  width: 8px;
+  height: 2px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+/* Patient cell */
+.ws-patients .pcell-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.ws-patients .pcell-who .pav {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11.5px;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+.ws-patients .pcell-who .pav img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ws-patients .pcell-who .nm { min-width: 0; }
+.ws-patients .pcell-who .nm .n {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ds2-ink, var(--ink));
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.ws-patients .pcell-who .nm .s {
+  font-size: 11.5px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+}
+.ws-patients .pcell-who .nm .s .dossier {
+  font-family: var(--ds2-font-mono, var(--font-mono), monospace);
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+.ws-patients .pcell-who .nm .s .sep {
+  color: var(--ds2-ink-4, var(--ink-4));
+  opacity: 0.6;
+}
+.ws-patients .pcell-who .nm .n .flag {
+  font-size: 9.5px;
+  color: var(--ds2-coral, #C2553A);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  background: var(--ds2-coral-soft, #F8DDD2);
+  border-radius: 3px;
+}
+
+/* Cols */
+.ws-patients .col-mut { color: var(--ds2-ink-2, var(--ink-2)); font-size: 12.5px; }
+.ws-patients .col-dt {
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .col-tel {
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+}
+
+/* Tags */
+.ws-patients .ptag-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  min-width: 0;
+}
+.ws-patients .ptag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  min-height: 0;
+  max-height: 20px;
+  line-height: 20px;
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  min-width: 0;
+  flex-shrink: 1;
+}
+.ws-patients .ptag.dx       { background: var(--ds2-green-soft, #DEF0E6); color: #0A4630; }
+.ws-patients .ptag.allergy  { background: var(--ds2-coral-soft, #F8DDD2); color: #7A2A14; }
+.ws-patients .ptag.allergy::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  background: var(--ds2-coral, #C2553A);
+  border-radius: 50%;
+}
+.ws-patients .ptag.new      { background: var(--ds2-navy-chart-soft, #DCE5F5); color: var(--ds2-navy, #1E4DAB); }
+.ws-patients .ptag.preg     { background: #F3D9E8; color: #7A1A4F; }
+.ws-patients .ptag.peds     { background: #E0EEFF; color: #1E4DAB; }
+.ws-patients .ptag.amb      { background: #FBEFE3; color: #6E4A0A; }
+.ws-patients .ptag.more     { background: #EFEDE5; color: var(--ds2-ink-3, var(--ink-3)); }
+
+/* Status pills (overrides — use existing .pill classes if present) */
+.ws-patients .ppill {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+.ws-patients .ppill.consult { background: var(--ds2-navy, #1E4DAB); color: #fff; }
+.ws-patients .ppill.arrived { background: #DEF0E6; color: #2F8F6B; }
+.ws-patients .ppill.waiting { background: #FBEFE3; color: #9A6B12; }
+.ws-patients .ppill.done    { background: #F2F1EC; color: #6B6B6B; }
+
+.ws-patients .more-btn {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--ds2-ink-3, var(--ink-3));
+  border-radius: 5px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ws-patients .more-btn:hover {
+  background: #EFEDE5;
+  color: var(--ds2-ink, var(--ink));
+}
+
+/* Pagination */
+.ws-patients .pager {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--ds2-border, var(--border));
+  font-size: 12px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  background: var(--ds2-surface-2, var(--surface-2));
+  flex-shrink: 0;
+}
+.ws-patients .pager b {
+  color: var(--ds2-ink, var(--ink));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .pager .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-patients .pager .pg {
+  display: inline-flex;
+  background: #fff;
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ws-patients .pager .pg button {
+  min-width: 28px;
+  height: 28px;
+  border: none;
+  border-left: 1px solid var(--ds2-border, var(--border));
+  background: none;
+  display: grid;
+  place-items: center;
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 8px;
+}
+.ws-patients .pager .pg button:first-child { border-left: none; }
+.ws-patients .pager .pg button.on {
+  background: var(--ds2-ink, var(--ink));
+  color: #fff;
+}
+.ws-patients .pager .pg button:disabled { opacity: 0.4; cursor: not-allowed; }
+.ws-patients .pager select {
+  height: 26px;
+  border: 1px solid var(--ds2-border, var(--border));
+  background: #fff;
+  border-radius: 5px;
+  padding: 0 6px;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+/* ── Detail rail (right) ─────────────────────────────────────────────────── */
+.ws-patients .drail {
+  background: var(--ds2-surface, var(--surface));
+  border: 1px solid var(--ds2-border, var(--border));
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ws-patients .drail-h {
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid var(--ds2-border-soft, var(--border-soft));
+}
+.ws-patients .drail-h .pav {
+  width: 44px;
+  height: 44px;
+  font-size: 15px;
+  border-radius: 11px;
+  letter-spacing: -0.02em;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  background: var(--ds2-navy, var(--primary));
+  overflow: hidden;
+}
+.ws-patients .drail-h .pav img { width: 100%; height: 100%; object-fit: cover; }
+.ws-patients .drail-h .who { flex: 1; min-width: 0; }
+.ws-patients .drail-h .who .n {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: var(--ds2-ink, var(--ink));
+  line-height: 1.15;
+}
+.ws-patients .drail-h .who .s {
+  font-size: 11.5px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  margin-top: 3px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .drail-h .who .s b {
+  color: var(--ds2-ink-2, var(--ink-2));
+  font-weight: 600;
+}
+.ws-patients .drail-h .close-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ws-patients .drail-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
+  border-bottom: 1px solid var(--ds2-navy-soft, var(--blue-soft, #C8D7F0));
+  font-size: 11.5px;
+  color: var(--ds2-navy, var(--primary));
+  font-weight: 600;
+}
+.ws-patients .drail-stat .dot {
+  width: 6px;
+  height: 6px;
+  background: var(--ds2-navy, var(--primary));
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(30, 77, 171, 0.18);
+}
+.ws-patients .drail-stat .meta {
+  margin-left: auto;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.ws-patients .drail-body {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 16px 16px;
+}
+.ws-patients .drail-sec { margin-bottom: 18px; }
+.ws-patients .drail-sec:last-child { margin-bottom: 0; }
+.ws-patients .drail-sec-h {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ds2-ink-3, var(--ink-3));
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ws-patients .drail-sec-h .ln {
+  flex: 1;
+  height: 1px;
+  background: var(--ds2-border, var(--border));
+}
+.ws-patients .drail-sec-h .lnk {
+  font-size: 10.5px;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ds2-navy, var(--primary));
+  font-weight: 600;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Vitals snapshot 2x2 */
+.ws-patients .v-snap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.ws-patients .v-snap .cell {
+  background: #F4F7FC;
+  border: 1px solid var(--ds2-border-soft, var(--border-soft));
+  border-radius: 7px;
+  padding: 8px 10px;
+}
+.ws-patients .v-snap .cell.warn {
+  background: #FBEDE5;
+  border-color: var(--ds2-coral-soft, #F8DDD2);
+}
+.ws-patients .v-snap .cell .k {
+  font-size: 10px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.ws-patients .v-snap .cell .v {
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  margin-top: 2px;
+  color: var(--ds2-ink, var(--ink));
+}
+.ws-patients .v-snap .cell .v .u {
+  font-size: 10px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  font-weight: 500;
+  margin-left: 2px;
+}
+.ws-patients .v-snap .cell.warn .v { color: #7A2A14; }
+.ws-patients .v-snap .cell .ago {
+  font-size: 10px;
+  color: var(--ds2-ink-3, var(--ink-3));
+  margin-top: 1px;
+}
+
+/* Allergy strip */
+.ws-patients .all-strip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  background: #FBEDE5;
+  border: 1px solid var(--ds2-coral-soft, #F8DDD2);
+  border-radius: 7px;
+  font-size: 11.5px;
+  color: #5C1F0E;
+}
+.ws-patients .all-strip .ic {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--ds2-coral, #C2553A);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 11px;
+}
+.ws-patients .all-strip b { font-weight: 600; }
+
+/* Info rows (dossier) */
+.ws-patients .info-rows { display: flex; flex-direction: column; }
+.ws-patients .info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--ds2-border-soft, var(--border-soft));
+  font-size: 12px;
+}
+.ws-patients .info-row:last-child { border-bottom: none; }
+.ws-patients .info-row .k { color: var(--ds2-ink-3, var(--ink-3)); }
+.ws-patients .info-row .v {
+  color: var(--ds2-ink, var(--ink));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.ws-patients .info-row .v.mono {
+  font-family: var(--ds2-font-mono, var(--font-mono), monospace);
+  font-weight: 500;
+}
+
+/* Next appointment compact */
+.ws-patients .next-mini {
+  background: var(--ds2-navy, var(--primary));
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.ws-patients .next-mini .when-blk {
+  width: 38px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.ws-patients .next-mini .when-blk .d {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.ws-patients .next-mini .when-blk .m {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+}
+.ws-patients .next-mini .info { flex: 1; min-width: 0; }
+.ws-patients .next-mini .info b {
+  font-weight: 600;
+  font-size: 12.5px;
+  display: block;
+  letter-spacing: -0.005em;
+}
+.ws-patients .next-mini .info span {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  margin-top: 2px;
+  display: block;
+}
+.ws-patients .next-mini .arrow {
+  width: 24px;
+  height: 24px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.15);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Footer actions */
+.ws-patients .drail-foot {
+  padding: 12px 16px;
+  border-top: 1px solid var(--ds2-border, var(--border));
+  display: flex;
+  gap: 6px;
+  background: var(--ds2-surface-2, var(--surface-2));
+}
+.ws-patients .drail-foot button {
+  flex: 1;
+  height: 34px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--ds2-border, var(--border));
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds2-ink, var(--ink));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.ws-patients .drail-foot button.cta {
+  background: var(--ds2-navy, var(--primary));
+  border-color: var(--ds2-navy, var(--primary));
+  color: #fff;
+}
