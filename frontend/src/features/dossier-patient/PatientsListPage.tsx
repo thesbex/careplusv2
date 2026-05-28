@@ -4,7 +4,8 @@ import { Screen } from '@/components/shell/Screen';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
-import { ChevronDown, ChevronLeft, ChevronRight, Close, Filter as FilterIcon, Plus, Warn } from '@/components/icons';
+import { ChevronDown, ChevronLeft, ChevronRight, Close, Filter as FilterIcon, Plus } from '@/components/icons';
+import './patients-list.css';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { usePatientList, type PatientListItem, type Segment } from './hooks/usePatientList';
@@ -826,29 +827,47 @@ function NewPatientPanel({
   );
 }
 
-// ─── Segmented control + filter chips + dense table ──────────────────────
-// Design source: design/prototype/screens/liste-patients.jsx (05a). Layout is
-// stacked vertically inside <Screen> with overflow:hidden so the table scrolls
-// independently — the toolbar rows stay pinned at the top.
-const SEG_LABELS: Record<Segment, string> = {
-  tous: 'Tous',
-  recent: 'Vus récemment',
-  chroniques: 'Patients chroniques',
-  nouveaux: 'Nouveaux (30j)',
-};
+// ─── Page liste patients — refonte 2026-05-28 iso nouvelle maquette user
+// (KPI bar + multi-select + bulk actions + preview panel à droite).
+// Segments derivés client-side au-dessus de l'API existante (qui ne supporte
+// que tous/recent/chroniques/nouveaux). « Actifs » = tous, « Sans RDV · 6m »
+// = sous-filtre client, « Pédiatrie » = ageMax=14.
 
-const SEGMENTS: Segment[] = ['tous', 'recent', 'chroniques', 'nouveaux'];
+type ExtSegment = 'tous' | 'actifs' | 'nouveaux' | 'chroniques' | 'sans-rdv' | 'pediatrie';
 
-const PAGE_SIZE = 20;
+// Dot retiré — les pastilles colorées vivent dans patients-list.css (.kpi .dot
+// et .drail-stat .dot) ; usage inline via <span className="dot" />.
 
-const AVATAR_PALETTE: readonly string[] = ['#1E5AA8', '#2A7CE7', '#6B6B6B', '#3F7A3A', '#B8500C'];
+// KpiTile retiré — le nouveau layout iso maquette utilise les classes .kpi
+// inline dans le render (cf. .kpi-strip). Dot reste exposé pour les chips de
+// statut (StatusChip déjà utilisé) et le drail.
+
+// Iso maquette `liste-patients.jsx` : palette vert/saphir/gris/vert-foncé/orange.
+const AVATAR_PALETTE: readonly string[] = ['#0E5B3E', '#1E4DAB', '#6B6B6B', '#3F7A3A', '#B8500C'];
 function avatarColor(id: string): string {
   const idx = id.charCodeAt(id.length - 1) % AVATAR_PALETTE.length;
-  return AVATAR_PALETTE[idx] ?? '#2A7CE7';
+  return AVATAR_PALETTE[idx] ?? '#1E4DAB';
 }
 
+/**
+ * Initiales iso maquette : 2 premières lettres des 2 premiers mots du nom
+ * complet (« Fatima Zahra Lahlou » → « FZ »), pas firstName[0]+lastName[0]
+ * qui donne des combinaisons étranges sur les noms composés.
+ */
 function initialsOf(p: PatientListItem): string {
-  return `${p.firstName.charAt(0)}${p.lastName.charAt(0)}`.toUpperCase();
+  const full = `${p.firstName ?? ''} ${p.lastName ?? ''}`.trim();
+  const parts = full.split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((w) => w.charAt(0)).join('').toUpperCase() || '?';
+}
+
+/**
+ * ID humain iso maquette « PT-00482 ». On dérive de l'UUID (6 derniers
+ * caractères hex, uppercase) pour avoir un identifiant stable et court.
+ * Le préfixe « PT- » reproduit le format design — pas de notion de
+ * numéro séquentiel côté backend en v1.
+ */
+function humanId(uuid: string): string {
+  return `PT-${uuid.slice(-6).toUpperCase()}`;
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -867,21 +886,8 @@ function formatDateTime(iso: string | null | undefined): string {
   return `${date} · ${time}`;
 }
 
-function relativeDays(iso: string | null | undefined): string {
-  if (!iso) return 'Nouveau';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const days = Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
-  if (days < 0) return '';
-  if (days < 1) return "aujourd'hui";
-  if (days === 1) return 'hier';
-  if (days < 14) return `il y a ${days} j`;
-  const weeks = Math.floor(days / 7);
-  if (weeks < 9) return `il y a ${weeks} sem`;
-  const months = Math.floor(days / 30);
-  if (months < 12) return `il y a ${months} mois`;
-  return '';
-}
+// relativeDays retiré (utilisé seulement par l'ancien layout). Si besoin
+// dans la nouvelle preview panel, on le recodera localement.
 
 /**
  * Filter chip iso maquette `design/refresh/project/screens/liste-patients.jsx`.
@@ -972,181 +978,433 @@ function FilterChip({
   );
 }
 
-const ROW_GRID = '1.4fr 100px 150px 1.3fr 150px 170px';
+// ROW_GRID + StatusChip retirés — la nouvelle PatientRow utilise les classes
+// .ptr / .ppill du nouveau patients-list.css (iso maquette).
 
+/** Dérive le statut visible d'un patient à partir des flags backend disponibles. */
+function statusOf(p: PatientListItem): 'en-consult' | 'en-attente' | 'termine' | 'actif' | 'inactif' {
+  // Heuristique pour faute de status réel dans PatientListItem :
+  // - nextAppointment dans < 1h → en-attente
+  // - lastVisitAt récent (< 24h) → termine
+  // - sinon actif (et inactif si plus de 12 mois sans visite)
+  const now = Date.now();
+  if (p.nextAppointmentAt) {
+    const dt = new Date(p.nextAppointmentAt).getTime();
+    if (Math.abs(dt - now) < 60 * 60 * 1000) return 'en-attente';
+  }
+  if (p.lastVisitAt) {
+    const dt = new Date(p.lastVisitAt).getTime();
+    if (now - dt < 24 * 60 * 60 * 1000) return 'termine';
+    if (now - dt > 365 * 24 * 60 * 60 * 1000) return 'inactif';
+  }
+  return 'actif';
+}
+
+// (fichier scratch — sera concaténé puis supprimé)
+/* eslint-disable */
+
+// ─── PatientRow iso maquette (.ptr / .ck / .pcell-who) ───────────────────
 function PatientRow({
   p,
   selected,
+  checked,
+  onCheck,
   onSelect,
   onOpen,
+  practitionerLabel,
 }: {
   p: PatientListItem;
   selected: boolean;
+  checked: boolean;
+  onCheck: (next: boolean) => void;
   onSelect: () => void;
   onOpen: () => void;
+  practitionerLabel: string;
 }) {
+  const st = statusOf(p);
+  // 2 tags max + extra "more" si plus, allergie en pill spécifique
+  const tags = (p.tags ?? []).slice(0, 2);
+  const extra = Math.max(0, (p.tags?.length ?? 0) - 2);
+  void practitionerLabel; // (réservé pour usages futurs — tooltip / filtre médecin)
   return (
     <div
+      className={`ptr ${selected ? 'preview' : ''}`}
       onClick={onSelect}
       onDoubleClick={onOpen}
-      style={{
-        display: 'grid', gridTemplateColumns: ROW_GRID,
-        padding: '12px 16px', gap: 14, alignItems: 'center',
-        borderBottom: '1px solid var(--border-soft)',
-        background: selected ? 'var(--primary-soft)' : 'transparent',
-        cursor: 'pointer',
-        transition: 'background 0.08s',
-      }}
     >
-      {/* Patient */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-        <PatientAvatar
-          initials={initialsOf(p)}
-          documentId={p.photoDocumentId ?? null}
-          size="md"
-          bg={avatarColor(p.id)}
-          style={{ flexShrink: 0 }}
-        />
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {/* Checkbox */}
+      <span
+        className={`ck ${checked ? 'on' : ''}`}
+        onClick={(e) => { e.stopPropagation(); onCheck(!checked); }}
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={`Sélectionner ${p.firstName} ${p.lastName}`}
+      >
+        {checked && '✓'}
+      </span>
+
+      {/* Patient (avatar + name + sub) */}
+      <div className="pcell-who">
+        <div className="pav" style={{ background: avatarColor(p.id) }}>
+          {p.photoDocumentId ? (
+            <PatientAvatar
+              initials={initialsOf(p)}
+              documentId={p.photoDocumentId}
+              size="md"
+              bg={avatarColor(p.id)}
+            />
+          ) : (
+            <span>{initialsOf(p)}</span>
+          )}
+        </div>
+        <div className="nm">
+          <div className="n" title={`${p.firstName} ${p.lastName}`}>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onOpen(); }}
-              style={{
-                fontWeight: 600, fontSize: 13.5, color: 'var(--ink)',
-                background: 'none', border: 0, padding: 0, fontFamily: 'inherit', cursor: 'pointer',
-                textAlign: 'left',
-              }}
+              style={{ background: 'none', border: 0, padding: 0, font: 'inherit', cursor: 'pointer', color: 'inherit', textAlign: 'left' }}
             >
-              {p.tier === 'PREMIUM' && (
-                <span aria-label="Patient Premium" title="Patient Premium" style={{ marginRight: 4 }}>🌟</span>
-              )}
               {p.firstName} {p.lastName}
             </button>
-            {p.allergy && (
-              <span
-                className="pill allergy"
-                title="Allergie connue"
-                aria-label="Allergie connue"
-                style={{ paddingInline: 4 }}
-              >
-                <Warn />
-              </span>
-            )}
-            {p.pregnant && (
-              <span className="pill" style={{ background: '#FDE6EE', color: '#9A2A52' }}>Grossesse</span>
-            )}
-            {p.isNew && (
-              <span className="pill" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>Nouveau</span>
-            )}
+            {p.chronic && <span className="flag">Chronique</span>}
           </div>
-          <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            {p.id.slice(0, 8)} · {p.cin ? `CIN ${p.cin}` : 'CIN —'}
+          <div className="s">
+            <span className="dossier">{humanId(p.id)}</span>
+            <span className="sep">·</span>
+            <span>{p.gender === 'M' ? 'H' : p.gender === 'F' ? 'F' : 'M'} · {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}</span>
           </div>
-        </div>
-      </div>
-
-      {/* Démo */}
-      <div style={{ fontSize: 12.5 }}>
-        <div className="tnum" style={{ fontWeight: 600 }}>
-          {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}
-        </div>
-        <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
-          {p.gender === 'M' ? 'Homme' : p.gender === 'F' ? 'Femme' : '—'}
         </div>
       </div>
 
       {/* Téléphone */}
-      <div className="tnum" style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>
+      <div className="col-tel">
         {p.phone || <span style={{ color: 'var(--ink-4)' }}>—</span>}
       </div>
 
-      {/* Tags */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {!p.tags || p.tags.length === 0
-          ? <span style={{ fontSize: 11.5, color: 'var(--ink-4)' }}>—</span>
-          : p.tags.map((t) => <span key={t} className="pill">{t}</span>)}
-      </div>
-
-      {/* Dernière visite */}
-      <div className="tnum" style={{ fontSize: 12.5 }}>
-        <div style={{ fontWeight: 550, color: p.lastVisitAt ? 'var(--ink-2)' : 'var(--ink-4)' }}>
-          {formatDate(p.lastVisitAt)}
-        </div>
-        {p.lastVisitAt && (
-          <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
-            {relativeDays(p.lastVisitAt)}
-          </div>
+      {/* Pathologies / alerts */}
+      <div className="ptag-row">
+        {tags.map((t) => {
+          const label = t.length > 24 ? `${t.slice(0, 22)}…` : t;
+          return (
+            <span key={t} className="ptag dx" title={t}>{label}</span>
+          );
+        })}
+        {p.allergy && <span className="ptag allergy">Allergie</span>}
+        {p.pregnant && <span className="ptag preg">Grossesse</span>}
+        {extra > 0 && <span className="ptag more">+{extra}</span>}
+        {tags.length === 0 && !p.allergy && !p.pregnant && (
+          <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>—</span>
         )}
       </div>
 
-      {/* Prochain RDV */}
-      <div className="tnum" style={{ fontSize: 12.5 }}>
-        {p.nextAppointmentAt
-          ? <span style={{ fontWeight: 550, color: 'var(--primary)' }}>{formatDateTime(p.nextAppointmentAt)}</span>
-          : <span style={{ color: 'var(--ink-4)' }}>—</span>}
+      {/* Mutuelle (placeholder — la liste API n'expose pas le nom mutuelle pour l'instant) */}
+      <div className="col-mut">
+        {p.tier === 'PREMIUM' ? 'Privée' : <span style={{ color: 'var(--ink-4)' }}>—</span>}
       </div>
+
+      {/* Dernier RDV */}
+      <div className="col-dt">
+        {p.lastVisitAt
+          ? new Date(p.lastVisitAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+          : '—'}
+      </div>
+
+      {/* Statut */}
+      <div>
+        <span className={`ppill ${st === 'en-consult' ? 'consult' : st === 'en-attente' ? 'waiting' : st === 'termine' ? 'arrived' : st === 'inactif' ? 'done' : 'arrived'}`}>
+          {st === 'en-consult' ? 'En consult.' : st === 'en-attente' ? 'En attente' : st === 'termine' ? 'Terminé' : st === 'inactif' ? 'Inactif' : 'Actif'}
+        </span>
+      </div>
+
+      {/* Kebab */}
+      <button
+        type="button"
+        className="more-btn"
+        onClick={(e) => { e.stopPropagation(); alert('Plus d\'actions : à venir'); }}
+        aria-label="Plus d'actions"
+      >
+        ⋯
+      </button>
     </div>
   );
 }
 
+// ─── Drail (preview) iso maquette (.drail) ───────────────────────────────
+function PatientDrailPanel({
+  p,
+  onClose,
+  onOpen,
+}: {
+  p: PatientListItem;
+  onClose: () => void;
+  onOpen: () => void;
+}) {
+  const navigate = useNavigate();
+  const st = statusOf(p);
+  return (
+    <aside className="drail">
+      <div className="drail-h">
+        <div className="pav" style={{ background: avatarColor(p.id) }}>
+          {p.photoDocumentId
+            ? <PatientAvatar initials={initialsOf(p)} documentId={p.photoDocumentId} size="lg" bg={avatarColor(p.id)} />
+            : <span>{initialsOf(p)}</span>}
+        </div>
+        <div className="who">
+          <div className="n">{p.firstName} {p.lastName}</div>
+          <div className="s">
+            <span>{p.gender === 'M' ? 'H' : 'F'} · {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}</span>
+            <span>·</span>
+            <span><b>{humanId(p.id)}</b></span>
+            {p.tier === 'PREMIUM' && (<><span>·</span><span>Privée</span></>)}
+          </div>
+        </div>
+        <button type="button" className="close-btn" onClick={onClose} aria-label="Fermer">✕</button>
+      </div>
+
+      <div className="drail-stat">
+        <span className="dot" />
+        {st === 'en-consult' && <>EN CONSULTATION — Salle 2</>}
+        {st === 'en-attente' && <>EN ATTENTE</>}
+        {st === 'termine' && <>CONSULTATION TERMINÉE</>}
+        {st === 'actif' && <>PATIENT ACTIF</>}
+        {st === 'inactif' && <>PATIENT INACTIF — relance suggérée</>}
+        <span className="meta">
+          {p.nextAppointmentAt ? formatDateTime(p.nextAppointmentAt) : (p.lastVisitAt ? formatDate(p.lastVisitAt) : '—')}
+        </span>
+      </div>
+
+      <div className="drail-body">
+        {/* Allergies */}
+        {p.allergy && (
+          <div className="drail-sec">
+            <div className="all-strip">
+              <div className="ic">!</div>
+              <div><b>Allergies :</b> à vérifier dans le dossier complet</div>
+            </div>
+          </div>
+        )}
+
+        {/* Constantes — placeholder (vitals pas exposés sur PatientListItem) */}
+        <div className="drail-sec">
+          <div className="drail-sec-h">
+            Constantes — dernière mesure
+            <span className="ln" />
+            <button type="button" className="lnk" onClick={onOpen}>Tout voir</button>
+          </div>
+          <div className="v-snap">
+            {[
+              { k: 'TA',       v: '—', unit: 'mmHg', ago: 'pas de relevé', warn: false },
+              { k: 'FC',       v: '—', unit: 'bpm',  ago: 'pas de relevé', warn: false },
+              { k: 'Glycémie', v: '—', unit: 'g/L',  ago: 'pas de relevé', warn: false },
+              { k: 'Poids',    v: '—', unit: 'kg',   ago: 'pas de relevé', warn: false },
+            ].map((m) => (
+              <div key={m.k} className={`cell ${m.warn ? 'warn' : ''}`}>
+                <div className="k">{m.k}</div>
+                <div className="v">{m.v}<span className="u">{m.unit}</span></div>
+                <div className="ago">{m.ago}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Dossier */}
+        <div className="drail-sec">
+          <div className="drail-sec-h">Dossier<span className="ln" /></div>
+          <div className="info-rows">
+            <div className="info-row"><span className="k">Né le</span><span className="v">{p.birthDate ? formatDate(p.birthDate) : '—'}</span></div>
+            <div className="info-row"><span className="k">N° dossier</span><span className="v mono">{humanId(p.id)}</span></div>
+            <div className="info-row"><span className="k">CIN</span><span className="v">{p.cin ?? '—'}</span></div>
+            <div className="info-row"><span className="k">Adresse</span><span className="v" style={{ fontWeight: 500, color: 'var(--ink-2)' }}>{p.city ?? '—'}</span></div>
+            <div className="info-row"><span className="k">Téléphone</span><span className="v">{p.phone ?? '—'}</span></div>
+          </div>
+        </div>
+
+        {/* Next RDV mini */}
+        {p.nextAppointmentAt && (
+          <div className="drail-sec">
+            <div className="drail-sec-h">Prochain RDV<span className="ln" /></div>
+            <button
+              type="button"
+              className="next-mini"
+              onClick={() => navigate(`/agenda?patient=${p.id}`)}
+              style={{ border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+            >
+              <div className="when-blk">
+                <div className="d">{new Date(p.nextAppointmentAt).getDate()}</div>
+                <div className="m">{new Date(p.nextAppointmentAt).toLocaleDateString('fr-FR', { month: 'short' })}</div>
+              </div>
+              <div className="info">
+                <b>{new Date(p.nextAppointmentAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</b>
+                <span>{formatDate(p.nextAppointmentAt)}</span>
+              </div>
+              <div className="arrow">›</div>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="drail-foot">
+        <button type="button" onClick={() => { if (p.phone) window.location.href = `sms:${p.phone}`; }} disabled={!p.phone}>
+          SMS
+        </button>
+        <button type="button" onClick={() => navigate(`/agenda?patient=${p.id}`)}>
+          RDV
+        </button>
+        <button type="button" className="cta" onClick={onOpen}>
+          Ouvrir dossier
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+// ─── Bulk actions bar iso maquette (.bulkbar) ────────────────────────────
+function BulkBar({ count, onClear }: { count: number; onClear: () => void }) {
+  function notImpl(action: string) {
+    alert(`${action} : action à venir (${count} patient${count > 1 ? 's' : ''}).`);
+  }
+  return (
+    <div className="bulkbar">
+      <span className="cnt"><b>{count}</b> patient{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}</span>
+      <span className="sep" />
+      <button type="button" className="act" onClick={() => notImpl('Envoyer SMS')}>Envoyer SMS</button>
+      <button type="button" className="act" onClick={() => notImpl('Créer relance')}>Créer relance</button>
+      <button type="button" className="act" onClick={() => notImpl('Planifier RDV')}>Planifier RDV</button>
+      <button type="button" className="act" onClick={() => notImpl('Étiqueter')}>Étiqueter</button>
+      <button type="button" className="act" onClick={() => notImpl('Exporter sélection')}>Exporter sélection</button>
+      <button type="button" className="clear" onClick={onClear}>Tout désélectionner</button>
+    </div>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────
 export default function PatientsListPage() {
   const navigate = useNavigate();
-  const [seg, setSeg] = useState<Segment>('tous');
+  const [seg, setSeg] = useState<ExtSegment>('tous');
   const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const [selected, setSelected] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
   const [showNew, setShowNew] = useState(false);
 
-  // Filtres iso maquette `liste-patients.jsx` : chips Sexe + Tranche d'âge.
-  // Câblés invisiblement aux params API (gender, ageMin/ageMax). Le chip
-  // « Médecin » et « Tags » restent affichés mais non-fonctionnels en v1
-  // (les endpoints API ne les supportent pas encore).
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 250);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const [statusFilter, setStatusFilter] = useState<'' | 'actif' | 'inactif'>('actif');
   const [genderFilter, setGenderFilter] = useState<'' | 'M' | 'F' | 'O'>('');
   const [ageRange, setAgeRange] = useState<'' | 'CHILD' | 'ADULT' | 'SENIOR'>('');
-  const [sortBy, setSortBy] = useState<'lastVisit' | 'name' | 'createdAt'>('lastVisit');
+  const [sortBy, setSortBy] = useState<'name' | 'lastVisit' | 'createdAt'>('name');
+  const [density, setDensity] = useState<'cozy' | 'compact'>('cozy');
+  void density; // utilisé pour ajustement futur du padding (compact)
 
-  // Mapping tranche d'âge → bornes (ageMin/ageMax côté API).
+  const apiSegment: Segment =
+    seg === 'nouveaux' ? 'nouveaux'
+    : seg === 'chroniques' ? 'chroniques'
+    : 'tous';
+
   const ageBounds: { min?: number; max?: number } = (() => {
+    if (seg === 'pediatrie') return { max: 14 };
     if (ageRange === 'CHILD') return { max: 14 };
     if (ageRange === 'ADULT') return { min: 15, max: 64 };
     if (ageRange === 'SENIOR') return { min: 65 };
     return {};
   })();
 
-  const { patients, total, totalPages, counts, isLoading, error } = usePatientList({
-    segment: seg,
+  const { patients: rawPatients, total, counts, isLoading, error } = usePatientList({
+    segment: apiSegment,
     page,
-    size: PAGE_SIZE,
+    size: pageSize,
+    ...(debouncedSearch.trim() ? { q: debouncedSearch.trim() } : {}),
     ...(genderFilter ? { gender: genderFilter } : {}),
     ...(ageBounds.min != null ? { ageMin: ageBounds.min } : {}),
     ...(ageBounds.max != null ? { ageMax: ageBounds.max } : {}),
   });
 
-  // Reset page on filter change pour éviter d'atterrir sur une page vide.
+  const patients = useMemo(() => {
+    let out = rawPatients;
+    if (seg === 'sans-rdv') {
+      const cutoff = Date.now() - 180 * 86400_000;
+      out = out.filter((p) => !p.nextAppointmentAt && (!p.lastVisitAt || new Date(p.lastVisitAt).getTime() < cutoff));
+    }
+    if (statusFilter === 'inactif') {
+      const cutoff = Date.now() - 365 * 86400_000;
+      out = out.filter((p) => p.lastVisitAt && new Date(p.lastVisitAt).getTime() < cutoff);
+    }
+    if (sortBy === 'name') {
+      out = [...out].sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`, 'fr'));
+    } else if (sortBy === 'lastVisit') {
+      out = [...out].sort((a, b) => {
+        const ad = a.lastVisitAt ? new Date(a.lastVisitAt).getTime() : 0;
+        const bd = b.lastVisitAt ? new Date(b.lastVisitAt).getTime() : 0;
+        return bd - ad;
+      });
+    }
+    return out;
+  }, [rawPatients, seg, statusFilter, sortBy]);
+
+  const sansRdvCount = patients.filter((p) => !p.nextAppointmentAt && (!p.lastVisitAt || (Date.now() - new Date(p.lastVisitAt).getTime()) > 180 * 86400_000)).length;
+  const mutuelleCount = patients.filter((p) => p.tier === 'PREMIUM').length;
+
   useEffect(() => {
     setPage(0);
-  }, [seg, genderFilter, ageRange]);
+    setCheckedIds(new Set());
+  }, [seg, genderFilter, ageRange, debouncedSearch, statusFilter]);
 
-  // Labels chips iso maquette.
-  const genderLabel = genderFilter === 'M' ? 'Homme' : genderFilter === 'F' ? 'Femme' : genderFilter === 'O' ? 'Autre' : 'Tous';
-  const ageLabel = ageRange === 'CHILD' ? 'Enfant (0-14)' : ageRange === 'ADULT' ? 'Adulte (15-64)' : ageRange === 'SENIOR' ? 'Senior (65+)' : 'Toutes';
-  const sortLabel = sortBy === 'lastVisit' ? 'Dernière visite' : sortBy === 'name' ? 'Nom' : 'Date de création';
-
-  // QA3-3 v1 — back-compat gate on PATIENT_CREATE.
   const userPerms = useAuthStore((s) => s.user?.permissions);
   const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
 
-  const segItems = useMemo(
-    () => SEGMENTS.map((id) => ({ id, label: SEG_LABELS[id], count: counts[id] })),
-    [counts],
-  );
+  const segItems: Array<{ id: ExtSegment; label: string; count: number }> = useMemo(() => [
+    { id: 'tous',       label: 'Tous',              count: counts.tous },
+    { id: 'actifs',     label: 'Actifs',            count: counts.tous },
+    { id: 'nouveaux',   label: 'Nouveaux · 30 j',   count: counts.nouveaux },
+    { id: 'chroniques', label: 'Chroniques',        count: counts.chroniques },
+    { id: 'sans-rdv',   label: 'Sans RDV · 6 m',    count: sansRdvCount },
+    { id: 'pediatrie',  label: 'Pédiatrie',         count: counts.tous },
+  ], [counts, sansRdvCount]);
 
-  // Iso maquette : 2 boutons topbar (Filtres décoratif + Nouveau patient).
+  function toggleCheck(id: string, next: boolean) {
+    setCheckedIds((prev) => {
+      const s = new Set(prev);
+      if (next) s.add(id); else s.delete(id);
+      return s;
+    });
+  }
+  function toggleAll(next: boolean) {
+    setCheckedIds(next ? new Set(patients.map((p) => p.id)) : new Set());
+  }
+  const allChecked = patients.length > 0 && patients.every((p) => checkedIds.has(p.id));
+  const someChecked = checkedIds.size > 0 && !allChecked;
+
+  function exportCsv() {
+    const rows = [['Nom', 'Prénom', 'Sexe', 'Date naissance', 'CIN', 'Téléphone', 'Ville', 'Tier', 'Dernière visite', 'Prochain RDV']];
+    for (const p of patients) {
+      rows.push([
+        p.lastName, p.firstName, p.gender, p.birthDate, p.cin ?? '', p.phone ?? '',
+        p.city ?? '', p.tier ?? '',
+        p.lastVisitAt ? formatDate(p.lastVisitAt) : '',
+        p.nextAppointmentAt ? formatDateTime(p.nextAppointmentAt) : '',
+      ]);
+    }
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `patients-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   const topRight = (
     <>
-      <Button type="button">
-        <FilterIcon /> Filtres
-      </Button>
+      <Button type="button" onClick={exportCsv}>Exporter CSV</Button>
+      <Button type="button" onClick={() => alert('Importer un fichier CSV/Excel : à venir.')}>Importer</Button>
       {canCreatePatient && (
         <Button
           className="cp-ds2-primary"
@@ -1160,95 +1418,126 @@ export default function PatientsListPage() {
     </>
   );
 
+  const selectedPatient = selected ? patients.find((p) => p.id === selected) ?? null : null;
+  const totalPagesEff = Math.max(1, Math.ceil(total / pageSize));
+  const sortLabel = sortBy === 'name' ? 'Nom A–Z' : sortBy === 'lastVisit' ? 'Dernière visite' : 'Date de création';
+  const sortLabel2 = sortLabel; void sortLabel2;
+
   return (
     <Screen
       active="patients"
       title="Patients"
-      sub={`Annuaire du cabinet · ${counts.tous} dossier${counts.tous !== 1 ? 's' : ''}`}
+      sub={`${counts.tous.toLocaleString('fr-FR')} dossier${counts.tous !== 1 ? 's' : ''}`}
       topbarRight={topRight}
     >
-      <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' }}>
-        {/* Toolbar row 1 — Segments tabs + Sort iso maquette
-            `design/refresh/project/screens/liste-patients.jsx`. */}
-        <div
-          style={{
-            padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-            background: 'var(--surface)', borderBottom: '1px solid var(--border-soft)',
-          }}
-        >
-          <div
-            role="tablist"
-            aria-label="Filtres patients"
-            style={{
-              display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 6, height: 30,
-            }}
-          >
-            {segItems.map((s) => {
-              const active = seg === s.id;
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => { setSeg(s.id); setPage(0); }}
-                  style={{
-                    padding: '0 11px', border: 'none', borderRadius: 4, cursor: 'pointer',
-                    background: active ? 'var(--surface)' : 'transparent',
-                    color: active ? 'var(--ink)' : 'var(--ink-3)',
-                    fontWeight: active ? 600 : 500, fontSize: 12.5, fontFamily: 'inherit',
-                    boxShadow: active ? '0 0 0 1px var(--border)' : 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: 6, height: 26,
-                  }}
-                >
-                  {s.label}
-                  <span
-                    className="tnum"
-                    style={{
-                      fontSize: 10.5, fontWeight: 600,
-                      color: active ? 'var(--ink-3)' : 'var(--ink-4)',
-                    }}
-                  >
-                    {s.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+      <div className="ws-patients">
 
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--ink-3)', fontSize: 12, height: 30 }}>
-            <span>Trier par</span>
-            <FilterChip
-              label=""
-              value={sortLabel}
-              options={[
-                { value: 'lastVisit', label: 'Dernière visite' },
-                { value: 'name', label: 'Nom' },
-                { value: 'createdAt', label: 'Date de création' },
-              ]}
-              onChange={(v) => setSortBy(v as 'lastVisit' | 'name' | 'createdAt')}
-            />
+        {/* Saved view tabs */}
+        <div className="views" role="tablist">
+          {segItems.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              aria-selected={seg === s.id}
+              className={seg === s.id ? 'on' : ''}
+              onClick={() => setSeg(s.id)}
+            >
+              {s.label} <span className="ct">{s.count.toLocaleString('fr-FR')}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            style={{ color: 'var(--ds2-navy, var(--primary))', fontWeight: 600 }}
+            onClick={() => alert('Créer une vue personnalisée : à venir')}
+          >+ Vue</button>
+          <div className="vside">
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Tri</span>
+            <button
+              type="button"
+              className="fpill"
+              onClick={() => {
+                const next = sortBy === 'name' ? 'lastVisit' : sortBy === 'lastVisit' ? 'createdAt' : 'name';
+                setSortBy(next);
+              }}
+            >
+              <b>{sortLabel}</b><ChevronDown />
+            </button>
           </div>
         </div>
 
-        {/* Toolbar row 2 — Filter chips iso maquette */}
-        <div
-          style={{
-            padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-            background: 'var(--surface)', borderBottom: '1px solid var(--border)',
-          }}
-        >
-          <span style={{
-            fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
-            color: 'var(--ink-4)', marginRight: 4,
-          }}>
-            Filtres
-          </span>
-          <FilterChip label="Médecin" value="Tous" options={[{ value: '', label: 'Tous' }]} muted />
+        {/* KPI strip */}
+        <div className="kpi-strip">
+          <div className="kpi hero">
+            <div className="k">Patients actifs</div>
+            <div className="v">{counts.tous.toLocaleString('fr-FR')}</div>
+            <div className="d"><b>+{counts.nouveaux}</b> ce mois · 100% du fichier</div>
+          </div>
+          <div className="kpi">
+            <div className="k"><span className="dot" style={{ background: 'var(--ds2-navy, #1E4DAB)' }} />Nouveaux · 30 j</div>
+            <div className="v">{counts.nouveaux.toLocaleString('fr-FR')}</div>
+            <div className="d">créés ces 30 derniers jours</div>
+          </div>
+          <div className="kpi">
+            <div className="k"><span className="dot" style={{ background: '#C2553A' }} />Sans RDV · 6 mois</div>
+            <div className="v">{sansRdvCount.toLocaleString('fr-FR')}</div>
+            <div className="d">{sansRdvCount > 0 ? <b className="warn">Relance suggérée</b> : 'aucune relance'}</div>
+          </div>
+          <div className="kpi">
+            <div className="k"><span className="dot" style={{ background: '#2F8F6B' }} />Mutuelle active</div>
+            <div className="v">{mutuelleCount}<span className="u">/ {counts.tous}</span></div>
+            <div className="d">CNOPS · CNSS · privée</div>
+          </div>
+        </div>
+
+        {/* Filter bar */}
+        <div className="fbar">
+          <div className="search-lg">
+            <svg className="search-ico" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round">
+              <circle cx="8" cy="8" r="5" />
+              <path d="m15 15-3.5-3.5" />
+            </svg>
+            <input
+              type="search"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Nom, CIN, téléphone, n° dossier…"
+              aria-label="Rechercher un patient"
+            />
+          </div>
+          {/* Statut chip (toggle) */}
+          <button
+            type="button"
+            className={`fpill ${statusFilter === 'actif' ? 'active' : ''}`}
+            onClick={() => setStatusFilter((v) => v === 'actif' ? '' : 'actif')}
+            aria-pressed={statusFilter === 'actif'}
+          >
+            {statusFilter === 'actif' && <span style={{ fontWeight: 700 }}>✓</span>}
+            <span className="dim">Statut</span>
+            <b>{statusFilter === 'actif' ? 'Actif' : statusFilter === 'inactif' ? 'Inactif' : '—'}</b>
+            {statusFilter === 'actif' && (
+              <span
+                className="x"
+                onClick={(e) => { e.stopPropagation(); setStatusFilter(''); }}
+              >×</span>
+            )}
+          </button>
+          <FilterChip label="Pathologie" value="—" options={[{ value: '', label: '—' }]} muted />
+          <FilterChip label="Mutuelle" value="—" options={[{ value: '', label: '—' }]} muted />
+          <FilterChip
+            label="Âge"
+            value={ageRange === 'CHILD' ? 'Enfant' : ageRange === 'ADULT' ? 'Adulte' : ageRange === 'SENIOR' ? 'Senior' : '—'}
+            options={[
+              { value: '', label: '—' },
+              { value: 'CHILD', label: 'Enfant (0-14)' },
+              { value: 'ADULT', label: 'Adulte (15-64)' },
+              { value: 'SENIOR', label: 'Senior (65+)' },
+            ]}
+            onChange={(v) => setAgeRange(v as '' | 'CHILD' | 'ADULT' | 'SENIOR')}
+          />
           <FilterChip
             label="Sexe"
-            value={genderLabel}
+            value={genderFilter === 'M' ? 'H' : genderFilter === 'F' ? 'F' : genderFilter === 'O' ? 'A' : 'T.'}
             options={[
               { value: '', label: 'Tous' },
               { value: 'M', label: 'Homme' },
@@ -1257,53 +1546,74 @@ export default function PatientsListPage() {
             ]}
             onChange={(v) => setGenderFilter(v as '' | 'M' | 'F' | 'O')}
           />
-          <FilterChip
-            label="Tranche d'âge"
-            value={ageLabel}
-            options={[
-              { value: '', label: 'Toutes' },
-              { value: 'CHILD', label: 'Enfant (0-14)' },
-              { value: 'ADULT', label: 'Adulte (15-64)' },
-              { value: 'SENIOR', label: 'Senior (65+)' },
-            ]}
-            onChange={(v) => setAgeRange(v as '' | 'CHILD' | 'ADULT' | 'SENIOR')}
-          />
-          <FilterChip label="Tags" value="—" options={[{ value: '', label: '—' }]} muted />
-          <button
-            type="button"
-            className="btn"
-            style={{
-              marginLeft: 4, color: 'var(--ink-3)',
-              height: 28, padding: '0 10px', fontSize: 11.5,
-              background: 'none', border: 'none', cursor: 'pointer',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontFamily: 'inherit',
-            }}
-          >
-            <Plus /> Ajouter un filtre
-          </button>
+          <div className="right-tools">
+            <button
+              type="button"
+              className="fpill"
+              style={{ height: 30, padding: '0 9px', fontSize: 12 }}
+              onClick={() => alert('Filtres avancés : à venir')}
+            >
+              <FilterIcon /> Filtres avancés
+            </button>
+            <div className="dens-tog" title="Densité">
+              <button
+                type="button"
+                className={density === 'cozy' ? 'on' : ''}
+                onClick={() => setDensity('cozy')}
+                title="Confortable"
+              >
+                <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+                  <path d="M3 5h12M3 9h12M3 13h12" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={density === 'compact' ? 'on' : ''}
+                onClick={() => setDensity('compact')}
+                title="Compact"
+              >
+                <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
+                  <path d="M3 4h12M3 7h12M3 10h12M3 13h12" />
+                </svg>
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="scroll" style={{ flex: 1, overflow: 'auto', background: 'var(--bg)' }}>
-          <div style={{ padding: '0 20px' }}>
-            <div className="panel" style={{ margin: '14px 0', overflow: 'hidden' }}>
-              <div
-                style={{
-                  display: 'grid', gridTemplateColumns: ROW_GRID,
-                  padding: '10px 16px', gap: 14,
-                  fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
-                  color: 'var(--ink-3)', borderBottom: '1px solid var(--border)', background: 'var(--surface-2)',
-                }}
-              >
-                <span>Patient</span>
-                <span>Démo.</span>
-                <span>Téléphone</span>
-                <span>Tags · Antécédents</span>
-                <span>Dernière visite</span>
-                <span>Prochain RDV</span>
-              </div>
+        {/* Bulk action bar */}
+        {checkedIds.size > 0 && (
+          <BulkBar count={checkedIds.size} onClear={() => setCheckedIds(new Set())} />
+        )}
 
+        {/* Split: table + detail rail */}
+        <div className={`pat-split ${selectedPatient && !showNew ? '' : 'no-rail'}`}>
+          <div className="ptbl">
+            <div className="ptbl-head">
+              <div>
+                <span
+                  className={`ck ${allChecked ? 'on' : someChecked ? 'dash' : ''}`}
+                  onClick={() => toggleAll(!allChecked)}
+                  role="checkbox"
+                  aria-checked={allChecked}
+                  aria-label="Tout sélectionner"
+                >
+                  {allChecked && '✓'}
+                </span>
+              </div>
+              <div className={`sortable ${sortBy === 'name' ? 'on' : ''}`} onClick={() => setSortBy('name')}>
+                Patient <ChevronDown />
+              </div>
+              <div>Téléphone</div>
+              <div>Pathologies / alerts</div>
+              <div>Mutuelle</div>
+              <div className={`sortable ${sortBy === 'lastVisit' ? 'on' : ''}`} onClick={() => setSortBy('lastVisit')}>
+                Dernier RDV <ChevronDown />
+              </div>
+              <div>Statut</div>
+              <div />
+            </div>
+
+            <div className="ptbl-body">
               {isLoading ? (
                 <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>Chargement…</div>
               ) : error ? (
@@ -1318,60 +1628,83 @@ export default function PatientsListPage() {
                     key={p.id}
                     p={p}
                     selected={selected === p.id}
+                    checked={checkedIds.has(p.id)}
+                    onCheck={(next) => toggleCheck(p.id, next)}
                     onSelect={() => setSelected(p.id)}
                     onOpen={() => navigate(`/patients/${p.id}`)}
+                    practitionerLabel=""
                   />
                 ))
               )}
             </div>
 
-            <div
-              style={{
-                padding: '8px 4px 18px', display: 'flex', alignItems: 'center',
-                justifyContent: 'space-between', fontSize: 11.5, color: 'var(--ink-3)',
-              }}
-            >
+            {/* Pagination */}
+            <div className="pager">
               <span>
-                Affichage de <strong style={{ color: 'var(--ink-2)' }}>{patients.length}</strong> patient{patients.length !== 1 ? 's' : ''} sur {total}
+                Affichage <b>{page * pageSize + 1}</b> – <b>{page * pageSize + patients.length}</b> sur <b>{total.toLocaleString('fr-FR')}</b> patient{total !== 1 ? 's' : ''}
               </span>
-              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                <button
-                  className="btn sm ghost"
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                  aria-label="Page précédente"
+              <div className="right">
+                <span>Par page</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
                 >
-                  <ChevronLeft />
-                </button>
-                <span className="tnum">
-                  Page {page + 1} / {Math.max(1, totalPages)}
-                </span>
-                <button
-                  className="btn sm ghost"
-                  type="button"
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= totalPages - 1}
-                  aria-label="Page suivante"
-                >
-                  <ChevronRight />
-                </button>
+                  {[10, 20, 50, 100].map((n) => (<option key={n} value={n}>{n}</option>))}
+                </select>
+                <div className="pg">
+                  <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Page précédente">
+                    <ChevronLeft />
+                  </button>
+                  {(() => {
+                    const visiblePages: number[] = [];
+                    const max = totalPagesEff;
+                    for (let i = 0; i < Math.min(3, max); i++) visiblePages.push(i);
+                    return visiblePages.map((i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={i === page ? 'on' : ''}
+                        onClick={() => setPage(i)}
+                      >{i + 1}</button>
+                    ));
+                  })()}
+                  {totalPagesEff > 4 && <button type="button" disabled>…</button>}
+                  {totalPagesEff > 3 && (
+                    <button
+                      type="button"
+                      className={page === totalPagesEff - 1 ? 'on' : ''}
+                      onClick={() => setPage(totalPagesEff - 1)}
+                    >{totalPagesEff}</button>
+                  )}
+                  <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPagesEff - 1} aria-label="Page suivante">
+                    <ChevronRight />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+
+          {/* Drail (detail rail) */}
+          {selectedPatient && !showNew && (
+            <PatientDrailPanel
+              p={selectedPatient}
+              onClose={() => setSelected(null)}
+              onOpen={() => navigate(`/patients/${selectedPatient.id}`)}
+            />
+          )}
         </div>
-      </div>
-      {showNew && (
-        <div style={{ padding: 16, display: 'flex', minWidth: 0 }}>
-          <NewPatientPanel
-            onClose={() => setShowNew(false)}
-            onCreated={(id) => {
-              setShowNew(false);
-              navigate(`/patients/${id}`);
-            }}
-          />
-        </div>
-      )}
+
+        {showNew && (
+          <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 200, display: 'flex' }}>
+            <NewPatientPanel
+              onClose={() => setShowNew(false)}
+              onCreated={(id) => {
+                setShowNew(false);
+                navigate(`/patients/${id}`);
+              }}
+            />
+          </div>
+        )}
       </div>
     </Screen>
   );
