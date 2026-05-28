@@ -744,15 +744,35 @@ select.ag-filter-select:hover:not(:disabled) {
 .ag-arrivals-h, .ag-arrivals-f { border-color: var(--ds2-border); background: var(--ds2-surface); }
 .ag-arrival-card { background: var(--ds2-surface); border: 1px solid var(--ds2-border); border-radius: var(--ds2-radius-sm); }
 
-/* Mois — aujourd'hui saphir, intensité saphir */
-.ag-month-head { border-bottom: 1px solid var(--ds2-border); }
+/* ─── Mois — iso maquette refresh (user request 2026-05-28) ──────────────
+ * Maquette : weekend bg warm-grey distinct, blank cells visibly dimmed,
+ * today saphir gradient. Adapté à la palette DS2 (cool blue tones) tout en
+ * gardant la HIÉRARCHIE visuelle de la maquette : real cell > weekend >
+ * blank. Avant : tout était quasi-blanc, on perdait la lecture du mois.
+ */
+.ag-month-head { border-bottom: 1px solid var(--ds2-border); background: var(--ds2-surface-2); }
 .ag-month-head-cell { border-left: 1px solid var(--ds2-border); color: var(--ds2-ink-3); }
-.ag-month-cell { border-left: 1px solid var(--ds2-border); border-bottom: 1px solid var(--ds2-border); background: var(--ds2-surface); }
-.ag-month-cell:hover { background: var(--ds2-surface-2); }
-.ag-month-cell.weekend { background: #fbfcfe; }
-.ag-month-cell.today { background: linear-gradient(180deg, var(--ds2-navy-soft), transparent 60%); }
-.ag-month-cell.today .ag-month-date { color: var(--ds2-navy); }
-.ag-month-blank { background: var(--ds2-surface-2); }
+.ag-month-cell {
+  border-left: 1px solid var(--ds2-border);
+  border-bottom: 1px solid var(--ds2-border);
+  background: var(--ds2-surface);
+}
+.ag-month-cell:hover { background: var(--ds2-navy-soft); }
+.ag-month-cell.weekend {
+  /* Cool-tone weekend, distinct du jour ouvré sans dominer. */
+  background: #EEF2F8;
+}
+.ag-month-cell.weekend .ag-month-date { color: var(--ds2-ink-3); }
+.ag-month-cell.today {
+  background: linear-gradient(180deg, var(--ds2-navy-soft), transparent 60%);
+}
+.ag-month-cell.today .ag-month-date { color: var(--ds2-navy); font-weight: 700; }
+.ag-month-blank {
+  /* Cellule hors-mois : franchement dimmed pour ne pas être confondue
+     avec un jour à 0 RDV. */
+  background: var(--ds2-bg);
+  border-bottom-color: var(--ds2-border);
+}
 .ag-month-date { color: var(--ds2-ink); }
 .ag-month-count { color: var(--ds2-ink-2); }
 .ag-month-bar { background: var(--ds2-navy-chart-soft); }
