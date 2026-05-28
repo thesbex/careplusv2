@@ -40,6 +40,26 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
     .slice(0, 4)
     .map(([iso, n]) => ({ iso, label: labelByDay.get(iso) ?? iso, n }));
 
+  // KPI cards : on calcule ce qu'on peut depuis les RDV du mois — plus de
+  // placeholders "—" sur des métriques dérivables. Iso maquette user 2026-05-28.
+  // Total RDV  : déjà calculé (appointments.length).
+  // Nouveaux   : patient dont le premier RDV de l'année tombe dans ce mois.
+  //              Approximé ici par "patient distinct n'ayant qu'un RDV ce mois"
+  //              — vraie première-visite nécessiterait un round-trip patients.
+  const uniquePatients = new Set(appointments.map((a) => a.patientId)).size;
+  // Annulations : statuts ANNULE / NO_SHOW.
+  const cancelled = appointments.filter(
+    (a) => a.status === 'ANNULE' || a.status === 'NO_SHOW',
+  ).length;
+  // Taux de remplissage : ratio RDV créés vs créneaux théoriques (heuristique
+  // 30 min × 8 h × 5 j ouvrés × N médecins). Sans liste médecins ici on
+  // approxime à 1 médecin → 80 créneaux/semaine.
+  const weeksInMonth = 4;
+  const theoreticalSlots = 80 * weeksInMonth;
+  const fillRate = theoreticalSlots > 0
+    ? Math.min(100, Math.round((total / theoreticalSlots) * 100))
+    : 0;
+
   function exportCsv() {
     const rows = [
       ['date', 'heure', 'patient', 'motif', 'statut'],
@@ -71,9 +91,23 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
 
   const stats = [
     { l: 'Total RDV', v: total > 0 ? String(total) : '—', d: 'sur le mois affiché' },
-    { l: 'Taux de remplissage', v: '—', d: 'connecté à venir' },
-    { l: 'Nouveaux patients', v: '—', d: 'connecté à venir' },
-    { l: 'Annulations', v: '—', d: 'connecté à venir' },
+    {
+      l: 'Taux de remplissage',
+      v: total > 0 ? `${fillRate} %` : '—',
+      d: 'base 80 créneaux/semaine',
+    },
+    {
+      l: 'Patients distincts',
+      v: uniquePatients > 0 ? String(uniquePatients) : '—',
+      d: total > 0 ? `${Math.round((uniquePatients / total) * 100)} % du volume` : '—',
+    },
+    {
+      l: 'Annulations',
+      v: String(cancelled),
+      d: total > 0
+        ? `${((cancelled / total) * 100).toFixed(1)} % — ${cancelled === 0 ? 'aucune' : cancelled < total * 0.05 ? 'bas' : 'élevé'}`
+        : 'aucune',
+    },
   ];
 
   // Sidebar header per maquette : month name capitalized, no year.
