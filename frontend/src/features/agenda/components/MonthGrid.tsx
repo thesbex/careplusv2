@@ -1,17 +1,42 @@
 /**
  * MonthGrid — month view of the agenda.
  *
- * Re-aligned with design-handoff-v2 / `screens/agenda.jsx::AgendaMois` :
- * each cell shows the day number + a "{count} RDV" line + a thin progress
- * bar at the bottom (intensity = count). The original "two appointment
- * pills + +N autres" rendering was rejected as off-design (chat2 user
- * feedback "agenda mois looks ugly + n'est pas iso maquette").
+ * Refonte 2026-05-28 (user image "TJRS PAS ISO") :
+ * - chaque cellule rend désormais le n° du jour + jusqu'à 3 LOZANGES RDV
+ *   (event-block style Google Calendar) colorés selon le statut, + "+N autres"
+ *   si la journée en compte plus.
+ * - le rendu "count + intensity bar" précédent était trop pauvre — la
+ *   maquette envoyée par l'utilisateur impose des event lozenges.
  *
- * The grid renders 5 or 6 weeks dynamically — exactly as many rows as the
- * month + leading/trailing blanks need, no more.
+ * La grille rend 5 ou 6 semaines dynamiquement.
  */
 import type { AppointmentApi } from '../hooks/useAppointments';
 import type { Leave } from '@/features/parametres/types';
+
+const STATUS_TO_COLOR: Record<string, string> = {
+  PLANIFIE: '#1E4DAB',
+  CONFIRME: '#1E4DAB',
+  ARRIVE: '#2F8F6B',
+  EN_ATTENTE_CONSTANTES: '#2F8F6B',
+  CONSTANTES_PRISES: '#C68A2E',
+  EN_CONSULTATION: '#1E4DAB',
+  TERMINE: '#9B9B9B',
+  CLOS: '#9B9B9B',
+  ANNULE: '#C2553A',
+  NO_SHOW: '#C2553A',
+};
+const STATUS_TO_BG: Record<string, string> = {
+  PLANIFIE: '#DCE5F5',
+  CONFIRME: '#DCE5F5',
+  ARRIVE: '#DEF0E6',
+  EN_ATTENTE_CONSTANTES: '#DEF0E6',
+  CONSTANTES_PRISES: '#FBEFE3',
+  EN_CONSULTATION: '#1E4DAB',
+  TERMINE: '#F2F1EC',
+  CLOS: '#F2F1EC',
+  ANNULE: '#F8DDD2',
+  NO_SHOW: '#F8DDD2',
+};
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 
@@ -68,11 +93,18 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
     });
   }
 
-  // Index appointments by day ISO for quick lookup.
-  const byDay = new Map<string, number>();
+  // Index appointments by day ISO for quick lookup (full list, not just count).
+  const byDay = new Map<string, AppointmentApi[]>();
   for (const a of appointments) {
     const k = aptIso(a);
-    byDay.set(k, (byDay.get(k) ?? 0) + 1);
+    const arr = byDay.get(k) ?? [];
+    arr.push(a);
+    byDay.set(k, arr);
+  }
+  // Tri par heure dans chaque jour pour que les lozenges du matin apparaissent
+  // en premier (lecture chronologique).
+  for (const arr of byDay.values()) {
+    arr.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   }
 
   return (
@@ -89,7 +121,8 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
           if (cell.outside) {
             return <div key={cell.iso} className="ag-month-cell ag-month-blank" aria-hidden="true" />;
           }
-          const count = byDay.get(cell.iso) ?? 0;
+          const dayApts = byDay.get(cell.iso) ?? [];
+          const count = dayApts.length;
           const onLeave = isLeaveDay(cell.iso, leaves);
           const isToday = cell.iso === todayIso;
           const cls = [
@@ -100,6 +133,10 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
           ]
             .filter(Boolean)
             .join(' ');
+          // Max 3 lozenges visibles + « +N autres » (iso maquette user 2026-05-28).
+          const MAX_VISIBLE = 3;
+          const visible = dayApts.slice(0, MAX_VISIBLE);
+          const overflow = Math.max(0, count - MAX_VISIBLE);
           return (
             <button
               key={cell.iso}
@@ -112,12 +149,40 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
               <span className="ag-month-date tnum">{cell.day}</span>
               {onLeave && <span className="ag-month-leave-tag">Congé</span>}
               {count > 0 && (
-                <>
-                  <span className="ag-month-count tnum">{count} RDV</span>
-                  <span className="ag-month-bar" aria-hidden="true">
-                    <span style={{ width: `${Math.min(100, count * 8)}%` }} />
-                  </span>
-                </>
+                <div className="ag-month-events">
+                  {visible.map((a) => {
+                    const bg = STATUS_TO_BG[a.status] ?? '#DCE5F5';
+                    const border = STATUS_TO_COLOR[a.status] ?? '#1E4DAB';
+                    const isFilled = a.status === 'EN_CONSULTATION';
+                    const d = new Date(a.startAt);
+                    const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+                    const name = a.patientFullName ?? '—';
+                    // Patient compacté : « Y. Lehoul » (initiale + nom).
+                    const compact = (() => {
+                      const parts = name.trim().split(/\s+/);
+                      if (parts.length < 2) return name;
+                      return `${parts[0]!.charAt(0)}. ${parts.slice(1).join(' ')}`;
+                    })();
+                    return (
+                      <span
+                        key={a.id}
+                        className="ag-month-event"
+                        style={{
+                          background: isFilled ? border : bg,
+                          color: isFilled ? '#fff' : border,
+                          borderLeft: `3px solid ${border}`,
+                        }}
+                        title={`${time} · ${name}${a.reasonLabel ? ` · ${a.reasonLabel}` : ''}`}
+                      >
+                        <span className="ag-month-event-time tnum">{time}</span>
+                        <span className="ag-month-event-name">{compact}</span>
+                      </span>
+                    );
+                  })}
+                  {overflow > 0 && (
+                    <span className="ag-month-overflow tnum">+{overflow} autres</span>
+                  )}
+                </div>
               )}
             </button>
           );
