@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Input';
 import { Close, Plus, Trash, Eye } from '@/components/icons';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -415,7 +416,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                     }}
                   />
                   <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Mode</label>
-                  <select
+                  <Select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
                     style={{
@@ -433,7 +434,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                         {l}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Référence (optionnel)</label>
                   <input
                     value={paymentRef}

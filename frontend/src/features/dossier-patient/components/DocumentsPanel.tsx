@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { File, Trash } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
+import { Select } from '@/components/ui/Input';
 import {
   usePatientDocuments,
   downloadDocument,
@@ -140,7 +141,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
         >
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             {!filter && (
-              <select
+              <Select
                 value={pendingType}
                 onChange={(e) => setPendingType(e.target.value as DocumentType)}
                 aria-label="Type de document"
@@ -153,7 +154,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
                 {ALL_TYPES.map((t) => (
                   <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
                 ))}
-              </select>
+              </Select>
             )}
             <input
               type="text"

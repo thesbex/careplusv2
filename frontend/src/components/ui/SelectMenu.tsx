@@ -29,6 +29,7 @@ export interface SelectMenuProps {
   required?: boolean;
   ariaLabel?: string;
   width?: number | string;
+  style?: React.CSSProperties;
 }
 
 export const SelectMenu = forwardRef<HTMLButtonElement, SelectMenuProps>(function SelectMenu(
@@ -44,6 +45,7 @@ export const SelectMenu = forwardRef<HTMLButtonElement, SelectMenuProps>(functio
     placeholder,
     ariaLabel,
     width,
+    style,
   },
   ref,
 ) {
@@ -199,7 +201,7 @@ export const SelectMenu = forwardRef<HTMLButtonElement, SelectMenuProps>(functio
         aria-controls={open ? listId : undefined}
         aria-label={ariaLabel}
         data-empty={!selectedLabel ? '' : undefined}
-        style={width !== undefined ? { width } : undefined}
+        style={{ ...(width !== undefined ? { width } : null), ...(style || null) }}
       >
         <span className="selm-val">{selectedLabel || ' '}</span>
         <svg className="selm-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">

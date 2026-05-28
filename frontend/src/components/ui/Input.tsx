@@ -29,7 +29,7 @@ function extractOptions(children: ReactNode): SelectMenuOption[] {
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement>>(
-  function Select({ className, children, value, defaultValue, onChange, name, id, disabled, required, 'aria-label': ariaLabel, ...rest }, _ref) {
+  function Select({ className, children, value, defaultValue, onChange, name, id, disabled, required, style, 'aria-label': ariaLabel, ...rest }, _ref) {
     void _ref;
     void rest;
     const options = extractOptions(children);
@@ -45,6 +45,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
         {...(required ? { required: true } : {})}
         {...(ariaLabel ? { ariaLabel } : {})}
         {...(className ? { className } : {})}
+        {...(style ? { style } : {})}
       />
     );
   },

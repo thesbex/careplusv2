@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus, Trash } from '@/components/icons';
 import {
   useConsentTemplates,
@@ -231,7 +232,7 @@ export function ConsentTemplatesTab() {
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'auto' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                 <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Type *</span>
-                <select
+                <Select
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as ConsentType })}
                   style={{
@@ -243,7 +244,7 @@ export function ConsentTemplatesTab() {
                   {CONSENT_TYPE_ORDER.map((c) => (
                     <option key={c} value={c}>{CONSENT_TYPE_LABELS[c]}</option>
                   ))}
-                </select>
+                </Select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                 <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Titre *</span>

@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Drawer } from 'vaul';
+import { Select } from '@/components/ui/Input';
 import { useVaccinationCatalog } from '../hooks/useVaccinationCatalog';
 import { useRecordDose } from '../hooks/useRecordDose';
 import { useUpdateDose } from '../hooks/useUpdateDose';
@@ -307,14 +308,14 @@ export function RecordDoseDrawerMobile({
               >
                 <div>
                   <MLbl>Vaccin</MLbl>
-                  <select {...recordForm.register('vaccineId')} style={selectStyle}>
+                  <Select {...recordForm.register('vaccineId')} style={selectStyle}>
                     <option value="">Sélectionner un vaccin…</option>
                     {catalog.filter((v) => v.active).map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.nameFr} ({v.code})
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {recordForm.formState.errors.vaccineId && (
                     <div style={{ fontSize: 13, color: 'var(--danger)', marginTop: 4 }}>
                       {recordForm.formState.errors.vaccineId.message}
@@ -353,12 +354,12 @@ export function RecordDoseDrawerMobile({
 
                 <div>
                   <MLbl>Voie d&apos;administration</MLbl>
-                  <select {...recordForm.register('route')} style={selectStyle}>
+                  <Select {...recordForm.register('route')} style={selectStyle}>
                     <option value="">—</option>
                     {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>
@@ -472,12 +473,12 @@ export function RecordDoseDrawerMobile({
 
                 <div>
                   <MLbl>Voie d&apos;administration</MLbl>
-                  <select {...editForm.register('route')} style={selectStyle}>
+                  <Select {...editForm.register('route')} style={selectStyle}>
                     <option value="">—</option>
                     {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
                       <option key={k} value={k}>{v}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
 
                 <div>

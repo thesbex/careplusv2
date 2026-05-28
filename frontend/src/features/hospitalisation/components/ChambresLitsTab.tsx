@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
@@ -197,12 +197,12 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
           >
             <Field>
               <FieldLabel htmlFor="room-ward">Service *</FieldLabel>
-              <select id="room-ward" aria-label="Service" value={wardId} onChange={(e) => setWardId(e.target.value)} style={SELECT_STYLE}>
+              <Select id="room-ward" aria-label="Service" value={wardId} onChange={(e) => setWardId(e.target.value)} style={SELECT_STYLE}>
                 <option value="">— Choisir —</option>
                 {activeWards.map((w) => (
                   <option key={w.id} value={w.id}>{w.labelFr}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="room-code">Code *</FieldLabel>
@@ -214,11 +214,11 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
             </Field>
             <Field>
               <FieldLabel htmlFor="room-class">Classe</FieldLabel>
-              <select id="room-class" aria-label="Classe" value={roomClass} onChange={(e) => setRoomClass(e.target.value as RoomClass)} style={SELECT_STYLE}>
+              <Select id="room-class" aria-label="Classe" value={roomClass} onChange={(e) => setRoomClass(e.target.value as RoomClass)} style={SELECT_STYLE}>
                 {ROOM_CLASSES.map((c) => (
                   <option key={c} value={c}>{ROOM_CLASS_LABELS[c]}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="room-rate">Prix/jour (MAD)</FieldLabel>
@@ -314,12 +314,12 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
           >
             <Field>
               <FieldLabel htmlFor="bed-room">Chambre *</FieldLabel>
-              <select id="bed-room" aria-label="Chambre" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={SELECT_STYLE}>
+              <Select id="bed-room" aria-label="Chambre" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={SELECT_STYLE}>
                 <option value="">— Choisir —</option>
                 {activeRooms.map((r) => (
                   <option key={r.id} value={r.id}>{r.labelFr}</option>
                 ))}
-              </select>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="bed-code">Code lit *</FieldLabel>
@@ -353,7 +353,7 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
                   {BED_STATUS_LABELS[b.status]}
                 </span>
               ) : (
-                <select
+                <Select
                   aria-label={`Statut du lit ${b.code}`}
                   value={b.status}
                   onChange={(e) => void handleStatus(b.id, e.target.value as ManualBedStatus)}
@@ -362,7 +362,7 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
                   {MANUAL_STATUSES.map((s) => (
                     <option key={s} value={s}>{BED_STATUS_LABELS[s]}</option>
                   ))}
-                </select>
+                </Select>
               )}
               {!b.active && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Inactif</span>}
               {canManage && b.active && (
@@ -466,7 +466,7 @@ function DayRuleSection({ canManage }: { canManage: boolean }) {
           Détermine comment les nuits sont comptées sur la facture de séjour. « Nuits » compte les
           nuits passées ; « Jours entamés » compte le jour d'entrée ET de sortie (usage clinique fréquent).
         </div>
-        <select
+        <Select
           aria-label="Règle de comptage des journées"
           value={stayBillingDayRule}
           disabled={!canManage || isPending}
@@ -475,7 +475,7 @@ function DayRuleSection({ canManage }: { canManage: boolean }) {
         >
           <option value="NUITS">Nuits (par défaut)</option>
           <option value="JOURS_ENTAMES">Jours entamés (entrée + sortie)</option>
-        </select>
+        </Select>
       </div>
     </Panel>
   );

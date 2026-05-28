@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Field, FieldLabel } from '@/components/ui/Field';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Edit, Trash } from '@/components/icons';
@@ -194,7 +194,7 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
 
           <Field>
             <FieldLabel htmlFor="vac-route">Voie par défaut</FieldLabel>
-            <select
+            <Select
               id="vac-route"
               {...register('routeDefault')}
               style={{
@@ -211,7 +211,7 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
               {Object.entries(ROUTE_LABELS).map(([k, v]) => (
                 <option key={k} value={k}>{v}</option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -393,7 +393,7 @@ function ScheduleDoseFormDrawer({
         >
           <Field>
             <FieldLabel htmlFor="sd-vaccine">Vaccin *</FieldLabel>
-            <select
+            <Select
               id="sd-vaccine"
               {...register('vaccineId')}
               style={{
@@ -413,7 +413,7 @@ function ScheduleDoseFormDrawer({
                   {v.nameFr} ({v.code})
                 </option>
               ))}
-            </select>
+            </Select>
             {errors.vaccineId && (
               <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
                 {errors.vaccineId.message}

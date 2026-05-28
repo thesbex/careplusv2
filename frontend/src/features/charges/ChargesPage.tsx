@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus, Trash, Invoice as InvoiceIcon } from '@/components/icons';
 import {
   useExpenses,
@@ -329,7 +330,7 @@ export default function ChargesPage() {
         <Panel style={{ padding: '12px 16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, alignItems: 'end' }}>
             <FilterField label="Catégorie">
-              <select
+              <Select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
                 aria-label="Filtrer par catégorie"
@@ -339,10 +340,10 @@ export default function ChargesPage() {
                 {CATEGORY_ORDER.map((c) => (
                   <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                 ))}
-              </select>
+              </Select>
             </FilterField>
             <FilterField label="Périodicité">
-              <select
+              <Select
                 value={periodicityFilter}
                 onChange={(e) => setPeriodicityFilter(e.target.value as ExpensePeriodicity | '')}
                 aria-label="Filtrer par périodicité"
@@ -352,7 +353,7 @@ export default function ChargesPage() {
                 {PERIODICITY_ORDER.map((p) => (
                   <option key={p} value={p}>{PERIODICITY_LABELS[p]}</option>
                 ))}
-              </select>
+              </Select>
             </FilterField>
             <FilterField label="Date du">
               <input
@@ -705,7 +706,7 @@ function SelectField({
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
       <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{label}</span>
-      <select
+      <Select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{
@@ -717,7 +718,7 @@ function SelectField({
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
-      </select>
+      </Select>
     </label>
   );
 }

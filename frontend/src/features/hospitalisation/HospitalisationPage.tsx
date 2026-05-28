@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus } from '@/components/icons';
 import { AdmissionForm, StayDetailPanel } from './components/StayPanels';
 import { useStayQueue, type StayQueueEntry } from './hooks/useStays';
@@ -268,7 +269,7 @@ export default function HospitalisationPage() {
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Service
               </span>
-              <select
+              <Select
                 value={wardFilter}
                 onChange={(e) => setWardFilter(e.target.value)}
                 aria-label="Filtrer par service"
@@ -282,7 +283,7 @@ export default function HospitalisationPage() {
                 {wards.map((w) => (
                   <option key={w.wardId} value={w.wardLabel}>{w.wardLabel}</option>
                 ))}
-              </select>
+              </Select>
             </label>
             {hasActiveFilter && (
               <button

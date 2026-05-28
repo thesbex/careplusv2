@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
+import { Select } from '@/components/ui/Input';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda: '/agenda',
@@ -177,7 +178,7 @@ export default function StockArticlesPageMobile() {
         />
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
+          <Select
             value={supplierFilter}
             onChange={(e) => { setSupplierFilter(e.target.value); setPage(0); }}
             aria-label="Filtrer par fournisseur"
@@ -197,7 +198,7 @@ export default function StockArticlesPageMobile() {
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
+          </Select>
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}>
             <input
               type="checkbox"

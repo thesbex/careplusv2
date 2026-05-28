@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Trash } from '@/components/icons';
 import {
@@ -193,7 +193,7 @@ function CabinetTab() {
         )}
         <Field>
           <FieldLabel htmlFor="cab-type">Type d'établissement *</FieldLabel>
-          <select
+          <Select
             id="cab-type"
             aria-label="Type d'établissement"
             value={form.establishmentType ?? 'CABINET'}
@@ -212,7 +212,7 @@ function CabinetTab() {
             {ESTABLISHMENT_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field>
           <FieldLabel htmlFor="cab-name">Nom *</FieldLabel>
@@ -509,7 +509,7 @@ function CongesTab() {
         {showPractitionerSelector && (
           <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
             <FieldLabel htmlFor="leave-practitioner" style={{ marginBottom: 0 }}>Médecin</FieldLabel>
-            <select
+            <Select
               id="leave-practitioner"
               aria-label="Sélectionner le médecin"
               value={practitionerId}
@@ -531,7 +531,7 @@ function CongesTab() {
                   {p.specialty ? ` — ${p.specialty}` : ''}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         )}
         <form onSubmit={(e) => { void handleSubmit(e); }}>

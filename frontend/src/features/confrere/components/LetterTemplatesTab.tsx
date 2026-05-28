@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { Plus, Trash } from '@/components/icons';
 import {
   useLetterTemplates,
@@ -261,7 +262,7 @@ export function LetterTemplatesTab() {
                   seulement par lui. */}
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                 <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Portée</span>
-                <select
+                <Select
                   value={form.ownerUserId}
                   onChange={(e) => setForm({ ...form, ownerUserId: e.target.value })}
                   style={{
@@ -276,7 +277,7 @@ export function LetterTemplatesTab() {
                       Dr {p.lastName} {p.firstName}{p.specialty ? ` · ${p.specialty}` : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>
                   Modèle privé : visible uniquement par le médecin choisi (et par les admins).
                 </span>

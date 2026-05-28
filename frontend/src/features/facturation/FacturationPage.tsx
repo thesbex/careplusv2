@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
+import { Select } from '@/components/ui/Input';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
@@ -182,7 +183,7 @@ export default function FacturationPage() {
                 }}
               >
                 Médecin
-                <select
+                <Select
                   aria-label="Filtrer par médecin"
                   value={filters.medecinId ?? 'ALL'}
                   onChange={(e) =>
@@ -205,7 +206,7 @@ export default function FacturationPage() {
                       {p.specialty ? ` — ${p.specialty}` : ''}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
             )}
             <AdvancedFiltersPopover filters={filters} onChange={setFilters} />

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Search } from '@/components/icons';
+import { Select } from '@/components/ui/Input';
 import { api } from '@/lib/api/client';
 
 interface LabTest {
@@ -91,7 +92,7 @@ export default function LabCatalogueMobilePage() {
           />
         </label>
 
-        <select
+        <Select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
           className="m-input"
@@ -104,7 +105,7 @@ export default function LabCatalogueMobilePage() {
               {c}
             </option>
           ))}
-        </select>
+        </Select>
 
         <div className="m-card">
           {isLoading ? (

@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Search } from '@/components/icons';
+import { Select } from '@/components/ui/Input';
 import { api } from '@/lib/api/client';
 
 interface Medication {
@@ -94,7 +95,7 @@ export default function CatalogueMobilePage() {
         </label>
 
         {/* Tag filter */}
-        <select
+        <Select
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
           className="m-input"
@@ -107,7 +108,7 @@ export default function CatalogueMobilePage() {
               {t}
             </option>
           ))}
-        </select>
+        </Select>
 
         {/* List */}
         <div className="m-card">

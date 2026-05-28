@@ -196,19 +196,15 @@ function AntecedentRow({
       display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface)',
     }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        <select
+        <Select
           value={entry.type}
           onChange={(e) => onChange(index, { ...entry, type: e.target.value as AntecedentType })}
-          style={{
-            flex: 1, height: 32, border: '1px solid var(--border)', borderRadius: 6,
-            padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit',
-            background: 'var(--surface)', color: 'var(--ink)',
-          }}
+          style={{ flex: 1 }}
         >
           {ANTECEDENT_TYPES.map((t) => (
             <option key={t} value={t}>{ANTECEDENT_TYPE_LABELS[t]}</option>
           ))}
-        </select>
+        </Select>
         <button
           type="button"
           onClick={() => onRemove(index)}
@@ -516,15 +512,15 @@ function NewPatientPanel({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><Lbl>Sexe</Lbl>
-              <select
+              <Select
                 value={form.gender}
                 onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
-                style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+                style={{ width: '100%' }}
               >
                 <option value="M">Homme</option>
                 <option value="F">Femme</option>
                 <option value="O">Autre</option>
-              </select>
+              </Select>
             </div>
             <div><Lbl>Date de naissance *</Lbl>
               <Input
@@ -630,10 +626,10 @@ function NewPatientPanel({
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
               <div>
                 <Lbl>Compagnie</Lbl>
-                <select
+                <Select
                   value={form.mutuelleInsuranceId}
                   onChange={(e) => set('mutuelleInsuranceId', e.target.value)}
-                  style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+                  style={{ width: '100%' }}
                 >
                   <option value="">— Sélectionner —</option>
                   {insurances.map((ins) => (
@@ -641,7 +637,7 @@ function NewPatientPanel({
                       {ins.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <Lbl>N° de police</Lbl>
@@ -658,16 +654,16 @@ function NewPatientPanel({
         {/* ── Onglet Médical ─────────────────────────────────────────────── */}
         <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
           <div><Lbl>Groupe sanguin</Lbl>
-            <select
+            <Select
               value={form.bloodGroup}
               onChange={(e) => set('bloodGroup', e.target.value)}
-              style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
+              style={{ width: '100%' }}
             >
               <option value="">—</option>
               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => (
                 <option key={g} value={g}>{g}</option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* Divider */}
@@ -731,20 +727,15 @@ function NewPatientPanel({
               }}
             >
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <select
+                <Select
                   value={pendingDocType}
                   onChange={(e) => setPendingDocType(e.target.value as DocumentType)}
                   aria-label="Type de document"
-                  style={{
-                    height: 32, fontSize: 12.5, fontFamily: 'inherit',
-                    border: '1px solid var(--border)', borderRadius: 6,
-                    padding: '0 8px', background: 'var(--surface)',
-                  }}
                 >
                   {DOC_TYPES.map((t) => (
                     <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
                   ))}
-                </select>
+                </Select>
                 <DocumentUploadButton
                   accept={DOC_ACCEPT}
                   uploadLabel="Ajouter un fichier"

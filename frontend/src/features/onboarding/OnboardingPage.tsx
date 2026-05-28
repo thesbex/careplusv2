@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Panel } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
 import { Check, ChevronLeft, ChevronRight } from '@/components/icons';
@@ -662,7 +662,7 @@ function CabinetStep({
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
           <Field>
             <FieldLabel>Forme juridique</FieldLabel>
-            <select
+            <Select
               value={clinic.legalForm ?? ''}
               onChange={(e) => setField('legalForm', e.target.value)}
               style={{
@@ -682,7 +682,7 @@ function CabinetStep({
                   {opt}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
           <Field>
             <FieldLabel>Téléphone *</FieldLabel>
@@ -1339,7 +1339,7 @@ function EquipeStep({
           </Field>
           <Field>
             <FieldLabel>Rôle</FieldLabel>
-            <select
+            <Select
               value={draft.role}
               onChange={(e) => setDraft({ ...draft, role: e.target.value as InvitedUser['role'] })}
               style={{ height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)' }}
@@ -1348,7 +1348,7 @@ function EquipeStep({
               <option value="ASSISTANT">Assistant(e)</option>
               <option value="MEDECIN">Médecin</option>
               <option value="ADMIN">Administrateur</option>
-            </select>
+            </Select>
           </Field>
         </Grid2>
         <Button onClick={onAdd} disabled={isPending}>

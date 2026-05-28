@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Input, Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { useVaccinationCatalog } from '../hooks/useVaccinationCatalog';
 import { useRecordDose } from '../hooks/useRecordDose';
@@ -271,7 +271,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
               >
                 Vaccin
               </label>
-              <select
+              <Select
                 id="rd-vaccineId"
                 {...recordForm.register('vaccineId')}
                 style={{
@@ -292,7 +292,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                     {v.nameFr} ({v.code})
                   </option>
                 ))}
-              </select>
+              </Select>
               {recordForm.formState.errors.vaccineId && (
                 <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
                   {recordForm.formState.errors.vaccineId.message}
@@ -365,7 +365,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
               >
                 Voie d&apos;administration
               </label>
-              <select
+              <Select
                 id="rd-route"
                 {...recordForm.register('route')}
                 style={{
@@ -386,7 +386,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                     {v}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div>
@@ -526,7 +526,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
               >
                 Voie d&apos;administration
               </label>
-              <select
+              <Select
                 id="ed-route"
                 {...editForm.register('route')}
                 style={{
@@ -547,7 +547,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                     {v}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div>

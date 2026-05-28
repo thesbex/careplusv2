@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Close, Plus } from '@/components/icons';
@@ -342,7 +342,7 @@ function EditPatientPanel({
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div><Lbl>Sexe</Lbl>
-              <select
+              <Select
                 value={form.gender}
                 onChange={(e) => setField('gender', e.target.value as 'M' | 'F' | 'O')}
                 style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
@@ -350,7 +350,7 @@ function EditPatientPanel({
                 <option value="M">Homme</option>
                 <option value="F">Femme</option>
                 <option value="O">Autre</option>
-              </select>
+              </Select>
             </div>
             <div><Lbl>Date de naissance</Lbl>
               <Input type="date" value={form.birthDate} onChange={(e) => setField('birthDate', e.target.value)} />
@@ -424,7 +424,7 @@ function EditPatientPanel({
             <>
               <div>
                 <Lbl>Organisme</Lbl>
-                <select
+                <Select
                   value={form.mutuelleInsuranceId}
                   onChange={(e) => setField('mutuelleInsuranceId', e.target.value)}
                   style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
@@ -433,7 +433,7 @@ function EditPatientPanel({
                   {insurances.map((ins) => (
                     <option key={ins.id} value={ins.id}>{ins.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <Lbl>Numéro de police</Lbl>
@@ -450,14 +450,14 @@ function EditPatientPanel({
         {/* ── Onglet Médical ─────────────────────────────────────────────── */}
         <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
           <div><Lbl>Groupe sanguin</Lbl>
-            <select
+            <Select
               value={form.bloodGroup}
               onChange={(e) => setField('bloodGroup', e.target.value)}
               style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
             >
               <option value="">—</option>
               {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((g) => <option key={g} value={g}>{g}</option>)}
-            </select>
+            </Select>
           </div>
 
           {/* ── Divider ───────────────────────────────────────────────── */}
@@ -543,13 +543,13 @@ function EditPatientPanel({
             {form.newAntecedents.map((a, i) => (
               <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--surface)' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <select
+                  <Select
                     value={a.type}
                     onChange={(e) => updateNewAntecedent(i, { ...a, type: e.target.value as AntecedentType })}
                     style={{ flex: 1, height: 32, border: '1px solid var(--border)', borderRadius: 6, padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
                   >
                     {ANTECEDENT_TYPES.map((t) => <option key={t} value={t}>{ANTECEDENT_TYPE_LABELS[t]}</option>)}
-                  </select>
+                  </Select>
                   <RemoveBtn onClick={() => removeNewAntecedent(i)} />
                 </div>
                 <Textarea

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
+import { Select } from '@/components/ui/Input';
 import {
   useExpenses,
   useExpenseSummary,
@@ -180,7 +181,7 @@ export default function ChargesMobilePage() {
         </div>
 
         {/* Filtre catégorie */}
-        <select
+        <Select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
           className="m-input"
@@ -191,7 +192,7 @@ export default function ChargesMobilePage() {
           {CATEGORY_ORDER.map((c) => (
             <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
           ))}
-        </select>
+        </Select>
 
         {/* Liste */}
         <div className="m-card">
@@ -267,7 +268,7 @@ export default function ChargesMobilePage() {
             </div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
               <MField label="Catégorie *">
-                <select
+                <Select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value as ExpenseCategory })}
                   className="m-input"
@@ -275,7 +276,7 @@ export default function ChargesMobilePage() {
                   {CATEGORY_ORDER.map((c) => (
                     <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
                   ))}
-                </select>
+                </Select>
               </MField>
               <MField label="Libellé *">
                 <input
@@ -305,7 +306,7 @@ export default function ChargesMobilePage() {
                 />
               </MField>
               <MField label="Périodicité *">
-                <select
+                <Select
                   value={form.periodicity}
                   onChange={(e) => setForm({ ...form, periodicity: e.target.value as ExpensePeriodicity })}
                   className="m-input"
@@ -313,7 +314,7 @@ export default function ChargesMobilePage() {
                   {PERIODICITY_ORDER.map((p) => (
                     <option key={p} value={p}>{PERIODICITY_LABELS[p]}</option>
                   ))}
-                </select>
+                </Select>
               </MField>
               <MField label="Fournisseur">
                 <input
