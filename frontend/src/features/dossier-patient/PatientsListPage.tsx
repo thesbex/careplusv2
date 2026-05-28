@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
-import { Input, Textarea } from '@/components/ui/Input';
+import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { ChevronDown, ChevronLeft, ChevronRight, Close, Filter as FilterIcon, Plus } from '@/components/icons';
@@ -1645,12 +1645,13 @@ export default function PatientsListPage() {
               </span>
               <div className="right">
                 <span>Par page</span>
-                <select
-                  value={pageSize}
+                <Select
+                  value={String(pageSize)}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
+                  aria-label="Patients par page"
                 >
                   {[10, 20, 50, 100].map((n) => (<option key={n} value={n}>{n}</option>))}
-                </select>
+                </Select>
                 <div className="pg">
                   <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Page précédente">
                     <ChevronLeft />
