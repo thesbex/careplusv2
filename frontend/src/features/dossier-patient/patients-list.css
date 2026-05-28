@@ -54,12 +54,12 @@
   border-radius: 2px;
 }
 .ws-patients .views button .ct {
-  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
-  color: var(--ds2-ink-3, var(--ink-3));
+  background: var(--ds2-navy, var(--primary, #1E4DAB));
+  color: #fff;
   font-size: 10.5px;
-  padding: 1px 6px;
+  padding: 1px 7px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
 }
@@ -87,6 +87,11 @@
   border: 1px solid var(--ds2-border, var(--border));
   border-radius: 10px;
   padding: 13px 16px;
+  position: relative;
+}
+.ws-patients .kpi.hero {
+  border-top: 3px solid var(--ds2-navy, var(--primary, #1E4DAB));
+  padding-top: 11px;
 }
 .ws-patients .kpi .k {
   font-size: 11.5px;
