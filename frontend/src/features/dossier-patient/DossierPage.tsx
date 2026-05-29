@@ -22,7 +22,8 @@ import { useStartConsultation } from '@/features/salle-attente/hooks/useStartCon
 import { useConsultations } from '@/features/consultation/hooks/useConsultations';
 import { usePrescriptionsForPatient } from '@/features/prescription/hooks/usePrescriptions';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
-import { useInvoicesForPatient } from '@/features/facturation/hooks/useInvoices';
+import { useInvoicesForPatient, useInvoice } from '@/features/facturation/hooks/useInvoices';
+import { InvoiceDrawer } from '@/features/facturation/InvoiceDrawer';
 import { STATUS_LABEL as INVOICE_STATUS_LABEL } from '@/features/facturation/types';
 import { PatientHeader, AllergyStrip } from './components/PatientHeader';
 import { DossierTabs, DossierTabPanel } from './components/DossierTabs';
@@ -610,6 +611,9 @@ export default function DossierPage() {
   const [showEdit, setShowEdit] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
+  // R — onglet Facturation : ouvrir la facture cliquée dans un drawer (zoom)
+  // au lieu de rediriger vers la liste /facturation (qui perdait le contexte).
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
   // QA3-3 v1 — backward-compat: allow when permissions absent.
   const userPerms = useAuthStore((s) => s.user?.permissions);
@@ -622,6 +626,7 @@ export default function DossierPage() {
   );
   const { prescriptions: patientPrescriptions } = usePrescriptionsForPatient(raw?.id);
   const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
+  const { invoice: selectedInvoice } = useInvoice(selectedInvoiceId ?? undefined);
   const { counts: tabCounts } = useTabCounts(raw?.id);
   const { settings: clinicSettings } = useClinicSettings();
 
@@ -952,7 +957,7 @@ export default function DossierPage() {
                       <button
                         key={inv.id}
                         type="button"
-                        onClick={() => navigate('/facturation')}
+                        onClick={() => setSelectedInvoiceId(inv.id)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1019,6 +1024,14 @@ export default function DossierPage() {
           open={showConsent}
           onOpenChange={setShowConsent}
           patientId={raw.id}
+        />
+
+        <InvoiceDrawer
+          invoice={selectedInvoice}
+          open={!!selectedInvoiceId}
+          onOpenChange={(o) => {
+            if (!o) setSelectedInvoiceId(null);
+          }}
         />
       </div>
     </Screen>
