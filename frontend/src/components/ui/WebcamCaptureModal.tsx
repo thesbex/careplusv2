@@ -52,6 +52,13 @@ export function WebcamCaptureModal({
   const [error, setError] = useState<CameraError | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
+  // Flux acquis, branché au <video> par un effet dédié (cf. plus bas). On NE
+  // branche PAS srcObject directement dans le callback getUserMedia : le <video>
+  // est démonté tant qu'une erreur s'affiche, donc sur le chemin « Réessayer » le
+  // flux arrivait avant le remontage du <video> → srcObject jamais posé → bouton
+  // « Capturer » bloqué désactivé. Passer par un state garantit le branchement
+  // une fois le <video> monté.
+  const [stream, setStream] = useState<MediaStream | null>(null);
   // Bumper pour forcer un retry — re-run l'effet d'attachement caméra.
   const [retryNonce, setRetryNonce] = useState(0);
 
@@ -60,6 +67,7 @@ export function WebcamCaptureModal({
     let cancelled = false;
     setError(null);
     setReady(false);
+    setStream(null);
 
     if (!window.isSecureContext) {
       setError({
@@ -98,22 +106,9 @@ export function WebcamCaptureModal({
         return;
       }
       streamRef.current = stream;
-      if (videoRef.current) {
-        const v = videoRef.current;
-        v.srcObject = stream;
-        v.onloadedmetadata = () => setReady(true);
-        // Certains browsers (Chrome avec autoplay-policy strict, ou webcams
-        // USB qui mettent du temps) ne déclenchent pas autoplay → ready reste
-        // false → le bouton Capturer reste désactivé. On force play() et on
-        // arme un timeout de sécurité qui passe ready=true au bout de 3 s.
-        const playPromise = v.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-          playPromise.catch(() => { /* play() autoplay block — fallback below */ });
-        }
-        setTimeout(() => {
-          if (!cancelled && v.videoWidth > 0) setReady(true);
-        }, 3000);
-      }
+      // Le branchement au <video> se fait dans l'effet dédié [stream] (le <video>
+      // peut ne pas encore être monté ici, ex. après « Réessayer »).
+      setStream(stream);
     }
 
     function reportError(err: unknown, hasVideoDevice: boolean | null) {
@@ -226,6 +221,27 @@ export function WebcamCaptureModal({
       setReady(false);
     };
   }, [open, maxWidth, retryNonce]);
+
+  // Branche le flux acquis au <video> dès qu'il est monté (après que l'erreur ait
+  // disparu). Indépendant de l'effet d'acquisition pour éviter la course
+  // « flux prêt avant montage du <video> » (chemin Réessayer).
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!stream || !v) return;
+    v.srcObject = stream;
+    v.onloadedmetadata = () => setReady(true);
+    // Certains navigateurs (autoplay strict, webcams USB lentes) ne déclenchent
+    // pas autoplay → ready resterait false. On force play() et on arme un
+    // filet de sécurité à 3 s qui passe ready=true si une frame est arrivée.
+    const playPromise = v.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => { /* autoplay bloqué — fallback timeout ci-dessous */ });
+    }
+    const id = setTimeout(() => {
+      if (v.videoWidth > 0) setReady(true);
+    }, 3000);
+    return () => clearTimeout(id);
+  }, [stream]);
 
   async function handleCapture() {
     const video = videoRef.current;
