@@ -14,4 +14,7 @@ public interface BedRepository extends JpaRepository<Bed, UUID> {
     boolean existsByRoomIdAndCodeIgnoreCaseAndActiveTrue(UUID roomId, String code);
 
     boolean existsByRoomIdAndActiveTrue(UUID roomId);
+
+    /** Existe-t-il un lit (actif OU inactif) dans cette chambre ? Garde la suppression FK-safe. */
+    boolean existsByRoomId(UUID roomId);
 }

@@ -34,6 +34,8 @@ export interface ExpenseResponse {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  /** MANUAL = charge saisie ; HR = paiement de salaire agrégé (lecture seule). */
+  source: 'MANUAL' | 'HR';
 }
 
 export interface ExpenseRequest {

@@ -16,6 +16,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
+import { PrescriptionTemplatesTab } from '@/features/parametres/components/PrescriptionTemplatesTab';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
 import { ProfilePhotoSection } from './components/ProfilePhotoSection';
 import { ReferralContactsSection } from './components/ReferralContactsSection';
@@ -93,6 +94,29 @@ export default function ProfilPage() {
     </div>
   );
 
+  // R-bug : modèles d'ordonnance propres au médecin. Le backend
+  // (PrescriptionTemplate, FK practitioner_id) autorise déjà le MEDECIN en CRUD ;
+  // ils n'étaient exposés que dans /parametres (admin). On les remonte ici, sur
+  // le profil personnel, en pleine largeur (table large) sous la grille.
+  const templatesSection = isMedecin ? (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-md)',
+        padding: 18,
+      }}
+    >
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+        Mes modèles d'ordonnance
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
+        Modèles personnels réutilisables en consultation (médicaments, analyses, imagerie).
+      </div>
+      <PrescriptionTemplatesTab />
+    </div>
+  ) : null;
+
   // Mobile: wrap in MScreen so the page has a working back affordance (→ menu
   // hub) + bottom tabs. Before this, /profil rendered the desktop Screen whose
   // only nav is the sidebar — hidden on mobile, stranding the user with no way
@@ -118,6 +142,7 @@ export default function ProfilPage() {
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {leftColumn}
           {rightColumn}
+          {templatesSection}
         </div>
       </MScreen>
     );
@@ -162,6 +187,9 @@ export default function ProfilPage() {
           {leftColumn}
           {rightColumn}
         </div>
+        {templatesSection && (
+          <div style={{ marginTop: 16, maxWidth: 1280 }}>{templatesSection}</div>
+        )}
       </div>
     </Screen>
   );

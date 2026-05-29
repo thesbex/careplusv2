@@ -12,6 +12,7 @@ public record StayQueueEntry(
         String admissionReason,
         Instant admittedAt,
         int daysSoFar,
+        UUID bedId,
         String bedLabel,
         String wardLabel,
         UUID attendingPractitionerId) {}

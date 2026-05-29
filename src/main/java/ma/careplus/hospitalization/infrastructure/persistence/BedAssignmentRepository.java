@@ -19,4 +19,7 @@ public interface BedAssignmentRepository extends JpaRepository<BedAssignment, UU
 
     /** Toutes les affectations courantes (board occupancy). */
     List<BedAssignment> findAllByToAtIsNull();
+
+    /** Ce lit a-t-il déjà eu une affectation (historique inclus) ? Bloque la suppression physique. */
+    boolean existsByBedId(UUID bedId);
 }

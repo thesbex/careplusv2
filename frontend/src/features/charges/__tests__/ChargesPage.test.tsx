@@ -18,6 +18,7 @@ const EXPENSES: ExpenseResponse[] = [
     notes: null,
     createdAt: '2026-04-01T08:00:00Z',
     updatedAt: '2026-04-01T08:00:00Z',
+    source: 'MANUAL',
   },
   {
     id: 'exp-2',
@@ -30,6 +31,7 @@ const EXPENSES: ExpenseResponse[] = [
     notes: 'Relevé compteur',
     createdAt: '2026-04-10T08:00:00Z',
     updatedAt: '2026-04-10T08:00:00Z',
+    source: 'MANUAL',
   },
 ];
 

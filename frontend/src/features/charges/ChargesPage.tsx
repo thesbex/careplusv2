@@ -475,22 +475,35 @@ export default function ChargesPage() {
                     <Td>{PERIODICITY_LABELS[e.periodicity]}</Td>
                     <Td>{e.supplier ?? ''}</Td>
                     <Td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button type="button" onClick={() => openEdit(e)} style={btnLink}>
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { void handleDelete(e); }}
-                          aria-label={`Supprimer ${e.label}`}
+                      {e.source === 'HR' ? (
+                        <span
+                          title="Paiement de salaire — se gère dans la page Personnel"
                           style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: 'var(--danger)', padding: 4, lineHeight: 0,
+                            fontSize: 11, padding: '2px 8px', borderRadius: 12,
+                            border: '1px solid var(--border)', background: 'var(--surface-2)',
+                            color: 'var(--ink-3)',
                           }}
                         >
-                          <Trash />
-                        </button>
-                      </div>
+                          RH · Personnel
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button type="button" onClick={() => openEdit(e)} style={btnLink}>
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { void handleDelete(e); }}
+                            aria-label={`Supprimer ${e.label}`}
+                            style={{
+                              background: 'none', border: 'none', cursor: 'pointer',
+                              color: 'var(--danger)', padding: 4, lineHeight: 0,
+                            }}
+                          >
+                            <Trash />
+                          </button>
+                        </div>
+                      )}
                     </Td>
                   </tr>
                 ))}

@@ -12,17 +12,21 @@ import { useInsurances } from '../hooks/useInsurances';
 interface PatientHeaderProps {
   patient: PatientSummary;
   onEdit?: () => void;
+  onPrint?: () => void;
   onNewConsultation?: () => void;
   onAskAi?: () => void;
   isStartingConsult?: boolean;
+  isPrinting?: boolean;
 }
 
 export function PatientHeader({
   patient,
   onEdit,
+  onPrint,
   onNewConsultation,
   onAskAi,
   isStartingConsult,
+  isPrinting,
 }: PatientHeaderProps) {
   // V044/coverage-fix — render the actual mutuelle name + policy number from
   // the canonical fields instead of the legacy hard-coded `insurance: '—'`
@@ -84,8 +88,8 @@ export function PatientHeader({
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <Button>
-          <Print /> Imprimer
+        <Button onClick={onPrint} disabled={isPrinting}>
+          <Print /> {isPrinting ? 'Préparation…' : 'Imprimer'}
         </Button>
         {onEdit && (
           <Button onClick={onEdit}>

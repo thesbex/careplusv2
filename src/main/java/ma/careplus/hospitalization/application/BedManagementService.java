@@ -32,6 +32,8 @@ public interface BedManagementService {
     RoomView createRoom(CreateRoomRequest req);
     RoomView updateRoom(UUID id, UpdateRoomRequest req);
     void deactivateRoom(UUID id);
+    /** Suppression physique d'une chambre (admin) — autorisée seulement si elle ne contient aucun lit. */
+    void deleteRoom(UUID id);
 
     // ── Lits (beds) ────────────────────────────────────────────────────
     List<BedView> listBeds(UUID roomId, boolean includeInactive);
@@ -39,6 +41,8 @@ public interface BedManagementService {
     BedView updateBed(UUID id, UpdateBedRequest req);
     BedView updateBedStatus(UUID id, UpdateBedStatusRequest req);
     void deactivateBed(UUID id);
+    /** Suppression physique d'un lit (admin) — autorisée seulement s'il n'a aucun historique d'affectation. */
+    void deleteBed(UUID id);
 
     // ── Tableau des lits ───────────────────────────────────────────────
     BedBoardView board();

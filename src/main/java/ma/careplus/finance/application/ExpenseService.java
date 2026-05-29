@@ -6,6 +6,7 @@ import java.util.UUID;
 import ma.careplus.finance.domain.Expense;
 import ma.careplus.finance.domain.ExpenseCategory;
 import ma.careplus.finance.infrastructure.web.dto.ExpenseRequest;
+import ma.careplus.finance.infrastructure.web.dto.ExpenseResponse;
 import ma.careplus.finance.infrastructure.web.dto.MonthlyTotalResponse;
 
 /**
@@ -22,6 +23,16 @@ public interface ExpenseService {
      * @param to       optional upper bound on expense_date (inclusive)
      */
     List<Expense> list(ExpenseCategory category, LocalDate from, LocalDate to);
+
+    /**
+     * Paiements de salaire (module RH) exposés comme lignes de charge virtuelles
+     * (catégorie SALAIRE, {@code source = "HR"}, lecture seule). Permet de les
+     * retrouver dans la page Charges alors qu'ils sont saisis dans Personnel.
+     *
+     * @param from borne inférieure optionnelle sur paid_at (incluse)
+     * @param to   borne supérieure optionnelle sur paid_at (incluse)
+     */
+    List<ExpenseResponse> salaryPaymentsAsExpenses(LocalDate from, LocalDate to);
 
     /**
      * Create a new expense. The {@code createdBy} is the authenticated user's id.

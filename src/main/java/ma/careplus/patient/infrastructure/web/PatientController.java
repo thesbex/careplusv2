@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import ma.careplus.patient.application.PatientListService;
 import ma.careplus.patient.application.PatientService;
+import ma.careplus.patient.application.PatientSynthesePdfService;
 import ma.careplus.patient.application.PatientTabCountsService;
 import ma.careplus.patient.domain.Allergy;
 import ma.careplus.patient.domain.Antecedent;
@@ -28,6 +29,9 @@ import ma.careplus.patient.infrastructure.web.mapper.PatientMapper;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -61,15 +65,18 @@ public class PatientController {
     private final PatientMapper mapper;
     private final PatientTabCountsService tabCountsService;
     private final PatientListService listService;
+    private final PatientSynthesePdfService synthesePdfService;
 
     public PatientController(PatientService service,
                              PatientMapper mapper,
                              PatientTabCountsService tabCountsService,
-                             PatientListService listService) {
+                             PatientListService listService,
+                             PatientSynthesePdfService synthesePdfService) {
         this.service = service;
         this.mapper = mapper;
         this.tabCountsService = tabCountsService;
         this.listService = listService;
+        this.synthesePdfService = synthesePdfService;
     }
 
     // ── Patient endpoints ─────────────────────────────────────────
@@ -87,6 +94,33 @@ public class PatientController {
     public PatientView getOne(@PathVariable UUID id) {
         Patient p = service.getActive(id);
         return mapper.toView(p, service.getAllergies(id), service.getAntecedents(id));
+    }
+
+    /**
+     * GET /api/patients/{id}/synthese-pdf
+     * Synthèse imprimable du dossier (identité, allergies, antécédents,
+     * consultations récentes). Câblé au bouton « Imprimer » du dossier patient.
+     */
+    @GetMapping("/{id}/synthese-pdf")
+    @PreAuthorize("hasAnyRole('SECRETAIRE','ASSISTANT','MEDECIN','ADMIN')")
+    public ResponseEntity<byte[]> synthesePdf(@PathVariable UUID id) {
+        byte[] pdf = synthesePdfService.generate(id);
+        Patient p = service.getActive(id);
+        String filename = "synthese-" + sanitize(p.getLastName()) + "-" + sanitize(p.getFirstName()) + ".pdf";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.inline().filename(filename).build());
+        headers.setContentLength(pdf.length);
+        return ResponseEntity.ok().headers(headers).body(pdf);
+    }
+
+    private static String sanitize(String name) {
+        if (name == null) return "";
+        return name.toLowerCase()
+                .replaceAll("[^a-z0-9]", "-")
+                .replaceAll("-+", "-")
+                .replaceAll("^-|-$", "");
     }
 
     @GetMapping

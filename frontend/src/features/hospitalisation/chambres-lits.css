@@ -1,0 +1,168 @@
+/*
+ * Paramètres · Chambres & lits — refresh (design "careplus refresh - chambres & lits.html").
+ * Implémentation iso-maquette. Scopé sous `.cl` pour ne pas fuiter.
+ * Tokens : on réutilise les tokens app v2 (--primary saphir, --success vert bouteille,
+ * --danger corail, --amber). Mapping design → app :
+ *   design --blue   → --primary | design --primary(vert) → --success | design --coral → --danger
+ * Statuts lit : Libre=vert(--success) · Occupé=corail(--danger) · Réservé=bleu(--primary)
+ *               · Nettoyage=ambre(--amber) · Hors service=gris.
+ */
+
+.cl {
+  --cl-rust: #9b2e1f; /* texte destructif (Supprimer) */
+  --cl-rust-hover: #fbede5;
+  --cl-blue-tint: #eaf0fa;
+  --cl-hs: #8b8b8b;
+  --cl-caret: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%23646D67' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 1080px;
+}
+
+/* ── Page header ──────────────────────────────── */
+.cl-head h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.03em; }
+.cl-head p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-3); max-width: 680px; line-height: 1.5; }
+
+/* ── Role info strip ──────────────────────────── */
+.cl-role-note { display: flex; gap: 13px; align-items: flex-start; background: #e7eefa; border: 1px solid var(--primary-soft); border-radius: 10px; padding: 13px 16px; }
+.cl-role-note .ic { width: 26px; height: 26px; border-radius: 7px; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.cl-role-note .t { font-size: 12.5px; line-height: 1.5; color: #1e3a6b; }
+.cl-role-note .t b { font-weight: 600; color: var(--primary); }
+
+/* ── Legend strip ─────────────────────────────── */
+.cl-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 11px 16px; }
+.cl-legend .lt { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); }
+.cl-legend .it { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink); font-weight: 550; }
+.cl-legend .it .sm { color: var(--ink-3); font-weight: 400; }
+.cl-legend .d { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.cl-legend .note { margin-left: auto; font-size: 11.5px; color: var(--ink-3); }
+
+/* ── Panels ───────────────────────────────────── */
+.cl-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: visible; }
+.cl-panel-h { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border-soft); }
+.cl-panel-h h3 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.cl-panel-h .meta { color: var(--ink-3); font-size: 12.5px; font-weight: 400; }
+.cl-panel-h .ix { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--ink-4); letter-spacing: 0.04em; }
+.cl-panel-h .right { margin-left: auto; color: var(--ink-3); font-size: 12px; }
+.cl-panel-b { padding: 16px; }
+
+/* ── Form primitives ──────────────────────────── */
+.cl-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.cl-lbl { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); line-height: 1; }
+.cl-lbl .req { color: var(--danger); margin-left: 1px; }
+.cl-inp, .cl-sel { height: 36px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); padding: 0 10px; font-family: inherit; font-size: 13.5px; color: var(--ink); width: 100%; }
+.cl-inp::placeholder { color: var(--ink-4); }
+.cl-inp.mono { font-family: var(--font-mono); font-size: 13px; }
+.cl-sel { appearance: none; -webkit-appearance: none; background-image: var(--cl-caret); background-repeat: no-repeat; background-position: right 10px center; padding-right: 30px; cursor: pointer; }
+.cl-inp:focus, .cl-sel:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30, 77, 171, 0.12); outline: none; }
+.cl-help { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; line-height: 1.45; }
+
+/* add-form grids */
+.cl-addform { display: grid; gap: 11px 12px; align-items: end; padding-bottom: 16px; margin-bottom: 4px; border-bottom: 1px solid var(--border-soft); }
+.cl-addform.svc { grid-template-columns: 150px minmax(220px, 1fr) auto; }
+.cl-addform.cham { grid-template-columns: minmax(150px, 1fr) 110px minmax(150px, 1.2fr) 150px 140px auto; }
+.cl-addform.lit { grid-template-columns: minmax(220px, 1fr) 160px auto; }
+
+/* buttons */
+.cl-btn-add { height: 36px; padding: 0 16px; border-radius: 6px; background: var(--primary); border: 1px solid var(--primary); color: #fff; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.005em; white-space: nowrap; cursor: pointer; font-family: inherit; }
+.cl-btn-add:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+.cl-btn-add:disabled { opacity: 0.6; cursor: default; }
+.cl-btn-add svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.cl-btn-ghost { height: 30px; padding: 0 11px; border-radius: 6px; background: transparent; border: 1px solid transparent; color: var(--ink-2); font-size: 12.5px; font-weight: 550; letter-spacing: -0.005em; white-space: nowrap; cursor: pointer; font-family: inherit; }
+.cl-btn-ghost:hover { background: var(--surface-2); border-color: var(--border); }
+.cl-btn-ghost.danger { color: var(--cl-rust); }
+.cl-btn-ghost.danger:hover { background: var(--cl-rust-hover); border-color: #eac6bc; }
+
+/* ── Referential rows ─────────────────────────── */
+.cl-rows { display: flex; flex-direction: column; }
+.cl-rrow { display: grid; align-items: center; gap: 14px; padding: 13px 4px; border-top: 1px solid var(--border-soft); }
+.cl-rrow:first-child { border-top: none; }
+.cl-rrow.off { opacity: 0.5; }
+.cl-rrow .code { font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: var(--ink-2); letter-spacing: 0.01em; }
+.cl-rrow .name { font-size: 13.5px; font-weight: 550; color: var(--ink); letter-spacing: -0.005em; }
+.cl-rrow .sub { font-size: 12.5px; color: var(--ink-3); }
+.cl-rrow .price { font-family: var(--font-mono); font-size: 13px; font-weight: 500; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.cl-rrow .acts { display: flex; gap: 4px; justify-content: flex-end; }
+.cl-rows.svc .cl-rrow { grid-template-columns: 120px 1fr auto; }
+.cl-rows.cham .cl-rrow { grid-template-columns: 90px minmax(140px, 1.3fr) 130px 120px 110px auto; }
+.cl-rows.lit .cl-rrow { grid-template-columns: 110px 150px 1fr auto; }
+
+/* badges */
+.cl-badge-off { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 5px; background: #e1ded2; color: #595549; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-left: 6px; }
+
+/* class pastille (neutre) */
+.cl-cls { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 5px; background: #eef1f6; border: 1px solid #e0e6ef; color: var(--ink-2); font-size: 11.5px; font-weight: 550; }
+.cl-cls .d { width: 6px; height: 6px; border-radius: 2px; background: #8b95a8; }
+
+/* ── Bed status pill ──────────────────────────── */
+.cl-litpill { display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; border-radius: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap; }
+.cl-litpill .d { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.cl-litpill.libre { background: var(--success-soft); color: #0a4630; } .cl-litpill.libre .d { background: var(--success); }
+.cl-litpill.occupe { background: var(--danger-soft); color: #7a2a14; } .cl-litpill.occupe .d { background: var(--danger); }
+.cl-litpill.reserve { background: var(--primary-soft); color: var(--primary); } .cl-litpill.reserve .d { background: var(--primary); }
+.cl-litpill.nettoy { background: var(--amber-soft); color: #6e4a0a; } .cl-litpill.nettoy .d { background: var(--amber); }
+.cl-litpill.hs { background: #e1ded2; color: #595549; } .cl-litpill.hs .d { background: var(--cl-hs); }
+.cl-ro-hint { font-size: 10.5px; color: var(--ink-4); margin-left: 2px; }
+
+/* status select (manuel) */
+.cl-statsel { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.cl-statsel:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(30, 77, 171, 0.12); }
+.cl-statsel .d { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cl-statsel select { border: none; outline: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 550; color: var(--ink); appearance: none; -webkit-appearance: none; padding: 0 18px 0 0; background-image: var(--cl-caret); background-repeat: no-repeat; background-position: right center; cursor: pointer; }
+.cl-statsel.libre .d { background: var(--success); }
+.cl-statsel.reserve .d { background: var(--primary); }
+.cl-statsel.nettoy .d { background: var(--amber); }
+.cl-statsel.hs .d { background: var(--cl-hs); }
+
+/* ── Panel 1 — bed map ────────────────────────── */
+.cl-svc-group { padding: 4px 0 16px; border-bottom: 1px solid var(--border-soft); }
+.cl-svc-group:last-child { border-bottom: none; padding-bottom: 2px; }
+.cl-svc-group:first-child { padding-top: 0; }
+.cl-svc-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.cl-svc-h .scode { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; color: var(--primary); background: var(--cl-blue-tint); border: 1px solid var(--primary-soft); padding: 2px 7px; border-radius: 5px; letter-spacing: 0.04em; }
+.cl-svc-h .sname { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.cl-svc-h .scount { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cl-mini-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 10px; }
+.cl-mini { border: 1px solid var(--border); border-radius: 8px; padding: 13px 14px; background: var(--surface); }
+.cl-mini .ch { display: flex; align-items: baseline; gap: 8px; }
+.cl-mini .ch b { font-size: 13.5px; font-weight: 600; letter-spacing: -0.01em; }
+.cl-mini .ch .cc { font-family: var(--font-mono); font-size: 11px; color: var(--ink-4); }
+.cl-mini .cm { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.cl-mini .beds { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.cl-bedchip { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-size: 12px; font-weight: 500; color: var(--ink-2); }
+.cl-bedchip .d { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.cl-bedchip .st { color: var(--ink-3); font-size: 11px; font-weight: 500; }
+.cl-bedchip.libre .d { background: var(--success); }
+.cl-bedchip.occupe .d { background: var(--danger); }
+.cl-bedchip.reserve .d { background: var(--primary); }
+.cl-bedchip.nettoy .d { background: var(--amber); }
+.cl-bedchip.hs .d { background: var(--cl-hs); }
+.cl-empty { font-size: 12.5px; color: var(--ink-3); padding: 4px 0; }
+
+/* ── inline error strip (ambre, jamais rouge) ─── */
+.cl-errstrip { display: flex; gap: 11px; align-items: flex-start; background: #fcf1d5; border: 1px solid #e6cc91; border-radius: 8px; padding: 10px 13px; margin-top: 10px; }
+.cl-errstrip .ic { width: 22px; height: 22px; border-radius: 6px; background: var(--amber); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
+.cl-errstrip .t { font-size: 12.5px; color: #6e4a0a; line-height: 1.45; }
+.cl-errstrip .t b { font-weight: 600; }
+
+/* ── Panel 5 — billing rule ───────────────────── */
+.cl-rule-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.cl-rule-help { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+.cl-rule-help .c { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface-2); }
+.cl-rule-help .c .k { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
+.cl-rule-help .c .k .d { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+.cl-rule-help .c.alt .k .d { background: var(--amber); }
+.cl-rule-help .c p { margin: 7px 0 0; font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+
+/* ── Responsive (mobile, colonne unique) ──────── */
+@media (max-width: 880px) {
+  .cl-addform.svc, .cl-addform.cham, .cl-addform.lit { grid-template-columns: 1fr; }
+  .cl-addform .cl-btn-add { width: 100%; justify-content: center; height: 46px; }
+  .cl-inp, .cl-sel { height: 46px; font-size: 15px; }
+  .cl-rows.svc .cl-rrow, .cl-rows.cham .cl-rrow, .cl-rows.lit .cl-rrow {
+    grid-template-columns: 1fr auto; gap: 8px 12px;
+  }
+  .cl-rrow .sub, .cl-rrow .price, .cl-rrow > span:nth-child(4) { grid-column: 1 / -1; }
+  .cl-rule-help { grid-template-columns: 1fr; }
+}

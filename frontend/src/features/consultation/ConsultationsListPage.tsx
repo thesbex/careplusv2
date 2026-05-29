@@ -7,7 +7,8 @@
  *
  * Mobile : conserve la version cards simple (l'audit est focus desktop).
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { MScreen } from '@/components/shell/MScreen';
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, Doc, Plus, File } from '@/components/icons';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useConsultations } from './hooks/useConsultations';
+import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
 import type { ConsultationApi } from './hooks/useConsultation';
 
 const NAV_MAP = {
@@ -198,37 +200,149 @@ function KpiCard({
   );
 }
 
-function FilterChip({
+const ETAT_OPTIONS = [
+  { value: 'all', label: 'Tous' },
+  { value: 'brouillon', label: 'Brouillon / En cours' },
+  { value: 'signee', label: 'Signée' },
+];
+
+const PERIODE_OPTIONS = [
+  { value: 'all', label: 'Tout' },
+  { value: '7', label: '7 derniers jours' },
+  { value: '30', label: '30 derniers jours' },
+  { value: 'month', label: 'Ce mois' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'desc', label: 'Date · plus récent' },
+  { value: 'asc', label: 'Date · plus ancien' },
+];
+
+/** Chip-style dropdown (iso pilule de filtre) — remplace les anciens stubs désactivés. */
+function ChipSelect({
   label,
   value,
-  muted,
+  options,
+  onChange,
+  minWidth,
 }: {
-  label: string;
+  label?: string;
   value: string;
-  muted?: boolean;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+  minWidth?: number;
 }) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const popRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const r = btnRef.current?.getBoundingClientRect();
+      if (r) setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    };
+    measure();
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
+    };
+    window.addEventListener('scroll', measure, true);
+    window.addEventListener('resize', measure);
+    document.addEventListener('mousedown', onDoc);
+    return () => {
+      window.removeEventListener('scroll', measure, true);
+      window.removeEventListener('resize', measure);
+      document.removeEventListener('mousedown', onDoc);
+    };
+  }, [open]);
+
+  const current = options.find((o) => o.value === value);
+
   return (
-    <button
-      type="button"
-      style={{
-        height: 28,
-        padding: '0 10px',
-        border: '1px solid var(--border)',
-        borderRadius: 14,
-        background: 'var(--surface)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        fontSize: 11.5,
-        cursor: 'pointer',
-        color: muted ? 'var(--ink-3)' : 'var(--ink)',
-        fontFamily: 'inherit',
-      }}
-    >
-      <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>{label}</span>
-      <span style={{ fontWeight: 600 }}>{value}</span>
-      <ChevronDown />
-    </button>
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          height: 28,
+          padding: '0 10px',
+          border: '1px solid var(--border)',
+          borderRadius: 14,
+          background: open ? 'var(--bg-alt)' : 'var(--surface)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          fontSize: 11.5,
+          cursor: 'pointer',
+          color: 'var(--ink)',
+          fontFamily: 'inherit',
+        }}
+      >
+        {label && <span style={{ color: 'var(--ink-3)', fontWeight: 500 }}>{label}</span>}
+        <span style={{ fontWeight: 600 }}>{current?.label ?? '—'}</span>
+        <ChevronDown />
+      </button>
+      {open && pos
+        ? createPortal(
+            <div
+              ref={popRef}
+              role="listbox"
+              style={{
+                position: 'fixed',
+                top: pos.top,
+                left: pos.left,
+                zIndex: 1000,
+                minWidth: Math.max(minWidth ?? 160, pos.width),
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                padding: 4,
+                maxHeight: 280,
+                overflow: 'auto',
+              }}
+            >
+              {options.map((o) => {
+                const on = o.value === value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={on}
+                    onClick={() => {
+                      onChange(o.value);
+                      setOpen(false);
+                    }}
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '7px 9px',
+                      border: 'none',
+                      borderRadius: 5,
+                      background: on ? 'var(--primary-soft)' : 'transparent',
+                      color: 'var(--ink)',
+                      fontSize: 12,
+                      fontFamily: 'inherit',
+                      cursor: 'pointer',
+                      fontWeight: on ? 600 : 500,
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 
@@ -288,11 +402,13 @@ function ConsultationRow({
   last,
   selected,
   onClick,
+  practitionerName,
 }: {
   c: ConsultationApi;
   last: boolean;
   selected: boolean;
   onClick: () => void;
+  practitionerName: string | undefined;
 }) {
   const initials = patientInitials(c.patientId);
   const color = avatarColor(c.patientId);
@@ -421,7 +537,7 @@ function ConsultationRow({
             whiteSpace: 'nowrap',
           }}
         >
-          Dr. {shortId(c.practitionerId)}
+          {practitionerName ?? `Dr. ${shortId(c.practitionerId)}`}
         </div>
       </div>
 
@@ -501,8 +617,35 @@ export default function ConsultationsListPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { consultations, isLoading, error } = useConsultations();
+  const { data: practitioners } = usePractitioners();
   const [seg, setSeg] = useState<SegmentKey>('toutes');
   const [selected, setSelected] = useState<string | null>(null);
+  const [medecin, setMedecin] = useState('');
+  const [etat, setEtat] = useState('all');
+  const [periode, setPeriode] = useState('all');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+
+  const practName = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of practitioners) m.set(p.id, `Dr ${p.lastName} ${p.firstName}`.trim());
+    return m;
+  }, [practitioners]);
+
+  const medecinOptions = useMemo(
+    () => [
+      { value: '', label: 'Tous' },
+      ...practitioners.map((p) => ({ value: p.id, label: `Dr ${p.lastName}` })),
+    ],
+    [practitioners],
+  );
+
+  const periodeFrom = useMemo(() => {
+    if (periode === 'all') return null;
+    const d = new Date();
+    if (periode === 'month') d.setDate(1);
+    else d.setDate(d.getDate() - Number(periode));
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, [periode]);
 
   const today = useMemo(() => dateKey(new Date().toISOString()), []);
   const yesterday = useMemo(() => {
@@ -529,13 +672,21 @@ export default function ConsultationsListPage() {
   }, [consultations, today, thisWeekStart]);
 
   const filtered = useMemo(() => {
-    if (seg === 'aujourdhui') return consultations.filter((c) => dateKey(c.startedAt) === today);
-    if (seg === 'semaine') return consultations.filter((c) => dateKey(c.startedAt) >= thisWeekStart);
-    if (seg === 'en-cours')
-      return consultations.filter((c) => c.status === 'BROUILLON' || c.status === 'SUSPENDUE');
-    if (seg === 'annulees') return [];
-    return consultations;
-  }, [seg, consultations, today, thisWeekStart]);
+    let list = consultations;
+    if (seg === 'aujourdhui') list = list.filter((c) => dateKey(c.startedAt) === today);
+    else if (seg === 'semaine') list = list.filter((c) => dateKey(c.startedAt) >= thisWeekStart);
+    else if (seg === 'en-cours')
+      list = list.filter((c) => c.status === 'BROUILLON' || c.status === 'SUSPENDUE');
+    else if (seg === 'annulees') return [];
+
+    if (medecin) list = list.filter((c) => c.practitionerId === medecin);
+    if (etat === 'brouillon')
+      list = list.filter((c) => c.status === 'BROUILLON' || c.status === 'SUSPENDUE');
+    else if (etat === 'signee')
+      list = list.filter((c) => c.status === 'SIGNEE' || c.status === 'AMENDEE');
+    if (periodeFrom) list = list.filter((c) => dateKey(c.startedAt) >= periodeFrom);
+    return list;
+  }, [seg, consultations, today, thisWeekStart, medecin, etat, periodeFrom]);
 
   const groupedByDay = useMemo(() => {
     const groups = new Map<string, ConsultationApi[]>();
@@ -544,11 +695,50 @@ export default function ConsultationsListPage() {
       if (!groups.has(k)) groups.set(k, []);
       groups.get(k)!.push(c);
     }
-    // Sort by day descending, then each group by startedAt descending.
+    // Sort by day then each group by startedAt, in the chosen direction.
+    const dir = sortDir === 'desc' ? 1 : -1;
     return [...groups.entries()]
-      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-      .map(([k, items]) => [k, items.sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))] as const);
-  }, [filtered]);
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1) * dir)
+      .map(
+        ([k, items]) =>
+          [k, items.sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1) * dir)] as const,
+      );
+  }, [filtered, sortDir]);
+
+  function exportCsv() {
+    const header = [
+      'Date',
+      'Heure',
+      'Référence',
+      'Patient',
+      'Médecin',
+      'Motif',
+      'Diagnostic',
+      'Statut',
+      'Durée (min)',
+    ];
+    const rows = filtered.map((c) => [
+      dateKey(c.startedAt),
+      formatHeure(c.startedAt),
+      formatId(c),
+      `Patient ${shortId(c.patientId)}`,
+      practName.get(c.practitionerId) ?? `Dr ${shortId(c.practitionerId)}`,
+      c.motif ?? '',
+      c.diagnosis ?? '',
+      c.status,
+      String(durationMinutes(c) ?? ''),
+    ]);
+    const csv = [header, ...rows]
+      .map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `consultations-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const segs: { id: SegmentKey; label: string; count: number }[] = [
     { id: 'toutes', label: 'Toutes', count: counts.all },
@@ -681,7 +871,7 @@ export default function ConsultationsListPage() {
       sub={`Historique · ${consultations.length} consultation${consultations.length > 1 ? 's' : ''} · ${counts.inProgress} en cours`}
       topbarRight={
         <>
-          <Button>
+          <Button onClick={exportCsv} disabled={filtered.length === 0}>
             <File /> Export
           </Button>
           <Button variant="primary" onClick={() => navigate('/patients')}>
@@ -800,27 +990,12 @@ export default function ConsultationsListPage() {
             }}
           >
             <span>Trier par</span>
-            <button
-              type="button"
-              style={{
-                height: 28,
-                padding: '0 10px',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
-                background: 'var(--surface)',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                fontSize: 11.5,
-                cursor: 'pointer',
-                color: 'var(--ink)',
-                fontWeight: 600,
-                fontFamily: 'inherit',
-              }}
-            >
-              Date · plus récent
-              <ChevronDown />
-            </button>
+            <ChipSelect
+              value={sortDir}
+              options={SORT_OPTIONS}
+              onChange={(v) => setSortDir(v as 'desc' | 'asc')}
+              minWidth={170}
+            />
           </div>
         </div>
 
@@ -849,27 +1024,45 @@ export default function ConsultationsListPage() {
           >
             Filtres
           </span>
-          <FilterChip label="Médecin" value="Tous" />
-          <FilterChip label="Type" value="Tous" />
-          <FilterChip label="Période" value="7 derniers jours" />
-          <FilterChip label="Diagnostic CIM-10" value="—" muted />
-          <button
-            type="button"
-            style={{
-              marginLeft: 4,
-              color: 'var(--ink-3)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 11.5,
-              fontFamily: 'inherit',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-          >
-            <Plus /> Ajouter un filtre
-          </button>
+          <ChipSelect
+            label="Médecin"
+            value={medecin}
+            options={medecinOptions}
+            onChange={setMedecin}
+            minWidth={210}
+          />
+          <ChipSelect label="État" value={etat} options={ETAT_OPTIONS} onChange={setEtat} minWidth={190} />
+          <ChipSelect
+            label="Période"
+            value={periode}
+            options={PERIODE_OPTIONS}
+            onChange={setPeriode}
+            minWidth={180}
+          />
+          {(medecin || etat !== 'all' || periode !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setMedecin('');
+                setEtat('all');
+                setPeriode('all');
+              }}
+              style={{
+                marginLeft: 4,
+                color: 'var(--ink-3)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 11.5,
+                fontFamily: 'inherit',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              Réinitialiser
+            </button>
+          )}
         </div>
 
         {/* Tables */}
@@ -898,6 +1091,7 @@ export default function ConsultationsListPage() {
                       c={c}
                       last={i === items.length - 1}
                       selected={selected === c.id}
+                      practitionerName={practName.get(c.practitionerId)}
                       onClick={() => {
                         setSelected(c.id);
                         navigate(`/consultations/${c.id}`);

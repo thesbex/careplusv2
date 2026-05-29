@@ -218,6 +218,7 @@ public class StayServiceImpl implements StayService {
                     stay.getId(), stay.getPatientId(), p.getFirstName(), p.getLastName(),
                     stay.getAdmissionReason(), stay.getAdmittedAt(),
                     nights(stay.getAdmittedAt(), Instant.now(), rule),
+                    current != null ? current.getBedId() : null,
                     bed != null ? bed.label : null,
                     bed != null ? bed.wardLabel : null,
                     stay.getAttendingPractitionerId()));

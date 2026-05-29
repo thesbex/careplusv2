@@ -1,0 +1,78 @@
+/*
+ * Hospitalisation · Mur de lits — refresh (design "careplus refresh - batch 4.html", écran 04).
+ * Vue additionnelle (toggle Liste / Mur de lits). Scopée sous `.bw`.
+ * Statuts : Libre=vert(--success) · Réservé=bleu(--primary) · Occupé=corail(--danger)
+ *           · Nettoyage=ambre(--amber) · Hors service=gris(--ink-3).
+ */
+
+.bw { display: flex; flex-direction: column; min-height: 0; }
+
+/* ── KPI strip ────────────────────────────────── */
+.bw-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+.bw-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; position: relative; }
+.bw-kpi .k { font-size: 11.5px; font-weight: 500; color: var(--ink-3); display: flex; align-items: center; gap: 8px; letter-spacing: -0.005em; }
+.bw-kpi .k .dot { width: 7px; height: 7px; border-radius: 50%; }
+.bw-kpi .v { font-size: 28px; font-weight: 600; letter-spacing: -0.03em; margin-top: 10px; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.bw-kpi .v .u { font-size: 13px; color: var(--ink-3); font-weight: 500; margin-left: 5px; letter-spacing: -0.01em; }
+.bw-kpi .d { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
+.bw-kpi .d b { color: var(--primary); font-weight: 600; }
+.bw-kpi.hero { border-color: #dde5f1; overflow: hidden; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 16px -8px rgba(20, 40, 80, 0.18); }
+.bw-kpi.hero::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary) 0%, #5c8fe0 100%); }
+.bw-kpi.hero .k { color: var(--primary); font-weight: 600; }
+.bw-kpi.hero .k::before { content: ""; width: 7px; height: 7px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 0 3px rgba(30, 77, 171, 0.18); }
+
+/* ── Legend + ward filter ─────────────────────── */
+.bw-bar { display: flex; gap: 14px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 11.5px; color: var(--ink-3); align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+.bw-bar .lt { font-weight: 600; color: var(--ink-2); }
+.bw-bar .it { display: inline-flex; align-items: center; gap: 6px; }
+.bw-bar .it .sq { width: 10px; height: 10px; border-radius: 2px; }
+.bw-bar .filters { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+.bw-chip { height: 28px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); font-family: inherit; font-size: 12px; font-weight: 550; color: var(--ink-2); cursor: pointer; white-space: nowrap; }
+.bw-chip:hover { background: var(--surface-2); }
+.bw-chip.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* ── Ward section + bed grid ──────────────────── */
+.bw-section-title { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); margin-bottom: 10px; display: flex; align-items: baseline; gap: 10px; }
+.bw-section-title .ln { flex: 1; height: 1px; background: var(--border); }
+.bw-section-title .cnt { text-transform: none; letter-spacing: -0.005em; color: var(--ink-4); font-weight: 500; }
+.bw-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+
+/* ── Bed card ─────────────────────────────────── */
+.bw-bed { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 170px; position: relative; overflow: hidden; text-align: left; font-family: inherit; }
+button.bw-bed { cursor: pointer; }
+.bw-bed::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+.bw-bed.libre::before { background: var(--success); }
+.bw-bed.reserve::before { background: var(--primary); }
+.bw-bed.occupe::before { background: var(--danger); }
+.bw-bed.nettoy::before { background: var(--amber); }
+.bw-bed.hs::before { background: var(--ink-3); }
+.bw-bed.off { opacity: 0.55; }
+.bw-bed .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.bw-bed .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; color: var(--ink-3); }
+.bw-bed h4 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.025em; line-height: 1; color: var(--ink); }
+.bw-bed .room { font-size: 11.5px; color: var(--ink-3); margin-top: 3px; }
+.bw-bed .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--ink-4); font-size: 12px; font-weight: 500; text-align: center; }
+.bw-bed .empty svg { width: 28px; height: 28px; stroke: var(--ink-4); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
+.bw-bed.libre .empty { color: var(--success); }
+.bw-bed.libre .empty svg { stroke: var(--success); opacity: 0.85; }
+.bw-bed .pat { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.bw-bed .pat .av { width: 36px; height: 36px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; flex-shrink: 0; letter-spacing: -0.01em; }
+.bw-bed .pat .info b { font-weight: 600; color: var(--ink); display: block; font-size: 13.5px; letter-spacing: -0.005em; }
+.bw-bed .pat .info span { font-size: 11px; color: var(--ink-3); }
+.bw-bed .stay { padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 6px; display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bw-bed .stay b { color: var(--ink); font-weight: 600; }
+.bw-bed.occupe { background: #fff9f6; border-color: #e6b8a4; }
+.bw-bed.occupe .stay { background: #fbede5; border-color: #e6b8a4; color: #5c1f0e; }
+
+/* status pill (top-right) */
+.bw-pill { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: -0.005em; white-space: nowrap; }
+.bw-pill.libre { background: var(--success-soft); color: #0a4630; }
+.bw-pill.reserve { background: var(--primary-soft); color: var(--primary); }
+.bw-pill.occupe { background: var(--danger); color: #fff; }
+.bw-pill.nettoy { background: var(--amber-soft); color: #6e4a0a; }
+.bw-pill.hs { background: #e1ded2; color: #595549; }
+
+.bw-empty-board { font-size: 13px; color: var(--ink-3); padding: 28px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+
+@media (max-width: 1180px) { .bw-grid { grid-template-columns: repeat(3, 1fr); } .bw-kpis { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 760px) { .bw-grid { grid-template-columns: 1fr; } .bw-kpis { grid-template-columns: 1fr; } }

@@ -38,6 +38,7 @@ import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import type { DossierTab } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { api } from '@/lib/api/client';
 import './dossier-patient.css';
 import '@/features/facturation/facturation.css';
 
@@ -608,6 +609,7 @@ export default function DossierPage() {
   const [tab, setTab] = useState<DossierTab>('timeline');
   const [showEdit, setShowEdit] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
   const { startConsultation, isPending: isStartingConsult } = useStartConsultation();
   // QA3-3 v1 — backward-compat: allow when permissions absent.
   const userPerms = useAuthStore((s) => s.user?.permissions);
@@ -622,6 +624,28 @@ export default function DossierPage() {
   const { invoices: patientInvoices } = useInvoicesForPatient(raw?.id);
   const { counts: tabCounts } = useTabCounts(raw?.id);
   const { settings: clinicSettings } = useClinicSettings();
+
+  async function handlePrintSynthese() {
+    if (!raw?.id) return;
+    setIsPrinting(true);
+    try {
+      const r = await api.get(`/patients/${raw.id}/synthese-pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(r.data as Blob);
+      // <a download> plutôt que window.open : bloqué par le bloqueur de pop-up
+      // après un await (ADR-038) — même pattern que le compte-rendu de séjour.
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `synthese-${(patient?.fullName ?? 'patient').replace(/\s+/g, '-').toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    } catch {
+      toast.error('Impossible de générer la synthèse du patient.');
+    } finally {
+      setIsPrinting(false);
+    }
+  }
 
   async function handleNewConsultation() {
     if (!raw) return;
@@ -726,6 +750,10 @@ export default function DossierPage() {
           onNewConsultation={() => {
             void handleNewConsultation();
           }}
+          onPrint={() => {
+            void handlePrintSynthese();
+          }}
+          isPrinting={isPrinting}
           isStartingConsult={isStartingConsult}
         />
         <AllergyStrip patient={patient} />
@@ -744,7 +772,7 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="consults">
-            <div style={{ padding: '20px 24px' }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px' }}>
               {!raw && (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
               )}
@@ -805,7 +833,7 @@ export default function DossierPage() {
             <VitalsEvolutionPanel patientId={raw.id} />
           </DossierTabPanel>
           <DossierTabPanel value="prescr">
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
               <DocumentsPanel patientId={raw.id} filter="PRESCRIPTION_HISTORIQUE" />
               {patientPrescriptions.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
@@ -876,27 +904,31 @@ export default function DossierPage() {
           </DossierTabPanel>
           {patient.sex === 'F' && (
             <DossierTabPanel value="grossesse">
-              <PregnancyTab patientId={raw.id} />
+              <div className="dp-tab-scroll">
+                <PregnancyTab patientId={raw.id} />
+              </div>
             </DossierTabPanel>
           )}
           {(clinicSettings?.hospitalizationEnabled ?? false) && (
             <DossierTabPanel value="sejours">
-              <StaysTab patientId={raw.id} />
+              <div className="dp-tab-scroll">
+                <StaysTab patientId={raw.id} />
+              </div>
             </DossierTabPanel>
           )}
           <DossierTabPanel value="analyses">
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 24 }}>
               <BiologicalTrendsPanel patientId={raw.id} />
               <DocumentsPanel patientId={raw.id} filter="ANALYSE" />
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="imagerie">
-            <div style={{ padding: '20px 24px' }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px' }}>
               <DocumentsPanel patientId={raw.id} filter="IMAGERIE" />
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="docs">
-            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
               {/* QA9-13 — génération d'un consentement éclairé (PDF rattaché au dossier). */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button variant="primary" onClick={() => setShowConsent(true)}>
@@ -907,7 +939,7 @@ export default function DossierPage() {
             </div>
           </DossierTabPanel>
           <DossierTabPanel value="factu">
-            <div style={{ padding: '20px 24px' }}>
+            <div className="dp-tab-scroll" style={{ padding: '20px 24px' }}>
               {patientInvoices.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
                   Aucune facture pour ce patient.

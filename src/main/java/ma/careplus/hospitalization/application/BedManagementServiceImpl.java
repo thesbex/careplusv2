@@ -163,6 +163,19 @@ public class BedManagementServiceImpl implements BedManagementService {
         r.setActive(false);
     }
 
+    @Override
+    public void deleteRoom(UUID id) {
+        Room r = roomRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("ROOM_NOT_FOUND", "Chambre introuvable : " + id));
+        // FK-safe : tout lit (actif ou inactif) référence la chambre. Supprimer
+        // les lits d'abord ; sinon proposer la désactivation.
+        if (bedRepo.existsByRoomId(id)) {
+            throw new BusinessException("ROOM_HAS_BEDS_DELETE",
+                    "Cette chambre contient des lits. Supprimez d'abord ses lits, ou désactivez-la.", 409);
+        }
+        roomRepo.delete(r);
+    }
+
     // ── Lits (beds) ────────────────────────────────────────────────────
 
     @Override
@@ -229,6 +242,20 @@ public class BedManagementServiceImpl implements BedManagementService {
         Bed b = bedRepo.findById(id)
                 .orElseThrow(() -> new NotFoundException("BED_NOT_FOUND", "Lit introuvable : " + id));
         b.setActive(false);
+    }
+
+    @Override
+    public void deleteBed(UUID id) {
+        Bed b = bedRepo.findById(id)
+                .orElseThrow(() -> new NotFoundException("BED_NOT_FOUND", "Lit introuvable : " + id));
+        // Pas d'historique d'affectation → suppression physique. Sinon, on garde
+        // la trace ADT : seule la désactivation est permise.
+        if (assignmentRepo.existsByBedId(id)) {
+            throw new BusinessException("BED_HAS_HISTORY",
+                    "Ce lit a déjà reçu un patient (historique d'affectation). Désactivez-le plutôt que de le supprimer.",
+                    409);
+        }
+        bedRepo.delete(b);
     }
 
     // ── Tableau des lits ───────────────────────────────────────────────
