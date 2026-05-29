@@ -13,6 +13,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Input';
 import { Plus } from '@/components/icons';
 import { AdmissionForm, StayDetailPanel } from './components/StayPanels';
+import { BedWall } from './components/BedWall';
 import { useStayQueue, type StayQueueEntry } from './hooks/useStays';
 import { useBedBoard } from './hooks/useHospitalization';
 import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
@@ -149,10 +150,13 @@ export default function HospitalisationPage() {
   const { data: practitioners } = usePractitioners();
   const [admitting, setAdmitting] = useState(false);
   const [openStay, setOpenStay] = useState<string | null>(null);
+  // Bascule worklist / mur de lits (refresh — vue additionnelle).
+  const [view, setView] = useState<'liste' | 'mur'>('liste');
 
-  // Filtres user 2026-05-28 : recherche patient + ward.
+  // Filtres user 2026-05-28 : recherche patient + ward (+ médecin 2026-05-29).
   const [search, setSearch] = useState('');
   const [wardFilter, setWardFilter] = useState<string>('ALL');
+  const [medecinFilter, setMedecinFilter] = useState<string>('ALL');
 
   // Pastille couleur + initiales par médecin pour les cards (mirror agenda).
   const practitionerMap = useMemo(() => {
@@ -191,6 +195,7 @@ export default function HospitalisationPage() {
   const stays = useMemo(() => {
     let out = rawStays;
     if (wardFilter !== 'ALL') out = out.filter((s) => s.wardLabel === wardFilter);
+    if (medecinFilter !== 'ALL') out = out.filter((s) => s.attendingPractitionerId === medecinFilter);
     if (search.trim()) {
       const needle = search.trim().toLowerCase();
       out = out.filter(
@@ -201,9 +206,15 @@ export default function HospitalisationPage() {
       );
     }
     return out;
-  }, [rawStays, wardFilter, search]);
+  }, [rawStays, wardFilter, medecinFilter, search]);
 
-  const hasActiveFilter = !!search.trim() || wardFilter !== 'ALL';
+  const hasActiveFilter = !!search.trim() || wardFilter !== 'ALL' || medecinFilter !== 'ALL';
+
+  // Médecins présents dans la worklist (pour le filtre).
+  const stayDoctors = useMemo(() => {
+    const ids = new Set(rawStays.map((s) => s.attendingPractitionerId).filter(Boolean) as string[]);
+    return (practitioners ?? []).filter((p) => ids.has(p.id));
+  }, [rawStays, practitioners]);
 
   return (
     <Screen
@@ -221,6 +232,42 @@ export default function HospitalisationPage() {
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
       <div style={{ padding: 24, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }} className="scroll">
+        {/* Bascule Liste / Mur de lits (refresh) */}
+        <div role="tablist" aria-label="Vue" style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 8, alignSelf: 'flex-start' }}>
+          {(['liste', 'mur'] as const).map((v) => (
+            <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
+              style={{
+                padding: '7px 16px', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12.5, fontWeight: view === v ? 600 : 500,
+                background: view === v ? 'var(--surface)' : 'transparent',
+                color: view === v ? 'var(--ink)' : 'var(--ink-3)',
+                boxShadow: view === v ? '0 0 0 1px var(--border)' : 'none',
+              }}>
+              {v === 'liste' ? 'Liste' : 'Mur de lits'}
+            </button>
+          ))}
+        </div>
+
+        {/* Admission + détail séjour : partagés par les deux vues */}
+        {admitting && (
+          <>
+            <AdmissionForm onDone={() => setAdmitting(false)} />
+            <div style={{ height: 0 }} />
+          </>
+        )}
+        {openStay && (
+          <>
+            <StayDetailPanel stayId={openStay} onClose={() => setOpenStay(null)} />
+            <div style={{ height: 0 }} />
+          </>
+        )}
+
+        {view === 'mur' && (
+          <BedWall onOpenStay={(stayId) => { setOpenStay(stayId); setAdmitting(false); }} />
+        )}
+
+        {view === 'liste' && (
+          <>
         {/* KPI bar — refonte 2026-05-28 */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <KpiTile
@@ -247,7 +294,7 @@ export default function HospitalisationPage() {
 
         {/* Barre filtres */}
         <Panel style={{ padding: '12px 16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: 10, alignItems: 'end' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10, alignItems: 'end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Rechercher
@@ -285,10 +332,30 @@ export default function HospitalisationPage() {
                 ))}
               </Select>
             </label>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Médecin
+              </span>
+              <Select
+                value={medecinFilter}
+                onChange={(e) => setMedecinFilter(e.target.value)}
+                aria-label="Filtrer par médecin"
+                style={{
+                  height: 32, padding: '0 8px',
+                  border: '1px solid var(--border)', borderRadius: 6,
+                  fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
+                }}
+              >
+                <option value="ALL">Tous les médecins</option>
+                {stayDoctors.map((p) => (
+                  <option key={p.id} value={p.id}>Dr {p.lastName}</option>
+                ))}
+              </Select>
+            </label>
             {hasActiveFilter && (
               <button
                 type="button"
-                onClick={() => { setSearch(''); setWardFilter('ALL'); }}
+                onClick={() => { setSearch(''); setWardFilter('ALL'); setMedecinFilter('ALL'); }}
                 style={{
                   height: 32, padding: '0 12px',
                   background: 'none', border: '1px solid var(--border)', borderRadius: 6,
@@ -305,22 +372,6 @@ export default function HospitalisationPage() {
             </div>
           )}
         </Panel>
-
-        {/* Forme admission */}
-        {admitting && (
-          <>
-            <AdmissionForm onDone={() => setAdmitting(false)} />
-            <div style={{ height: 0 }} />
-          </>
-        )}
-
-        {/* Détail séjour ouvert */}
-        {openStay && (
-          <>
-            <StayDetailPanel stayId={openStay} onClose={() => setOpenStay(null)} />
-            <div style={{ height: 0 }} />
-          </>
-        )}
 
         {/* Liste séjours en cards riches */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -356,6 +407,8 @@ export default function HospitalisationPage() {
             />
           ))}
         </div>
+          </>
+        )}
       </div>
     </Screen>
   );

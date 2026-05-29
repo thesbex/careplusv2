@@ -16,6 +16,7 @@ export interface StayQueueEntry {
   admissionReason: string | null;
   admittedAt: string;
   daysSoFar: number;
+  bedId: string | null;
   bedLabel: string | null;
   wardLabel: string | null;
   attendingPractitionerId: string | null;
