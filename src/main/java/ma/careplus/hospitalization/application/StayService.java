@@ -21,8 +21,17 @@ public interface StayService {
     /** Transfère le séjour vers un autre lit (ferme l'affectation courante, en ouvre une). */
     StayDetailView transfer(UUID stayId, TransferRequest req, UUID actorId);
 
-    /** Sortie médicale : EN_COURS → SORTI, libère le lit, enregistre le compte-rendu. */
+    /**
+     * Préparer la sortie (temps 1) : EN_COURS → SORTI, libère le lit, enregistre le
+     * compte-rendu ET génère/émet la facture de séjour. À régler avant confirmation.
+     */
     StayDetailView discharge(UUID stayId, DischargeRequest req, UUID actorId);
+
+    /**
+     * Confirmer la sortie (temps 2) : SORTI → FACTURE, refusée tant que la facture de
+     * séjour n'est pas réglée en totalité.
+     */
+    StayDetailView confirmDischarge(UUID stayId, UUID actorId);
 
     /** Annule une admission (EN_COURS → ANNULE), libère le lit. */
     void cancel(UUID stayId, UUID actorId);

@@ -31,8 +31,8 @@ const DOCTOR_PALETTE = ['#1E4DAB', '#2F8F6B', '#C68A2E', '#C2553A', '#5A4FCF'];
 /** Pastille de statut de séjour (worklist + historique). */
 const STAY_STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
   EN_COURS: { label: 'En cours', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
-  SORTI: { label: 'Sorti', bg: 'var(--amber-soft)', fg: '#6e4a0a' },
-  FACTURE: { label: 'Facturé', bg: 'var(--success-soft)', fg: '#0a4630' },
+  SORTI: { label: 'À régler', bg: 'var(--amber-soft)', fg: '#6e4a0a' },
+  FACTURE: { label: 'Clôturé', bg: 'var(--success-soft)', fg: '#0a4630' },
   ANNULE: { label: 'Annulé', bg: '#e1ded2', fg: '#595549' },
 };
 

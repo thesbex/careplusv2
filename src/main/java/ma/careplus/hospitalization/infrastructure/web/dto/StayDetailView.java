@@ -26,7 +26,10 @@ public record StayDetailView(
         List<ChargeLine> chargePreview,
         BigDecimal chargeTotal,
         List<PrestationLine> prestations,
-        BigDecimal prestationsTotal) {
+        BigDecimal prestationsTotal,
+        /** Factures de consultation (acte + radio/labo internes) faites pendant le séjour,
+         *  encore en brouillon — seront englobées dans la facture de séjour à la sortie. */
+        List<PendingConsultationInvoice> pendingConsultationInvoices) {
 
     /** Une affectation de lit dans l'historique ADT. */
     public record AssignmentView(
@@ -54,4 +57,11 @@ public record StayDetailView(
             BigDecimal unitPrice,
             BigDecimal quantity,
             BigDecimal lineTotal) {}
+
+    /** Une facture de consultation en attente d'absorption dans la facture de séjour. */
+    public record PendingConsultationInvoice(
+            UUID invoiceId,
+            String number,
+            BigDecimal netAmount,
+            Instant consultDate) {}
 }

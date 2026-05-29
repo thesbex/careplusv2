@@ -37,6 +37,8 @@ export interface InvoiceApi {
   mutuelleInsuranceName: string | null;
   issuedAt: string | null;
   createdAt: string;
+  /** Facture de consultation d'un patient hospitalisé : à régler avec le séjour (émission/encaissement bloqués). */
+  deferredToStay?: boolean;
 }
 
 export interface InvoiceLineDraft {

@@ -250,7 +250,9 @@ public class BillingController {
                 paymentResponses,
                 null, // mutuelleInsuranceName — lookup post-MVP
                 invoice.getIssuedAt(),
-                invoice.getCreatedAt()
+                invoice.getCreatedAt(),
+                invoice.getConsultationId() != null
+                        && billingService.patientHasActiveStay(invoice.getPatientId())
         );
     }
 }

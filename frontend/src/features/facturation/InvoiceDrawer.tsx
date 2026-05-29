@@ -81,6 +81,9 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
   if (!invoice) return null;
   const inv = invoice;
 
+  // Facture de consultation d'un patient hospitalisé : ni émission ni encaissement à
+  // part — elle sera englobée dans la facture du séjour à la sortie.
+  const deferred = inv.deferredToStay ?? false;
   const isDraft = inv.status === 'BROUILLON';
   const isIssued = inv.status === 'EMISE' || inv.status === 'PAYEE_PARTIELLE';
   const isPaid = inv.status === 'PAYEE_TOTALE';
@@ -189,6 +192,25 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
           </div>
 
           <div className="fa-body scroll">
+            {deferred && (
+              <div
+                role="note"
+                style={{
+                  background: 'var(--amber-soft, #fbf1dd)',
+                  border: '1px solid var(--amber, #a86a0c)',
+                  color: 'var(--amber, #a86a0c)',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                  fontSize: 12.5,
+                  marginBottom: 12,
+                  lineHeight: 1.45,
+                }}
+              >
+                <strong>Patient hospitalisé.</strong> Cette facture de consultation sera
+                englobée dans la facture du séjour et réglée à la sortie. Émission et
+                encaissement séparés désactivés.
+              </div>
+            )}
             <div
               style={{
                 fontSize: 11,
@@ -353,7 +375,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                   <Button onClick={() => void handleSaveDraft()} disabled={isSaving}>
                     {isSaving ? 'Enregistrement…' : 'Enregistrer brouillon'}
                   </Button>
-                  <Button variant="primary" onClick={() => void handleIssue()} disabled={isIssuing}>
+                  <Button variant="primary" onClick={() => void handleIssue()} disabled={isIssuing || deferred}>
                     {isIssuing ? 'Émission…' : 'Émettre →'}
                   </Button>
                 </>
@@ -361,7 +383,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
               {isIssued && (
                 <>
                   <Button onClick={() => setCreditOpen(true)}>Avoir</Button>
-                  <Button variant="primary" onClick={() => setPaymentOpen(true)}>
+                  <Button variant="primary" onClick={() => setPaymentOpen(true)} disabled={deferred}>
                     Encaisser
                   </Button>
                 </>

@@ -19,5 +19,7 @@ public record InvoiceResponse(
         List<PaymentResponse> payments,
         String mutuelleInsuranceName,
         OffsetDateTime issuedAt,
-        OffsetDateTime createdAt
+        OffsetDateTime createdAt,
+        /** Facture de consultation d'un patient hospitalisé : à régler avec le séjour, non émise/encaissée à part. */
+        boolean deferredToStay
 ) {}

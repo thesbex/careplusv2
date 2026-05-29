@@ -129,6 +129,13 @@ public class StayController {
         return ResponseEntity.ok(service.discharge(id, req, actor(auth)));
     }
 
+    /** Confirmer la sortie (temps 2) — refusée si la facture de séjour n'est pas réglée. */
+    @PostMapping("/{id}/confirm-discharge")
+    @PreAuthorize(DISCHARGE_ROLES)
+    public ResponseEntity<StayDetailView> confirmDischarge(@PathVariable UUID id, Authentication auth) {
+        return ResponseEntity.ok(service.confirmDischarge(id, actor(auth)));
+    }
+
     @PostMapping("/{id}/cancel")
     @PreAuthorize(ADMIT_ROLES)
     public ResponseEntity<Void> cancel(@PathVariable UUID id, Authentication auth) {

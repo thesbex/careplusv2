@@ -14,8 +14,8 @@ import { StayDetailPanel } from './StayPanels';
 
 const STATUS_LABEL: Record<StayStatus, string> = {
   EN_COURS: 'En cours',
-  SORTI: 'Sorti',
-  FACTURE: 'Facturé',
+  SORTI: 'À régler',
+  FACTURE: 'Clôturé',
   ANNULE: 'Annulé',
 };
 

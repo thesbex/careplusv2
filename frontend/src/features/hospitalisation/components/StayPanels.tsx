@@ -20,7 +20,7 @@ import {
   useCancelStay,
   useDeleteStayPrestation,
   useDischarge,
-  useGenerateStayInvoice,
+  useConfirmDischarge,
   useRecordStayVitals,
   useStayDetail,
   useStayPrestations,
@@ -271,7 +271,7 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
   const freeBeds = useFreeBeds();
   const { transfer, isPending: transferring } = useTransfer();
   const { discharge, isPending: discharging } = useDischarge();
-  const { generateInvoice, isPending: billing } = useGenerateStayInvoice();
+  const { confirmDischarge, isPending: confirming } = useConfirmDischarge();
   const { cancelStay } = useCancelStay();
   const { vitals } = useStayVitals(stayId);
   const { recordVitals, isPending: recVit } = useRecordStayVitals();
@@ -292,13 +292,12 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
   }
   async function doDischarge() {
     try { await discharge({ stayId, dischargeType, ...(summary.trim() ? { dischargeSummary: summary.trim() } : {}) });
-      toast.success('Sortie enregistrée.'); }
+      toast.success('Sortie préparée — facture de séjour émise.', {
+        description: 'Encaissez la facture, puis confirmez la sortie.' }); }
     catch (err) { reportError(err); }
   }
-  async function doInvoice() {
-    try { const r = await generateInvoice(stayId);
-      toast.success('Facture de séjour générée.', { description: 'Ouverture dans Facturation…' });
-      navigate(`/facturation?invoice=${(r as { invoiceId: string }).invoiceId}`); }
+  async function doConfirmDischarge() {
+    try { await confirmDischarge(stayId); toast.success('Sortie confirmée — séjour clôturé.'); }
     catch (err) { reportError(err); }
   }
   async function doCancel() {
@@ -405,15 +404,49 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
                 <span>Total hébergement</span><span>{stay.chargeTotal.toLocaleString('fr-MA')} MAD</span>
               </div>
             </div>
-            {stay.status === 'SORTI' && (
-              <Button type="button" variant="primary" disabled={billing} onClick={() => void doInvoice()}>
-                {billing ? 'Génération…' : 'Générer la facture de séjour'}
-              </Button>
+            {(stay.pendingConsultationInvoices?.length ?? 0) > 0 && (
+              <div style={{ background: 'var(--surface-2)', borderRadius: 6, padding: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                  Consultations du séjour (englobées dans la facture à la sortie)
+                </div>
+                {stay.pendingConsultationInvoices!.map((pc) => (
+                  <div key={pc.invoiceId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span>
+                      {pc.number ?? 'Consultation (brouillon)'}
+                      {pc.consultDate ? ` · ${new Date(pc.consultDate).toLocaleDateString('fr-MA')}` : ''}
+                    </span>
+                    <span style={{ fontWeight: 600 }}>{pc.netAmount.toLocaleString('fr-MA')} MAD</span>
+                  </div>
+                ))}
+              </div>
             )}
-            {stay.status === 'FACTURE' && stay.invoiceId && (
-              <Button type="button" variant="primary" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
-                Voir la facture
-              </Button>
+            {/* Sortie en 2 temps : la facture est émise à la « Préparation de la
+                sortie » ; « Confirmer la sortie » est refusée tant qu'elle n'est pas
+                réglée (garde backend STAY_INVOICE_UNPAID). */}
+            {stay.status === 'SORTI' && (
+              <>
+                {stay.invoiceId && (
+                  <Button type="button" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
+                    Voir / encaisser la facture de séjour
+                  </Button>
+                )}
+                <Button type="button" variant="primary" disabled={confirming}
+                  onClick={() => void doConfirmDischarge()}>
+                  {confirming ? 'Confirmation…' : 'Confirmer la sortie (facture réglée)'}
+                </Button>
+              </>
+            )}
+            {stay.status === 'FACTURE' && (
+              <>
+                <div style={{ fontSize: 12.5, color: 'var(--success, #0e5b3e)', fontWeight: 600 }}>
+                  Séjour clôturé — facture réglée.
+                </div>
+                {stay.invoiceId && (
+                  <Button type="button" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
+                    Voir la facture
+                  </Button>
+                )}
+              </>
             )}
             {(stay.status === 'SORTI' || stay.status === 'FACTURE') && (
               <Button type="button" onClick={() => void doPdf()}>Télécharger le compte-rendu (PDF)</Button>
@@ -422,7 +455,7 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
         )}
 
         {tab === 'prestations' && (
-          <StayPrestationsSection stayId={stayId} editable={stay.status === 'EN_COURS' || stay.status === 'SORTI'} />
+          <StayPrestationsSection stayId={stayId} editable={stay.status === 'EN_COURS'} />
         )}
 
         {tab === 'constantes' && (
@@ -483,7 +516,12 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
               <Button type="button" disabled={transferring} onClick={() => void doTransfer()}>Transférer</Button>
             </div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Sortie médicale</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Sortie médicale</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 8, lineHeight: 1.45 }}>
+                « Préparer la sortie » génère et émet la facture de séjour (hébergement +
+                prestations + consultations du séjour). La sortie est confirmée ensuite,
+                une fois la facture réglée, depuis l'onglet « Aperçu & facturation ».
+              </div>
               <Field>
                 <FieldLabel htmlFor="dis-type">Type de sortie</FieldLabel>
                 <Select id="dis-type" aria-label="Type de sortie" value={dischargeType}
@@ -498,7 +536,7 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
                 <Button type="button" variant="ghost" onClick={() => void doCancel()}>Annuler l'admission</Button>
                 <Button type="button" variant="primary" disabled={discharging} onClick={() => void doDischarge()}>
-                  Enregistrer la sortie
+                  {discharging ? 'Préparation…' : 'Préparer la sortie'}
                 </Button>
               </div>
             </div>

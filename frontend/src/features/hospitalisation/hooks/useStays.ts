@@ -42,6 +42,13 @@ export interface ChargeLine {
   lineTotal: number;
 }
 
+export interface PendingConsultationInvoice {
+  invoiceId: string;
+  number: string | null;
+  netAmount: number;
+  consultDate: string | null;
+}
+
 export interface StayDetail {
   id: string;
   patientId: string;
@@ -58,6 +65,9 @@ export interface StayDetail {
   assignments: AssignmentView[];
   chargePreview: ChargeLine[];
   chargeTotal: number;
+  prestations?: { id: string; label: string; unitPrice: number; quantity: number; lineTotal: number }[];
+  prestationsTotal?: number;
+  pendingConsultationInvoices?: PendingConsultationInvoice[];
 }
 
 export const DISCHARGE_TYPE_LABELS: Record<DischargeType, string> = {
@@ -155,6 +165,12 @@ export function useDischarge() {
       api.post<StayDetail>(`/hospitalization/stays/${stayId}/discharge`,
         { dischargeType, dischargeSummary }).then((r) => r.data));
   return { discharge: m.mutateAsync, isPending: m.isPending };
+}
+
+export function useConfirmDischarge() {
+  const m = useStayMutation((stayId: string) =>
+    api.post<StayDetail>(`/hospitalization/stays/${stayId}/confirm-discharge`).then((r) => r.data));
+  return { confirmDischarge: m.mutateAsync, isPending: m.isPending };
 }
 
 export function useCancelStay() {

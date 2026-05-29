@@ -118,15 +118,50 @@ public class StayServiceImpl implements StayService {
         return get(stayId);
     }
 
+    /**
+     * Temps 1 de la sortie en 2 temps : « Préparer la sortie ». Enregistre la sortie
+     * (date, type, résumé), clôture l'affectation de lit, génère ET émet immédiatement
+     * la facture de séjour (hébergement + prestations + consultations absorbées), puis
+     * passe le séjour en SORTI = « sortie préparée, facture émise, à régler ».
+     * La sortie n'est définitive (FACTURE) qu'après règlement total ({@link #confirmDischarge}).
+     */
     @Override
     public StayDetailView discharge(UUID stayId, DischargeRequest req, UUID actorId) {
         Stay stay = loadActive(stayId);
         Instant now = Instant.now();
         assignmentRepo.findByStayIdAndToAtIsNull(stayId).ifPresent(a -> a.setToAt(now));
-        stay.setStatus("SORTI");
         stay.setDischargedAt(now);
         stay.setDischargeType(req.dischargeType());
         stay.setDischargeSummary(req.dischargeSummary());
+        stay.setStatus("SORTI");
+        UUID invoiceId = createAndIssueStayInvoice(stay, actorId);
+        if (invoiceId != null) stay.setInvoiceId(invoiceId);
+        stay.setUpdatedBy(actorId);
+        return get(stayId);
+    }
+
+    /**
+     * Temps 2 de la sortie : « Confirmer la sortie ». Refusée tant que la facture de
+     * séjour n'est pas réglée en totalité (PAYEE_TOTALE) — le patient ne « sort des
+     * comptes » qu'une fois payé. Sans facture (séjour gratuit), confirmation directe.
+     * Passe le séjour en FACTURE = « réglé / clôturé ».
+     */
+    @Override
+    public StayDetailView confirmDischarge(UUID stayId, UUID actorId) {
+        Stay stay = stayRepo.findByIdAndDeletedAtIsNull(stayId)
+                .orElseThrow(() -> new NotFoundException("STAY_NOT_FOUND", "Séjour introuvable : " + stayId));
+        if (!"SORTI".equals(stay.getStatus())) {
+            throw new BusinessException("STAY_NOT_PREPARED",
+                    "Préparez d'abord la sortie (statut actuel : " + stay.getStatus() + ").", 409);
+        }
+        if (stay.getInvoiceId() != null) {
+            Invoice invoice = billingService.getInvoice(stay.getInvoiceId());
+            if (invoice.getStatus() != ma.careplus.billing.domain.InvoiceStatus.PAYEE_TOTALE) {
+                throw new BusinessException("STAY_INVOICE_UNPAID",
+                        "Facture de séjour non réglée — encaissez la totalité avant de confirmer la sortie.", 409);
+            }
+        }
+        stay.setStatus("FACTURE");
         stay.setUpdatedBy(actorId);
         return get(stayId);
     }
@@ -139,14 +174,38 @@ public class StayServiceImpl implements StayService {
         stay.setUpdatedBy(actorId);
     }
 
+    /**
+     * Endpoint hérité « générer la facture » : la facture est désormais créée lors de
+     * « Préparer la sortie ». On renvoie donc la facture existante du séjour ; à défaut
+     * (cas limite), on la génère depuis un séjour SORTI.
+     */
     @Override
     public UUID generateInvoice(UUID stayId, UUID actorId) {
         Stay stay = stayRepo.findByIdAndDeletedAtIsNull(stayId)
                 .orElseThrow(() -> new NotFoundException("STAY_NOT_FOUND", "Séjour introuvable : " + stayId));
+        if (stay.getInvoiceId() != null) return stay.getInvoiceId();
         if (!"SORTI".equals(stay.getStatus())) {
             throw new BusinessException("STAY_NOT_DISCHARGED",
                     "Le séjour doit être en sortie (SORTI) avant facturation. Statut : " + stay.getStatus(), 409);
         }
+        UUID invoiceId = createAndIssueStayInvoice(stay, actorId);
+        if (invoiceId == null) {
+            throw new BusinessException("STAY_NO_CHARGES",
+                    "Aucun montant facturable (prix de journée à 0 et aucune prestation).", 422);
+        }
+        stay.setInvoiceId(invoiceId);
+        stay.setUpdatedBy(actorId);
+        return invoiceId;
+    }
+
+    /**
+     * Construit les lignes de la facture de séjour (hébergement + prestations +
+     * consultations absorbées), crée la facture puis l'émet (numéro séquentiel,
+     * encaissable). Renvoie l'id de facture, ou {@code null} si rien n'est facturable
+     * (prix de journée à 0, aucune prestation, aucune consultation à absorber).
+     */
+    private UUID createAndIssueStayInvoice(Stay stay, UUID actorId) {
+        UUID stayId = stay.getId();
         String rule = dayRule();
         List<InvoiceLineRequest> lines = new ArrayList<>();
         for (BedAssignment a : assignmentRepo.findAllByStayIdOrderByFromAtAsc(stayId)) {
@@ -158,38 +217,23 @@ public class StayServiceImpl implements StayService {
                     + " — " + nights + " nuit" + (nights > 1 ? "s" : "");
             lines.add(new InvoiceLineRequest(null, desc, a.getDailyRateAmount(), BigDecimal.valueOf(nights)));
         }
-        // Append prestation lines (actes/services supplémentaires en sus du prix de journée).
-        // act_id reste NULL : la ligne de facture (billing_invoice_line.act_id) référence
-        // catalog_act, alors que la prestation de séjour pointe désormais vers
-        // catalog_prestation (V066). Réutiliser sp.getActId() ici violait la FK catalog_act
-        // → 500 « génération de facture impossible ». Le libellé/prix/quantité suffisent.
+        // Prestations de séjour. act_id NULL : la ligne de facture (billing_invoice_line.act_id)
+        // référence catalog_act, alors que la prestation pointe vers catalog_prestation (V066).
         for (ma.careplus.hospitalization.domain.StayPrestation sp :
                 prestationRepo.findAllByStayIdOrderByPerformedAtAsc(stayId)) {
-            lines.add(new InvoiceLineRequest(null, sp.getLabel(),
-                    sp.getUnitPrice(), sp.getQuantity()));
+            lines.add(new InvoiceLineRequest(null, sp.getLabel(), sp.getUnitPrice(), sp.getQuantity()));
         }
-
-        // QA10-4 : englober les consultations effectuées pendant le séjour. On absorbe
-        // les factures BROUILLON de consultation du patient dont la consultation tombe
-        // dans la fenêtre du séjour [admittedAt, dischargedAt|now]. Leurs lignes (acte +
-        // labo/imagerie internes + médicaments internes) sont fusionnées dans la facture
-        // de séjour, et les brouillons absorbés sont supprimés (pas de double comptage).
-        // Les factures déjà ÉMISES sont laissées intactes (immuables) — voir log billing.
+        // Englober les consultations BROUILLON faites pendant le séjour (acte + labo/imagerie
+        // internes + médicaments). Les brouillons absorbés sont supprimés (pas de double compte).
         java.time.OffsetDateTime windowStart = stay.getAdmittedAt().atOffset(java.time.ZoneOffset.UTC);
         java.time.OffsetDateTime windowEnd =
                 (stay.getDischargedAt() != null ? stay.getDischargedAt() : Instant.now())
                         .atOffset(java.time.ZoneOffset.UTC);
-        lines.addAll(billingService.absorbConsultationDrafts(
-                stay.getPatientId(), windowStart, windowEnd));
+        lines.addAll(billingService.absorbConsultationDrafts(stay.getPatientId(), windowStart, windowEnd));
 
-        if (lines.isEmpty()) {
-            throw new BusinessException("STAY_NO_CHARGES",
-                    "Aucun montant facturable (prix de journée à 0 et aucune prestation).", 422);
-        }
+        if (lines.isEmpty()) return null;
         Invoice invoice = billingService.createStayInvoice(stay.getPatientId(), lines, actorId);
-        stay.setInvoiceId(invoice.getId());
-        stay.setStatus("FACTURE");
-        stay.setUpdatedBy(actorId);
+        billingService.issueInvoice(invoice.getId(), actorId); // émise → encaissable
         return invoice.getId();
     }
 
@@ -314,12 +358,23 @@ public class StayServiceImpl implements StayService {
             prestationsTotal = prestationsTotal.add(lineTotal);
         }
 
+        // Consultations BROUILLON faites pendant le séjour (acte + radio/labo internes),
+        // à englober dans la facture de séjour à la sortie — visibles ici (item backlog).
+        java.time.OffsetDateTime winStart = stay.getAdmittedAt().atOffset(java.time.ZoneOffset.UTC);
+        java.time.OffsetDateTime winEnd = end.atOffset(java.time.ZoneOffset.UTC);
+        List<StayDetailView.PendingConsultationInvoice> pending = billingService
+                .listPendingConsultationInvoices(stay.getPatientId(), winStart, winEnd).stream()
+                .map(pc -> new StayDetailView.PendingConsultationInvoice(
+                        pc.invoiceId(), pc.number(), pc.netAmount(),
+                        pc.consultDate() != null ? pc.consultDate().toInstant() : null))
+                .toList();
+
         return new StayDetailView(
                 stay.getId(), stay.getPatientId(), p.getFirstName(), p.getLastName(),
                 stay.getStatus(), stay.getAdmissionReason(), stay.getAttendingPractitionerId(),
                 stay.getAdmittedAt(), stay.getDischargedAt(), stay.getDischargeType(),
                 stay.getDischargeSummary(), stay.getInvoiceId(),
-                assignments, charges, total, prestationLines, prestationsTotal);
+                assignments, charges, total, prestationLines, prestationsTotal, pending);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────

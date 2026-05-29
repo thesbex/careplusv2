@@ -678,6 +678,69 @@ public class BillingService {
         return absorbed;
     }
 
+    /**
+     * Vrai si le patient a un séjour d'hospitalisation EN_COURS. Lecture inter-module
+     * via JdbcTemplate (pas d'accès au repository hospitalisation). Sert à différer la
+     * facturation des consultations d'un patient hospitalisé : sa facture de consultation
+     * reste BROUILLON et sera englobée dans la facture de séjour à la sortie.
+     */
+    @Transactional(readOnly = true)
+    public boolean patientHasActiveStay(UUID patientId) {
+        Boolean exists = jdbc.queryForObject("""
+                SELECT EXISTS(
+                    SELECT 1 FROM hospitalization_stay
+                     WHERE patient_id = ? AND status = 'EN_COURS' AND deleted_at IS NULL)
+                """, Boolean.class, patientId);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    /**
+     * Refuse d'émettre/encaisser une facture de CONSULTATION quand le patient est
+     * hospitalisé (séjour EN_COURS) : la facture reste BROUILLON et sera absorbée dans
+     * la facture de séjour à la sortie ({@link #absorbConsultationDrafts}). Les factures
+     * de séjour (consultationId == null) ne sont jamais bloquées.
+     */
+    private void guardConsultationInvoiceDeferredToStay(Invoice invoice) {
+        if (invoice.getConsultationId() != null && patientHasActiveStay(invoice.getPatientId())) {
+            throw new BusinessException("INVOICE_DEFERRED_TO_STAY",
+                    "Patient hospitalisé — cette facture de consultation sera réglée avec la facture "
+                            + "du séjour à la sortie. Aucune émission ni encaissement séparé.",
+                    HttpStatus.CONFLICT.value());
+        }
+    }
+
+    /**
+     * Factures BROUILLON de consultation d'un patient dans la fenêtre du séjour
+     * [windowStart, windowEnd] — celles qui seront absorbées dans la facture de séjour
+     * à la sortie. Sert à rendre visibles, sur la page d'hospitalisation, les
+     * consultations (acte + radio/labo internes) effectuées pendant le séjour.
+     */
+    @Transactional(readOnly = true)
+    public List<PendingStayConsultationInvoice> listPendingConsultationInvoices(
+            UUID patientId, OffsetDateTime windowStart, OffsetDateTime windowEnd) {
+        return jdbc.query("""
+                SELECT bi.id, bi.number, bi.net_amount,
+                       COALESCE(cc.started_at, bi.created_at) AS consult_date
+                  FROM billing_invoice bi
+                  JOIN clinical_consultation cc ON cc.id = bi.consultation_id
+                 WHERE bi.patient_id = ?
+                   AND bi.consultation_id IS NOT NULL
+                   AND bi.status = 'BROUILLON'
+                   AND COALESCE(cc.started_at, bi.created_at) BETWEEN ? AND ?
+                 ORDER BY COALESCE(cc.started_at, bi.created_at) ASC
+                """,
+                (rs, i) -> new PendingStayConsultationInvoice(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("number"),
+                        rs.getBigDecimal("net_amount"),
+                        rs.getObject("consult_date", OffsetDateTime.class)),
+                patientId, windowStart, windowEnd);
+    }
+
+    /** Résumé d'une facture BROUILLON de consultation en attente d'absorption dans un séjour. */
+    public record PendingStayConsultationInvoice(
+            UUID invoiceId, String number, BigDecimal netAmount, OffsetDateTime consultDate) {}
+
     @Transactional
     public Invoice updateInvoice(UUID invoiceId, InvoiceUpdateRequest req, UUID actorId) {
         Invoice invoice = loadDraftOrThrow(invoiceId);
@@ -731,6 +794,7 @@ public class BillingService {
     @Transactional
     public IssueInvoiceResponse issueInvoice(UUID invoiceId, UUID actorId) {
         Invoice invoice = loadDraftOrThrow(invoiceId);
+        guardConsultationInvoiceDeferredToStay(invoice);
 
         // Assign sequential number via SELECT FOR UPDATE
         String number = sequenceRepository.nextInvoiceNumber();
@@ -761,6 +825,7 @@ public class BillingService {
                     "Un paiement ne peut être enregistré que sur une facture émise.",
                     HttpStatus.CONFLICT.value());
         }
+        guardConsultationInvoiceDeferredToStay(invoice);
 
         Payment payment = new Payment();
         payment.setInvoiceId(invoiceId);
