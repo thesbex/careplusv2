@@ -28,6 +28,14 @@ const NAV_MAP = {
 /** Code couleur stable par médecin (mirror agenda multi-doctor). */
 const DOCTOR_PALETTE = ['#1E4DAB', '#2F8F6B', '#C68A2E', '#C2553A', '#5A4FCF'];
 
+/** Pastille de statut de séjour (worklist + historique). */
+const STAY_STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
+  EN_COURS: { label: 'En cours', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
+  SORTI: { label: 'Sorti', bg: 'var(--amber-soft)', fg: '#6e4a0a' },
+  FACTURE: { label: 'Facturé', bg: 'var(--success-soft)', fg: '#0a4630' },
+  ANNULE: { label: 'Annulé', bg: '#e1ded2', fg: '#595549' },
+};
+
 function StayCard({
   stay,
   doctorMeta,
@@ -41,7 +49,11 @@ function StayCard({
 }) {
   const initials = `${stay.patientFirstName.charAt(0)}${stay.patientLastName.charAt(0)}`.toUpperCase();
   const fullName = `${stay.patientLastName} ${stay.patientFirstName}`;
-  const dayLabel = stay.daysSoFar === 0 ? 'Admis aujourd\'hui' : `Jour ${stay.daysSoFar + 1}`;
+  const statusMeta = STAY_STATUS_META[stay.status]
+    ?? { label: stay.status, bg: 'var(--bg-alt)', fg: 'var(--ink-3)' };
+  const dayLabel = stay.status !== 'EN_COURS'
+    ? (stay.dischargedAt ? `Sorti le ${new Date(stay.dischargedAt).toLocaleDateString('fr-MA')}` : statusMeta.label)
+    : stay.daysSoFar === 0 ? 'Admis aujourd\'hui' : `Jour ${stay.daysSoFar + 1}`;
   return (
     <button
       type="button"
@@ -76,6 +88,12 @@ function StayCard({
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
           <span style={{ fontSize: 14, fontWeight: 650 }}>{fullName}</span>
+          <span style={{
+            fontSize: 10.5, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+            background: statusMeta.bg, color: statusMeta.fg,
+          }}>
+            {statusMeta.label}
+          </span>
           {doctorMeta && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -145,13 +163,20 @@ function KpiTile({ label, value, sub }: { label: string; value: string; sub?: st
 
 export default function HospitalisationPage() {
   const navigate = useNavigate();
-  const { stays: rawStays, isLoading, error } = useStayQueue();
+  const { stays: rawStays } = useStayQueue(); // EN_COURS — base des KPI + mur de lits
   const { board } = useBedBoard();
   const { data: practitioners } = usePractitioners();
   const [admitting, setAdmitting] = useState(false);
   const [openStay, setOpenStay] = useState<string | null>(null);
   // Bascule worklist / mur de lits (refresh — vue additionnelle).
   const [view, setView] = useState<'liste' | 'mur'>('liste');
+  // Statut affiché dans la liste : en cours (défaut) / historique clôturé / tous.
+  const [statusSeg, setStatusSeg] = useState<'encours' | 'historique' | 'tous'>('encours');
+  const statusesParam =
+    statusSeg === 'historique' ? 'SORTI,FACTURE,ANNULE'
+      : statusSeg === 'tous' ? 'EN_COURS,SORTI,FACTURE,ANNULE'
+        : undefined;
+  const { stays: listStays, isLoading, error } = useStayQueue(statusesParam);
 
   // Filtres user 2026-05-28 : recherche patient + ward (+ médecin 2026-05-29).
   const [search, setSearch] = useState('');
@@ -191,9 +216,9 @@ export default function HospitalisationPage() {
   // Wards visibles (depuis le board, plus fiable que dériver des stays).
   const wards = board.wards;
 
-  // Application des filtres.
+  // Application des filtres (sur la liste selon le statut sélectionné).
   const stays = useMemo(() => {
-    let out = rawStays;
+    let out = listStays;
     if (wardFilter !== 'ALL') out = out.filter((s) => s.wardLabel === wardFilter);
     if (medecinFilter !== 'ALL') out = out.filter((s) => s.attendingPractitionerId === medecinFilter);
     if (search.trim()) {
@@ -206,15 +231,15 @@ export default function HospitalisationPage() {
       );
     }
     return out;
-  }, [rawStays, wardFilter, medecinFilter, search]);
+  }, [listStays, wardFilter, medecinFilter, search]);
 
   const hasActiveFilter = !!search.trim() || wardFilter !== 'ALL' || medecinFilter !== 'ALL';
 
-  // Médecins présents dans la worklist (pour le filtre).
+  // Médecins présents dans la liste affichée (pour le filtre).
   const stayDoctors = useMemo(() => {
-    const ids = new Set(rawStays.map((s) => s.attendingPractitionerId).filter(Boolean) as string[]);
+    const ids = new Set(listStays.map((s) => s.attendingPractitionerId).filter(Boolean) as string[]);
     return (practitioners ?? []).filter((p) => ids.has(p.id));
-  }, [rawStays, practitioners]);
+  }, [listStays, practitioners]);
 
   return (
     <Screen
@@ -268,6 +293,22 @@ export default function HospitalisationPage() {
 
         {view === 'liste' && (
           <>
+        {/* Segment statut : revenir sur l'historique des séjours clôturés. */}
+        <div role="tablist" aria-label="Statut des séjours"
+          style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 8, alignSelf: 'flex-start' }}>
+          {([['encours', 'En cours'], ['historique', 'Historique'], ['tous', 'Tous']] as const).map(([k, label]) => (
+            <button key={k} type="button" role="tab" aria-selected={statusSeg === k} onClick={() => setStatusSeg(k)}
+              style={{
+                padding: '6px 14px', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 12.5, fontWeight: statusSeg === k ? 600 : 500,
+                background: statusSeg === k ? 'var(--surface)' : 'transparent',
+                color: statusSeg === k ? 'var(--ink)' : 'var(--ink-3)',
+                boxShadow: statusSeg === k ? '0 0 0 1px var(--border)' : 'none',
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
         {/* KPI bar — refonte 2026-05-28 */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <KpiTile
@@ -368,7 +409,7 @@ export default function HospitalisationPage() {
           </div>
           {hasActiveFilter && (
             <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-3)' }}>
-              {stays.length} résultat{stays.length > 1 ? 's' : ''} (sur {rawStays.length})
+              {stays.length} résultat{stays.length > 1 ? 's' : ''} (sur {listStays.length})
             </div>
           )}
         </Panel>
@@ -381,14 +422,16 @@ export default function HospitalisationPage() {
           {error && (
             <div style={{ color: 'var(--danger)', fontSize: 13, padding: 16 }}>{error}</div>
           )}
-          {!isLoading && rawStays.length === 0 && (
+          {!isLoading && listStays.length === 0 && (
             <Panel style={{ padding: 32, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-                Aucun patient hospitalisé. Cliquez sur « Nouvelle admission » pour démarrer un séjour.
+                {statusSeg === 'encours'
+                  ? 'Aucun patient hospitalisé. Cliquez sur « Nouvelle admission » pour démarrer un séjour.'
+                  : 'Aucun séjour dans l\'historique pour ce filtre.'}
               </div>
             </Panel>
           )}
-          {!isLoading && rawStays.length > 0 && stays.length === 0 && (
+          {!isLoading && listStays.length > 0 && stays.length === 0 && (
             <Panel style={{ padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
                 Aucun séjour ne correspond aux filtres.

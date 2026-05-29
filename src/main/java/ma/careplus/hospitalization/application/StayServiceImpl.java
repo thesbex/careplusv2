@@ -194,6 +194,12 @@ public class StayServiceImpl implements StayService {
     @Override
     @Transactional(readOnly = true)
     public List<StayQueueEntry> listActive(Authentication auth) {
+        return listByStatuses(java.util.Set.of("EN_COURS"), auth);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StayQueueEntry> listByStatuses(java.util.Set<String> statuses, Authentication auth) {
         // Cloisonnement (Slice E) : si l'isolation stricte est active, un médecin ne
         // voit que SES séjours (attending_practitioner_id) ; les séjours sans référent
         // (orphelins) restent visibles aux rôles configurés. Calque ADR-032.
@@ -204,26 +210,50 @@ public class StayServiceImpl implements StayService {
         boolean callerSeesOrphans = enforce && callerRoles(auth).stream().anyMatch(orphanRoles::contains);
 
         String rule = dayRule();
+        List<Stay> stays = (statuses.size() == 1 && statuses.contains("EN_COURS"))
+                ? stayRepo.findAllByStatusAndDeletedAtIsNullOrderByAdmittedAtDesc("EN_COURS")
+                : stayRepo.findAllByStatusInAndDeletedAtIsNullOrderByAdmittedAtDesc(statuses);
+
         List<StayQueueEntry> out = new ArrayList<>();
-        for (Stay stay : stayRepo.findAllByStatusAndDeletedAtIsNullOrderByAdmittedAtDesc("EN_COURS")) {
+        for (Stay stay : stays) {
             if (enforce) {
                 UUID att = stay.getAttendingPractitionerId();
                 boolean visible = (att != null && allowed.contains(att)) || (att == null && callerSeesOrphans);
                 if (!visible) continue;
             }
-            Patient p = patientService.getActive(stay.getPatientId());
-            BedAssignment current = assignmentRepo.findByStayIdAndToAtIsNull(stay.getId()).orElse(null);
-            BedCtx bed = current != null ? resolveBedQuiet(current.getBedId()) : null;
-            out.add(new StayQueueEntry(
-                    stay.getId(), stay.getPatientId(), p.getFirstName(), p.getLastName(),
-                    stay.getAdmissionReason(), stay.getAdmittedAt(),
-                    nights(stay.getAdmittedAt(), Instant.now(), rule),
-                    current != null ? current.getBedId() : null,
-                    bed != null ? bed.label : null,
-                    bed != null ? bed.wardLabel : null,
-                    stay.getAttendingPractitionerId()));
+            out.add(toQueueEntry(stay, rule));
         }
         return out;
+    }
+
+    /** Construit une ligne worklist/historique : lit courant si EN_COURS, sinon dernier lit occupé. */
+    private StayQueueEntry toQueueEntry(Stay stay, String rule) {
+        String firstName = "";
+        String lastName = "";
+        try {
+            Patient p = patientService.getActive(stay.getPatientId());
+            firstName = p.getFirstName();
+            lastName = p.getLastName();
+        } catch (RuntimeException ignored) {
+            lastName = "(patient archivé)";
+        }
+        BedAssignment ref = assignmentRepo.findByStayIdAndToAtIsNull(stay.getId()).orElse(null);
+        if (ref == null) {
+            List<BedAssignment> all = assignmentRepo.findAllByStayIdOrderByFromAtAsc(stay.getId());
+            if (!all.isEmpty()) ref = all.get(all.size() - 1);
+        }
+        BedCtx bed = ref != null ? resolveBedQuiet(ref.getBedId()) : null;
+        Instant end = stay.getDischargedAt() != null ? stay.getDischargedAt() : Instant.now();
+        return new StayQueueEntry(
+                stay.getId(), stay.getPatientId(), firstName, lastName,
+                stay.getAdmissionReason(), stay.getAdmittedAt(),
+                nights(stay.getAdmittedAt(), end, rule),
+                ref != null ? ref.getBedId() : null,
+                bed != null ? bed.label : null,
+                bed != null ? bed.wardLabel : null,
+                stay.getAttendingPractitionerId(),
+                stay.getStatus(),
+                stay.getDischargedAt());
     }
 
     @Override

@@ -75,10 +75,24 @@ public class StayController {
         return UUID.fromString(auth.getName());
     }
 
+    /**
+     * Worklist. Sans paramètre → séjours EN_COURS (défaut historique). Avec
+     * {@code statuses} (CSV : EN_COURS,SORTI,FACTURE,ANNULE) → permet de revenir
+     * sur l'historique des séjours clôturés depuis la page Hospitalisation.
+     */
     @GetMapping("/queue")
     @PreAuthorize(READ_ROLES)
-    public ResponseEntity<List<StayQueueEntry>> queue(Authentication auth) {
-        return ResponseEntity.ok(service.listActive(auth));
+    public ResponseEntity<List<StayQueueEntry>> queue(
+            @RequestParam(value = "statuses", required = false) String statuses,
+            Authentication auth) {
+        if (statuses == null || statuses.isBlank()) {
+            return ResponseEntity.ok(service.listActive(auth));
+        }
+        java.util.Set<String> set = java.util.Arrays.stream(statuses.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty())
+                .map(String::toUpperCase)
+                .collect(java.util.stream.Collectors.toSet());
+        return ResponseEntity.ok(service.listByStatuses(set, auth));
     }
 
     /** Séjours d'un patient (onglet dossier). */
