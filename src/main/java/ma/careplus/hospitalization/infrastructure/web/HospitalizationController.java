@@ -123,6 +123,14 @@ public class HospitalizationController {
         return ResponseEntity.noContent().build();
     }
 
+    /** Suppression physique (admin) — refusée si la chambre contient des lits (409). */
+    @DeleteMapping("/rooms/{id}/permanent")
+    @PreAuthorize(MANAGE_ROLES)
+    public ResponseEntity<Void> deleteRoom(@PathVariable UUID id) {
+        service.deleteRoom(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // ── Lits (beds) ────────────────────────────────────────────────────
 
     @GetMapping("/beds")
@@ -158,6 +166,14 @@ public class HospitalizationController {
     @PreAuthorize(MANAGE_ROLES)
     public ResponseEntity<Void> deactivateBed(@PathVariable UUID id) {
         service.deactivateBed(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /** Suppression physique (admin) — refusée si le lit a un historique d'affectation (409). */
+    @DeleteMapping("/beds/{id}/permanent")
+    @PreAuthorize(MANAGE_ROLES)
+    public ResponseEntity<Void> deleteBed(@PathVariable UUID id) {
+        service.deleteBed(id);
         return ResponseEntity.noContent().build();
     }
 }

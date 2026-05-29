@@ -63,10 +63,18 @@ public class ExpenseController {
         if (category != null && !category.isBlank()) {
             cat = ExpenseCategory.valueOf(category); // 400 IllegalArgumentException if invalid
         }
-        List<ExpenseResponse> body = expenseService.list(cat, from, to)
-                .stream()
-                .map(expenseMapper::toResponse)
-                .toList();
+        List<ExpenseResponse> body = new java.util.ArrayList<>(
+                expenseService.list(cat, from, to)
+                        .stream()
+                        .map(expenseMapper::toResponse)
+                        .toList());
+        // Salaires RH (lecture seule) : inclus sauf si un autre filtre catégorie est posé.
+        if (cat == null || cat == ExpenseCategory.SALAIRE) {
+            body.addAll(expenseService.salaryPaymentsAsExpenses(from, to));
+        }
+        // Tri global par date décroissante (charges manuelles + salaires fusionnés).
+        body.sort(java.util.Comparator.comparing(ExpenseResponse::expenseDate,
+                java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())));
         return ResponseEntity.ok(body);
     }
 

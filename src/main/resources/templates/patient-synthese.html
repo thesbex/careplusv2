@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+  Synthèse patient PDF (bouton « Imprimer » du dossier).
+  Variables : cabinet.*, doctor.fullName, specialty, cabinetLogo*, patient.*,
+              allergies (List<Map>: substance, severity, notes),
+              antecedents (List<Map>: type, description, date),
+              consultations (List<Map>: date, motif, diagnosis, status, practitioner),
+              generatedDate.
+-->
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 10pt; margin: 0; padding: 0; color: #1a1a1a; }
+        .page { padding: 18mm 18mm 22mm 18mm; }
+        .header { border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 14px; display: table; width: 100%; }
+        .header-left { display: table-cell; width: 60%; vertical-align: top; }
+        .header-right { display: table-cell; width: 40%; text-align: right; vertical-align: top; }
+        .cabinet-name { font-size: 15pt; font-weight: bold; color: #2563eb; }
+        .cabinet-meta { font-size: 9pt; color: #555; line-height: 1.5; }
+        .doc-title { font-size: 13pt; font-weight: bold; text-transform: uppercase; color: #2563eb; border: 1px solid #2563eb; padding: 4px 10px; display: inline-block; margin-bottom: 12px; }
+        .patient-box { background: #f0f4ff; border: 1px solid #c7d2fe; border-radius: 4px; padding: 8px 12px; margin-bottom: 14px; font-size: 10pt; line-height: 1.6; }
+        .patient-box strong { font-size: 11pt; }
+        .section-title { font-size: 11pt; font-weight: bold; color: #2563eb; border-bottom: 1px solid #c7d2fe; margin-bottom: 8px; padding-bottom: 3px; margin-top: 18px; }
+        table.t { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        table.t th { background: #2563eb; color: #fff; padding: 5px 6px; text-align: left; font-weight: bold; }
+        table.t td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        table.t tr:nth-child(even) td { background: #f8faff; }
+        .empty-notice { font-style: italic; color: #888; padding: 6px 0; font-size: 9pt; }
+        .footer { border-top: 1px solid #c7d2fe; padding-top: 10px; margin-top: 24px; font-size: 8pt; color: #777; }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <div th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'WATERMARK'}"
+         style="position:fixed;left:0;right:0;top:90mm;text-align:center;pointer-events:none;">
+        <img th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="width:110mm;max-height:90mm;opacity:0.1;" alt=""/>
+    </div>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <img th:if="${cabinetLogoBase64 != null and (cabinetLogoPosition == null or cabinetLogoPosition == 'HEADER')}"
+                 th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+                 style="max-height:80px;max-width:160px;float:left;margin-right:14px;" alt="Logo"/>
+            <div class="cabinet-name" th:text="${(cabinet.establishmentTypeLabel != null and !#strings.isEmpty(cabinet.establishmentTypeLabel)) ? cabinet.establishmentTypeLabel + ' ' + cabinet.name : cabinet.name}">Cabinet Médical</div>
+            <div class="cabinet-meta">
+                <span th:text="${cabinet.address}">Adresse</span><br/>
+                <span th:text="${cabinet.city}">Ville</span><br/>
+                Tél : <span th:text="${cabinet.phone}">+212 5XX-XXXXXX</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="cabinet-meta">
+                <strong th:text="${doctor.fullName}">Dr. Prénom Nom</strong><br/>
+                <th:block th:if="${specialty != null and !#strings.isEmpty(specialty)}">
+                    <em th:text="${specialty}" style="color:#2563eb;">Spécialité</em><br/>
+                </th:block>
+                <span th:if="${cabinet.inpe != null and !cabinet.inpe.isEmpty()}">
+                    INPE : <span th:text="${cabinet.inpe}">INPE</span><br/>
+                </span>
+                <span th:if="${cabinet.cnom != null and !cabinet.cnom.isEmpty()}">
+                    CNOM : <span th:text="${cabinet.cnom}">CNOM</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="doc-title">Synthèse du dossier patient</div>
+
+    <!-- PATIENT IDENTITY -->
+    <div class="patient-box">
+        <strong th:text="${patient.fullName}">Prénom NOM</strong><br/>
+        <span th:if="${patient.birthDate != null and !patient.birthDate.isEmpty()}">
+            Né(e) le : <span th:text="${patient.birthDate}">01/01/1980</span>
+        </span>
+        <span th:if="${patient.age != null and !patient.age.isEmpty()}">
+            &#160;|&#160; Âge : <span th:text="${patient.age}">40 ans</span>
+        </span>
+        <span th:if="${patient.gender != null and !patient.gender.isEmpty()}">
+            &#160;|&#160; Sexe : <span th:text="${patient.gender}">Masculin</span>
+        </span><br/>
+        <span th:if="${patient.cin != null and !patient.cin.isEmpty()}">
+            CIN : <span th:text="${patient.cin}">AB123456</span>&#160;|&#160;
+        </span>
+        <span th:if="${patient.phone != null and !patient.phone.isEmpty()}">
+            Tél : <span th:text="${patient.phone}">06...</span>&#160;|&#160;
+        </span>
+        <span th:if="${patient.bloodGroup != null and !patient.bloodGroup.isEmpty()}">
+            Groupe sanguin : <span th:text="${patient.bloodGroup}">O+</span>
+        </span>
+    </div>
+
+    <!-- ALLERGIES -->
+    <div class="section-title">Allergies</div>
+    <table class="t" th:if="${allergies != null and !allergies.isEmpty()}">
+        <thead><tr><th>Substance</th><th>Sévérité</th><th>Notes</th></tr></thead>
+        <tbody>
+            <tr th:each="a : ${allergies}">
+                <td th:text="${a.substance}">Pénicilline</td>
+                <td th:text="${a.severity}">Sévère</td>
+                <td th:text="${a.notes}"></td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="empty-notice" th:if="${allergies == null or allergies.isEmpty()}">Aucune allergie connue.</div>
+
+    <!-- ANTÉCÉDENTS -->
+    <div class="section-title">Antécédents</div>
+    <table class="t" th:if="${antecedents != null and !antecedents.isEmpty()}">
+        <thead><tr><th>Type</th><th>Description</th><th>Date</th></tr></thead>
+        <tbody>
+            <tr th:each="ant : ${antecedents}">
+                <td th:text="${ant.type}">Médical</td>
+                <td th:text="${ant.description}">HTA</td>
+                <td th:text="${ant.date}"></td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="empty-notice" th:if="${antecedents == null or antecedents.isEmpty()}">Aucun antécédent enregistré.</div>
+
+    <!-- CONSULTATIONS -->
+    <div class="section-title">Consultations récentes</div>
+    <table class="t" th:if="${consultations != null and !consultations.isEmpty()}">
+        <thead><tr><th>Date</th><th>Motif</th><th>Diagnostic</th><th>Médecin</th><th>Statut</th></tr></thead>
+        <tbody>
+            <tr th:each="c : ${consultations}">
+                <td th:text="${c.date}">01/01/2026 10:00</td>
+                <td th:text="${c.motif}"></td>
+                <td th:text="${c.diagnosis}"></td>
+                <td th:text="${c.practitioner}"></td>
+                <td th:text="${c.status}">Signée</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="empty-notice" th:if="${consultations == null or consultations.isEmpty()}">Aucune consultation enregistrée.</div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <img th:if="${cabinetLogoBase64 != null and cabinetLogoPosition == 'FOOTER'}"
+             th:src="'data:' + ${cabinetLogoMime} + ';base64,' + ${cabinetLogoBase64}"
+             style="max-height:42px;max-width:120px;display:block;margin-bottom:4px;" alt="Logo"/>
+        Synthèse générée par CarePlus le <span th:text="${generatedDate}">01/01/2026</span>
+        &#160;—&#160; document confidentiel médical
+    </div>
+
+</div>
+</body>
+</html>

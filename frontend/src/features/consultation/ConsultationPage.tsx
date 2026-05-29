@@ -20,6 +20,8 @@ import { Panel } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
 import { Check, Doc, Clipboard } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
+import { usePatientStays } from '@/features/hospitalisation/hooks/useStays';
+import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { useDeletePrescription } from '@/features/prescription/hooks/useDeletePrescription';
@@ -82,6 +84,16 @@ export default function ConsultationPage() {
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, error, update, isSaving, lastSavedAt } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
+  // C5 — si le patient est hospitalisé (séjour EN_COURS), la facture brouillon de
+  // cette consultation sera englobée dans la facture de séjour à la sortie
+  // (StayService.absorbConsultationDrafts) plutôt que réglée tout de suite. On le
+  // signale à l'utilisateur. Requête gated sur la capability hospitalisation.
+  const { settings: clinicSettings } = useClinicSettings();
+  const hospEnabled = clinicSettings?.hospitalizationEnabled ?? false;
+  const { stays: patientStays } = usePatientStays(
+    hospEnabled ? (consultation?.patientId ?? null) : null,
+  );
+  const activeStay = patientStays.find((s) => s.status === 'EN_COURS');
   // Constantes scope = LA consultation en cours uniquement. Une visite
   // antérieure ne pollue pas la bannière courante : nouvelle consultation
   // = bilan neuf, dialog vide.
@@ -529,6 +541,20 @@ export default function ConsultationPage() {
             Facturation
           </div>
           <Panel className="cs-billing-panel">
+            {activeStay && (
+              <div
+                role="note"
+                style={{
+                  margin: '10px 12px 0', padding: '8px 10px', borderRadius: 6,
+                  background: 'var(--amber-soft, #FFF3CD)', border: '1px solid #E8CFA9',
+                  fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4,
+                }}
+              >
+                <strong>Patient hospitalisé.</strong> Cette facture sera rattachée au séjour en
+                cours et réglée à la sortie du patient (englobée dans la facture d'hospitalisation).
+                Aucun encaissement immédiat.
+              </div>
+            )}
             {!invoice && (
               <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
                 {isSigned

@@ -27,6 +27,22 @@
   min-height: 0;
 }
 
+/*
+ * ── Onglets non-grille : largeur 100% + scroll ────────────
+ * Le panneau actif est `display:flex` (row). Un wrapper enfant sans `flex`
+ * se réduit à la largeur de son contenu (~20% de la page) — c'est le bug
+ * « seulement 20% de la largeur exploitée » signalé sur Consultations, Séjours,
+ * Analyses, etc. `flex: 1` force l'enfant à occuper toute la largeur, et
+ * `min-height:0 + overflow:auto` rétablit l'ascenseur vertical à l'intérieur
+ * du cadre du dossier (sinon le contenu déborde sans scroll).
+ */
+.dp-tab-scroll {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
 /* ── Timeline grid ──────────────────────────────────────── */
 /*
  * `min-height: 0` is CRITICAL here. Grid + flex children default to
