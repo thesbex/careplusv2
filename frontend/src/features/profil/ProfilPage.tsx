@@ -19,6 +19,7 @@ import { SignatureSettingsSection } from '@/features/parametres/components/Signa
 import { PrescriptionTemplatesTab } from '@/features/parametres/components/PrescriptionTemplatesTab';
 import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
 import { LunchBreakSection } from './components/LunchBreakSection';
+import { SoapTemplatesTab } from '@/features/consultation/components/SoapTemplatesTab';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
 import { ProfilePhotoSection } from './components/ProfilePhotoSection';
 import { ReferralContactsSection } from './components/ReferralContactsSection';
@@ -120,6 +121,26 @@ export default function ProfilPage() {
     </div>
   ) : null;
 
+  // Modèles de consultation SOAP (bouton « Modèles » de l'écran consultation).
+  const soapTemplatesSection = isMedecin ? (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-md)',
+        padding: 18,
+      }}
+    >
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+        Mes modèles de consultation (SOAP)
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
+        Pré-remplissent les sections Subjectif / Objectif / Analyse / Plan depuis l'écran de consultation.
+      </div>
+      <SoapTemplatesTab />
+    </div>
+  ) : null;
+
   // Modèles de courrier au confrère propres au médecin (titre + contenu).
   // Backend : owner_user_id (V065) + écriture MEDECIN sur ses propres modèles ;
   // l'admin garde les modèles cabinet partagés dans /parametres.
@@ -168,6 +189,7 @@ export default function ProfilPage() {
           {leftColumn}
           {rightColumn}
           {templatesSection}
+          {soapTemplatesSection}
           {letterTemplatesSection}
         </div>
       </MScreen>
@@ -215,6 +237,9 @@ export default function ProfilPage() {
         </div>
         {templatesSection && (
           <div style={{ marginTop: 16, maxWidth: 1280 }}>{templatesSection}</div>
+        )}
+        {soapTemplatesSection && (
+          <div style={{ marginTop: 16, maxWidth: 1280 }}>{soapTemplatesSection}</div>
         )}
         {letterTemplatesSection && (
           <div style={{ marginTop: 16, maxWidth: 1280 }}>{letterTemplatesSection}</div>

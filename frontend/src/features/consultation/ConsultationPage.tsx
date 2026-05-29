@@ -18,7 +18,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Pill } from '@/components/ui/Pill';
-import { Check, Doc, Clipboard } from '@/components/icons';
+import { Check } from '@/components/icons';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
 import { usePatientStays } from '@/features/hospitalisation/hooks/useStays';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
@@ -42,6 +42,7 @@ import { api } from '@/lib/api/client';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
+import { SoapToolbarButtons } from './components/SoapToolbarButtons';
 import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
 import { SuspendChoiceDialog } from './components/SuspendChoiceDialog';
 import { SignatureLock } from './components/SignatureLock';
@@ -146,6 +147,7 @@ export default function ConsultationPage() {
     formState: { errors },
     trigger,
     getValues,
+    setValue,
   } = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationDraftSchema),
     defaultValues: { subjectif: '', objectif: '', analyse: '', plan: '' },
@@ -306,12 +308,21 @@ export default function ConsultationPage() {
               Démarrée {startedLabel}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
-              <Button size="sm" type="button" disabled>
-                <Doc /> Modèles
-              </Button>
-              <Button size="sm" type="button" disabled>
-                <Clipboard /> CIM-10
-              </Button>
+              <SoapToolbarButtons
+                disabled={isSigned}
+                onApplyTemplate={(t) => {
+                  setValue('subjectif', t.subjectif ?? '', { shouldDirty: true });
+                  setValue('objectif', t.objectif ?? '', { shouldDirty: true });
+                  setValue('analyse', t.analyse ?? '', { shouldDirty: true });
+                  setValue('plan', t.plan ?? '', { shouldDirty: true });
+                  toast.success(`Modèle « ${t.name} » appliqué.`);
+                }}
+                onInsertCim={(text) => {
+                  const cur = getValues('analyse') ?? '';
+                  setValue('analyse', cur.trim() ? `${cur}\n${text}` : text, { shouldDirty: true });
+                  toast.success('Code CIM-10 ajouté à l\'analyse.');
+                }}
+              />
             </div>
           </div>
 

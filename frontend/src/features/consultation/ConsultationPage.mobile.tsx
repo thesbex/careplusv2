@@ -18,6 +18,7 @@ import { formatCoverage } from '@/features/dossier-patient/components/PatientHea
 import { PrescriptionDrawer } from '@/features/prescription/PrescriptionDrawer';
 import { PrescriptionResultsPanel } from '@/features/prescription/components/PrescriptionResultsPanel';
 import { PromoteDiagnosisDialog } from './components/PromoteDiagnosisDialog';
+import { SoapToolbarButtons } from './components/SoapToolbarButtons';
 import { usePrescriptions } from '@/features/prescription/hooks/usePrescriptions';
 import { useDeletePrescription } from '@/features/prescription/hooks/useDeletePrescription';
 import { metaForPrescription } from '@/features/prescription/components/DocumentPdfViewer';
@@ -136,6 +137,7 @@ export default function ConsultationMobilePage() {
     watch,
     reset,
     getValues,
+    setValue,
     formState: { errors },
   } = useForm<ConsultationFormValues>({
     resolver: zodResolver(consultationDraftSchema),
@@ -388,6 +390,25 @@ export default function ConsultationMobilePage() {
         {isLoading && !consultation ? (
           <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
         ) : (
+          <>
+          {/* Modèles SOAP + CIM-10 — parité desktop (barre d'outils consultation). */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            <SoapToolbarButtons
+              disabled={isSigned}
+              onApplyTemplate={(t) => {
+                setValue('subjectif', t.subjectif ?? '', { shouldDirty: true });
+                setValue('objectif', t.objectif ?? '', { shouldDirty: true });
+                setValue('analyse', t.analyse ?? '', { shouldDirty: true });
+                setValue('plan', t.plan ?? '', { shouldDirty: true });
+                toast.success(`Modèle « ${t.name} » appliqué.`);
+              }}
+              onInsertCim={(text) => {
+                const cur = getValues('analyse') ?? '';
+                setValue('analyse', cur.trim() ? `${cur}\n${text}` : text, { shouldDirty: true });
+                toast.success('Code CIM-10 ajouté à l\'analyse.');
+              }}
+            />
+          </div>
           <form onSubmit={(e) => e.preventDefault()} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {SECTIONS.map((s) => (
               <div key={s.key} className="m-field">
@@ -425,6 +446,7 @@ export default function ConsultationMobilePage() {
               </div>
             ))}
           </form>
+          </>
         )}
 
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 8 }}>
