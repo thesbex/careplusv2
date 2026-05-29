@@ -49,34 +49,49 @@ public class LetterTemplateServiceImpl implements LetterTemplateService {
     }
 
     @Override
-    public LetterTemplateView create(LetterTemplateWriteRequest req, UUID createdBy) {
+    public LetterTemplateView create(LetterTemplateWriteRequest req, UUID actorId, boolean isAdmin) {
         LetterTemplate t = new LetterTemplate();
         t.setTitle(req.title().trim());
         t.setBody(req.body());
         t.setActive(req.active());
-        t.setCreatedBy(createdBy);
-        t.setOwnerUserId(req.ownerUserId()); // V065 — null = cabinet-wide
+        t.setCreatedBy(actorId);
+        // ADMIN choisit la portée (null = cabinet-wide) ; MEDECIN forcé sur son propre modèle privé.
+        t.setOwnerUserId(isAdmin ? req.ownerUserId() : actorId);
         return LetterTemplateView.of(repository.save(t));
     }
 
     @Override
-    public LetterTemplateView update(UUID id, LetterTemplateWriteRequest req) {
+    public LetterTemplateView update(UUID id, LetterTemplateWriteRequest req, UUID actorId, boolean isAdmin) {
         LetterTemplate t = findOrThrow(id);
+        requireOwnershipIfMedecin(t, actorId, isAdmin);
         t.setTitle(req.title().trim());
         t.setBody(req.body());
         t.setActive(req.active());
-        t.setOwnerUserId(req.ownerUserId()); // V065 — réassignation possible
+        // ADMIN peut réassigner la portée ; MEDECIN reste propriétaire de son modèle.
+        t.setOwnerUserId(isAdmin ? req.ownerUserId() : actorId);
         return LetterTemplateView.of(repository.saveAndFlush(t));
     }
 
     @Override
-    public void delete(UUID id) {
+    public void delete(UUID id, UUID actorId, boolean isAdmin) {
         LetterTemplate t = findOrThrow(id);
+        requireOwnershipIfMedecin(t, actorId, isAdmin);
         t.setDeletedAt(OffsetDateTime.now());
         repository.save(t);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /** Un MEDECIN ne peut gérer que ses propres modèles privés (owner = lui). */
+    private void requireOwnershipIfMedecin(LetterTemplate t, UUID actorId, boolean isAdmin) {
+        if (isAdmin) return;
+        if (t.getOwnerUserId() == null || !t.getOwnerUserId().equals(actorId)) {
+            throw new BusinessException(
+                    "LETTER_TEMPLATE_FORBIDDEN",
+                    "Vous ne pouvez gérer que vos propres modèles de courrier.",
+                    HttpStatus.FORBIDDEN.value());
+        }
+    }
 
     private LetterTemplate findOrThrow(UUID id) {
         return repository.findActiveById(id)

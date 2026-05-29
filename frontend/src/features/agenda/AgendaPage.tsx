@@ -24,6 +24,7 @@ import {
 } from './hooks/useAppointments';
 import { useMoveAppointment, extractConflictMessage } from './hooks/useAppointmentMutations';
 import { usePractitioners } from './hooks/usePractitioners';
+import { useLunchBreak } from './hooks/useLunchBreak';
 import { useRooms } from './hooks/useRooms';
 import { useReasonsForAgenda } from './hooks/useReasonsForAgenda';
 import { useLeaves } from '@/features/parametres/hooks/useLeaves';
@@ -252,6 +253,14 @@ export default function AgendaPage() {
   const leavePractitionerId =
     practitionerFilter === ALL_PRACTITIONERS ? undefined : practitionerFilter;
   const { leaves } = useLeaves(leavePractitionerId);
+
+  // V067 — pause déjeuner du médecin sélectionné (sinon défaut cabinet 12–14h).
+  const { lunchBreak } = useLunchBreak(leavePractitionerId);
+  const lunchBreaks = useMemo<Partial<Record<DayKey, { start: string; end: string }>>>(() => {
+    if (!lunchBreak) return DEFAULT_LUNCH_BREAKS;
+    const w = { start: lunchBreak.startTime.slice(0, 5), end: lunchBreak.endTime.slice(0, 5) };
+    return { lun: w, mar: w, mer: w, jeu: w, ven: w };
+  }, [lunchBreak]);
 
   // Map week's days -> Set<DayKey> currently in a leave range.
   const leaveDays = useMemo(() => {
@@ -601,7 +610,7 @@ export default function AgendaPage() {
               {...(activePractitioners.length >= 2 && Object.keys(practitionerMap).length > 0
                 ? { practitionerMap }
                 : {})}
-              lunchBreaks={DEFAULT_LUNCH_BREAKS}
+              lunchBreaks={lunchBreaks}
             />
             {/* Bandeau légende bas (iso maquette user 2026-05-28) : visible en
                 vue Semaine + multi-praticien. Liste Médecins (pastille couleur

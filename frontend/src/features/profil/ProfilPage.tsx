@@ -17,6 +17,8 @@ import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
 import { PrescriptionTemplatesTab } from '@/features/parametres/components/PrescriptionTemplatesTab';
+import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
+import { LunchBreakSection } from './components/LunchBreakSection';
 import { PasswordChangeSection } from './components/PasswordChangeSection';
 import { ProfilePhotoSection } from './components/ProfilePhotoSection';
 import { ReferralContactsSection } from './components/ReferralContactsSection';
@@ -76,6 +78,7 @@ export default function ProfilPage() {
   const rightColumn = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {isMedecin && <SignatureSettingsSection />}
+      {isMedecin && user && <LunchBreakSection practitionerId={user.id} />}
       {isMedecin && <ReferralContactsSection />}
       {!isMedecin && (
         <div
@@ -117,6 +120,28 @@ export default function ProfilPage() {
     </div>
   ) : null;
 
+  // Modèles de courrier au confrère propres au médecin (titre + contenu).
+  // Backend : owner_user_id (V065) + écriture MEDECIN sur ses propres modèles ;
+  // l'admin garde les modèles cabinet partagés dans /parametres.
+  const letterTemplatesSection = isMedecin ? (
+    <div
+      style={{
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--r-md)',
+        padding: 18,
+      }}
+    >
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
+        Mes modèles de courrier au confrère
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
+        Modèles personnels (titre + contenu) pour pré-remplir une lettre adressée à un confrère.
+      </div>
+      <LetterTemplatesTab mode="own" />
+    </div>
+  ) : null;
+
   // Mobile: wrap in MScreen so the page has a working back affordance (→ menu
   // hub) + bottom tabs. Before this, /profil rendered the desktop Screen whose
   // only nav is the sidebar — hidden on mobile, stranding the user with no way
@@ -143,6 +168,7 @@ export default function ProfilPage() {
           {leftColumn}
           {rightColumn}
           {templatesSection}
+          {letterTemplatesSection}
         </div>
       </MScreen>
     );
@@ -189,6 +215,9 @@ export default function ProfilPage() {
         </div>
         {templatesSection && (
           <div style={{ marginTop: 16, maxWidth: 1280 }}>{templatesSection}</div>
+        )}
+        {letterTemplatesSection && (
+          <div style={{ marginTop: 16, maxWidth: 1280 }}>{letterTemplatesSection}</div>
         )}
       </div>
     </Screen>
