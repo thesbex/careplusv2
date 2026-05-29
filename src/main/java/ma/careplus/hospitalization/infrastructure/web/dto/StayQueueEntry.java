@@ -15,4 +15,6 @@ public record StayQueueEntry(
         UUID bedId,
         String bedLabel,
         String wardLabel,
-        UUID attendingPractitionerId) {}
+        UUID attendingPractitionerId,
+        String status,
+        java.time.Instant dischargedAt) {}

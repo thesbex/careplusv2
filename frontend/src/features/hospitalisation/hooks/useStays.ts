@@ -20,6 +20,8 @@ export interface StayQueueEntry {
   bedLabel: string | null;
   wardLabel: string | null;
   attendingPractitionerId: string | null;
+  status: StayStatus;
+  dischargedAt: string | null;
 }
 
 export interface AssignmentView {
@@ -67,10 +69,17 @@ export const DISCHARGE_TYPE_LABELS: Record<DischargeType, string> = {
 
 const EMPTY: StayQueueEntry[] = [];
 
-export function useStayQueue() {
+/**
+ * Worklist. Sans `statuses` → séjours EN_COURS (défaut). Avec `statuses` (CSV,
+ * ex. "SORTI,FACTURE,ANNULE") → historique des séjours clôturés.
+ */
+export function useStayQueue(statuses?: string) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ['hosp-stays-queue'],
-    queryFn: () => api.get<StayQueueEntry[]>('/hospitalization/stays/queue').then((r) => r.data),
+    queryKey: ['hosp-stays-queue', statuses ?? 'EN_COURS'],
+    queryFn: () =>
+      api
+        .get<StayQueueEntry[]>('/hospitalization/stays/queue', statuses ? { params: { statuses } } : undefined)
+        .then((r) => r.data),
     refetchInterval: 30_000,
     staleTime: 15_000,
   });

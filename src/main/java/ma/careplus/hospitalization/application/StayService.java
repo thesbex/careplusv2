@@ -30,6 +30,12 @@ public interface StayService {
     /** Worklist des patients hospitalisés (séjours EN_COURS), filtrée par cloisonnement. */
     List<StayQueueEntry> listActive(Authentication auth);
 
+    /**
+     * Liste des séjours par statuts (historique : SORTI/FACTURE/ANNULE, ou tous),
+     * filtrée par cloisonnement comme la worklist. Permet de revenir sur un séjour clôturé.
+     */
+    List<StayQueueEntry> listByStatuses(java.util.Set<String> statuses, Authentication auth);
+
     /** Nombre de séjours EN_COURS (badge sidebar). */
     long countActive();
 

@@ -1,5 +1,6 @@
 package ma.careplus.hospitalization.infrastructure.persistence;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,6 +13,9 @@ public interface StayRepository extends JpaRepository<Stay, UUID> {
 
     /** Worklist : séjours actifs (en cours d'hospitalisation), plus récent en premier. */
     List<Stay> findAllByStatusAndDeletedAtIsNullOrderByAdmittedAtDesc(String status);
+
+    /** Liste par statuts (historique : SORTI/FACTURE/ANNULE, ou tous), plus récent en premier. */
+    List<Stay> findAllByStatusInAndDeletedAtIsNullOrderByAdmittedAtDesc(Collection<String> statuses);
 
     List<Stay> findAllByPatientIdAndDeletedAtIsNullOrderByAdmittedAtDesc(UUID patientId);
 
