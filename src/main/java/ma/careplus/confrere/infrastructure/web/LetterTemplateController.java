@@ -25,9 +25,9 @@ import org.springframework.web.bind.annotation.RestController;
  * <pre>
  *   GET    /api/confrere-letter-templates          MEDECIN+ADMIN (liste active pour MEDECIN, tout pour ADMIN)
  *   GET    /api/confrere-letter-templates/{id}     MEDECIN+ADMIN
- *   POST   /api/confrere-letter-templates          ADMIN
- *   PUT    /api/confrere-letter-templates/{id}     ADMIN
- *   DELETE /api/confrere-letter-templates/{id}     ADMIN (soft-delete)
+ *   POST   /api/confrere-letter-templates          MEDECIN (privé) + ADMIN (portée libre)
+ *   PUT    /api/confrere-letter-templates/{id}     MEDECIN (ses modèles) + ADMIN
+ *   DELETE /api/confrere-letter-templates/{id}     MEDECIN (ses modèles) + ADMIN (soft-delete)
  * </pre>
  */
 @RestController
@@ -62,29 +62,33 @@ public class LetterTemplateController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public ResponseEntity<LetterTemplateView> create(
             @Valid @RequestBody LetterTemplateWriteRequest req,
             Authentication auth) {
-        UUID createdBy = UUID.fromString(auth.getName());
-        LetterTemplateView created = service.create(req, createdBy);
+        LetterTemplateView created = service.create(req, UUID.fromString(auth.getName()), isAdmin(auth));
         return ResponseEntity
                 .created(URI.create("/api/confrere-letter-templates/" + created.id()))
                 .body(created);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
     public LetterTemplateView update(
             @PathVariable UUID id,
-            @Valid @RequestBody LetterTemplateWriteRequest req) {
-        return service.update(id, req);
+            @Valid @RequestBody LetterTemplateWriteRequest req,
+            Authentication auth) {
+        return service.update(id, req, UUID.fromString(auth.getName()), isAdmin(auth));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        service.delete(id);
+    @PreAuthorize("hasAnyRole('MEDECIN','ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable UUID id, Authentication auth) {
+        service.delete(id, UUID.fromString(auth.getName()), isAdmin(auth));
         return ResponseEntity.noContent().build();
+    }
+
+    private static boolean isAdmin(Authentication auth) {
+        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 }

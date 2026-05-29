@@ -24,12 +24,18 @@ public interface LetterTemplateService {
     /** Récupère un modèle par id. */
     LetterTemplateView get(UUID id);
 
-    /** Crée un nouveau modèle. ADMIN only. */
-    LetterTemplateView create(LetterTemplateWriteRequest req, UUID createdBy);
+    /**
+     * Crée un modèle. ADMIN : portée libre (cabinet-wide ou privé d'un médecin).
+     * MEDECIN : forcé en modèle privé (owner = lui), la portée demandée est ignorée.
+     */
+    LetterTemplateView create(LetterTemplateWriteRequest req, UUID actorId, boolean isAdmin);
 
-    /** Met à jour un modèle existant. ADMIN only. */
-    LetterTemplateView update(UUID id, LetterTemplateWriteRequest req);
+    /**
+     * Met à jour un modèle. MEDECIN ne peut éditer que SES propres modèles
+     * (owner = lui) — sinon 403 ; il ne peut pas réassigner la portée.
+     */
+    LetterTemplateView update(UUID id, LetterTemplateWriteRequest req, UUID actorId, boolean isAdmin);
 
-    /** Soft-delete d'un modèle. ADMIN only. */
-    void delete(UUID id);
+    /** Soft-delete. MEDECIN limité à ses propres modèles (sinon 403). */
+    void delete(UUID id, UUID actorId, boolean isAdmin);
 }

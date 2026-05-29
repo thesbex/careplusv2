@@ -18,6 +18,7 @@ import {
   useDeleteLetterTemplate,
 } from '../hooks/useLetterTemplates';
 import { usePractitioners } from '@/features/parametres/hooks/usePractitioners';
+import { useAuthStore } from '@/lib/auth/authStore';
 import type { LetterTemplateView, LetterTemplateWriteRequest } from '../types';
 
 interface FormState {
@@ -30,13 +31,28 @@ interface FormState {
 
 const EMPTY_FORM: FormState = { title: '', body: '', active: true, ownerUserId: '' };
 
-export function LetterTemplatesTab() {
-  const { templates, isLoading, error } = useLetterTemplates();
+/**
+ * mode = 'admin' (Paramètres) : gestion complète, colonne Portée + sélecteur owner.
+ * mode = 'own'   (profil médecin) : le médecin gère uniquement SES modèles privés ;
+ *   pas de sélecteur de portée (owner forcé sur lui côté backend), modèles cabinet
+ *   partagés masqués.
+ */
+export function LetterTemplatesTab({ mode = 'admin' }: { mode?: 'admin' | 'own' }) {
+  const isOwn = mode === 'own';
+  const { templates: allTemplates, isLoading, error } = useLetterTemplates();
   const { create, isPending: creating } = useCreateLetterTemplate();
   const { update, isPending: updating } = useUpdateLetterTemplate();
   const { remove } = useDeleteLetterTemplate();
   const { practitioners } = usePractitioners();
   const practById = new Map(practitioners.map((p) => [p.id, p]));
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
+
+  // En mode « own », le médecin ne gère que SES modèles privés (owner = lui) ;
+  // les modèles cabinet partagés (owner null) et ceux d'autres médecins sont exclus.
+  // (Filtre sur l'id : un utilisateur médecin+admin reçoit toute la liste via l'API.)
+  const templates = isOwn
+    ? allTemplates.filter((t) => t.ownerUserId === currentUserId)
+    : allTemplates;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -66,7 +82,8 @@ export function LetterTemplatesTab() {
       title: form.title.trim(),
       body: form.body.trim(),
       active: form.active,
-      ownerUserId: form.ownerUserId || null,
+      // mode « own » : modèle privé du médecin connecté (même s'il est aussi admin).
+      ownerUserId: isOwn ? currentUserId || null : form.ownerUserId || null,
     };
     try {
       if (editingId) {
@@ -83,7 +100,7 @@ export function LetterTemplatesTab() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
+          ? 'Permission refusée.'
           : "Échec de l'enregistrement.",
       );
     }
@@ -103,8 +120,9 @@ export function LetterTemplatesTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, fontSize: 12, color: 'var(--ink-3)' }}>
-          Modèles de courrier au confrère chargés par le médecin pour pré-remplir le
-          corps d'une lettre depuis la consultation.
+          {isOwn
+            ? "Vos modèles personnels de courrier au confrère (titre + contenu), proposés lors de la rédaction d'une lettre depuis la consultation."
+            : "Modèles de courrier au confrère chargés par le médecin pour pré-remplir le corps d'une lettre depuis la consultation."}
         </div>
         <Button variant="primary" onClick={openCreate}>
           <Plus /> Ajouter un modèle
@@ -128,7 +146,7 @@ export function LetterTemplatesTab() {
             <thead style={{ background: 'var(--surface-2)' }}>
               <tr>
                 <Th>Titre</Th>
-                <Th style={{ width: 220 }}>Portée</Th>
+                {!isOwn && <Th style={{ width: 220 }}>Portée</Th>}
                 <Th style={{ width: 100 }}>Statut</Th>
                 <Th style={{ width: 120 }}> </Th>
               </tr>
@@ -146,16 +164,18 @@ export function LetterTemplatesTab() {
                   <Td>
                     <div style={{ fontWeight: 600 }}>{t.title}</div>
                   </Td>
-                  <Td>
-                    <span style={{
-                      fontSize: 11, padding: '2px 8px', borderRadius: 12,
-                      background: t.ownerUserId ? 'var(--primary-soft)' : 'var(--surface-2)',
-                      color: t.ownerUserId ? 'var(--primary)' : 'var(--ink-2)',
-                      border: `1px solid ${t.ownerUserId ? 'var(--primary)' : 'var(--border)'}`,
-                    }}>
-                      {scopeLabel}
-                    </span>
-                  </Td>
+                  {!isOwn && (
+                    <Td>
+                      <span style={{
+                        fontSize: 11, padding: '2px 8px', borderRadius: 12,
+                        background: t.ownerUserId ? 'var(--primary-soft)' : 'var(--surface-2)',
+                        color: t.ownerUserId ? 'var(--primary)' : 'var(--ink-2)',
+                        border: `1px solid ${t.ownerUserId ? 'var(--primary)' : 'var(--border)'}`,
+                      }}>
+                        {scopeLabel}
+                      </span>
+                    </Td>
+                  )}
                   <Td>
                     <span
                       style={{
@@ -257,9 +277,10 @@ export function LetterTemplatesTab() {
                   }}
                 />
               </label>
-              {/* V065 — owner picker. Vide = partagé (visible par tous les
-                  médecins), un médecin sélectionné = modèle privé visible
-                  seulement par lui. */}
+              {/* V065 — owner picker (ADMIN seulement). Vide = partagé (visible par tous les
+                  médecins), un médecin sélectionné = modèle privé visible seulement par lui.
+                  En mode « own », la portée est forcée sur le médecin connecté côté backend. */}
+              {!isOwn && (
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                 <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Portée</span>
                 <Select
@@ -282,6 +303,7 @@ export function LetterTemplatesTab() {
                   Modèle privé : visible uniquement par le médecin choisi (et par les admins).
                 </span>
               </label>
+              )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5 }}>
                 <input
                   type="checkbox"

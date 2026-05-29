@@ -2,21 +2,25 @@ package ma.careplus.scheduling.application;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import ma.careplus.scheduling.domain.Appointment;
 import ma.careplus.scheduling.domain.AppointmentReason;
 import ma.careplus.scheduling.domain.AppointmentStatus;
 import ma.careplus.scheduling.domain.PractitionerLeave;
+import ma.careplus.scheduling.domain.PractitionerLunchBreak;
 import ma.careplus.scheduling.domain.WorkingHours;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentReasonRepository;
 import ma.careplus.scheduling.infrastructure.persistence.AppointmentRepository;
 import ma.careplus.scheduling.infrastructure.persistence.HolidayRepository;
 import ma.careplus.scheduling.infrastructure.persistence.PractitionerLeaveRepository;
+import ma.careplus.scheduling.infrastructure.persistence.PractitionerLunchBreakRepository;
 import ma.careplus.scheduling.infrastructure.persistence.WorkingHoursRepository;
 import ma.careplus.scheduling.infrastructure.web.dto.CreateLeaveRequest;
 import ma.careplus.scheduling.infrastructure.web.dto.AvailabilitySlot;
@@ -58,17 +62,20 @@ public class SchedulingService {
     private final WorkingHoursRepository workingHoursRepository;
     private final HolidayRepository holidayRepository;
     private final PractitionerLeaveRepository leaveRepository;
+    private final PractitionerLunchBreakRepository lunchBreakRepository;
 
     public SchedulingService(AppointmentRepository appointmentRepository,
                              AppointmentReasonRepository reasonRepository,
                              WorkingHoursRepository workingHoursRepository,
                              HolidayRepository holidayRepository,
-                             PractitionerLeaveRepository leaveRepository) {
+                             PractitionerLeaveRepository leaveRepository,
+                             PractitionerLunchBreakRepository lunchBreakRepository) {
         this.appointmentRepository = appointmentRepository;
         this.reasonRepository = reasonRepository;
         this.workingHoursRepository = workingHoursRepository;
         this.holidayRepository = holidayRepository;
         this.leaveRepository = leaveRepository;
+        this.lunchBreakRepository = lunchBreakRepository;
     }
 
     // ── Create ─────────────────────────────────────────────────────
@@ -91,6 +98,7 @@ public class SchedulingService {
                     "Le praticien est en congé ce jour-là.",
                     HttpStatus.CONFLICT.value());
         }
+        rejectIfDuringLunch(req.practitionerId(), start, end);
 
         boolean urgency = Boolean.TRUE.equals(req.urgency());
         if (!urgency) {
@@ -163,6 +171,7 @@ public class SchedulingService {
                     "Le praticien est en congé ce jour-là.",
                     HttpStatus.CONFLICT.value());
         }
+        rejectIfDuringLunch(existing.getPractitionerId(), newStart, newEnd);
 
         List<Appointment> overlap = appointmentRepository.findOverlapping(
                 existing.getPractitionerId(), newStart, newEnd, existing.getId());
@@ -262,6 +271,9 @@ public class SchedulingService {
         int slotMinutes = resolveDuration(reasonId, durationMinutes);
         if (slotMinutes <= 0) slotMinutes = 30;
 
+        // V067 — pause déjeuner du médecin : exclue des créneaux proposés.
+        PractitionerLunchBreak lunch = lunchBreakRepository.findById(practitionerId).orElse(null);
+
         List<AvailabilitySlot> slots = new ArrayList<>();
         LocalDate day = from.atZoneSameInstant(CABINET_ZONE).toLocalDate();
         LocalDate endDay = to.atZoneSameInstant(CABINET_ZONE).toLocalDate();
@@ -270,8 +282,12 @@ public class SchedulingService {
             if (holidayRepository.findByDate(day).isEmpty()
                     && !leaveRepository.existsActiveOnDate(practitionerId, day)) {
                 int dow = day.getDayOfWeek().getValue();
+                OffsetDateTime lunchStart = lunch != null
+                        ? LocalDateTime.of(day, lunch.getStartTime()).atZone(CABINET_ZONE).toOffsetDateTime() : null;
+                OffsetDateTime lunchEnd = lunch != null
+                        ? LocalDateTime.of(day, lunch.getEndTime()).atZone(CABINET_ZONE).toOffsetDateTime() : null;
                 for (WorkingHours wh : workingHoursRepository.findByDayOfWeekAndActiveTrue(dow)) {
-                    emitSlotsForRange(day, wh, practitionerId, slotMinutes, from, to, slots);
+                    emitSlotsForRange(day, wh, practitionerId, slotMinutes, from, to, lunchStart, lunchEnd, slots);
                 }
             }
             day = day.plusDays(1);
@@ -286,6 +302,8 @@ public class SchedulingService {
             int slotMinutes,
             OffsetDateTime windowFrom,
             OffsetDateTime windowTo,
+            OffsetDateTime lunchStart,
+            OffsetDateTime lunchEnd,
             List<AvailabilitySlot> out) {
         OffsetDateTime rangeStart = LocalDateTime.of(day, wh.getStartTime())
                 .atZone(CABINET_ZONE).toOffsetDateTime();
@@ -304,19 +322,43 @@ public class SchedulingService {
             OffsetDateTime aStart = a.getStartAt();
             // Emit slots between cursor and the taken appointment's start
             while (cursor.plusMinutes(slotMinutes).compareTo(aStart) <= 0) {
-                out.add(new AvailabilitySlot(
-                        cursor, cursor.plusMinutes(slotMinutes), slotMinutes));
-                cursor = cursor.plusMinutes(slotMinutes);
+                OffsetDateTime slotEnd = cursor.plusMinutes(slotMinutes);
+                if (!overlapsLunch(cursor, slotEnd, lunchStart, lunchEnd)) {
+                    out.add(new AvailabilitySlot(cursor, slotEnd, slotMinutes));
+                }
+                cursor = slotEnd;
             }
             // Advance past the taken block
             if (a.getEndAt().isAfter(cursor)) cursor = a.getEndAt();
         }
         // Trailing free block
         while (cursor.plusMinutes(slotMinutes).compareTo(end) <= 0) {
-            out.add(new AvailabilitySlot(
-                    cursor, cursor.plusMinutes(slotMinutes), slotMinutes));
-            cursor = cursor.plusMinutes(slotMinutes);
+            OffsetDateTime slotEnd = cursor.plusMinutes(slotMinutes);
+            if (!overlapsLunch(cursor, slotEnd, lunchStart, lunchEnd)) {
+                out.add(new AvailabilitySlot(cursor, slotEnd, slotMinutes));
+            }
+            cursor = slotEnd;
         }
+    }
+
+    /** Chevauchement [s,e) avec la fenêtre de pause déjeuner (null = pas de pause). */
+    private static boolean overlapsLunch(OffsetDateTime s, OffsetDateTime e,
+                                         OffsetDateTime lunchStart, OffsetDateTime lunchEnd) {
+        return lunchStart != null && s.isBefore(lunchEnd) && e.isAfter(lunchStart);
+    }
+
+    /** V067 — refuse un RDV qui chevauche la pause déjeuner du praticien (heure locale cabinet). */
+    private void rejectIfDuringLunch(UUID practitionerId, OffsetDateTime start, OffsetDateTime end) {
+        lunchBreakRepository.findById(practitionerId).ifPresent(lb -> {
+            LocalTime s = start.atZoneSameInstant(CABINET_ZONE).toLocalTime();
+            LocalTime e = end.atZoneSameInstant(CABINET_ZONE).toLocalTime();
+            if (s.isBefore(lb.getEndTime()) && e.isAfter(lb.getStartTime())) {
+                throw new BusinessException(
+                        "APPT_DURING_LUNCH",
+                        "Créneau pendant la pause déjeuner du médecin.",
+                        HttpStatus.CONFLICT.value());
+            }
+        });
     }
 
     // ── Helpers ────────────────────────────────────────────────────
@@ -368,6 +410,33 @@ public class SchedulingService {
             throw new BusinessException("LEAVE_ACCESS_DENIED", "Ce congé n'appartient pas à ce praticien.", 403);
         }
         leaveRepository.delete(l);
+    }
+
+    // ── Pause déjeuner par médecin (V067) ──────────────────────────
+
+    @Transactional(readOnly = true)
+    public Optional<PractitionerLunchBreak> getLunchBreak(UUID practitionerId) {
+        return lunchBreakRepository.findById(practitionerId);
+    }
+
+    /** Upsert de la fenêtre de pause déjeuner (une par praticien). */
+    public PractitionerLunchBreak setLunchBreak(UUID practitionerId, LocalTime start, LocalTime end) {
+        if (start == null || end == null || !end.isAfter(start)) {
+            throw new BusinessException(
+                    "LUNCH_INVALID",
+                    "L'heure de fin de pause doit être postérieure à l'heure de début.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+        PractitionerLunchBreak lb = lunchBreakRepository.findById(practitionerId)
+                .orElseGet(PractitionerLunchBreak::new);
+        lb.setPractitionerId(practitionerId);
+        lb.setStartTime(start);
+        lb.setEndTime(end);
+        return lunchBreakRepository.save(lb);
+    }
+
+    public void clearLunchBreak(UUID practitionerId) {
+        lunchBreakRepository.deleteById(practitionerId);
     }
 
     // Offset alignment — used by tests that pass instants in UTC
