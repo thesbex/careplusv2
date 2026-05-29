@@ -253,23 +253,26 @@ class StayInvoiceAggregationIT {
     }
 
     @Test
-    @DisplayName("A2. idempotence : un séjour déjà FACTURE ne peut pas être refacturé (409) ; "
-            + "pas de double absorption")
+    @DisplayName("A2. idempotence : la facture est générée à la sortie ; /invoice renvoie la "
+            + "même facture (pas de double absorption)")
     void a2_idempotent() throws Exception {
         String token = bearer();
         String stayId = admit(token);
         seedConsultationInvoice(OffsetDateTime.now(), "BROUILLON", "Consultation", new BigDecimal("300"));
-        discharge(token, stayId);
+        discharge(token, stayId); // génère + émet la facture, absorbe le brouillon de consultation
 
-        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/invoice")
+        MvcResult r1 = mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/invoice")
                         .header("Authorization", token))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andReturn();
+        String inv1 = objectMapper.readTree(r1.getResponse().getContentAsString()).get("invoiceId").asText();
 
-        // Second appel : séjour FACTURE → 409, aucune nouvelle absorption.
-        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/invoice")
+        // Second appel : même facture renvoyée, aucune nouvelle absorption.
+        MvcResult r2 = mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/invoice")
                         .header("Authorization", token))
-                .andExpect(status().isConflict());
+                .andExpect(status().isOk()).andReturn();
+        String inv2 = objectMapper.readTree(r2.getResponse().getContentAsString()).get("invoiceId").asText();
 
+        assertThat(inv2).isEqualTo(inv1);
         // Toujours une seule facture (la facture de séjour).
         assertThat(countActiveInvoices()).isEqualTo(1);
     }
@@ -331,5 +334,26 @@ class StayInvoiceAggregationIT {
 
         // Facture de séjour = nuit(400) seulement.
         assertThat(net(stayInvId)).isEqualByComparingTo("400");
+    }
+
+    @Test
+    @DisplayName("A5. patient hospitalisé : émettre sa facture de consultation est refusé "
+            + "(INVOICE_DEFERRED_TO_STAY) — elle sera réglée avec le séjour")
+    void a5_consultationInvoiceDeferredWhileAdmitted() throws Exception {
+        String token = bearer();
+        admit(token); // patient EN_COURS
+
+        UUID consultInv = seedConsultationInvoice(
+                OffsetDateTime.now(), "BROUILLON", "Consultation", new BigDecimal("300"));
+
+        // Émettre cette facture de consultation est bloqué tant que le patient est hospitalisé.
+        mockMvc.perform(post("/api/invoices/" + consultInv + "/issue")
+                        .header("Authorization", token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("INVOICE_DEFERRED_TO_STAY"));
+
+        // Toujours en brouillon (non émise).
+        assertThat(jdbc.queryForObject("SELECT status FROM billing_invoice WHERE id = ?::uuid",
+                String.class, consultInv)).isEqualTo("BROUILLON");
     }
 }

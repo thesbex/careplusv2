@@ -57,10 +57,7 @@ public class StayPrestationServiceImpl implements StayPrestationService {
     @Override
     public void delete(UUID stayId, UUID prestationId) {
         Stay stay = loadStayOrThrow(stayId);
-        if ("FACTURE".equals(stay.getStatus())) {
-            throw new BusinessException("STAY_ALREADY_INVOICED",
-                    "Impossible de supprimer une prestation : le séjour est déjà facturé.", 409);
-        }
+        rejectIfInvoicedOrCancelled(stay);
         StayPrestation p = prestationRepo.findById(prestationId)
                 .orElseThrow(() -> new NotFoundException("PRESTATION_NOT_FOUND",
                         "Prestation introuvable : " + prestationId));
@@ -80,13 +77,16 @@ public class StayPrestationServiceImpl implements StayPrestationService {
     }
 
     private static void rejectIfInvoicedOrCancelled(Stay stay) {
-        if ("FACTURE".equals(stay.getStatus())) {
-            throw new BusinessException("STAY_ALREADY_INVOICED",
-                    "Impossible d'ajouter une prestation : le séjour est déjà facturé.", 409);
-        }
         if ("ANNULE".equals(stay.getStatus())) {
             throw new BusinessException("STAY_CANCELLED",
-                    "Impossible d'ajouter une prestation : le séjour est annulé.", 409);
+                    "Impossible : le séjour est annulé.", 409);
+        }
+        // Depuis la sortie en 2 temps, la facture de séjour est générée dès la
+        // « préparation de la sortie » (statut SORTI). Les prestations sont donc
+        // verrouillées dès que le séjour n'est plus EN_COURS (SORTI ou FACTURE).
+        if (!"EN_COURS".equals(stay.getStatus())) {
+            throw new BusinessException("STAY_ALREADY_INVOICED",
+                    "Impossible de modifier les prestations : la facture de séjour est déjà générée.", 409);
         }
     }
 

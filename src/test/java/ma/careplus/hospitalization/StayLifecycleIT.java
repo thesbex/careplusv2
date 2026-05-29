@@ -206,35 +206,53 @@ class StayLifecycleIT {
     }
 
     @Test
-    @DisplayName("S6. invoice → facture brouillon nuits × prix de journée, séjour FACTURE")
-    void s6_invoice() throws Exception {
+    @DisplayName("S6. sortie en 2 temps : préparer (SORTI + facture émise) → confirmer bloqué "
+            + "tant que non réglé → encaissement → confirmer (FACTURE)")
+    void s6_dischargeTwoSteps() throws Exception {
         String stayId = admit(patientId, bedA);
-        // transfert puis sortie → 2 affectations facturables
+        // transfert puis « préparer la sortie » → 2 affectations facturables + facture émise
         mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/transfer")
                 .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(Map.of("bedId", bedB)))).andExpect(status().isOk());
-        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/discharge")
+        MvcResult dr = mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/discharge")
                 .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(Map.of("dischargeType", "DOMICILE")))).andExpect(status().isOk());
-
-        MvcResult r = mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/invoice")
-                        .header("Authorization", bearer()))
+                .content(objectMapper.writeValueAsString(Map.of("dischargeType", "DOMICILE"))))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SORTI"))
                 .andExpect(jsonPath("$.invoiceId").isNotEmpty())
                 .andReturn();
-        String invoiceId = objectMapper.readTree(r.getResponse().getContentAsString()).get("invoiceId").asText();
+        String invoiceId = objectMapper.readTree(dr.getResponse().getContentAsString()).get("invoiceId").asText();
 
-        // Séjour passé à FACTURE + lié.
-        String dbStatus = jdbc.queryForObject(
-                "SELECT status FROM hospitalization_stay WHERE id = ?::uuid", String.class, stayId);
-        assertThat(dbStatus).isEqualTo("FACTURE");
-        // 2 lignes hébergement (Lit A + Lit B) × 400, min 1 nuit chacune → net 800.
+        // La facture est générée ET émise à la préparation (nuits Lit A + Lit B × 400 = 800).
+        String invStatus = jdbc.queryForObject(
+                "SELECT status FROM billing_invoice WHERE id = ?::uuid", String.class, invoiceId);
+        assertThat(invStatus).isEqualTo("EMISE");
         BigDecimal net = jdbc.queryForObject(
                 "SELECT net_amount FROM billing_invoice WHERE id = ?::uuid", BigDecimal.class, invoiceId);
         assertThat(net).isEqualByComparingTo("800");
         Integer lines = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM billing_invoice_line WHERE invoice_id = ?::uuid", Integer.class, invoiceId);
         assertThat(lines).isEqualTo(2);
+
+        // Confirmer la sortie AVANT règlement → 409 STAY_INVOICE_UNPAID, séjour toujours SORTI.
+        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/confirm-discharge")
+                        .header("Authorization", bearer()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("STAY_INVOICE_UNPAID"));
+        assertThat(jdbc.queryForObject("SELECT status FROM hospitalization_stay WHERE id = ?::uuid",
+                String.class, stayId)).isEqualTo("SORTI");
+
+        // Encaissement total puis confirmation → séjour FACTURE (clôturé).
+        mockMvc.perform(post("/api/invoices/" + invoiceId + "/payments")
+                        .header("Authorization", bearer()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"mode\":\"ESPECES\",\"amount\":800}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/hospitalization/stays/" + stayId + "/confirm-discharge")
+                        .header("Authorization", bearer()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FACTURE"));
+        assertThat(jdbc.queryForObject("SELECT status FROM hospitalization_stay WHERE id = ?::uuid",
+                String.class, stayId)).isEqualTo("FACTURE");
     }
 
     @Test

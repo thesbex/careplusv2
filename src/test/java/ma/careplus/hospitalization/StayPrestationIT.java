@@ -284,10 +284,11 @@ class StayPrestationIT {
         String invoiceId = objectMapper.readTree(r.getResponse().getContentAsString())
                 .get("invoiceId").asText();
 
-        // Séjour FACTURE
+        // Sortie en 2 temps : la facture est générée à la préparation de la sortie,
+        // le séjour est SORTI (« à régler ») jusqu'à confirmation après règlement.
         String dbStatus = jdbc.queryForObject(
                 "SELECT status FROM hospitalization_stay WHERE id = ?::uuid", String.class, stayId);
-        assertThat(dbStatus).isEqualTo("FACTURE");
+        assertThat(dbStatus).isEqualTo("SORTI");
 
         // net_amount = 1 nuit × 400 (hebergement) + 120×2 (Oxygène) = 640
         BigDecimal net = jdbc.queryForObject(
