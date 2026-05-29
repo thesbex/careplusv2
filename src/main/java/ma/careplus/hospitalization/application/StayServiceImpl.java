@@ -158,10 +158,14 @@ public class StayServiceImpl implements StayService {
                     + " — " + nights + " nuit" + (nights > 1 ? "s" : "");
             lines.add(new InvoiceLineRequest(null, desc, a.getDailyRateAmount(), BigDecimal.valueOf(nights)));
         }
-        // Append prestation lines (actes/services supplémentaires en sus du prix de journée)
+        // Append prestation lines (actes/services supplémentaires en sus du prix de journée).
+        // act_id reste NULL : la ligne de facture (billing_invoice_line.act_id) référence
+        // catalog_act, alors que la prestation de séjour pointe désormais vers
+        // catalog_prestation (V066). Réutiliser sp.getActId() ici violait la FK catalog_act
+        // → 500 « génération de facture impossible ». Le libellé/prix/quantité suffisent.
         for (ma.careplus.hospitalization.domain.StayPrestation sp :
                 prestationRepo.findAllByStayIdOrderByPerformedAtAsc(stayId)) {
-            lines.add(new InvoiceLineRequest(sp.getActId(), sp.getLabel(),
+            lines.add(new InvoiceLineRequest(null, sp.getLabel(),
                     sp.getUnitPrice(), sp.getQuantity()));
         }
 
