@@ -1,17 +1,15 @@
 /**
- * Onglet « Chambres & lits » de /parametres — référentiel hospitalisation (Slice A).
- * Visible uniquement si l'établissement a coché `hospitalizationEnabled`.
+ * Onglet « Chambres & lits » de /parametres — référentiel hospitalisation.
+ * Refresh iso-maquette « careplus refresh - chambres & lits.html » :
+ *   header + bandeau rôle + légende statuts, puis 6 panneaux numérotés
+ *   (Tableau des lits · Services · Chambres · Lits · Facturation · Cloisonnement).
  *
- * 4 sections : Tableau des lits (board read-only) · Services · Chambres · Lits.
- * Écriture réservée MEDECIN/ADMIN ; le toggle de statut de lit est ouvert aussi
- * à SECRETAIRE/INFIRMIER (bureau des admissions / soignant).
+ * Écriture réservée MEDECIN/ADMIN (canManage) ; le statut manuel d'un lit est
+ * ouvert aussi à SECRETAIRE/INFIRMIER (canSetStatus). Suppression physique
+ * autorisée seulement si aucun historique → sinon bandeau d'erreur ambre inline.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/Button';
-import { Field, FieldLabel } from '@/components/ui/Field';
-import { Input, Select } from '@/components/ui/Input';
-import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { useAgendaIsolation, useUpdateAgendaIsolation } from '@/features/parametres/hooks/useAgendaIsolation';
@@ -27,27 +25,29 @@ import {
   useDeactivateBed,
   useDeactivateRoom,
   useDeactivateWard,
+  useDeleteBed,
+  useDeleteRoom,
   useRooms,
   useUpdateBedStatus,
   useWards,
+  type BedStatus,
   type ManualBedStatus,
   type RoomClass,
   type WardView,
 } from '../hooks/useHospitalization';
-
-const SELECT_STYLE: React.CSSProperties = {
-  height: 38,
-  padding: '0 10px',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--r-md)',
-  background: 'var(--bg)',
-  fontFamily: 'inherit',
-  fontSize: 13,
-  width: '100%',
-};
+import '../chambres-lits.css';
 
 const ROOM_CLASSES: RoomClass[] = ['INDIVIDUELLE', 'DOUBLE', 'COMMUNE', 'SUITE', 'AUTRE'];
 const MANUAL_STATUSES: ManualBedStatus[] = ['LIBRE', 'RESERVE', 'NETTOYAGE', 'HORS_SERVICE'];
+
+/** Classe CSS de pastille / dot pour un statut de lit. */
+const STATUS_CLASS: Record<BedStatus, string> = {
+  LIBRE: 'libre',
+  OCCUPE: 'occupe',
+  RESERVE: 'reserve',
+  NETTOYAGE: 'nettoy',
+  HORS_SERVICE: 'hs',
+};
 
 function reportError(err: unknown) {
   const problem = toProblemDetail(err);
@@ -58,7 +58,88 @@ function reportError(err: unknown) {
   }
 }
 
-// ── Services (wards) ─────────────────────────────────────────────────────
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 18 18" aria-hidden="true">
+      <path d="M9 3v12M3 9h12" />
+    </svg>
+  );
+}
+
+// ── Panel 1 — Tableau des lits (lecture seule) ────────────────────────────
+
+function BedBoardSection() {
+  const { board, isLoading, error } = useBedBoard();
+  const totalBeds = useMemo(
+    () => board.wards.reduce((s, w) => s + w.rooms.reduce((n, r) => n + r.beds.length, 0), 0),
+    [board],
+  );
+
+  return (
+    <section className="cl-panel" data-testid="hosp-board-section">
+      <div className="cl-panel-h">
+        <span className="ix">01</span>
+        <h3>Tableau des lits</h3>
+        <span className="meta">· vue d'ensemble · lecture seule</span>
+        {board.wards.length > 0 && (
+          <span className="right">
+            {totalBeds} lit{totalBeds > 1 ? 's' : ''} · {board.wards.length} service
+            {board.wards.length > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
+      <div className="cl-panel-b">
+        {isLoading && <div className="cl-empty">Chargement…</div>}
+        {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
+        {!isLoading && board.wards.length === 0 && (
+          <div className="cl-empty">
+            Aucun service / lit configuré. Ajoutez un service puis des chambres et des lits ci-dessous.
+          </div>
+        )}
+        {board.wards.map((w) => {
+          const beds = w.rooms.reduce((n, r) => n + r.beds.length, 0);
+          return (
+            <div className="cl-svc-group" key={w.wardId}>
+              <div className="cl-svc-h">
+                <span className="scode">{w.wardCode}</span>
+                <span className="sname">{w.wardLabel}</span>
+                <span className="scount">
+                  · {w.rooms.length} chambre{w.rooms.length > 1 ? 's' : ''} · {beds} lit{beds > 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="cl-mini-grid">
+                {w.rooms.map((r) => (
+                  <div className="cl-mini" key={r.roomId}>
+                    <div className="ch">
+                      <b>{r.roomLabel}</b>
+                      <span className="cc">{r.roomCode}</span>
+                    </div>
+                    <div className="cm">
+                      {ROOM_CLASS_LABELS[r.roomClass]} · {r.dailyRate.toLocaleString('fr-MA')} MAD/j
+                    </div>
+                    <div className="beds">
+                      {r.beds.length === 0 && <span className="cl-ro-hint">Aucun lit</span>}
+                      {r.beds.map((b) => (
+                        <span className={`cl-bedchip ${STATUS_CLASS[b.status]}`} key={b.id}>
+                          <span className="d" />
+                          {b.code}
+                          <span className="st">· {BED_STATUS_LABELS[b.status]}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {w.rooms.length === 0 && <span className="cl-ro-hint">Aucune chambre.</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Panel 2 — Services / unités ───────────────────────────────────────────
 
 function WardsSection({ canManage }: { canManage: boolean }) {
   const { wards, isLoading, error } = useWards();
@@ -94,72 +175,68 @@ function WardsSection({ canManage }: { canManage: boolean }) {
   }
 
   return (
-    <Panel data-testid="hosp-wards-section">
-      <PanelHeader>Services / unités</PanelHeader>
-      <div style={{ padding: 16 }}>
+    <section className="cl-panel" data-testid="hosp-wards-section">
+      <div className="cl-panel-h"><span className="ix">02</span><h3>Services / unités</h3></div>
+      <div className="cl-panel-b">
         {canManage && (
-          <form
-            onSubmit={(e) => void handleCreate(e)}
-            style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', gap: 10, marginBottom: 14, alignItems: 'end' }}
-          >
-            <Field>
-              <FieldLabel htmlFor="ward-code">Code *</FieldLabel>
-              <Input id="ward-code" value={code} maxLength={32} onChange={(e) => setCode(e.target.value)} placeholder="MAT" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="ward-label">Libellé *</FieldLabel>
-              <Input id="ward-label" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} placeholder="Maternité" />
-            </Field>
-            <Button type="submit" variant="primary" disabled={creating}>
-              {creating ? '…' : '+ Ajouter'}
-            </Button>
+          <form className="cl-addform svc" onSubmit={(e) => void handleCreate(e)}>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="ward-code">Code <span className="req">*</span></label>
+              <input id="ward-code" className="cl-inp mono" value={code} maxLength={32}
+                onChange={(e) => setCode(e.target.value)} placeholder="MAT" />
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="ward-label">Libellé <span className="req">*</span></label>
+              <input id="ward-label" className="cl-inp" value={label} maxLength={120}
+                onChange={(e) => setLabel(e.target.value)} placeholder="Maternité" />
+            </div>
+            <button type="submit" className="cl-btn-add" disabled={creating}>
+              <PlusIcon /> {creating ? 'Ajout…' : 'Ajouter'}
+            </button>
           </form>
         )}
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>}
-        {!isLoading && wards.length === 0 && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Aucun service déclaré.</div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {isLoading && <div className="cl-empty">Chargement…</div>}
+        {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
+        {!isLoading && wards.length === 0 && <div className="cl-empty">Aucun service déclaré.</div>}
+        <div className="cl-rows svc">
           {wards.map((w) => (
-            <div
-              key={w.id}
-              data-testid={`ward-row-${w.id}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                opacity: w.active ? 1 : 0.55,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: 'var(--ink-3)' }}>{w.code}</span>
-              <span style={{ fontSize: 13, flex: 1 }}>{w.labelFr}</span>
-              {!w.active && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Inactif</span>}
-              {canManage && w.active && (
-                <Button size="sm" variant="ghost" onClick={() => void handleDeactivate(w)} aria-label={`Désactiver ${w.labelFr}`}>
-                  Désactiver
-                </Button>
-              )}
+            <div className={`cl-rrow${w.active ? '' : ' off'}`} key={w.id} data-testid={`ward-row-${w.id}`}>
+              <span className="code">{w.code}</span>
+              <span className="name">
+                {w.labelFr}
+                {!w.active && <span className="cl-badge-off">Inactif</span>}
+              </span>
+              <div className="acts">
+                {canManage && w.active && (
+                  <button type="button" className="cl-btn-ghost"
+                    onClick={() => void handleDeactivate(w)} aria-label={`Désactiver ${w.labelFr}`}>
+                    Désactiver
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </div>
-    </Panel>
+    </section>
   );
 }
 
-// ── Chambres (rooms) ─────────────────────────────────────────────────────
+// ── Panel 3 — Chambres ────────────────────────────────────────────────────
 
 function RoomsSection({ canManage }: { canManage: boolean }) {
   const { wards } = useWards();
   const { rooms, isLoading, error } = useRooms();
   const { createRoom, isPending: creating } = useCreateRoom();
   const { deactivateRoom } = useDeactivateRoom();
+  const { deleteRoom } = useDeleteRoom();
   const activeWards = wards.filter((w) => w.active);
   const [wardId, setWardId] = useState('');
   const [code, setCode] = useState('');
   const [label, setLabel] = useState('');
   const [roomClass, setRoomClass] = useState<RoomClass>('INDIVIDUELLE');
   const [dailyRate, setDailyRate] = useState('');
+  const [delErr, setDelErr] = useState<string | null>(null); // room id avec erreur "non vide"
 
   const wardLabel = (id: string) => wards.find((w) => w.id === id)?.labelFr ?? '—';
 
@@ -169,14 +246,13 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
       toast.error('Service, code et libellé requis.');
       return;
     }
+    const rate = Number(dailyRate);
+    if (!dailyRate.trim() || Number.isNaN(rate) || rate <= 0) {
+      toast.error('Prix/jour requis (supérieur à 0).');
+      return;
+    }
     try {
-      await createRoom({
-        wardId,
-        code: code.trim(),
-        labelFr: label.trim(),
-        roomClass,
-        dailyRate: Number(dailyRate) || 0,
-      });
+      await createRoom({ wardId, code: code.trim(), labelFr: label.trim(), roomClass, dailyRate: rate });
       toast.success('Chambre créée.');
       setCode('');
       setLabel('');
@@ -186,97 +262,129 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
     }
   }
 
+  async function handleDeactivate(id: string) {
+    try {
+      await deactivateRoom(id);
+      toast.success('Chambre désactivée.');
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  async function handleDelete(id: string, labelFr: string) {
+    if (!confirm(`Supprimer définitivement la chambre « ${labelFr} » ?`)) return;
+    setDelErr(null);
+    try {
+      await deleteRoom(id);
+      toast.success('Chambre supprimée.');
+    } catch (err) {
+      const p = toProblemDetail(err);
+      if (p.code === 'ROOM_HAS_BEDS_DELETE') {
+        setDelErr(id);
+        return;
+      }
+      reportError(err);
+    }
+  }
+
   return (
-    <Panel data-testid="hosp-rooms-section">
-      <PanelHeader>Chambres</PanelHeader>
-      <div style={{ padding: 16 }}>
+    <section className="cl-panel" data-testid="hosp-rooms-section">
+      <div className="cl-panel-h"><span className="ix">03</span><h3>Chambres</h3></div>
+      <div className="cl-panel-b">
         {canManage && (
-          <form
-            onSubmit={(e) => void handleCreate(e)}
-            style={{ display: 'grid', gridTemplateColumns: '1fr 120px 1fr 160px 140px auto', gap: 10, marginBottom: 14, alignItems: 'end' }}
-          >
-            <Field>
-              <FieldLabel htmlFor="room-ward">Service *</FieldLabel>
-              <Select id="room-ward" aria-label="Service" value={wardId} onChange={(e) => setWardId(e.target.value)} style={SELECT_STYLE}>
+          <form className="cl-addform cham" onSubmit={(e) => void handleCreate(e)}>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="room-ward">Service <span className="req">*</span></label>
+              <select id="room-ward" className="cl-sel" aria-label="Service" value={wardId}
+                onChange={(e) => setWardId(e.target.value)}>
                 <option value="">— Choisir —</option>
-                {activeWards.map((w) => (
-                  <option key={w.id} value={w.id}>{w.labelFr}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="room-code">Code *</FieldLabel>
-              <Input id="room-code" value={code} maxLength={32} onChange={(e) => setCode(e.target.value)} placeholder="102" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="room-label">Libellé *</FieldLabel>
-              <Input id="room-label" value={label} maxLength={120} onChange={(e) => setLabel(e.target.value)} placeholder="Chambre 102" />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="room-class">Classe</FieldLabel>
-              <Select id="room-class" aria-label="Classe" value={roomClass} onChange={(e) => setRoomClass(e.target.value as RoomClass)} style={SELECT_STYLE}>
-                {ROOM_CLASSES.map((c) => (
-                  <option key={c} value={c}>{ROOM_CLASS_LABELS[c]}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="room-rate">Prix/jour (MAD)</FieldLabel>
-              <Input id="room-rate" type="number" min={0} step="10" value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} placeholder="400" />
-            </Field>
-            <Button type="submit" variant="primary" disabled={creating}>
-              {creating ? '…' : '+ Ajouter'}
-            </Button>
+                {activeWards.map((w) => <option key={w.id} value={w.id}>{w.labelFr}</option>)}
+              </select>
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="room-code">Code <span className="req">*</span></label>
+              <input id="room-code" className="cl-inp mono" value={code} maxLength={32}
+                onChange={(e) => setCode(e.target.value)} placeholder="102" />
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="room-label">Libellé <span className="req">*</span></label>
+              <input id="room-label" className="cl-inp" value={label} maxLength={120}
+                onChange={(e) => setLabel(e.target.value)} placeholder="Chambre 102" />
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="room-class">Classe</label>
+              <select id="room-class" className="cl-sel" aria-label="Classe" value={roomClass}
+                onChange={(e) => setRoomClass(e.target.value as RoomClass)}>
+                {ROOM_CLASSES.map((c) => <option key={c} value={c}>{ROOM_CLASS_LABELS[c]}</option>)}
+              </select>
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="room-rate">Prix/jour (MAD) <span className="req">*</span></label>
+              <input id="room-rate" className="cl-inp mono" type="number" min={1} step="10" required
+                value={dailyRate} onChange={(e) => setDailyRate(e.target.value)} placeholder="400" />
+            </div>
+            <button type="submit" className="cl-btn-add" disabled={creating}>
+              <PlusIcon /> {creating ? 'Ajout…' : 'Ajouter'}
+            </button>
           </form>
         )}
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>}
-        {!isLoading && rooms.length === 0 && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Aucune chambre déclarée.</div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {isLoading && <div className="cl-empty">Chargement…</div>}
+        {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
+        {!isLoading && rooms.length === 0 && <div className="cl-empty">Aucune chambre déclarée.</div>}
+        <div className="cl-rows cham">
           {rooms.map((r) => (
-            <div
-              key={r.id}
-              data-testid={`room-row-${r.id}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                opacity: r.active ? 1 : 0.55, flexWrap: 'wrap',
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'monospace', color: 'var(--ink-3)' }}>{r.code}</span>
-              <span style={{ fontSize: 13, flex: 1, minWidth: 140 }}>{r.labelFr}</span>
-              <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{wardLabel(r.wardId)}</span>
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'var(--bg-alt)', color: 'var(--ink-2)' }}>
-                {ROOM_CLASS_LABELS[r.roomClass]}
-              </span>
-              <span style={{ fontSize: 12.5, fontWeight: 600 }}>{r.dailyRate.toLocaleString('fr-MA')} MAD/j</span>
-              {!r.active && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Inactive</span>}
-              {canManage && r.active && (
-                <Button size="sm" variant="ghost" onClick={() => void deactivateRoom(r.id).then(() => toast.success('Chambre désactivée.')).catch(reportError)} aria-label={`Désactiver ${r.labelFr}`}>
-                  Désactiver
-                </Button>
+            <div key={r.id} data-testid={`room-row-${r.id}`}>
+              <div className={`cl-rrow${r.active ? '' : ' off'}`}>
+                <span className="code">{r.code}</span>
+                <span className="name">
+                  {r.labelFr}
+                  {!r.active && <span className="cl-badge-off">Inactive</span>}
+                </span>
+                <span className="sub">{wardLabel(r.wardId)}</span>
+                <span><span className="cl-cls"><span className="d" />{ROOM_CLASS_LABELS[r.roomClass]}</span></span>
+                <span className="price">{r.dailyRate.toLocaleString('fr-MA')} MAD/j</span>
+                <div className="acts">
+                  {canManage && r.active && (
+                    <button type="button" className="cl-btn-ghost"
+                      onClick={() => void handleDeactivate(r.id)} aria-label={`Désactiver ${r.labelFr}`}>
+                      Désactiver
+                    </button>
+                  )}
+                  {canManage && (
+                    <button type="button" className="cl-btn-ghost danger"
+                      onClick={() => void handleDelete(r.id, r.labelFr)} aria-label={`Supprimer ${r.labelFr}`}>
+                      Supprimer
+                    </button>
+                  )}
+                </div>
+              </div>
+              {delErr === r.id && (
+                <div className="cl-errstrip" role="alert">
+                  <div className="ic">!</div>
+                  <div className="t"><b>Chambre non vide.</b> Supprimez d'abord ses lits, ou désactivez-la.</div>
+                </div>
               )}
             </div>
           ))}
         </div>
       </div>
-    </Panel>
+    </section>
   );
 }
 
-// ── Lits (beds) ──────────────────────────────────────────────────────────
+// ── Panel 4 — Lits ────────────────────────────────────────────────────────
 
 function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetStatus: boolean }) {
   const { rooms } = useRooms();
   const { beds, isLoading, error } = useBeds();
   const { createBed, isPending: creating } = useCreateBed();
   const { deactivateBed } = useDeactivateBed();
+  const { deleteBed } = useDeleteBed();
   const { updateBedStatus } = useUpdateBedStatus();
   const activeRooms = rooms.filter((r) => r.active);
   const [roomId, setRoomId] = useState('');
   const [code, setCode] = useState('');
+  const [delErr, setDelErr] = useState<string | null>(null); // bed id avec erreur "déjà utilisé"
 
   const roomLabel = (id: string) => rooms.find((r) => r.id === id)?.labelFr ?? '—';
 
@@ -303,146 +411,115 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
     }
   }
 
+  async function handleDeactivate(id: string) {
+    try {
+      await deactivateBed(id);
+      toast.success('Lit désactivé.');
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  async function handleDelete(id: string, bedCode: string) {
+    if (!confirm(`Supprimer définitivement le lit « ${bedCode} » ?`)) return;
+    setDelErr(null);
+    try {
+      await deleteBed(id);
+      toast.success('Lit supprimé.');
+    } catch (err) {
+      const p = toProblemDetail(err);
+      if (p.code === 'BED_HAS_HISTORY') {
+        setDelErr(id);
+        return;
+      }
+      reportError(err);
+    }
+  }
+
   return (
-    <Panel data-testid="hosp-beds-section">
-      <PanelHeader>Lits</PanelHeader>
-      <div style={{ padding: 16 }}>
+    <section className="cl-panel" data-testid="hosp-beds-section">
+      <div className="cl-panel-h"><span className="ix">04</span><h3>Lits</h3></div>
+      <div className="cl-panel-b">
         {canManage && (
-          <form
-            onSubmit={(e) => void handleCreate(e)}
-            style={{ display: 'grid', gridTemplateColumns: '1fr 160px auto', gap: 10, marginBottom: 14, alignItems: 'end' }}
-          >
-            <Field>
-              <FieldLabel htmlFor="bed-room">Chambre *</FieldLabel>
-              <Select id="bed-room" aria-label="Chambre" value={roomId} onChange={(e) => setRoomId(e.target.value)} style={SELECT_STYLE}>
+          <form className="cl-addform lit" onSubmit={(e) => void handleCreate(e)}>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="bed-room">Chambre <span className="req">*</span></label>
+              <select id="bed-room" className="cl-sel" aria-label="Chambre" value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}>
                 <option value="">— Choisir —</option>
-                {activeRooms.map((r) => (
-                  <option key={r.id} value={r.id}>{r.labelFr}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="bed-code">Code lit *</FieldLabel>
-              <Input id="bed-code" value={code} maxLength={32} onChange={(e) => setCode(e.target.value)} placeholder="Lit A" />
-            </Field>
-            <Button type="submit" variant="primary" disabled={creating}>
-              {creating ? '…' : '+ Ajouter'}
-            </Button>
+                {activeRooms.map((r) => <option key={r.id} value={r.id}>{r.labelFr}</option>)}
+              </select>
+            </div>
+            <div className="cl-field">
+              <label className="cl-lbl" htmlFor="bed-code">Code lit <span className="req">*</span></label>
+              <input id="bed-code" className="cl-inp" value={code} maxLength={32}
+                onChange={(e) => setCode(e.target.value)} placeholder="Lit A" />
+            </div>
+            <button type="submit" className="cl-btn-add" disabled={creating}>
+              <PlusIcon /> {creating ? 'Ajout…' : 'Ajouter'}
+            </button>
           </form>
         )}
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>}
-        {!isLoading && beds.length === 0 && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Aucun lit déclaré.</div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {beds.map((b) => (
-            <div
-              key={b.id}
-              data-testid={`bed-row-${b.id}`}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px',
-                background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6,
-                opacity: b.active ? 1 : 0.55, flexWrap: 'wrap',
-              }}
-            >
-              <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 120 }}>{b.code}</span>
-              <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{roomLabel(b.roomId)}</span>
-              {b.status === 'OCCUPE' || !canSetStatus ? (
-                <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 999, background: 'var(--bg-alt)', color: 'var(--ink-2)' }}>
-                  {BED_STATUS_LABELS[b.status]}
-                </span>
-              ) : (
-                <Select
-                  aria-label={`Statut du lit ${b.code}`}
-                  value={b.status}
-                  onChange={(e) => void handleStatus(b.id, e.target.value as ManualBedStatus)}
-                  style={{ ...SELECT_STYLE, width: 150, height: 32 }}
-                >
-                  {MANUAL_STATUSES.map((s) => (
-                    <option key={s} value={s}>{BED_STATUS_LABELS[s]}</option>
-                  ))}
-                </Select>
-              )}
-              {!b.active && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Inactif</span>}
-              {canManage && b.active && (
-                <Button size="sm" variant="ghost" onClick={() => void deactivateBed(b.id).then(() => toast.success('Lit désactivé.')).catch(reportError)} aria-label={`Désactiver ${b.code}`}>
-                  Désactiver
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-// ── Tableau des lits (board) ─────────────────────────────────────────────
-
-const STATUS_COLORS: Record<string, string> = {
-  LIBRE: '#16a34a',
-  OCCUPE: '#dc2626',
-  RESERVE: '#d97706',
-  NETTOYAGE: '#2563eb',
-  HORS_SERVICE: '#6b7280',
-};
-
-function BedBoardSection() {
-  const { board, isLoading, error } = useBedBoard();
-
-  return (
-    <Panel data-testid="hosp-board-section">
-      <PanelHeader>Tableau des lits</PanelHeader>
-      <div style={{ padding: 16 }}>
-        {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>}
-        {error && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>}
-        {!isLoading && board.wards.length === 0 && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>
-            Aucun service / lit configuré. Ajoutez un service puis des chambres et des lits ci-dessous.
-          </div>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {board.wards.map((w) => (
-            <div key={w.wardId}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>{w.wardLabel}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                {w.rooms.map((r) => (
-                  <div key={r.roomId} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 10, minWidth: 160 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>{r.roomLabel}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 8 }}>
-                      {ROOM_CLASS_LABELS[r.roomClass]} · {r.dailyRate.toLocaleString('fr-MA')} MAD/j
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {r.beds.length === 0 && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>—</span>}
-                      {r.beds.map((b) => (
-                        <span
-                          key={b.id}
-                          title={BED_STATUS_LABELS[b.status]}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            fontSize: 11, padding: '3px 8px', borderRadius: 6,
-                            background: 'var(--surface)', border: '1px solid var(--border)',
-                          }}
-                        >
-                          <span style={{ width: 8, height: 8, borderRadius: 999, background: STATUS_COLORS[b.status] ?? '#999' }} />
-                          {b.code}
+        {isLoading && <div className="cl-empty">Chargement…</div>}
+        {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
+        {!isLoading && beds.length === 0 && <div className="cl-empty">Aucun lit déclaré.</div>}
+        <div className="cl-rows lit">
+          {beds.map((b) => {
+            const occupiedOrLocked = b.status === 'OCCUPE' || !canSetStatus;
+            return (
+              <div key={b.id} data-testid={`bed-row-${b.id}`}>
+                <div className={`cl-rrow${b.active ? '' : ' off'}`}>
+                  <span className="code">{b.code}</span>
+                  <span className="sub">{roomLabel(b.roomId)}</span>
+                  <span>
+                    {occupiedOrLocked ? (
+                      <>
+                        <span className={`cl-litpill ${STATUS_CLASS[b.status]}`}>
+                          <span className="d" />{BED_STATUS_LABELS[b.status]}
                         </span>
-                      ))}
-                    </div>
+                        {b.status === 'OCCUPE' && <span className="cl-ro-hint">· dérivé du séjour</span>}
+                      </>
+                    ) : (
+                      <span className={`cl-statsel ${STATUS_CLASS[b.status]}`}>
+                        <span className="d" />
+                        <select aria-label={`Statut du lit ${b.code}`} value={b.status}
+                          onChange={(e) => void handleStatus(b.id, e.target.value as ManualBedStatus)}>
+                          {MANUAL_STATUSES.map((s) => <option key={s} value={s}>{BED_STATUS_LABELS[s]}</option>)}
+                        </select>
+                      </span>
+                    )}
+                  </span>
+                  <div className="acts">
+                    {canManage && b.active && (
+                      <button type="button" className="cl-btn-ghost"
+                        onClick={() => void handleDeactivate(b.id)} aria-label={`Désactiver ${b.code}`}>
+                        Désactiver
+                      </button>
+                    )}
+                    {canManage && (
+                      <button type="button" className="cl-btn-ghost danger"
+                        onClick={() => void handleDelete(b.id, b.code)} aria-label={`Supprimer ${b.code}`}>
+                        Supprimer
+                      </button>
+                    )}
                   </div>
-                ))}
-                {w.rooms.length === 0 && <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>Aucune chambre.</span>}
+                </div>
+                {delErr === b.id && (
+                  <div className="cl-errstrip" role="alert">
+                    <div className="ic">!</div>
+                    <div className="t"><b>Lit déjà utilisé.</b> Désactivez-le plutôt que de le supprimer.</div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
-    </Panel>
+    </section>
   );
 }
 
-// ── Règle de facturation (D2) ────────────────────────────────────────────
+// ── Panel 5 — Facturation (règle de comptage) ─────────────────────────────
 
 function DayRuleSection({ canManage }: { canManage: boolean }) {
   const { settings, stayBillingDayRule } = useAgendaIsolation();
@@ -459,29 +536,44 @@ function DayRuleSection({ canManage }: { canManage: boolean }) {
   }
 
   return (
-    <Panel data-testid="hosp-day-rule-section">
-      <PanelHeader>Facturation du séjour — comptage des journées</PanelHeader>
-      <div style={{ padding: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 10 }}>
-          Détermine comment les nuits sont comptées sur la facture de séjour. « Nuits » compte les
-          nuits passées ; « Jours entamés » compte le jour d'entrée ET de sortie (usage clinique fréquent).
-        </div>
-        <Select
-          aria-label="Règle de comptage des journées"
-          value={stayBillingDayRule}
-          disabled={!canManage || isPending}
-          onChange={(e) => void change(e.target.value as 'NUITS' | 'JOURS_ENTAMES')}
-          style={{ ...SELECT_STYLE, maxWidth: 280 }}
-        >
-          <option value="NUITS">Nuits (par défaut)</option>
-          <option value="JOURS_ENTAMES">Jours entamés (entrée + sortie)</option>
-        </Select>
+    <section className="cl-panel" data-testid="hosp-day-rule-section">
+      <div className="cl-panel-h">
+        <span className="ix">05</span>
+        <h3>Facturation du séjour — comptage des journées</h3>
       </div>
-    </Panel>
+      <div className="cl-panel-b">
+        <p className="cl-help" style={{ margin: '0 0 14px', fontSize: 12.5, maxWidth: 680 }}>
+          Détermine comment les journées d'hospitalisation sont comptées sur la facture. Le mode{' '}
+          <b>Nuits</b> facture chaque nuit passée ; le mode <b>Jours entamés</b> facture le jour
+          d'entrée et le jour de sortie comme deux journées pleines.
+        </p>
+        <div className="cl-rule-row">
+          <div className="cl-field" style={{ maxWidth: 340 }}>
+            <label className="cl-lbl" htmlFor="day-rule">Règle de comptage des journées</label>
+            <select id="day-rule" className="cl-sel" aria-label="Règle de comptage des journées"
+              value={stayBillingDayRule} disabled={!canManage || isPending}
+              onChange={(e) => void change(e.target.value as 'NUITS' | 'JOURS_ENTAMES')}>
+              <option value="NUITS">Nuits (par défaut)</option>
+              <option value="JOURS_ENTAMES">Jours entamés (entrée + sortie)</option>
+            </select>
+          </div>
+        </div>
+        <div className="cl-rule-help">
+          <div className="c">
+            <div className="k"><span className="d" />Nuits (par défaut)</div>
+            <p>Entrée mardi, sortie jeudi → <b>2 journées</b> facturées (mardi→mercredi, mercredi→jeudi).</p>
+          </div>
+          <div className="c alt">
+            <div className="k"><span className="d" />Jours entamés</div>
+            <p>Entrée mardi, sortie jeudi → <b>3 journées</b> facturées (mardi, mercredi, jeudi).</p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-// ── Tab ──────────────────────────────────────────────────────────────────
+// ── Tab ────────────────────────────────────────────────────────────────────
 
 export function ChambresLitsTab() {
   const roles = useAuthStore((s) => s.user?.roles ?? []);
@@ -489,18 +581,51 @@ export function ChambresLitsTab() {
   const canSetStatus = canManage || roles.includes('SECRETAIRE') || roles.includes('INFIRMIER');
 
   return (
-    <>
+    <div className="cl">
+      <div className="cl-head">
+        <h2>Chambres &amp; lits</h2>
+        <p>
+          Référentiel des unités d'hospitalisation : déclarez vos services, chambres et lits, et
+          définissez les règles de facturation du séjour.
+        </p>
+      </div>
+
+      {canManage ? (
+        <div className="cl-role-note">
+          <div className="ic">i</div>
+          <div className="t">
+            Vous consultez la <b>vue gestionnaire</b> : ajout, désactivation et suppression sont
+            disponibles. Les <b>secrétaires et infirmier·e·s</b> peuvent uniquement changer le statut
+            manuel d'un lit ; les autres rôles sont en lecture seule.
+          </div>
+        </div>
+      ) : (
+        <div className="cl-role-note">
+          <div className="ic">i</div>
+          <div className="t">
+            {canSetStatus
+              ? "Vous pouvez changer le statut manuel d'un lit. L'ajout, la désactivation et la suppression sont réservés aux gestionnaires."
+              : 'Référentiel en lecture seule. Les modifications sont réservées aux gestionnaires.'}
+          </div>
+        </div>
+      )}
+
+      <div className="cl-legend">
+        <span className="lt">Statuts des lits</span>
+        <span className="it"><span className="d" style={{ background: 'var(--success)' }} />Libre</span>
+        <span className="it"><span className="d" style={{ background: 'var(--danger)' }} />Occupé <span className="sm">· dérivé séjour</span></span>
+        <span className="it"><span className="d" style={{ background: 'var(--primary)' }} />Réservé</span>
+        <span className="it"><span className="d" style={{ background: 'var(--amber)' }} />Nettoyage</span>
+        <span className="it"><span className="d" style={{ background: '#8b8b8b' }} />Hors service</span>
+        <span className="note">L'occupation prime sur le statut manuel.</span>
+      </div>
+
       <BedBoardSection />
-      <div style={{ height: 16 }} />
       <WardsSection canManage={canManage} />
-      <div style={{ height: 16 }} />
       <RoomsSection canManage={canManage} />
-      <div style={{ height: 16 }} />
       <BedsSection canManage={canManage} canSetStatus={canSetStatus} />
-      <div style={{ height: 16 }} />
       <DayRuleSection canManage={canManage} />
-      <div style={{ height: 16 }} />
       <OrphanRolesPanel module="hospitalization" />
-    </>
+    </div>
   );
 }

@@ -199,6 +199,20 @@ export function useDeactivateRoom() {
   return { deactivateRoom: m.mutateAsync, isPending: m.isPending };
 }
 
+export function useDeleteRoom() {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      await api.delete(`/hospitalization/rooms/${id}/permanent`);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['hosp-rooms'] });
+      void qc.invalidateQueries({ queryKey: ['hosp-board'] });
+    },
+  });
+  return { deleteRoom: m.mutateAsync, isPending: m.isPending };
+}
+
 // ── Beds ───────────────────────────────────────────────────────────────
 
 export function useBeds() {
@@ -268,6 +282,20 @@ export function useDeactivateBed() {
     },
   });
   return { deactivateBed: m.mutateAsync, isPending: m.isPending };
+}
+
+export function useDeleteBed() {
+  const qc = useQueryClient();
+  const m = useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      await api.delete(`/hospitalization/beds/${id}/permanent`);
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['hosp-beds'] });
+      void qc.invalidateQueries({ queryKey: ['hosp-board'] });
+    },
+  });
+  return { deleteBed: m.mutateAsync, isPending: m.isPending };
 }
 
 // ── Board ──────────────────────────────────────────────────────────────
