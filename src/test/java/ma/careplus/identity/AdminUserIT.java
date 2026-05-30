@@ -88,6 +88,17 @@ class AdminUserIT {
                 secId, secretaireEmail, passwordEncoder.encode(SECRETAIRE_PASSWORD),
                 "Sec", "Seed", OffsetDateTime.now(), OffsetDateTime.now());
         jdbc.update("INSERT INTO identity_user_role VALUES (?, ?)", secId, ROLE_SECRETAIRE);
+
+        // V069 — créer un technicien LAB/RADIO exige désormais que le service
+        // interne correspondant soit activé. On part d'une config cabinet avec les
+        // deux services internes ACTIFS pour les scénarios positifs ; les tests
+        // négatifs les remettent à FALSE explicitement.
+        jdbc.update("DELETE FROM configuration_clinic_settings");
+        jdbc.update("""
+                INSERT INTO configuration_clinic_settings
+                    (id, name, address, city, phone, lab_internal, imaging_internal)
+                VALUES (?, 'Cabinet Test', '1 rue', 'Casa', '+212600000000', TRUE, TRUE)
+                """, UUID.randomUUID());
     }
 
     private String loginAndGetAccessToken(String email, String password) throws Exception {
@@ -149,12 +160,11 @@ class AdminUserIT {
     }
 
     /**
-     * Bottles the IHM walk validated on 2026-05-20 for the Paramétrage >
-     * Utilisateurs flow : an admin must be able to create a Technicien
-     * laboratoire (role LAB), even when the cabinet's Services internes
-     * flags are off. The role codes come from V038 ; this test asserts the
-     * end-to-end persistence so a future regression in CreateUserRequest /
-     * UserRoleService / V038 seed fails loudly.
+     * Bottles the IHM walk for Paramétrage > Utilisateurs : an admin can create a
+     * Technicien laboratoire (role LAB) <b>when the cabinet's "Laboratoire interne"
+     * service is enabled</b> (V069 gating — set TRUE in {@link #seedUsers()}).
+     * Asserts end-to-end persistence so a regression in CreateUserRequest /
+     * AdminUserController / V038 seed fails loudly.
      */
     @Test
     void adminCanCreateLabTechnician() throws Exception {
@@ -209,6 +219,55 @@ class AdminUserIT {
                  WHERE u.email = 'radio-tech@test.ma' AND r.code = 'RADIO'
                 """, Integer.class);
         assertThat(roleLinks).isEqualTo(1);
+    }
+
+    /**
+     * V069 — gating : si le « Laboratoire d'analyses interne » n'est pas activé,
+     * la création d'un compte LAB est refusée (400) et rien n'est persisté.
+     */
+    @Test
+    void cannotCreateLabTechnicianWhenLabServiceDisabled() throws Exception {
+        jdbc.update("UPDATE configuration_clinic_settings SET lab_internal = FALSE");
+        String token = loginAndGetAccessToken(adminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"lab-off@test.ma",
+                                 "password":"Lab-Off-Pwd-2026!",
+                                 "firstName":"Imane","lastName":"Lab",
+                                 "roles":["LAB"]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("LAB_INTERNAL_DISABLED"));
+
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM identity_user WHERE email = 'lab-off@test.ma'", Integer.class);
+        assertThat(count).isZero();
+    }
+
+    /** V069 — même gating pour RADIO via imaging_internal. */
+    @Test
+    void cannotCreateRadioTechnicianWhenImagingServiceDisabled() throws Exception {
+        jdbc.update("UPDATE configuration_clinic_settings SET imaging_internal = FALSE");
+        String token = loginAndGetAccessToken(adminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"radio-off@test.ma",
+                                 "password":"Radio-Off-Pwd-2026!",
+                                 "firstName":"Aya","lastName":"Radio",
+                                 "roles":["RADIO"]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("IMAGING_INTERNAL_DISABLED"));
+
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM identity_user WHERE email = 'radio-off@test.ma'", Integer.class);
+        assertThat(count).isZero();
     }
 
     @Test
