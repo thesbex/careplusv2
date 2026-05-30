@@ -10,6 +10,14 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **QA IHM** : walké au navigateur (Dr El Amrani, MEDECIN+ADMIN, :5173) — ✅ item sidebar « Assistant IA » ; ✅ page rend topbar « Google Gemini · gemini-2.5-flash » + bandeau « Assistant non configuré » (pas de `GEMINI_API_KEY`) + composer désactivé (dégradation propre sans clé) ; ✅ bouton « Demander à l'IA » dans le dossier → `/assistant?patient=…` ; ✅ bandeau « Contexte joint : dossier de <patient> » + bouton Retirer. Round-trip modèle réel non testable sans clé — couvert par l'IT via stub.
 **Next action**: configurer `GEMINI_API_KEY` côté serveur pour activer le round-trip ; commit (feature + IT + docs). Pas de régression connue.
 
+### 2026-05-30 (suite) — Backlog #120 / #123 / #122
+
+- **#120** : garde serveur — seul un SUPER_ADMIN crée/promeut un SUPER_ADMIN (`AdminUserController` create + update). AdminUserIT 14/14 (+3).
+- **#123** : recherche de menus en tête de sidebar (filtre les items visibles, casse/accents-insensible, Entrée → 1er match). Sidebar.test.tsx 10/10 (+3). QA IHM OK.
+- **#122** : multilangue FR/EN/AR/ES, langue réglée par le super admin (V071, champ protégé). i18n maison zéro-dépendance (`lib/i18n` + `I18nProvider` + `useT`, RTL arabe via `<html dir>`). Sélecteur dans Paramètres (super admin only). Nav traduite (1re tranche). ADR-043. i18n.test.tsx 8/8, SuperAdminSettingsIT 7/7 (+3). QA IHM : bascule arabe → RTL + sidebar en arabe, retour FR OK.
+
+Builds verts (mvn compile, npm run build/tsc strict). Migrations V069→V071. Reste : élargir i18n écran par écran ; relire ar/es par natif.
+
 ### 2026-05-30 — Lot backlog 8 features (administration / exploitation)
 
 Build BE `mvn -o compile` 🟢 · FE `npm run build` 🟢 · `tsc --noEmit` clean. **Pas encore commité.**
