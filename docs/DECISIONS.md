@@ -458,6 +458,32 @@ V070. Colonne `configuration_clinic_settings.disabled_modules TEXT[]` (vide = to
 
 ---
 
+## ADR-043 — Recherche de menus + i18n multilangue maison (FR/EN/AR/ES, RTL)
+
+**2026-05-30** · Status: accepted
+
+**#123 — recherche de menus** : champ en tête de sidebar qui filtre les items de
+navigation déjà visibles (insensible casse/accents), liste « Résultats » à plat,
+Entrée → 1er match. Respecte le gating existant (rôles, capabilities, modules V070) :
+on ne filtre que ce que l'utilisateur peut voir.
+
+**#122 — multilangue** : 4 langues (fr/en/ar/es), langue réglée par le SUPER_ADMIN
+(V071 — champ protégé de `/settings/clinic`). **i18n maison, zéro dépendance** plutôt
+que react-i18next : besoin v1 simple (clés plates, interpolation `{var}`, fallback fr,
+bascule RTL), et la règle ADR-015/016/017 impose de défendre toute dépendance front
+contre la contrainte on-prem + design custom — une `Map` par langue + un Context y
+répondent sans surface supplémentaire. `I18nProvider` lit la langue cabinet, expose
+`useT()` et pose `<html dir/lang>` (RTL pour l'arabe). 1re tranche traduite : la
+navigation ; les autres écrans migrent leurs chaînes vers `lib/i18n` au fil de l'eau.
+
+Garde #120 associée : seul un SUPER_ADMIN peut créer/promouvoir un SUPER_ADMIN
+(garde serveur dans `AdminUserController`, en plus du masquage IHM).
+
+Limite assumée : traductions ar/es fonctionnelles mais à faire relire par un
+locuteur natif avant prod ; couverture i18n partielle (nav d'abord), élargie ensuite.
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).
