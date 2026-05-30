@@ -40,6 +40,7 @@ import { AgendaIsolationToggle } from './components/AgendaIsolationToggle';
 import { OrphanRolesPanel } from './components/OrphanRolesPanel';
 import { ModulesPanel } from './components/ModulesPanel';
 import { BackupRestorePanel } from './components/BackupRestorePanel';
+import { LanguageSettingsSection } from './components/LanguageSettingsSection';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
@@ -390,6 +391,8 @@ function CabinetTab() {
     <OrphanRolesPanel module="vaccination" />
     <div style={{ height: 16 }} />
     <OrphanRolesPanel module="pregnancy" />
+    <div style={{ height: 16 }} />
+    <LanguageSettingsSection />
     <div style={{ height: 16 }} />
     <ModulesPanel />
     <div style={{ height: 16 }} />

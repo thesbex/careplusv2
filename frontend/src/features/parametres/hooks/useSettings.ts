@@ -40,6 +40,8 @@ export interface ClinicSettings {
   hospitalizationEnabled?: boolean;
   /** V070 — codes des modules désactivés par l'admin (vide/absent = tous activés). */
   disabledModules?: string[];
+  /** V071 — langue de l'application (fr|en|ar|es). Réglée par le super admin. */
+  language?: string;
 }
 
 /** V070 — modules secondaires débrayables par l'admin (id ↔ libellé de nav). */
@@ -76,6 +78,8 @@ export interface ClinicSettingsForm {
   hospitalizationEnabled?: boolean;
   /** V070 — modules désactivés. Optional (absent = ne pas toucher). */
   disabledModules?: string[];
+  /** V071 — langue de l'application. Optional (absent = ne pas toucher). */
+  language?: string;
 }
 
 /**

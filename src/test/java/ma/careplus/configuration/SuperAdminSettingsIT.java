@@ -170,6 +170,55 @@ class SuperAdminSettingsIT {
     }
 
     @Test
+    void superAdminCanChangeLanguage() throws Exception {
+        String t = token(superAdminEmail);
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Cabinet Test","address":"1 rue","city":"Casa","phone":"+212600000000",
+                                 "language":"ar"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.language").value("ar"));
+
+        String lang = jdbc.queryForObject(
+                "SELECT language FROM configuration_clinic_settings LIMIT 1", String.class);
+        assertThat(lang).isEqualTo("ar");
+    }
+
+    @Test
+    void normalAdminCannotChangeLanguage() throws Exception {
+        String t = token(adminEmail);
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Cabinet Test","address":"1 rue","city":"Casa","phone":"+212600000000",
+                                 "language":"en"}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("SUPER_ADMIN_REQUIRED"));
+
+        String lang = jdbc.queryForObject(
+                "SELECT language FROM configuration_clinic_settings LIMIT 1", String.class);
+        assertThat(lang).isEqualTo("fr");
+    }
+
+    @Test
+    void invalidLanguageRejected() throws Exception {
+        String t = token(superAdminEmail);
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Cabinet Test","address":"1 rue","city":"Casa","phone":"+212600000000",
+                                 "language":"zz"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void normalAdminCanReSaveUnchangedIdentity() throws Exception {
         String t = token(adminEmail);
         // Aucun champ protégé ne change → autorisé (permet d'éditer cloisonnement/modules).

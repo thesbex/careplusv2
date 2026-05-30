@@ -31,6 +31,7 @@ import { useGrossesseAlertsCount } from '@/features/grossesse/hooks/useGrossesse
 import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount';
 import { useActiveStayCount } from '@/features/hospitalisation/hooks/useStays';
 import { isPureTech } from '@/lib/auth/roleHelpers';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useClinicSettings,
   ESTABLISHMENT_TYPE_LABELS,
@@ -142,6 +143,7 @@ export function Sidebar({
   // hardcoded "Cab. El Amrani". If the caller passed an explicit `cabinet` prop
   // (mostly tests), it wins.
   const { settings } = useClinicSettings();
+  const { t } = useT();
   const resolvedCabinet = cabinet ?? buildCabinetLabel(settings);
   // Sans `counts` explicite on n'affiche aucun badge — c'est <Screen> qui
   // souscrit à useQueue() et nous passe la valeur live.
@@ -246,7 +248,7 @@ export function Sidebar({
           className="cp-nav-search-input"
           value={menuQuery}
           onChange={(e) => setMenuQuery(e.target.value)}
-          placeholder="Rechercher un menu…"
+          placeholder={t('nav.search.placeholder')}
           aria-label="Rechercher un menu ou une fonctionnalité"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && menuMatches[0]) {
@@ -261,14 +263,15 @@ export function Sidebar({
 
       {normalizedQuery ? (
         <>
-          <div className="cp-nav-section">Résultats</div>
+          <div className="cp-nav-section">{t('nav.search.results')}</div>
           {menuMatches.length === 0 && (
-            <div className="cp-nav-empty">Aucun menu correspondant.</div>
+            <div className="cp-nav-empty">{t('nav.search.empty')}</div>
           )}
           {menuMatches.map((it) => (
             <NavButton
               key={it.id}
               item={it}
+              label={t('nav.' + it.id)}
               active={active === it.id}
               onClick={() => { onNavigate?.(it.id); setMenuQuery(''); }}
             />
@@ -276,11 +279,12 @@ export function Sidebar({
         </>
       ) : (
       <>
-      <div className="cp-nav-section">Flux patient</div>
+      <div className="cp-nav-section">{t('nav.section.flux')}</div>
       {flux.map((it) => (
         <NavButton
           key={it.id}
           item={it}
+          label={t('nav.' + it.id)}
           active={active === it.id}
           badge={
             it.id === 'salle'
@@ -301,11 +305,12 @@ export function Sidebar({
         />
       ))}
 
-      <div className="cp-nav-section">Configuration</div>
+      <div className="cp-nav-section">{t('nav.section.config')}</div>
       {config.map((it) => (
         <NavButton
           key={it.id}
           item={it}
+          label={t('nav.' + it.id)}
           active={active === it.id}
           onClick={() => onNavigate?.(it.id)}
         />
@@ -406,13 +411,16 @@ function NavButton({
   active,
   badge,
   onClick,
+  label,
 }: {
   item: NavItem;
   active: boolean;
   badge?: number | undefined;
   onClick: () => void;
+  /** #122 — libellé traduit ; à défaut on retombe sur item.label (français). */
+  label?: string;
 }) {
-  const { Icon, label } = item;
+  const { Icon } = item;
   return (
     <button
       type="button"
@@ -423,7 +431,7 @@ function NavButton({
       <span className="ico">
         <Icon />
       </span>
-      <span>{label}</span>
+      <span>{label ?? item.label}</span>
       {typeof badge === 'number' && badge > 0 && (
         <span className="cp-nav-badge" aria-label={`${badge} en attente`}>
           {badge}

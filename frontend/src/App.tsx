@@ -5,6 +5,7 @@ import { router } from '@/lib/router/routes';
 import { queryClient } from '@/lib/api/queryClient';
 import { useBootstrapAuth } from '@/lib/auth/useAuth';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { I18nProvider } from '@/lib/i18n/I18nProvider';
 
 function BootstrappedRouter() {
   const { ready } = useBootstrapAuth();
@@ -33,6 +34,9 @@ export default function App() {
   return (
     <ErrorBoundary contextLabel="careplus — application principale">
       <QueryClientProvider client={queryClient}>
+        {/* I18nProvider lit la langue cabinet (V071) — doit être sous le
+            QueryClient. Applique aussi dir=rtl sur <html> pour l'arabe (#122). */}
+        <I18nProvider>
         <BootstrappedRouter />
         <Toaster
           position="top-right"
@@ -43,6 +47,7 @@ export default function App() {
             },
           }}
         />
+        </I18nProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
