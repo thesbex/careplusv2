@@ -278,6 +278,11 @@ public class AdminUserController {
         // frontend dropdown gating; the server is the real guard.
         requireInternalServiceForTechRoles(normalized);
 
+        // V069 — seul un SUPER_ADMIN peut octroyer le rôle SUPER_ADMIN. Un ADMIN
+        // normal ne peut pas s'auto-élever ni créer un super admin (le front masque
+        // déjà l'option ; ici c'est la vraie garde serveur).
+        requireSuperAdminToGrantSuperAdmin(normalized);
+
         // Uniqueness — fast pre-check; the unique index is the real guard.
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM identity_user WHERE LOWER(email) = LOWER(?)",
@@ -418,6 +423,17 @@ public class AdminUserController {
             }
             // Même garde qu'à la création : un rôle technicien exige son service interne.
             requireInternalServiceForTechRoles(normalized);
+            // V069 — seul un SUPER_ADMIN peut octroyer/retirer le rôle SUPER_ADMIN.
+            // On vérifie l'intention (rôles cibles) ET l'état courant : un ADMIN
+            // normal ne peut ni promouvoir vers SUPER_ADMIN ni rétrograder un super
+            // admin existant (sinon il pourrait contourner la hiérarchie).
+            requireSuperAdminToGrantSuperAdmin(normalized);
+            if (currentRolesFor(id).contains("SUPER_ADMIN") && !isCallerSuperAdmin()) {
+                throw new BusinessException(
+                        "SUPER_ADMIN_REQUIRED",
+                        "Seul un super administrateur peut modifier le rôle d'un super administrateur.",
+                        HttpStatus.FORBIDDEN.value());
+            }
             jdbc.update("DELETE FROM identity_user_role WHERE user_id = ?", id);
             String placeholders = String.join(",", Collections.nCopies(normalized.size(), "?"));
             List<UUID> roleIds = jdbc.query(
@@ -525,6 +541,29 @@ public class AdminUserController {
 
     private static boolean hasAssistantRole(Set<String> roles) {
         return roles.stream().anyMatch(ASSISTANT_ROLES::contains);
+    }
+
+    /**
+     * V069 — refuse l'octroi du rôle SUPER_ADMIN à un appelant qui n'est pas
+     * lui-même SUPER_ADMIN. Un administrateur normal ne peut donc pas créer ni
+     * promouvoir un super administrateur (mais un super admin peut créer un
+     * administrateur — la hiérarchie ne joue que dans ce sens).
+     */
+    private void requireSuperAdminToGrantSuperAdmin(Set<String> targetRoles) {
+        if (targetRoles.contains("SUPER_ADMIN") && !isCallerSuperAdmin()) {
+            throw new BusinessException(
+                    "SUPER_ADMIN_REQUIRED",
+                    "Seul un super administrateur peut créer ou promouvoir un super administrateur.",
+                    HttpStatus.FORBIDDEN.value());
+        }
+    }
+
+    /** True si l'appelant courant porte l'autorité ROLE_SUPER_ADMIN. */
+    private static boolean isCallerSuperAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_SUPER_ADMIN".equals(a.getAuthority()));
     }
 
     /**

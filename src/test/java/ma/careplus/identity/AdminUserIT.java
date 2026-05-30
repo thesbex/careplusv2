@@ -49,6 +49,7 @@ class AdminUserIT {
 
     private static final UUID ROLE_SECRETAIRE = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID ROLE_ADMIN = UUID.fromString("00000000-0000-0000-0000-000000000004");
+    private static final UUID ROLE_SUPER_ADMIN = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
     @Autowired MockMvc mockMvc;
     @Autowired ObjectMapper objectMapper;
@@ -58,6 +59,7 @@ class AdminUserIT {
 
     private String adminEmail;
     private String secretaireEmail;
+    private String superAdminEmail;
 
     @BeforeEach
     void seedUsers() {
@@ -88,6 +90,19 @@ class AdminUserIT {
                 secId, secretaireEmail, passwordEncoder.encode(SECRETAIRE_PASSWORD),
                 "Sec", "Seed", OffsetDateTime.now(), OffsetDateTime.now());
         jdbc.update("INSERT INTO identity_user_role VALUES (?, ?)", secId, ROLE_SECRETAIRE);
+
+        // Super admin (porte ADMIN + SUPER_ADMIN) pour les scénarios V069.
+        superAdminEmail = "super-" + UUID.randomUUID() + "@test.ma";
+        UUID superId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO identity_user
+                    (id, email, password_hash, first_name, last_name, enabled, failed_attempts, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, TRUE, 0, 0, ?, ?)
+                """,
+                superId, superAdminEmail, passwordEncoder.encode(ADMIN_PASSWORD),
+                "Super", "Admin", OffsetDateTime.now(), OffsetDateTime.now());
+        jdbc.update("INSERT INTO identity_user_role VALUES (?, ?)", superId, ROLE_ADMIN);
+        jdbc.update("INSERT INTO identity_user_role VALUES (?, ?)", superId, ROLE_SUPER_ADMIN);
 
         // V069 — créer un technicien LAB/RADIO exige désormais que le service
         // interne correspondant soit activé. On part d'une config cabinet avec les
@@ -268,6 +283,74 @@ class AdminUserIT {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM identity_user WHERE email = 'radio-off@test.ma'", Integer.class);
         assertThat(count).isZero();
+    }
+
+    /**
+     * V069 (backlog #120) — un ADMIN normal ne peut pas créer un SUPER_ADMIN
+     * (même si l'option est masquée côté IHM, le serveur est la vraie garde).
+     */
+    @Test
+    void normalAdminCannotCreateSuperAdmin() throws Exception {
+        String token = loginAndGetAccessToken(adminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"escalate@test.ma",
+                                 "password":"Escalate-Pwd-2026!",
+                                 "firstName":"Esc","lastName":"Alate",
+                                 "roles":["SUPER_ADMIN"]}
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("SUPER_ADMIN_REQUIRED"));
+
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM identity_user WHERE email = 'escalate@test.ma'", Integer.class);
+        assertThat(count).isZero();
+    }
+
+    /** V069 (backlog #120) — un SUPER_ADMIN, lui, peut créer un ADMIN. */
+    @Test
+    void superAdminCanCreateAdmin() throws Exception {
+        String token = loginAndGetAccessToken(superAdminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"new.admin@test.ma",
+                                 "password":"New-Admin-Pwd-2026!",
+                                 "firstName":"New","lastName":"Admin",
+                                 "roles":["ADMIN"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roles[0]").value("ADMIN"));
+    }
+
+    /** V069 (backlog #120) — un SUPER_ADMIN peut aussi créer un autre SUPER_ADMIN. */
+    @Test
+    void superAdminCanCreateSuperAdmin() throws Exception {
+        String token = loginAndGetAccessToken(superAdminEmail, ADMIN_PASSWORD);
+
+        mockMvc.perform(post(URL)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"email":"second.super@test.ma",
+                                 "password":"Second-Super-2026!",
+                                 "firstName":"Second","lastName":"Super",
+                                 "roles":["SUPER_ADMIN"]}
+                                """))
+                .andExpect(status().isCreated());
+
+        Integer roleLinks = jdbc.queryForObject("""
+                SELECT COUNT(*) FROM identity_user_role ur
+                  JOIN identity_user u ON u.id = ur.user_id
+                  JOIN identity_role r ON r.id = ur.role_id
+                 WHERE u.email = 'second.super@test.ma' AND r.code = 'SUPER_ADMIN'
+                """, Integer.class);
+        assertThat(roleLinks).isEqualTo(1);
     }
 
     @Test
