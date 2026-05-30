@@ -18,6 +18,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -86,7 +89,9 @@ public class SettingsController {
             /** V056 — règle de comptage des journées facturables : NUITS | JOURS_ENTAMES. */
             String stayBillingDayRule,
             /** V056 — rôles autorisés à voir les séjours sans médecin référent (cloisonnement). */
-            List<String> hospitalizationOrphanVisibleRoles
+            List<String> hospitalizationOrphanVisibleRoles,
+            /** V070 — codes des modules désactivés par l'admin (vide = tous activés). */
+            List<String> disabledModules
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -138,7 +143,12 @@ public class SettingsController {
             /** V056 — règle journées. Optional : null = pas de changement. */
             @Pattern(regexp = "NUITS|JOURS_ENTAMES") String stayBillingDayRule,
             /** V056 — rôles voyant les séjours orphelins. Optional : null = pas de changement. */
-            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> hospitalizationOrphanVisibleRoles
+            List<@Pattern(regexp = "MEDECIN|ADMIN|SECRETAIRE|ASSISTANT") String> hospitalizationOrphanVisibleRoles,
+            /**
+             * V070 — modules désactivés (vide = tous activés). Optional : null = pas
+             * de changement. Valeurs débrayables uniquement (modules secondaires).
+             */
+            List<@Pattern(regexp = "vaccinations|grossesses|stock|messages|assistant|charges") String> disabledModules
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -164,7 +174,8 @@ public class SettingsController {
                             + "vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + "(logo_blob IS NOT NULL) AS has_logo, "
                             + "rc, if_no, legal_form, logo_position, hospitalization_enabled, "
-                            + "stay_billing_day_rule, hospitalization_orphan_visible_roles "
+                            + "stay_billing_day_rule, hospitalization_orphan_visible_roles, "
+                            + "disabled_modules "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -191,7 +202,8 @@ public class SettingsController {
                             rs.getString("logo_position"),
                             rs.getBoolean("hospitalization_enabled"),
                             rs.getString("stay_billing_day_rule"),
-                            readStringArray(rs, "hospitalization_orphan_visible_roles")));
+                            readStringArray(rs, "hospitalization_orphan_visible_roles"),
+                            readStringArray(rs, "disabled_modules")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -218,9 +230,16 @@ public class SettingsController {
         boolean finalHospitalizationEnabled;
         String finalStayBillingDayRule;
         List<String> finalHospOrphanRoles;
+        List<String> finalDisabledModules;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
+            // V069 — garde SUPER_ADMIN sur les sections sensibles (Identité du centre,
+            // Services internes, Hospitalisation). Un ADMIN normal peut toujours
+            // émettre un partial-update qui NE touche QUE des champs non protégés
+            // (cloisonnement agenda, rôles orphelins) : on ne bloque que si une
+            // valeur protégée change réellement par rapport à l'état en base.
+            requireSuperAdminIfProtectedChanges(id, req);
             if (req.agendaStrictIsolation() == null) {
                 finalAgendaIsolation = Boolean.TRUE.equals(jdbc.queryForObject(
                         "SELECT agenda_strict_isolation FROM configuration_clinic_settings WHERE id = ?",
@@ -291,6 +310,13 @@ public class SettingsController {
             } else {
                 finalHospOrphanRoles = List.copyOf(req.hospitalizationOrphanVisibleRoles());
             }
+            if (req.disabledModules() == null) {
+                finalDisabledModules = jdbc.queryForObject(
+                        "SELECT disabled_modules FROM configuration_clinic_settings WHERE id = ?",
+                        (rs, i) -> readStringArray(rs, "disabled_modules"), id);
+            } else {
+                finalDisabledModules = List.copyOf(req.disabledModules());
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
@@ -303,6 +329,7 @@ public class SettingsController {
                             + "hospitalization_enabled=?, "
                             + "stay_billing_day_rule=?, "
                             + "hospitalization_orphan_visible_roles=?, "
+                            + "disabled_modules=?, "
                             + "updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
@@ -317,6 +344,7 @@ public class SettingsController {
                     finalHospitalizationEnabled,
                     finalStayBillingDayRule,
                     finalHospOrphanRoles.toArray(String[]::new),
+                    finalDisabledModules.toArray(String[]::new),
                     id);
         } else {
             id = UUID.randomUUID();
@@ -337,6 +365,9 @@ public class SettingsController {
             finalHospOrphanRoles = req.hospitalizationOrphanVisibleRoles() != null
                     ? List.copyOf(req.hospitalizationOrphanVisibleRoles())
                     : List.of("MEDECIN", "ADMIN", "SECRETAIRE", "ASSISTANT");
+            finalDisabledModules = req.disabledModules() != null
+                    ? List.copyOf(req.disabledModules())
+                    : List.of();
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
@@ -344,8 +375,9 @@ public class SettingsController {
                             + " pharmacy_internal, "
                             + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + " rc, if_no, legal_form, hospitalization_enabled, "
-                            + " stay_billing_day_rule, hospitalization_orphan_visible_roles) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " stay_billing_day_rule, hospitalization_orphan_visible_roles, "
+                            + " disabled_modules) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
@@ -357,7 +389,8 @@ public class SettingsController {
                     nullIfBlank(req.rc()), nullIfBlank(req.ifNo()), nullIfBlank(req.legalForm()),
                     finalHospitalizationEnabled,
                     finalStayBillingDayRule,
-                    finalHospOrphanRoles.toArray(String[]::new));
+                    finalHospOrphanRoles.toArray(String[]::new),
+                    finalDisabledModules.toArray(String[]::new));
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
@@ -382,7 +415,76 @@ public class SettingsController {
                 finalOrphanRoles, finalPregnancyOrphanRoles, hasLogo,
                 finalReadback[0], finalReadback[1], finalReadback[2], finalReadback[3],
                 finalHospitalizationEnabled,
-                finalStayBillingDayRule, finalHospOrphanRoles);
+                finalStayBillingDayRule, finalHospOrphanRoles, finalDisabledModules);
+    }
+
+    /**
+     * V069 — refuse les modifications des sections « Identité du centre médical »,
+     * « Services internes » et « Hospitalisation » à un administrateur qui n'est pas
+     * SUPER_ADMIN. On compare les valeurs entrantes à l'état en base : si rien de
+     * protégé ne change (cas d'un toggle cloisonnement / rôles orphelins émis par un
+     * ADMIN normal), on laisse passer.
+     */
+    private void requireSuperAdminIfProtectedChanges(UUID id, UpdateClinicSettingsRequest req) {
+        if (isSuperAdmin()) return;
+        var cur = jdbc.queryForMap(
+                "SELECT name, address, city, phone, email, inpe, cnom, ice, rib, "
+                        + "establishment_type, imaging_internal, lab_internal, pharmacy_internal, "
+                        + "hospitalization_enabled, rc, if_no, legal_form "
+                        + "FROM configuration_clinic_settings WHERE id = ?", id);
+        boolean changed =
+                // Identité du centre médical (champs toujours écrits depuis la requête).
+                textChanged(req.name(), cur.get("name"))
+                || textChanged(req.address(), cur.get("address"))
+                || textChanged(req.city(), cur.get("city"))
+                || textChanged(req.phone(), cur.get("phone"))
+                || textChanged(req.email(), cur.get("email"))
+                || textChanged(req.inpe(), cur.get("inpe"))
+                || textChanged(req.cnom(), cur.get("cnom"))
+                || textChanged(req.ice(), cur.get("ice"))
+                || textChanged(req.rib(), cur.get("rib"))
+                // rc / if_no / legal_form : COALESCE côté UPDATE → null = inchangé.
+                || (req.rc() != null && textChanged(req.rc(), cur.get("rc")))
+                || (req.ifNo() != null && textChanged(req.ifNo(), cur.get("if_no")))
+                || (req.legalForm() != null && textChanged(req.legalForm(), cur.get("legal_form")))
+                // Services internes + type d'établissement + hospitalisation : null = inchangé.
+                || (req.establishmentType() != null
+                        && textChanged(req.establishmentType(), cur.get("establishment_type")))
+                || (req.imagingInternal() != null
+                        && req.imagingInternal() != toBool(cur.get("imaging_internal")))
+                || (req.labInternal() != null
+                        && req.labInternal() != toBool(cur.get("lab_internal")))
+                || (req.pharmacyInternal() != null
+                        && req.pharmacyInternal() != toBool(cur.get("pharmacy_internal")))
+                || (req.hospitalizationEnabled() != null
+                        && req.hospitalizationEnabled() != toBool(cur.get("hospitalization_enabled")));
+        if (changed) {
+            throw new BusinessException(
+                    "SUPER_ADMIN_REQUIRED",
+                    "Seul un super administrateur peut modifier l'identité du centre, "
+                            + "les services internes et l'hospitalisation.",
+                    HttpStatus.FORBIDDEN.value());
+        }
+    }
+
+    private static boolean isSuperAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null) return false;
+        for (GrantedAuthority a : auth.getAuthorities()) {
+            if ("ROLE_SUPER_ADMIN".equals(a.getAuthority())) return true;
+        }
+        return false;
+    }
+
+    /** Compare une valeur texte entrante à la valeur en base, blanc ≡ null. */
+    private static boolean textChanged(String incoming, Object current) {
+        String a = incoming == null || incoming.isBlank() ? null : incoming;
+        String b = current == null || current.toString().isBlank() ? null : current.toString();
+        return a == null ? b != null : !a.equals(b);
+    }
+
+    private static boolean toBool(Object o) {
+        return o instanceof Boolean b && b;
     }
 
     /** Reads a Postgres VARCHAR[] column into a Java {@link List} (empty list if NULL). */

@@ -34,6 +34,8 @@ interface ClinicSettingsRaw {
   hospitalizationOrphanVisibleRoles: OrphanRole[];
   /** V056 — règle de comptage des journées : NUITS | JOURS_ENTAMES. */
   stayBillingDayRule: 'NUITS' | 'JOURS_ENTAMES';
+  /** V070 — modules désactivés par l'admin (vide = tous activés). */
+  disabledModules: string[];
 }
 
 const DEFAULT_ORPHAN_ROLES: OrphanRole[] = ['MEDECIN', 'ADMIN', 'SECRETAIRE', 'ASSISTANT'];

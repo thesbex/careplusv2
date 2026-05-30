@@ -10,6 +10,20 @@ Running log of what's shipped. Updated at the end of every session. Read this FI
 **QA IHM** : walké au navigateur (Dr El Amrani, MEDECIN+ADMIN, :5173) — ✅ item sidebar « Assistant IA » ; ✅ page rend topbar « Google Gemini · gemini-2.5-flash » + bandeau « Assistant non configuré » (pas de `GEMINI_API_KEY`) + composer désactivé (dégradation propre sans clé) ; ✅ bouton « Demander à l'IA » dans le dossier → `/assistant?patient=…` ; ✅ bandeau « Contexte joint : dossier de <patient> » + bouton Retirer. Round-trip modèle réel non testable sans clé — couvert par l'IT via stub.
 **Next action**: configurer `GEMINI_API_KEY` côté serveur pour activer le round-trip ; commit (feature + IT + docs). Pas de régression connue.
 
+### 2026-05-30 — Lot backlog 8 features (administration / exploitation)
+
+Build BE `mvn -o compile` 🟢 · FE `npm run build` 🟢 · `tsc --noEmit` clean. **Pas encore commité.**
+
+1. **Prix médicament** dans le tableau Catalogue (colonne « Prix interne », gated `pharmacyInternal`). Vérifié IHM (Sectral 25.00 MAD).
+2. **Gating techniciens** : créer RADIO exige `imaging_internal`, LAB exige `lab_internal` (front masque l'option + garde BE 400, `AdminUserController`).
+3. **Rôle SUPER_ADMIN** (V069, ADR-040) : seul habilité à Identité/Services internes/Hospitalisation ; ADMIN normal lecture seule (IHM grisée + garde BE par diff de valeurs). Vérifié 403 rename / 403 toggle service / 200 no-op. Admins existants promus, bootstrap accorde les 2 rôles.
+4. **Habilitation des modules** (V070, ADR-041) : `disabled_modules TEXT[]`, panneau Paramètres, masque nav desktop + mobile. Modules cœur non débrayables (400). Vérifié IHM live (Stock disparaît/réapparaît) + API (persisté `[messages,stock]`).
+5+6. **Sauvegarde/restauration BDD** (ADR-042) : scripts PowerShell (`pg_dump -Fc` + rétention, planifiable Tâche Windows) + écran in-app SUPER_ADMIN (`BackupController` + `BackupRestorePanel`, double confirmation, anti-traversée). Vérifié : list 200, guards 400/404 ; **mécanisme `pg_restore --clean` prouvé bout-en-bout** (marqueur post-dump effacé, exit 0). ⚠️ L'écran in-app shelle `pg_restore` sur l'hôte JVM → renvoie une 500 actionnable en **dev** (Postgres dockerisé, hôte sans binaire) ; OK en **prod on-premise** (Postgres sur l'hôte). Script CLI = secours.
+7. **Protection code source** : ADR-042 + `docs/adr/ADR-042-source-code-protection.md` (cadrage ; étape A applicable, B/C planifiées). Pas d'implémentation build dans ce lot.
+
+Migrations : V069 (super_admin_role), V070 (module_toggles). Test mobile param : mock auth → SUPER_ADMIN.
+**Next** : commit (manuel + preuve IHM d'abord, ITs en 2e commit — cf. ship order) ; ITs backend V069/V070/Backup ; ADR-042 étape B optionnelle.
+
 ### 2026-05-27 — Pharmacie interne : avertir si médicament fourni en interne sans prix
 
 **Contexte** : 2 items backlog « pharmacie interne » signalés KO. **Re-test IHM** : le module est en fait **déjà livré** (V057/QA9-6/QA9-7) et fonctionne bout-en-bout — prix au catalogue → prescription « fournir en interne » → ligne ajoutée à la facture de consultation (vérifié live : `Médicament (interne) : … → MAD`). Seul vrai défaut : un médicament fourni en interne **sans prix** était ignoré silencieusement à la facturation (skip `internal_price NULL` côté `BillingService`).

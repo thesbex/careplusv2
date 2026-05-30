@@ -83,10 +83,19 @@ public class AdminBootstrapController {
 
         jdbc.update("INSERT INTO identity_user_role (user_id, role_id) VALUES (?, ?)",
                 userId, ROLE_ADMIN);
+        // V069 — le premier administrateur (propriétaire de l'install) est aussi
+        // SUPER_ADMIN : lui seul pourra configurer l'identité du centre, les
+        // services internes et l'hospitalisation. SUPER_ADMIN est seedé par V069 ;
+        // ON CONFLICT DO NOTHING reste défensif si le rôle manquait.
+        jdbc.update(
+                "INSERT INTO identity_user_role (user_id, role_id) "
+                        + "SELECT ?, id FROM identity_role WHERE code = 'SUPER_ADMIN' "
+                        + "ON CONFLICT (user_id, role_id) DO NOTHING",
+                userId);
 
-        log.info("Bootstrap admin created: {} ({})", req.email(), userId);
+        log.info("Bootstrap admin created: {} ({}) with roles [ADMIN, SUPER_ADMIN]", req.email(), userId);
 
-        BootstrapResponse body = new BootstrapResponse(userId, req.email(), List.of("ADMIN"));
+        BootstrapResponse body = new BootstrapResponse(userId, req.email(), List.of("ADMIN", "SUPER_ADMIN"));
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 }

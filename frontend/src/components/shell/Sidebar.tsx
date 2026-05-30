@@ -163,6 +163,10 @@ export function Sidebar({
   const hospitalizationEnabled = settings?.hospitalizationEnabled ?? false;
   const sejoursBadge = useActiveStayCount(hospitalizationEnabled);
 
+  // V070 — modules secondaires désactivés par l'admin (masqués de la nav).
+  // Liste vide / absente = tout activé (aucune régression sur les installs existantes).
+  const disabledModules = settings?.disabledModules ?? [];
+
   const sessionUser = useAuthStore((s) => s.user);
   const userRoles = sessionUser?.roles ?? [];
   const userPerms = sessionUser?.permissions;
@@ -178,6 +182,8 @@ export function Sidebar({
       return false;
     }
     if (i.requiresHospitalization && !hospitalizationEnabled) return false;
+    // V070 — module désactivé par l'admin : masqué pour tous les utilisateurs.
+    if (disabledModules.includes(i.id)) return false;
     // Pure-tech : on cache toute la sidebar SAUF les items strictement
     // restreints à LAB/RADIO (queueLab, queueRadio) + Messages (collaboration
     // équipe inter-rôles, légitime même côté technicien).

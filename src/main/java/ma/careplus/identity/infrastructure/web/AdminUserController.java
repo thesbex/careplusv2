@@ -61,7 +61,7 @@ public class AdminUserController {
     private static final Logger log = LoggerFactory.getLogger(AdminUserController.class);
 
     private static final Set<String> ALLOWED_ROLE_CODES =
-            Set.of("SECRETAIRE", "ASSISTANT", "MEDECIN", "ADMIN", "LAB", "RADIO",
+            Set.of("SECRETAIRE", "ASSISTANT", "MEDECIN", "ADMIN", "SUPER_ADMIN", "LAB", "RADIO",
                     "INFIRMIER", "RECEPTIONNISTE");
 
     /** Roles that require/accept practitioner assignments. */
@@ -272,6 +272,12 @@ public class AdminUserController {
                     HttpStatus.BAD_REQUEST.value());
         }
 
+        // Gate technician roles on the matching internal-service capability —
+        // creating a RADIO tech requires imaging_internal, a LAB tech requires
+        // lab_internal (Paramètres > Cabinet > Services internes). Mirrors the
+        // frontend dropdown gating; the server is the real guard.
+        requireInternalServiceForTechRoles(normalized);
+
         // Uniqueness — fast pre-check; the unique index is the real guard.
         Integer existing = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM identity_user WHERE LOWER(email) = LOWER(?)",
@@ -410,6 +416,8 @@ public class AdminUserController {
                         "Rôles inconnus : " + invalid + ". Autorisés : " + ALLOWED_ROLE_CODES,
                         HttpStatus.BAD_REQUEST.value());
             }
+            // Même garde qu'à la création : un rôle technicien exige son service interne.
+            requireInternalServiceForTechRoles(normalized);
             jdbc.update("DELETE FROM identity_user_role WHERE user_id = ?", id);
             String placeholders = String.join(",", Collections.nCopies(normalized.size(), "?"));
             List<UUID> roleIds = jdbc.query(
@@ -517,6 +525,39 @@ public class AdminUserController {
 
     private static boolean hasAssistantRole(Set<String> roles) {
         return roles.stream().anyMatch(ASSISTANT_ROLES::contains);
+    }
+
+    /**
+     * Refuse la création d'un technicien interne quand le service correspondant
+     * n'est pas activé : RADIO exige {@code imaging_internal}, LAB exige
+     * {@code lab_internal} sur la configuration cabinet (single-row). Sans ligne
+     * de configuration, les deux flags valent false → on refuse.
+     */
+    private void requireInternalServiceForTechRoles(Set<String> roles) {
+        boolean needsImaging = roles.contains("RADIO");
+        boolean needsLab = roles.contains("LAB");
+        if (!needsImaging && !needsLab) return;
+        Boolean[] flags = jdbc.query(
+                "SELECT imaging_internal, lab_internal FROM configuration_clinic_settings LIMIT 1",
+                rs -> rs.next()
+                        ? new Boolean[] { rs.getBoolean("imaging_internal"), rs.getBoolean("lab_internal") }
+                        : new Boolean[] { false, false });
+        boolean imagingInternal = flags != null && Boolean.TRUE.equals(flags[0]);
+        boolean labInternal = flags != null && Boolean.TRUE.equals(flags[1]);
+        if (needsImaging && !imagingInternal) {
+            throw new BusinessException(
+                    "IMAGING_INTERNAL_DISABLED",
+                    "Activez « Service de radiologie interne » (Paramètres > Cabinet) "
+                            + "avant de créer un compte technicien radiologie.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
+        if (needsLab && !labInternal) {
+            throw new BusinessException(
+                    "LAB_INTERNAL_DISABLED",
+                    "Activez « Laboratoire d'analyses interne » (Paramètres > Cabinet) "
+                            + "avant de créer un compte technicien laboratoire.",
+                    HttpStatus.BAD_REQUEST.value());
+        }
     }
 
     private static Optional<String> optStr(Optional<String> opt) {

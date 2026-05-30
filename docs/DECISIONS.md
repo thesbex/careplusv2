@@ -430,6 +430,34 @@ Endpoint dédié `GET /api/chat/colleagues` pour le picker "Nouveau message" (`/
 
 ---
 
+## ADR-040 — Rôle SUPER_ADMIN + gating des techniciens internes
+
+**2026-05-30** · Status: accepted
+
+V069. Nouveau rôle `SUPER_ADMIN` (hiérarchie additive : il porte aussi `ADMIN`). Seul un super admin peut modifier les sections sensibles du paramétrage cabinet — **Identité du centre**, **Services internes** (labo/radio/pharmacie), **Hospitalisation**. Un `ADMIN` normal garde tout le reste (utilisateurs, catalogue, tarifs…) mais voit ces 3 sections en lecture seule (fieldset grisé + bouton masqué IHM ; garde réelle dans `SettingsController.updateClinic` : compare les valeurs entrantes à l'état en base, 403 si un champ protégé change). Migration : tous les `ADMIN` existants promus `SUPER_ADMIN` (aucune install ne perd l'accès) ; le bootstrap du premier admin accorde les deux rôles. Même lot : créer un technicien RADIO exige `imaging_internal`, LAB exige `lab_internal` (front masque l'option + garde BE 400). Pourquoi diff-de-valeurs plutôt que `@PreAuthorize` strict : le même endpoint porte des champs non sensibles (cloisonnement, rôles orphelins, modules) qu'un admin normal doit pouvoir éditer.
+
+---
+
+## ADR-041 — Habilitation des modules par l'admin
+
+**2026-05-30** · Status: accepted
+
+V070. Colonne `configuration_clinic_settings.disabled_modules TEXT[]` (vide = tout activé → aucune régression, pas de backfill). L'admin active/désactive les fonctionnalités **secondaires** (vaccinations, grossesses, stock, messages, assistant, charges) depuis un panneau Paramètres ; un module désactivé disparaît de la nav desktop (Sidebar) ET mobile (menu « Plus »). Modules cœur (agenda, patients, salle, consultations, facturation, catalogue, personnel, paramètres) **non** débrayables — le backend rejette toute valeur hors liste blanche (400). L'hospitalisation garde sa capability dédiée (V054). Liste de DÉSACTIVÉS et non d'ACTIVÉS pour que le défaut « tout activé » ne touche aucune install existante.
+
+---
+
+## ADR-042 — Sauvegarde/restauration BDD + protection du code source
+
+**2026-05-30** · Status: accepted
+
+**Sauvegarde** : scripts PowerShell on-premise (`scripts/backup/careplus-backup.ps1`) — `pg_dump -Fc` horodaté vers disque externe (`CAREPLUS_BACKUP_DIR`), rétention configurable, planifiable via le Planificateur Windows (README fourni). **Restauration** : double accès — script CLI de secours (`careplus-restore.ps1`) ET écran in-app réservé `SUPER_ADMIN` (`BackupController` + `BackupRestorePanel`, double confirmation « RESTAURER », validation anti-traversée, `pg_restore --clean --if-exists`).
+
+**Dépendance d'exploitation** : l'écran in-app shelle `pg_restore` sur la machine **où tourne la JVM** ; il doit donc y être installé (cas du déploiement on-premise où PostgreSQL est sur l'hôte). En dev où PostgreSQL est dans Docker, l'hôte n'a pas le binaire → l'écran renvoie une 500 actionnable (`RESTORE_PG_RESTORE_MISSING`, configurer `careplus.backup.pg-restore-bin`) ; le script CLI et le mécanisme `pg_dump`/`pg_restore` (format custom, `--clean`) sont, eux, vérifiés bout-en-bout (un user créé après le dump disparaît après restore).
+
+**Protection du code source** : stratégie par étapes — JAR scellé + bundle JS obfusqué + secrets hors-binaire + Swagger off en prod, complétée par une clause contractuelle (détail dans [`docs/adr/ADR-042-source-code-protection.md`](adr/ADR-042-source-code-protection.md)). Aucune protection n'est inviolable quand le client possède la machine ; l'objectif est de relever la barre. Étape A (hygiène de livraison) applicable ; B (obfuscation, avec son ADR de dépendance) et C (ProGuard, optionnel) planifiées.
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).
