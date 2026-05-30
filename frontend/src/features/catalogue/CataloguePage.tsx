@@ -290,6 +290,10 @@ export default function CataloguePage() {
                   <Th>Forme</Th>
                   <Th>Dosage</Th>
                   <Th>Classe</Th>
+                  {/* V057 — prix interne, colonne visible seulement si la pharmacie interne est activée. */}
+                  {pharmacyInternal && (
+                    <Th style={{ width: 120, textAlign: 'right' }}>Prix interne</Th>
+                  )}
                   <Th style={{ width: 60, textAlign: 'center' }}>★</Th>
                   {canEdit && <Th style={{ width: 110 }}> </Th>}
                 </tr>
@@ -325,6 +329,19 @@ export default function CataloguePage() {
                           </span>
                         )}
                       </Td>
+                      {/* V057 — prix de cession interne (— si non renseigné). */}
+                      {pharmacyInternal && (
+                        <Td className="tnum" style={{ textAlign: 'right' }}>
+                          {m.internalPrice != null ? (
+                            <span style={{ fontWeight: 600 }}>
+                              {m.internalPrice.toFixed(2)}{' '}
+                              <span style={{ fontWeight: 400, color: 'var(--ink-3)' }}>MAD</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--ink-3)' }}>—</span>
+                          )}
+                        </Td>
+                      )}
                       <Td style={{ textAlign: 'center' }}>
                         {m.favorite && (
                           <span style={{ color: 'var(--amber)' }} aria-label="Favori">★</span>

@@ -36,6 +36,7 @@ type UserRole =
   | 'ASSISTANT'
   | 'MEDECIN'
   | 'ADMIN'
+  | 'SUPER_ADMIN'
   | 'LAB'
   | 'RADIO'
   | 'RECEPTIONNISTE';
@@ -81,6 +82,15 @@ export function UtilisateursTab() {
     settings?.hospitalizationEnabled === true ||
     settings?.establishmentType === 'CLINIQUE' ||
     settings?.establishmentType === 'HOPITAL';
+  // Les comptes techniciens internes ne sont proposés que si le service interne
+  // correspondant est activé dans Paramètres > Cabinet. On conserve l'option
+  // affichée si on édite un utilisateur qui porte déjà ce rôle (capacité
+  // désactivée après coup), pour ne pas casser son édition.
+  const imagingInternal = settings?.imagingInternal === true;
+  const labInternal = settings?.labInternal === true;
+  // V069 — seul un super admin peut créer/désigner un autre super admin
+  // (un admin normal ne peut pas s'auto-promouvoir aux réglages sensibles).
+  const isSuperAdmin = useAuthStore((s) => s.hasRole('SUPER_ADMIN'));
   const activePractitioners = practitioners.filter((p) => p.active);
   const allActiveIds = activePractitioners.map((p) => p.id);
   const showAssignmentSection = activePractitioners.length >= 2;
@@ -360,13 +370,21 @@ export function UtilisateursTab() {
                 <option value="ASSISTANT">Assistant(e)</option>
                 <option value="MEDECIN">Médecin</option>
                 <option value="ADMIN">Administrateur</option>
-                {/* Techniciens internes — toujours proposés. L'admin reste libre
-                    de créer le compte avant même d'activer "Services internes"
-                    dans Paramètres > Cabinet ; le routing des prescriptions
-                    LAB / RADIO vers la queue interne reste, lui, gouverné par
-                    ces flags. */}
-                <option value="LAB">Technicien laboratoire</option>
-                <option value="RADIO">Technicien radiologie</option>
+                {/* V069 — Super administrateur : habilité en plus à l'identité du
+                    centre, aux services internes et à l'hospitalisation. Proposé
+                    seulement à un super admin (ou si on édite un compte qui l'est déjà). */}
+                {(isSuperAdmin || draft.role === 'SUPER_ADMIN') && (
+                  <option value="SUPER_ADMIN">Super administrateur</option>
+                )}
+                {/* Techniciens internes — gated sur le service interne correspondant
+                    (Paramètres > Cabinet > Services internes). On garde l'option si
+                    on édite un utilisateur qui la porte déjà, même service désactivé. */}
+                {(labInternal || draft.role === 'LAB') && (
+                  <option value="LAB">Technicien laboratoire</option>
+                )}
+                {(imagingInternal || draft.role === 'RADIO') && (
+                  <option value="RADIO">Technicien radiologie</option>
+                )}
                 {/* Réceptionniste = bureau des admissions, gated sur la capacité
                     hospitalisation (clinique / hôpital). On garde l'option si on
                     édite un utilisateur qui la porte déjà, même capacité désactivée. */}

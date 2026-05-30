@@ -38,6 +38,8 @@ import { LogoSettingsSection } from './components/LogoSettingsSection';
 import { RoomsManagementSection } from './components/RoomsManagementSection';
 import { AgendaIsolationToggle } from './components/AgendaIsolationToggle';
 import { OrphanRolesPanel } from './components/OrphanRolesPanel';
+import { ModulesPanel } from './components/ModulesPanel';
+import { BackupRestorePanel } from './components/BackupRestorePanel';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
@@ -137,6 +139,11 @@ function CabinetTab() {
   const { update, isPending } = useUpdateClinicSettings();
   const [form, setForm] = useState<ClinicSettingsForm>(EMPTY_FORM);
   const [hydrated, setHydrated] = useState(false);
+  // V069 — Identité du centre, Services internes et Hospitalisation sont
+  // réservés au super administrateur. Un ADMIN normal voit ces champs en
+  // lecture seule (fieldset disabled + bouton Enregistrer masqué). La garde
+  // réelle est côté backend (SettingsController.requireSuperAdminIfProtectedChanges).
+  const isSuperAdmin = useAuthStore((s) => s.hasRole('SUPER_ADMIN'));
 
   useEffect(() => {
     if (settings && !hydrated) {
@@ -191,6 +198,29 @@ function CabinetTab() {
             Chargement…
           </div>
         )}
+        {!isSuperAdmin && (
+          <div
+            role="note"
+            style={{
+              gridColumn: '1 / -1',
+              fontSize: 12,
+              color: 'var(--ink-2)',
+              background: 'var(--amber-soft, #fff4e0)',
+              border: '1px solid var(--amber, #e0a23a)',
+              borderRadius: 'var(--r-md, 8px)',
+              padding: '8px 12px',
+            }}
+          >
+            Ces paramètres (identité du centre, services internes, hospitalisation) sont en
+            lecture seule : seul un <strong>super administrateur</strong> peut les modifier.
+          </div>
+        )}
+        {/* V069 — fieldset disabled grise tous les contrôles pour un non-super-admin.
+            display:contents préserve la grille du formulaire. */}
+        <fieldset
+          disabled={!isSuperAdmin}
+          style={{ display: 'contents', border: 0, margin: 0, padding: 0 }}
+        >
         <Field>
           <FieldLabel htmlFor="cab-type">Type d'établissement *</FieldLabel>
           <Select
@@ -340,11 +370,14 @@ function CabinetTab() {
             Cet établissement hospitalise des patients (lits)
           </label>
         </div>
-        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="submit" variant="primary" disabled={isPending}>
-            {isPending ? 'Enregistrement…' : 'Enregistrer'}
-          </Button>
-        </div>
+        {isSuperAdmin && (
+          <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
+            <Button type="submit" variant="primary" disabled={isPending}>
+              {isPending ? 'Enregistrement…' : 'Enregistrer'}
+            </Button>
+          </div>
+        )}
+        </fieldset>
       </form>
     </Panel>
     <div style={{ height: 16 }} />
@@ -357,6 +390,10 @@ function CabinetTab() {
     <OrphanRolesPanel module="vaccination" />
     <div style={{ height: 16 }} />
     <OrphanRolesPanel module="pregnancy" />
+    <div style={{ height: 16 }} />
+    <ModulesPanel />
+    <div style={{ height: 16 }} />
+    <BackupRestorePanel />
     </>
   );
 }

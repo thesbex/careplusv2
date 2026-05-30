@@ -38,7 +38,19 @@ export interface ClinicSettings {
   legalForm?: string | null;
   /** V054 — true => module hospitalisation (lits, séjours) actif. */
   hospitalizationEnabled?: boolean;
+  /** V070 — codes des modules désactivés par l'admin (vide/absent = tous activés). */
+  disabledModules?: string[];
 }
+
+/** V070 — modules secondaires débrayables par l'admin (id ↔ libellé de nav). */
+export const TOGGLEABLE_MODULES: { id: string; label: string }[] = [
+  { id: 'vaccinations', label: 'Vaccinations' },
+  { id: 'grossesses', label: 'Grossesses' },
+  { id: 'stock', label: 'Stock' },
+  { id: 'messages', label: 'Messages' },
+  { id: 'assistant', label: 'Assistant IA' },
+  { id: 'charges', label: 'Charges' },
+];
 
 export interface ClinicSettingsForm {
   name: string;
@@ -62,6 +74,8 @@ export interface ClinicSettingsForm {
   legalForm?: string;
   /** V054 — capacité hospitalisation. Optional (null = ne pas toucher). */
   hospitalizationEnabled?: boolean;
+  /** V070 — modules désactivés. Optional (absent = ne pas toucher). */
+  disabledModules?: string[];
 }
 
 /**

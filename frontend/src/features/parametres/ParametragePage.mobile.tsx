@@ -64,6 +64,9 @@ export default function ParametrageMobilePage() {
   const { settings } = useClinicSettings();
   const hospitalizationEnabled = settings?.hospitalizationEnabled ?? false;
   const sejoursBadge = useActiveStayCount(hospitalizationEnabled);
+  // V070 — modules désactivés par l'admin : masqués du menu mobile (parité sidebar).
+  const disabledModules = settings?.disabledModules ?? [];
+  const modOn = (id: string) => !disabledModules.includes(id);
 
   const initials =
     user
@@ -138,7 +141,7 @@ export default function ParametrageMobilePage() {
                   window.location.href = '/parametres?desktop=1';
                 }}
               />
-              {isAdmin && (
+              {isAdmin && modOn('charges') && (
                 <MenuRow
                   Icon={InvoiceIcon}
                   label="Charges"
@@ -184,27 +187,33 @@ export default function ParametrageMobilePage() {
                 hint="Brouillons + signées"
                 onClick={() => navigate('/consultations')}
               />
-              <MenuRow
-                Icon={NeedleIcon}
-                label="Vaccinations"
-                hint="Worklist + rappels en retard"
-                badge={vaccinationsBadge}
-                onClick={() => navigate('/vaccinations')}
-              />
-              <MenuRow
-                Icon={HeartIcon}
-                label="Grossesses"
-                hint="Suivi prénatal + alertes"
-                badge={grossessesBadge}
-                onClick={() => navigate('/grossesses')}
-              />
-              <MenuRow
-                Icon={BoxIcon}
-                label="Stock"
-                hint="Articles, lots, mouvements"
-                badge={stockBadge}
-                onClick={() => navigate('/stock')}
-              />
+              {modOn('vaccinations') && (
+                <MenuRow
+                  Icon={NeedleIcon}
+                  label="Vaccinations"
+                  hint="Worklist + rappels en retard"
+                  badge={vaccinationsBadge}
+                  onClick={() => navigate('/vaccinations')}
+                />
+              )}
+              {modOn('grossesses') && (
+                <MenuRow
+                  Icon={HeartIcon}
+                  label="Grossesses"
+                  hint="Suivi prénatal + alertes"
+                  badge={grossessesBadge}
+                  onClick={() => navigate('/grossesses')}
+                />
+              )}
+              {modOn('stock') && (
+                <MenuRow
+                  Icon={BoxIcon}
+                  label="Stock"
+                  hint="Articles, lots, mouvements"
+                  badge={stockBadge}
+                  onClick={() => navigate('/stock')}
+                />
+              )}
               {hospitalizationEnabled && (
                 <MenuRow
                   Icon={ActivityIcon}
@@ -222,14 +231,16 @@ export default function ParametrageMobilePage() {
           <h3>Communication</h3>
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
-          <MenuRow
-            Icon={ChatIcon}
-            label="Messages"
-            hint="Messagerie interne du cabinet"
-            badge={messagesBadge}
-            onClick={() => navigate('/messages')}
-          />
-          {isAdminOrDoctor && (
+          {modOn('messages') && (
+            <MenuRow
+              Icon={ChatIcon}
+              label="Messages"
+              hint="Messagerie interne du cabinet"
+              badge={messagesBadge}
+              onClick={() => navigate('/messages')}
+            />
+          )}
+          {isAdminOrDoctor && modOn('assistant') && (
             <MenuRow
               Icon={SparklesIcon}
               label="Assistant IA"
