@@ -82,6 +82,9 @@ class EstablishmentTypeIT {
     private static final UUID ROLE_ASSISTANT  = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID ROLE_MEDECIN    = UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID ROLE_ADMIN      = UUID.fromString("00000000-0000-0000-0000-000000000004");
+    // V069 — le type d'établissement / les services internes sont réservés au
+    // SUPER_ADMIN. L'admin « propriétaire » de ce test porte donc aussi ce rôle.
+    private static final UUID ROLE_SUPER_ADMIN = UUID.fromString("00000000-0000-0000-0000-000000000009");
 
     private static final String PWD = "EstTypeIT-2026!";
 
@@ -134,6 +137,9 @@ class EstablishmentTypeIT {
                 medecinAdminId, ROLE_ADMIN);
         jdbc.update("INSERT INTO identity_user_role (user_id, role_id) VALUES (?, ?)",
                 medecinAdminId, ROLE_MEDECIN);
+        // V069 — habilite ce compte à régler le type d'établissement / services internes.
+        jdbc.update("INSERT INTO identity_user_role (user_id, role_id) VALUES (?, ?)",
+                medecinAdminId, ROLE_SUPER_ADMIN);
 
         // Pure MEDECIN (no ADMIN) — for RBAC negative
         UUID medecinOnlyId = UUID.randomUUID();

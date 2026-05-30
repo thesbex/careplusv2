@@ -126,15 +126,21 @@ class AgendaStrictToggleIT {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.agendaStrictIsolation").value(true));
 
-        // 5. PUT again without the field → preserves true.
+        // 5. PUT again without the toggle field → preserves true.
+        //    V069 : on garde l'identité INCHANGÉE (name/address/city/phone) — un
+        //    ADMIN normal peut basculer le cloisonnement mais pas réécrire
+        //    l'identité du centre (réservée au super admin). C'est exactement le
+        //    comportement de l'IHM (useUpdateAgendaIsolation renvoie l'identité telle
+        //    quelle). Le but du scénario — « PUT sans le champ préserve true » — reste
+        //    couvert.
         mockMvc.perform(put("/api/settings/clinic")
                         .header("Authorization", token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Test Cabinet 2",
-                                 "address":"Avenue Hassan II",
-                                 "city":"Rabat",
-                                 "phone":"+212537000000"}
+                                {"name":"Test Cabinet",
+                                 "address":"Boulevard Mohamed V",
+                                 "city":"Casablanca",
+                                 "phone":"+212522000000"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.agendaStrictIsolation").value(true));
