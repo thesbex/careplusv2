@@ -22,10 +22,12 @@ import {
   TOGGLEABLE_MODULES,
   type ClinicSettings,
 } from '../hooks/useSettings';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export function ModulesPanel() {
   const { settings } = useClinicSettings();
   const qc = useQueryClient();
+  const { t } = useT();
   const isAdmin = useAuthStore((s) => s.hasRole('ADMIN'));
   const [saving, setSaving] = useState<string | null>(null);
 
@@ -71,12 +73,10 @@ export function ModulesPanel() {
 
   return (
     <Panel data-testid="modules-panel">
-      <PanelHeader>Modules de l'application</PanelHeader>
+      <PanelHeader>{t('settings.modules.title')}</PanelHeader>
       <div style={{ padding: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12, lineHeight: 1.5 }}>
-          Activez ou désactivez les fonctionnalités secondaires. Un module désactivé disparaît de
-          la navigation pour tous les utilisateurs. Les fonctions cœur (agenda, patients, salle
-          d'attente, consultations, facturation) restent toujours actives.
+          {t('settings.modules.hint')}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {TOGGLEABLE_MODULES.map((m) => {
@@ -97,7 +97,7 @@ export function ModulesPanel() {
                 />
                 <span style={{ fontWeight: 600 }}>{m.label}</span>
                 <span style={{ fontSize: 11.5, color: enabled ? 'var(--success, #0e5b3e)' : 'var(--ink-3)' }}>
-                  {enabled ? 'Activé' : 'Désactivé'}
+                  {enabled ? t('settings.modules.on') : t('settings.modules.off')}
                 </span>
               </label>
             );

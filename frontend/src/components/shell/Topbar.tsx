@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Search, Bell } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface TopbarProps {
   title: string;
@@ -23,6 +24,7 @@ export function Topbar({
   onSearchOpen,
   onNotifications,
 }: TopbarProps) {
+  const { t } = useT();
   return (
     <header className="cp-topbar">
       <div className="cp-topbar-head">
@@ -38,7 +40,7 @@ export function Topbar({
           aria-label="Rechercher un patient"
         >
           <Search />
-          <span>Rechercher un patient par nom, téléphone, CIN…</span>
+          <span>{t('topbar.searchPatient')}</span>
         </button>
       )}
 
@@ -52,7 +54,7 @@ export function Topbar({
           variant="ghost"
           iconOnly
           className="cp-topbar-bell"
-          aria-label="Notifications"
+          aria-label={t('topbar.notifications')}
           onClick={onNotifications}
         >
           <Bell />

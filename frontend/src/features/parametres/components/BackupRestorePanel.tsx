@@ -15,6 +15,7 @@ import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface BackupFile {
   name: string;
@@ -30,6 +31,7 @@ function formatSize(bytes: number): string {
 
 export function BackupRestorePanel() {
   const isSuperAdmin = useAuthStore((s) => s.hasRole('SUPER_ADMIN'));
+  const { t } = useT();
   const [files, setFiles] = useState<BackupFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,24 +80,21 @@ export function BackupRestorePanel() {
   return (
     <Panel data-testid="backup-restore-panel">
       <PanelHeader>
-        <span>Sauvegarde &amp; restauration de la base</span>
+        <span>{t('settings.backup.title')}</span>
         <Button size="sm" style={{ marginLeft: 'auto' }} onClick={refresh} disabled={loading}>
-          {loading ? 'Chargement…' : 'Rafraîchir'}
+          {loading ? t('common.loading') : t('settings.backup.refresh')}
         </Button>
       </PanelHeader>
       <div style={{ padding: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12, lineHeight: 1.5 }}>
-          Les sauvegardes sont générées automatiquement chaque jour vers le disque externe
-          configuré. La restauration <strong>remplace l'intégralité des données</strong> par la
-          sauvegarde choisie — opération irréversible, à n'effectuer qu'en cas de besoin. Un
-          redémarrage de l'application est recommandé après une restauration.
+          {t('settings.backup.hint')}
         </div>
 
         {error && <div style={{ color: 'var(--danger)', fontSize: 12.5 }}>{error}</div>}
 
         {!error && files.length === 0 && !loading && (
           <div style={{ color: 'var(--ink-3)', fontSize: 12.5 }}>
-            Aucune sauvegarde trouvée dans le dossier configuré.
+            {t('settings.backup.empty')}
           </div>
         )}
 
@@ -125,7 +124,7 @@ export function BackupRestorePanel() {
                   variant="danger"
                   onClick={() => { setTarget(f); setConfirmText(''); }}
                 >
-                  Restaurer
+                  {t('settings.backup.restore')}
                 </Button>
               </div>
             ))}
@@ -152,7 +151,7 @@ export function BackupRestorePanel() {
             }}
           >
             <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--danger)' }}>
-              Restauration destructive
+              {t('settings.backup.confirmTitle')}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.5 }}>
               Vous allez remplacer <strong>toutes les données actuelles</strong> par la sauvegarde{' '}
@@ -171,13 +170,13 @@ export function BackupRestorePanel() {
               }}
             />
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Button onClick={() => setTarget(null)} disabled={restoring}>Annuler</Button>
+              <Button onClick={() => setTarget(null)} disabled={restoring}>{t('common.cancel')}</Button>
               <Button
                 variant="danger"
                 disabled={restoring || confirmText !== 'RESTAURER'}
                 onClick={() => void doRestore()}
               >
-                {restoring ? 'Restauration…' : 'Restaurer définitivement'}
+                {restoring ? t('common.saving') : t('settings.backup.confirmDo')}
               </Button>
             </div>
           </div>

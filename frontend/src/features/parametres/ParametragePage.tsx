@@ -16,7 +16,6 @@ import {
   useUpdateClinicSettings,
   useTiers,
   useUpdateTierDiscount,
-  ESTABLISHMENT_TYPE_LABELS,
   type ClinicSettingsForm,
   type EstablishmentType,
 } from './hooks/useSettings';
@@ -32,6 +31,7 @@ import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
 import { usePractitioners } from './hooks/usePractitioners';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { PrestationsTab } from './components/PrestationsTab';
 import { PrescriptionTemplatesTab } from './components/PrescriptionTemplatesTab';
 import { LogoSettingsSection } from './components/LogoSettingsSection';
@@ -69,11 +69,6 @@ const NAV_MAP = {
 
 type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'support';
 
-function establishmentTabLabel(type: EstablishmentType | undefined): string {
-  if (!type) return 'Cabinet';
-  return ESTABLISHMENT_TYPE_LABELS[type] || 'Établissement';
-}
-
 const IDENTITY_HEADER: Record<EstablishmentType, string> = {
   CABINET: 'Identité du cabinet',
   CLINIQUE: 'Identité de la clinique',
@@ -86,25 +81,26 @@ function buildTabs(
   type: EstablishmentType | undefined,
   hospitalizationEnabled: boolean,
   isAdmin: boolean,
+  t: (k: string) => string,
 ): { id: Tab; label: string }[] {
   return [
-    { id: 'cabinet', label: establishmentTabLabel(type) },
-    { id: 'tarifs', label: 'Tarifs' },
-    { id: 'prestations', label: 'Prestations' },
-    { id: 'modeles', label: 'Modèles d’ordonnance' },
+    { id: 'cabinet', label: t('settings.tab.cabinet.' + (type ?? 'CABINET')) },
+    { id: 'tarifs', label: t('settings.tab.tarifs') },
+    { id: 'prestations', label: t('settings.tab.prestations') },
+    { id: 'modeles', label: t('settings.tab.modeles') },
     // QA9-13 — modèles de consentement : gestion réservée à l'ADMIN.
-    ...(isAdmin ? [{ id: 'consentements' as Tab, label: 'Consentements' }] : []),
+    ...(isAdmin ? [{ id: 'consentements' as Tab, label: t('settings.tab.consentements') }] : []),
     // Modèles de courrier au confrère : gestion réservée à l'ADMIN.
-    ...(isAdmin ? [{ id: 'courriers' as Tab, label: 'Courriers confrère' }] : []),
-    { id: 'utilisateurs', label: 'Utilisateurs' },
-    { id: 'conges', label: 'Congés' },
-    { id: 'droits', label: 'Droits d’accès' },
-    { id: 'vaccinations', label: 'Vaccinations' },
-    { id: 'stock', label: 'Stock' },
+    ...(isAdmin ? [{ id: 'courriers' as Tab, label: t('settings.tab.courriers') }] : []),
+    { id: 'utilisateurs', label: t('settings.tab.utilisateurs') },
+    { id: 'conges', label: t('settings.tab.conges') },
+    { id: 'droits', label: t('settings.tab.droits') },
+    { id: 'vaccinations', label: t('settings.tab.vaccinations') },
+    { id: 'stock', label: t('settings.tab.stock') },
     // V054 — onglet conditionnel : seulement si l'établissement hospitalise.
-    ...(hospitalizationEnabled ? [{ id: 'hospitalisation' as Tab, label: 'Chambres & lits' }] : []),
+    ...(hospitalizationEnabled ? [{ id: 'hospitalisation' as Tab, label: t('settings.tab.hospitalisation') }] : []),
     // Support éditeur — ADMIN uniquement, dernier onglet.
-    ...(isAdmin ? [{ id: 'support' as Tab, label: 'Support' }] : []),
+    ...(isAdmin ? [{ id: 'support' as Tab, label: t('settings.tab.support') }] : []),
   ];
 }
 
@@ -142,6 +138,7 @@ const ESTABLISHMENT_TYPE_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'HOPITAL' | 
  * réelle est backend (403) + le fieldset grisé pour un ADMIN normal.
  */
 function SuperAdminBadge() {
+  const { t } = useT();
   return (
     <span
       title="Réservé au super administrateur"
@@ -158,7 +155,7 @@ function SuperAdminBadge() {
         whiteSpace: 'nowrap',
       }}
     >
-      🔒 Super admin
+      🔒 {t('settings.superAdminBadge')}
     </span>
   );
 }
@@ -173,6 +170,7 @@ function CabinetTab() {
   // lecture seule (fieldset disabled + bouton Enregistrer masqué). La garde
   // réelle est côté backend (SettingsController.requireSuperAdminIfProtectedChanges).
   const isSuperAdmin = useAuthStore((s) => s.hasRole('SUPER_ADMIN'));
+  const { t } = useT();
 
   useEffect(() => {
     if (settings && !hydrated) {
@@ -244,8 +242,7 @@ function CabinetTab() {
               padding: '8px 12px',
             }}
           >
-            Ces paramètres (identité du centre, services internes, hospitalisation) sont en
-            lecture seule : seul un <strong>super administrateur</strong> peut les modifier.
+            {t('settings.readonlyNote')}
           </div>
         )}
         {/* V069 — fieldset disabled grise tous les contrôles pour un non-super-admin.
@@ -255,7 +252,7 @@ function CabinetTab() {
           style={{ display: 'contents', border: 0, margin: 0, padding: 0 }}
         >
         <Field>
-          <FieldLabel htmlFor="cab-type">Type d'établissement *</FieldLabel>
+          <FieldLabel htmlFor="cab-type">{t('settings.identity.type')}</FieldLabel>
           <Select
             id="cab-type"
             aria-label="Type d'établissement"
@@ -278,7 +275,7 @@ function CabinetTab() {
           </Select>
         </Field>
         <Field>
-          <FieldLabel htmlFor="cab-name">Nom *</FieldLabel>
+          <FieldLabel htmlFor="cab-name">{t('settings.identity.name')}</FieldLabel>
           <Input
             id="cab-name"
             value={form.name}
@@ -287,7 +284,7 @@ function CabinetTab() {
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="cab-phone">Téléphone *</FieldLabel>
+          <FieldLabel htmlFor="cab-phone">{t('settings.identity.phone')}</FieldLabel>
           <Input
             id="cab-phone"
             value={form.phone}
@@ -296,7 +293,7 @@ function CabinetTab() {
           />
         </Field>
         <Field style={{ gridColumn: '1 / -1' }}>
-          <FieldLabel htmlFor="cab-address">Adresse *</FieldLabel>
+          <FieldLabel htmlFor="cab-address">{t('settings.identity.address')}</FieldLabel>
           <Input
             id="cab-address"
             value={form.address}
@@ -305,7 +302,7 @@ function CabinetTab() {
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="cab-city">Ville *</FieldLabel>
+          <FieldLabel htmlFor="cab-city">{t('settings.identity.city')}</FieldLabel>
           <Input
             id="cab-city"
             value={form.city}
@@ -314,7 +311,7 @@ function CabinetTab() {
           />
         </Field>
         <Field>
-          <FieldLabel htmlFor="cab-email">Email</FieldLabel>
+          <FieldLabel htmlFor="cab-email">{t('settings.identity.email')}</FieldLabel>
           <Input
             id="cab-email"
             type="email"
@@ -349,11 +346,10 @@ function CabinetTab() {
           }}
         >
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            Services internes <SuperAdminBadge />
+            {t('settings.services.title')} <SuperAdminBadge />
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
-            Cocher si l'établissement dispose de ces services en interne. Préparation pour le
-            routing futur des prescriptions analyses / radio.
+            {t('settings.services.hint')}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
             <input
@@ -361,7 +357,7 @@ function CabinetTab() {
               checked={!!form.labInternal}
               onChange={(e) => setField('labInternal', e.target.checked)}
             />
-            Laboratoire d'analyses interne
+            {t('settings.services.lab')}
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, fontSize: 13 }}>
             <input
@@ -369,7 +365,7 @@ function CabinetTab() {
               checked={!!form.imagingInternal}
               onChange={(e) => setField('imagingInternal', e.target.checked)}
             />
-            Service de radiologie interne
+            {t('settings.services.imaging')}
           </label>
           {/* V057 (QA9-5) — pharmacie interne : active le prix interne sur le catalogue
               médicaments + l'option "fournir en interne" à la prescription. */}
@@ -379,7 +375,7 @@ function CabinetTab() {
               checked={!!form.pharmacyInternal}
               onChange={(e) => setField('pharmacyInternal', e.target.checked)}
             />
-            Pharmacie interne (l'établissement fournit des médicaments)
+            {t('settings.services.pharmacy')}
           </label>
         </div>
         <div
@@ -392,11 +388,10 @@ function CabinetTab() {
           }}
         >
           <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-            Hospitalisation <SuperAdminBadge />
+            {t('settings.hosp.title')} <SuperAdminBadge />
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
-            Cocher si l'établissement dispose de lits et hospitalise des patients (clinique,
-            hôpital). Active l'onglet « Chambres &amp; lits » et le module de séjour.
+            {t('settings.hosp.hint')}
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
             <input
@@ -404,13 +399,13 @@ function CabinetTab() {
               checked={!!form.hospitalizationEnabled}
               onChange={(e) => setField('hospitalizationEnabled', e.target.checked)}
             />
-            Cet établissement hospitalise des patients (lits)
+            {t('settings.hosp.toggle')}
           </label>
         </div>
         {isSuperAdmin && (
           <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="submit" variant="primary" disabled={isPending}>
-              {isPending ? 'Enregistrement…' : 'Enregistrer'}
+              {isPending ? t('common.saving') : t('common.save')}
             </Button>
           </div>
         )}
@@ -829,7 +824,8 @@ export default function ParametragePage() {
   const { settings } = useClinicSettings();
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = (currentUser?.roles ?? []).includes('ADMIN');
-  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false, isAdmin);
+  const { t } = useT();
+  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false, isAdmin, t);
 
   return (
     <Screen

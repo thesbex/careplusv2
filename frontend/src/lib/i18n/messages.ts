@@ -47,6 +47,62 @@ const fr: Dict = {
   'settings.language.saved': 'Langue mise à jour.',
   'settings.language.readonly':
     'Seul un super administrateur peut changer la langue de l’application.',
+
+  'topbar.searchPatient': 'Rechercher un patient par nom, téléphone, CIN…',
+  'topbar.notifications': 'Notifications',
+
+  'settings.tab.tarifs': 'Tarifs',
+  'settings.tab.prestations': 'Prestations',
+  'settings.tab.modeles': 'Modèles d’ordonnance',
+  'settings.tab.consentements': 'Consentements',
+  'settings.tab.courriers': 'Courriers confrère',
+  'settings.tab.utilisateurs': 'Utilisateurs',
+  'settings.tab.conges': 'Congés',
+  'settings.tab.droits': 'Droits d’accès',
+  'settings.tab.vaccinations': 'Vaccinations',
+  'settings.tab.stock': 'Stock',
+  'settings.tab.hospitalisation': 'Chambres & lits',
+  'settings.tab.support': 'Support',
+  'settings.tab.cabinet.CABINET': 'Cabinet',
+  'settings.tab.cabinet.CLINIQUE': 'Clinique',
+  'settings.tab.cabinet.HOPITAL': 'Hôpital',
+  'settings.tab.cabinet.CENTRE_MEDICAL': 'Centre médical',
+  'settings.tab.cabinet.AUTRE': 'Établissement',
+
+  'settings.identity.type': "Type d'établissement *",
+  'settings.identity.name': 'Nom *',
+  'settings.identity.phone': 'Téléphone *',
+  'settings.identity.address': 'Adresse *',
+  'settings.identity.city': 'Ville *',
+  'settings.identity.email': 'Email',
+  'settings.services.title': 'Services internes',
+  'settings.services.hint':
+    "Cocher si l'établissement dispose de ces services en interne. Préparation pour le routing futur des prescriptions analyses / radio.",
+  'settings.services.lab': "Laboratoire d'analyses interne",
+  'settings.services.imaging': 'Service de radiologie interne',
+  'settings.services.pharmacy': "Pharmacie interne (l'établissement fournit des médicaments)",
+  'settings.hosp.title': 'Hospitalisation',
+  'settings.hosp.hint':
+    "Cocher si l'établissement dispose de lits et hospitalise des patients (clinique, hôpital). Active l'onglet « Chambres & lits » et le module de séjour.",
+  'settings.hosp.toggle': 'Cet établissement hospitalise des patients (lits)',
+  'settings.superAdminBadge': 'Super admin',
+  'settings.readonlyNote':
+    'Ces paramètres (identité du centre, services internes, hospitalisation) sont en lecture seule : seul un super administrateur peut les modifier.',
+
+  'settings.modules.title': "Modules de l'application",
+  'settings.modules.hint':
+    "Activez ou désactivez les fonctionnalités secondaires. Un module désactivé disparaît de la navigation pour tous les utilisateurs. Les fonctions cœur (agenda, patients, salle d'attente, consultations, facturation) restent toujours actives.",
+  'settings.modules.on': 'Activé',
+  'settings.modules.off': 'Désactivé',
+
+  'settings.backup.title': 'Sauvegarde & restauration de la base',
+  'settings.backup.refresh': 'Rafraîchir',
+  'settings.backup.hint':
+    "Les sauvegardes sont générées automatiquement chaque jour vers le disque externe configuré. La restauration remplace l'intégralité des données par la sauvegarde choisie — opération irréversible, à n'effectuer qu'en cas de besoin. Un redémarrage de l'application est recommandé après une restauration.",
+  'settings.backup.empty': 'Aucune sauvegarde trouvée dans le dossier configuré.',
+  'settings.backup.restore': 'Restaurer',
+  'settings.backup.confirmTitle': 'Restauration destructive',
+  'settings.backup.confirmDo': 'Restaurer définitivement',
 };
 
 const en: Dict = {
@@ -84,6 +140,62 @@ const en: Dict = {
   'settings.language.saved': 'Language updated.',
   'settings.language.readonly':
     'Only a super administrator can change the application language.',
+
+  'topbar.searchPatient': 'Search a patient by name, phone, ID…',
+  'topbar.notifications': 'Notifications',
+
+  'settings.tab.tarifs': 'Pricing',
+  'settings.tab.prestations': 'Services',
+  'settings.tab.modeles': 'Prescription templates',
+  'settings.tab.consentements': 'Consent forms',
+  'settings.tab.courriers': 'Referral letters',
+  'settings.tab.utilisateurs': 'Users',
+  'settings.tab.conges': 'Leave',
+  'settings.tab.droits': 'Access rights',
+  'settings.tab.vaccinations': 'Vaccinations',
+  'settings.tab.stock': 'Stock',
+  'settings.tab.hospitalisation': 'Rooms & beds',
+  'settings.tab.support': 'Support',
+  'settings.tab.cabinet.CABINET': 'Practice',
+  'settings.tab.cabinet.CLINIQUE': 'Clinic',
+  'settings.tab.cabinet.HOPITAL': 'Hospital',
+  'settings.tab.cabinet.CENTRE_MEDICAL': 'Medical center',
+  'settings.tab.cabinet.AUTRE': 'Facility',
+
+  'settings.identity.type': 'Facility type *',
+  'settings.identity.name': 'Name *',
+  'settings.identity.phone': 'Phone *',
+  'settings.identity.address': 'Address *',
+  'settings.identity.city': 'City *',
+  'settings.identity.email': 'Email',
+  'settings.services.title': 'Internal services',
+  'settings.services.hint':
+    'Check if the facility provides these services in-house. Prepares future routing of lab / imaging prescriptions.',
+  'settings.services.lab': 'In-house laboratory',
+  'settings.services.imaging': 'In-house radiology service',
+  'settings.services.pharmacy': 'In-house pharmacy (the facility dispenses medication)',
+  'settings.hosp.title': 'Hospitalization',
+  'settings.hosp.hint':
+    'Check if the facility has beds and admits patients (clinic, hospital). Enables the "Rooms & beds" tab and the stay module.',
+  'settings.hosp.toggle': 'This facility admits patients (beds)',
+  'settings.superAdminBadge': 'Super admin',
+  'settings.readonlyNote':
+    'These settings (facility identity, internal services, hospitalization) are read-only: only a super administrator can change them.',
+
+  'settings.modules.title': 'Application modules',
+  'settings.modules.hint':
+    'Enable or disable secondary features. A disabled module disappears from navigation for all users. Core features (agenda, patients, waiting room, consultations, billing) always stay active.',
+  'settings.modules.on': 'Enabled',
+  'settings.modules.off': 'Disabled',
+
+  'settings.backup.title': 'Database backup & restore',
+  'settings.backup.refresh': 'Refresh',
+  'settings.backup.hint':
+    'Backups are generated daily to the configured external drive. Restoring replaces ALL data with the chosen backup — irreversible, use only when needed. An application restart is recommended after a restore.',
+  'settings.backup.empty': 'No backup found in the configured folder.',
+  'settings.backup.restore': 'Restore',
+  'settings.backup.confirmTitle': 'Destructive restore',
+  'settings.backup.confirmDo': 'Restore permanently',
 };
 
 const ar: Dict = {
@@ -120,6 +232,62 @@ const ar: Dict = {
     'تحدد لغة الواجهة لجميع المستخدمين. للمشرف العام فقط. العربية تحوّل العرض إلى اليمين-لليسار.',
   'settings.language.saved': 'تم تحديث اللغة.',
   'settings.language.readonly': 'المشرف العام وحده يمكنه تغيير لغة التطبيق.',
+
+  'topbar.searchPatient': 'ابحث عن مريض بالاسم أو الهاتف أو رقم التعريف…',
+  'topbar.notifications': 'الإشعارات',
+
+  'settings.tab.tarifs': 'الأسعار',
+  'settings.tab.prestations': 'الخدمات',
+  'settings.tab.modeles': 'قوالب الوصفات',
+  'settings.tab.consentements': 'نماذج الموافقة',
+  'settings.tab.courriers': 'رسائل الإحالة',
+  'settings.tab.utilisateurs': 'المستخدمون',
+  'settings.tab.conges': 'الإجازات',
+  'settings.tab.droits': 'حقوق الوصول',
+  'settings.tab.vaccinations': 'التطعيمات',
+  'settings.tab.stock': 'المخزون',
+  'settings.tab.hospitalisation': 'الغرف والأسرّة',
+  'settings.tab.support': 'الدعم',
+  'settings.tab.cabinet.CABINET': 'عيادة',
+  'settings.tab.cabinet.CLINIQUE': 'مصحة',
+  'settings.tab.cabinet.HOPITAL': 'مستشفى',
+  'settings.tab.cabinet.CENTRE_MEDICAL': 'مركز طبي',
+  'settings.tab.cabinet.AUTRE': 'منشأة',
+
+  'settings.identity.type': 'نوع المنشأة *',
+  'settings.identity.name': 'الاسم *',
+  'settings.identity.phone': 'الهاتف *',
+  'settings.identity.address': 'العنوان *',
+  'settings.identity.city': 'المدينة *',
+  'settings.identity.email': 'البريد الإلكتروني',
+  'settings.services.title': 'الخدمات الداخلية',
+  'settings.services.hint':
+    'حدد إذا كانت المنشأة توفر هذه الخدمات داخليًا. تحضير لتوجيه وصفات التحاليل / الأشعة لاحقًا.',
+  'settings.services.lab': 'مختبر تحاليل داخلي',
+  'settings.services.imaging': 'خدمة أشعة داخلية',
+  'settings.services.pharmacy': 'صيدلية داخلية (المنشأة تصرف الأدوية)',
+  'settings.hosp.title': 'الاستشفاء',
+  'settings.hosp.hint':
+    'حدد إذا كانت المنشأة تتوفر على أسرّة وتستقبل المرضى (مصحة، مستشفى). يُفعّل تبويب «الغرف والأسرّة» ووحدة الإقامة.',
+  'settings.hosp.toggle': 'هذه المنشأة تستقبل المرضى (أسرّة)',
+  'settings.superAdminBadge': 'مشرف عام',
+  'settings.readonlyNote':
+    'هذه الإعدادات (هوية المركز، الخدمات الداخلية، الاستشفاء) للقراءة فقط: المشرف العام وحده يمكنه تعديلها.',
+
+  'settings.modules.title': 'وحدات التطبيق',
+  'settings.modules.hint':
+    'فعّل أو عطّل الوظائف الثانوية. الوحدة المعطّلة تختفي من التنقل لجميع المستخدمين. تبقى الوظائف الأساسية (الأجندة، المرضى، غرفة الانتظار، الاستشارات، الفوترة) مفعّلة دائمًا.',
+  'settings.modules.on': 'مفعّل',
+  'settings.modules.off': 'معطّل',
+
+  'settings.backup.title': 'نسخ احتياطي واستعادة قاعدة البيانات',
+  'settings.backup.refresh': 'تحديث',
+  'settings.backup.hint':
+    'تُنشأ النسخ الاحتياطية يوميًا على القرص الخارجي المُعد. الاستعادة تستبدل جميع البيانات بالنسخة المختارة — عملية لا رجعة فيها، استعملها عند الحاجة فقط. يُنصح بإعادة تشغيل التطبيق بعد الاستعادة.',
+  'settings.backup.empty': 'لا توجد نسخة احتياطية في المجلد المُعد.',
+  'settings.backup.restore': 'استعادة',
+  'settings.backup.confirmTitle': 'استعادة متلفة',
+  'settings.backup.confirmDo': 'استعادة نهائية',
 };
 
 const es: Dict = {
@@ -157,6 +325,62 @@ const es: Dict = {
   'settings.language.saved': 'Idioma actualizado.',
   'settings.language.readonly':
     'Solo un superadministrador puede cambiar el idioma de la aplicación.',
+
+  'topbar.searchPatient': 'Buscar un paciente por nombre, teléfono, DNI…',
+  'topbar.notifications': 'Notificaciones',
+
+  'settings.tab.tarifs': 'Tarifas',
+  'settings.tab.prestations': 'Prestaciones',
+  'settings.tab.modeles': 'Plantillas de receta',
+  'settings.tab.consentements': 'Consentimientos',
+  'settings.tab.courriers': 'Cartas a colegas',
+  'settings.tab.utilisateurs': 'Usuarios',
+  'settings.tab.conges': 'Permisos',
+  'settings.tab.droits': 'Permisos de acceso',
+  'settings.tab.vaccinations': 'Vacunaciones',
+  'settings.tab.stock': 'Inventario',
+  'settings.tab.hospitalisation': 'Habitaciones y camas',
+  'settings.tab.support': 'Soporte',
+  'settings.tab.cabinet.CABINET': 'Consultorio',
+  'settings.tab.cabinet.CLINIQUE': 'Clínica',
+  'settings.tab.cabinet.HOPITAL': 'Hospital',
+  'settings.tab.cabinet.CENTRE_MEDICAL': 'Centro médico',
+  'settings.tab.cabinet.AUTRE': 'Establecimiento',
+
+  'settings.identity.type': 'Tipo de establecimiento *',
+  'settings.identity.name': 'Nombre *',
+  'settings.identity.phone': 'Teléfono *',
+  'settings.identity.address': 'Dirección *',
+  'settings.identity.city': 'Ciudad *',
+  'settings.identity.email': 'Correo electrónico',
+  'settings.services.title': 'Servicios internos',
+  'settings.services.hint':
+    'Marque si el establecimiento ofrece estos servicios internamente. Preparación para el futuro enrutamiento de recetas de análisis / radiología.',
+  'settings.services.lab': 'Laboratorio de análisis interno',
+  'settings.services.imaging': 'Servicio de radiología interno',
+  'settings.services.pharmacy': 'Farmacia interna (el establecimiento dispensa medicamentos)',
+  'settings.hosp.title': 'Hospitalización',
+  'settings.hosp.hint':
+    'Marque si el establecimiento dispone de camas y hospitaliza pacientes (clínica, hospital). Activa la pestaña «Habitaciones y camas» y el módulo de estancia.',
+  'settings.hosp.toggle': 'Este establecimiento hospitaliza pacientes (camas)',
+  'settings.superAdminBadge': 'Superadmin',
+  'settings.readonlyNote':
+    'Estos ajustes (identidad del centro, servicios internos, hospitalización) son de solo lectura: solo un superadministrador puede modificarlos.',
+
+  'settings.modules.title': 'Módulos de la aplicación',
+  'settings.modules.hint':
+    'Active o desactive las funciones secundarias. Un módulo desactivado desaparece de la navegación para todos los usuarios. Las funciones principales (agenda, pacientes, sala de espera, consultas, facturación) permanecen siempre activas.',
+  'settings.modules.on': 'Activado',
+  'settings.modules.off': 'Desactivado',
+
+  'settings.backup.title': 'Copia de seguridad y restauración de la base',
+  'settings.backup.refresh': 'Actualizar',
+  'settings.backup.hint':
+    'Las copias se generan a diario en el disco externo configurado. La restauración reemplaza TODOS los datos por la copia elegida — irreversible, úsela solo si es necesario. Se recomienda reiniciar la aplicación tras una restauración.',
+  'settings.backup.empty': 'No se encontró ninguna copia en la carpeta configurada.',
+  'settings.backup.restore': 'Restaurar',
+  'settings.backup.confirmTitle': 'Restauración destructiva',
+  'settings.backup.confirmDo': 'Restaurar definitivamente',
 };
 
 export const MESSAGES: Record<Lang, Dict> = { fr, en, ar, es };
