@@ -135,6 +135,34 @@ const ESTABLISHMENT_TYPE_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'HOPITAL' | 
 
 // ── Cabinet tab ───────────────────────────────────────────────────────────────
 
+/**
+ * #112/#3 — petit badge « Super admin » sur les sections sensibles (Identité,
+ * Services internes, Hospitalisation, Langue) pour signaler — y compris à un
+ * super admin — que ces réglages sont réservés au super administrateur. La garde
+ * réelle est backend (403) + le fieldset grisé pour un ADMIN normal.
+ */
+function SuperAdminBadge() {
+  return (
+    <span
+      title="Réservé au super administrateur"
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        letterSpacing: '0.04em',
+        color: 'var(--primary)',
+        background: 'var(--primary-soft)',
+        border: '1px solid var(--primary)',
+        borderRadius: 999,
+        padding: '1px 8px',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      🔒 Super admin
+    </span>
+  );
+}
+
 function CabinetTab() {
   const { settings, isLoading } = useClinicSettings();
   const { update, isPending } = useUpdateClinicSettings();
@@ -187,7 +215,11 @@ function CabinetTab() {
   return (
     <>
     <Panel>
-      <PanelHeader>{headerLabel}</PanelHeader>
+      <PanelHeader>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {headerLabel} <SuperAdminBadge />
+        </span>
+      </PanelHeader>
       <form
         onSubmit={(e) => {
           void handleSubmit(e);
@@ -316,7 +348,9 @@ function CabinetTab() {
             background: 'var(--bg-2, #fafafa)',
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Services internes</div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Services internes <SuperAdminBadge />
+          </div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
             Cocher si l'établissement dispose de ces services en interne. Préparation pour le
             routing futur des prescriptions analyses / radio.
@@ -357,7 +391,9 @@ function CabinetTab() {
             background: 'var(--bg-2, #fafafa)',
           }}
         >
-          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Hospitalisation</div>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+            Hospitalisation <SuperAdminBadge />
+          </div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}>
             Cocher si l'établissement dispose de lits et hospitalise des patients (clinique,
             hôpital). Active l'onglet « Chambres &amp; lits » et le module de séjour.
@@ -845,7 +881,17 @@ export default function ParametragePage() {
         {tab === 'courriers' && isAdmin && <LetterTemplatesTab />}
         {tab === 'utilisateurs' && <UtilisateursTab />}
         {tab === 'conges' && <CongesTab />}
-        {tab === 'droits' && <DroitsTab />}
+        {tab === 'droits' && (
+          <>
+            <DroitsTab />
+            {/* #2 — l'habilitation des modules (activer/désactiver une fonctionnalité
+                pour tout le cabinet) est attendue ici, dans « Droits d'accès ». Ce
+                n'est pas une permission par rôle (donc pas une colonne de la matrice)
+                mais un interrupteur global par module — rendu juste en dessous. */}
+            <div style={{ height: 16 }} />
+            <ModulesPanel />
+          </>
+        )}
         {tab === 'vaccinations' && <VaccinationParamTab />}
         {tab === 'stock' && <StockParamTab />}
         {tab === 'hospitalisation' && <ChambresLitsTab />}

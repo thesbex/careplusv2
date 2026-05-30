@@ -54,7 +54,21 @@ export function LanguageSettingsSection() {
 
   return (
     <Panel data-testid="language-settings">
-      <PanelHeader>{t('settings.language.title')}</PanelHeader>
+      <PanelHeader>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {t('settings.language.title')}
+          <span
+            title="Réservé au super administrateur"
+            style={{
+              fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+              color: 'var(--primary)', background: 'var(--primary-soft)',
+              border: '1px solid var(--primary)', borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap',
+            }}
+          >
+            🔒 Super admin
+          </span>
+        </span>
+      </PanelHeader>
       <div style={{ padding: 16 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12, lineHeight: 1.5 }}>
           {t('settings.language.hint')}
