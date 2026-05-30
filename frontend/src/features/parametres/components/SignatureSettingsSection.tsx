@@ -25,6 +25,7 @@ import {
   useUploadSignature,
   useDeleteSignature,
 } from '../hooks/useSignature';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const MAX_BYTES = 500 * 1024;
 const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp']);
@@ -36,6 +37,7 @@ export interface SignatureSettingsSectionProps {
 }
 
 export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSectionProps = {}) {
+  const { t } = useT();
   const { meta, isLoading } = useSignatureMeta(practitionerId);
   const previewUrl = useSignaturePreviewUrl(meta, practitionerId);
   const { upload, isPending: isUploading } = useUploadSignature(practitionerId);
@@ -54,29 +56,29 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
 
     setErrorMsg(null);
     if (!ALLOWED_MIMES.has(file.type)) {
-      setErrorMsg('Format non autorisé. Utiliser PNG, JPEG ou WEBP.');
+      setErrorMsg(t('settings.sig.badFormat'));
       return;
     }
     if (file.size > MAX_BYTES) {
-      setErrorMsg('Image trop volumineuse (max 500 Ko).');
+      setErrorMsg(t('settings.sig.tooBig'));
       return;
     }
     try {
       await upload(file);
-      toast.success('Signature mise à jour.');
+      toast.success(t('settings.sig.updated'));
     } catch {
-      toast.error('Échec du téléversement de la signature.');
+      toast.error(t('settings.sig.uploadErr'));
     }
   }
 
   async function handleRemove() {
     // eslint-disable-next-line no-alert
-    if (!window.confirm('Supprimer la signature configurée ?')) return;
+    if (!window.confirm(t('settings.sig.confirmRemove'))) return;
     try {
       await remove();
-      toast.success('Signature supprimée.');
+      toast.success(t('settings.sig.removed'));
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('settings.sig.removeErr'));
     }
   }
 
@@ -84,15 +86,12 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
 
   return (
     <Panel style={{ marginTop: 16 }}>
-      <PanelHeader>Ma signature scannée (auto-injectée sur mes PDF)</PanelHeader>
+      <PanelHeader>{t('settings.sig.title')}</PanelHeader>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-          La signature scannée est automatiquement intégrée au pied de chaque
-          ordonnance, certificat, arrêt de travail, bon d'analyses, bon
-          d'imagerie et carnet de vaccination généré.
+          {t('settings.sig.hint')}
           <br />
-          PNG / JPEG / WEBP, max 500 Ko, idéalement fond transparent et ratio
-          ~200×80&nbsp;px.
+          {t('settings.sig.hint2')}
         </div>
 
         <div
@@ -109,21 +108,21 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
           }}
         >
           {isLoading && (
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</span>
           )}
           {!isLoading && hasSignature && previewUrl && (
             <img
               src={previewUrl}
-              alt="Signature configurée"
+              alt={t('settings.sig.title')}
               style={{ maxWidth: 240, maxHeight: 90, objectFit: 'contain' }}
             />
           )}
           {!isLoading && hasSignature && !previewUrl && (
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement de l’aperçu…</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</span>
           )}
           {!isLoading && !hasSignature && (
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Aucune signature configurée — les PDF utiliseront le cadre cachet vide.
+              {t('settings.sig.none')}
             </span>
           )}
         </div>
@@ -134,7 +133,7 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
 
         {meta && (
           <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            Format : {meta.mime} · Taille : {(meta.sizeBytes / 1024).toFixed(1)} Ko
+            {t('settings.fileMeta', { mime: meta.mime, size: (meta.sizeBytes / 1024).toFixed(1) })}
           </div>
         )}
 
@@ -158,7 +157,7 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
                 void handleRemove();
               }}
             >
-              {isDeleting ? 'Suppression…' : 'Supprimer'}
+              {isDeleting ? t('common.deleting') : t('common.delete')}
             </Button>
           )}
           <Button
@@ -167,10 +166,10 @@ export function SignatureSettingsSection({ practitionerId }: SignatureSettingsSe
             onClick={handlePick}
           >
             {isUploading
-              ? 'Téléversement…'
+              ? t('common.uploading')
               : hasSignature
-                ? 'Remplacer la signature'
-                : 'Téléverser une signature'}
+                ? t('settings.sig.replace')
+                : t('settings.sig.upload')}
           </Button>
         </div>
       </div>

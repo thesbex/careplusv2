@@ -38,7 +38,7 @@ export function ModulesPanel() {
 
   async function toggle(moduleId: string, enable: boolean) {
     if (!settings) {
-      toast.error('Paramètres cabinet non chargés.');
+      toast.error(t('settings.notLoaded'));
       return;
     }
     const next = enable
@@ -62,10 +62,14 @@ export function ModulesPanel() {
         })
         .then((r) => r.data);
       qc.setQueryData(['clinic-settings'], updated);
-      const label = TOGGLEABLE_MODULES.find((m) => m.id === moduleId)?.label ?? moduleId;
-      toast.success(enable ? `Module « ${label} » activé.` : `Module « ${label} » désactivé.`);
+      const label = t(`module.${moduleId}`);
+      toast.success(
+        enable
+          ? t('settings.modules.enabled', { label })
+          : t('settings.modules.disabled', { label }),
+      );
     } catch {
-      toast.error('Échec de la mise à jour des modules.');
+      toast.error(t('settings.modules.updateErr'));
     } finally {
       setSaving(null);
     }
@@ -81,6 +85,7 @@ export function ModulesPanel() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {TOGGLEABLE_MODULES.map((m) => {
             const enabled = !disabled.includes(m.id);
+            const label = t(`module.${m.id}`);
             return (
               <label
                 key={m.id}
@@ -92,10 +97,10 @@ export function ModulesPanel() {
                   checked={enabled}
                   disabled={saving === m.id}
                   onChange={(e) => void toggle(m.id, e.target.checked)}
-                  aria-label={m.label}
+                  aria-label={label}
                   style={{ width: 18, height: 18 }}
                 />
-                <span style={{ fontWeight: 600 }}>{m.label}</span>
+                <span style={{ fontWeight: 600 }}>{label}</span>
                 <span style={{ fontSize: 11.5, color: enabled ? 'var(--success, #0e5b3e)' : 'var(--ink-3)' }}>
                   {enabled ? t('settings.modules.on') : t('settings.modules.off')}
                 </span>

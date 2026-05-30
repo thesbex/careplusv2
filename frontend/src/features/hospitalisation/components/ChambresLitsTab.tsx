@@ -10,6 +10,7 @@
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { SelectMenu } from '@/components/ui/SelectMenu';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { useAgendaIsolation, useUpdateAgendaIsolation } from '@/features/parametres/hooks/useAgendaIsolation';
@@ -198,6 +199,9 @@ function WardsSection({ canManage }: { canManage: boolean }) {
         {isLoading && <div className="cl-empty">Chargement…</div>}
         {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!isLoading && wards.length === 0 && <div className="cl-empty">Aucun service déclaré.</div>}
+        {wards.length > 0 && (
+          <div className="cl-rhead svc"><span>Code</span><span>Libellé</span><span /></div>
+        )}
         <div className="cl-rows svc">
           {wards.map((w) => (
             <div className={`cl-rrow${w.active ? '' : ' off'}`} key={w.id} data-testid={`ward-row-${w.id}`}>
@@ -295,11 +299,10 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
           <form className="cl-addform cham" onSubmit={(e) => void handleCreate(e)}>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="room-ward">Service <span className="req">*</span></label>
-              <select id="room-ward" className="cl-sel" aria-label="Service" value={wardId}
-                onChange={(e) => setWardId(e.target.value)}>
-                <option value="">— Choisir —</option>
-                {activeWards.map((w) => <option key={w.id} value={w.id}>{w.labelFr}</option>)}
-              </select>
+              <SelectMenu id="room-ward" className="cl-selm" ariaLabel="Service" value={wardId}
+                onChange={(e) => setWardId(e.target.value)}
+                options={[{ value: '', label: '— Choisir —' },
+                  ...activeWards.map((w) => ({ value: w.id, label: w.labelFr }))]} />
             </div>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="room-code">Code <span className="req">*</span></label>
@@ -313,10 +316,9 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
             </div>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="room-class">Classe</label>
-              <select id="room-class" className="cl-sel" aria-label="Classe" value={roomClass}
-                onChange={(e) => setRoomClass(e.target.value as RoomClass)}>
-                {ROOM_CLASSES.map((c) => <option key={c} value={c}>{ROOM_CLASS_LABELS[c]}</option>)}
-              </select>
+              <SelectMenu id="room-class" className="cl-selm" ariaLabel="Classe" value={roomClass}
+                onChange={(e) => setRoomClass(e.target.value as RoomClass)}
+                options={ROOM_CLASSES.map((c) => ({ value: c, label: ROOM_CLASS_LABELS[c] }))} />
             </div>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="room-rate">Prix/jour (MAD) <span className="req">*</span></label>
@@ -331,6 +333,12 @@ function RoomsSection({ canManage }: { canManage: boolean }) {
         {isLoading && <div className="cl-empty">Chargement…</div>}
         {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!isLoading && rooms.length === 0 && <div className="cl-empty">Aucune chambre déclarée.</div>}
+        {rooms.length > 0 && (
+          <div className="cl-rhead cham">
+            <span>Code</span><span>Chambre</span><span>Service</span>
+            <span>Classe</span><span>Prix/jour</span><span />
+          </div>
+        )}
         <div className="cl-rows cham">
           {rooms.map((r) => (
             <div key={r.id} data-testid={`room-row-${r.id}`}>
@@ -444,11 +452,10 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
           <form className="cl-addform lit" onSubmit={(e) => void handleCreate(e)}>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="bed-room">Chambre <span className="req">*</span></label>
-              <select id="bed-room" className="cl-sel" aria-label="Chambre" value={roomId}
-                onChange={(e) => setRoomId(e.target.value)}>
-                <option value="">— Choisir —</option>
-                {activeRooms.map((r) => <option key={r.id} value={r.id}>{r.labelFr}</option>)}
-              </select>
+              <SelectMenu id="bed-room" className="cl-selm" ariaLabel="Chambre" value={roomId}
+                onChange={(e) => setRoomId(e.target.value)}
+                options={[{ value: '', label: '— Choisir —' },
+                  ...activeRooms.map((r) => ({ value: r.id, label: r.labelFr }))]} />
             </div>
             <div className="cl-field">
               <label className="cl-lbl" htmlFor="bed-code">Code lit <span className="req">*</span></label>
@@ -463,6 +470,9 @@ function BedsSection({ canManage, canSetStatus }: { canManage: boolean; canSetSt
         {isLoading && <div className="cl-empty">Chargement…</div>}
         {error && <div className="cl-empty" style={{ color: 'var(--danger)' }}>{error}</div>}
         {!isLoading && beds.length === 0 && <div className="cl-empty">Aucun lit déclaré.</div>}
+        {beds.length > 0 && (
+          <div className="cl-rhead lit"><span>Code</span><span>Chambre</span><span>Statut</span><span /></div>
+        )}
         <div className="cl-rows lit">
           {beds.map((b) => {
             const occupiedOrLocked = b.status === 'OCCUPE' || !canSetStatus;
@@ -550,12 +560,11 @@ function DayRuleSection({ canManage }: { canManage: boolean }) {
         <div className="cl-rule-row">
           <div className="cl-field" style={{ maxWidth: 340 }}>
             <label className="cl-lbl" htmlFor="day-rule">Règle de comptage des journées</label>
-            <select id="day-rule" className="cl-sel" aria-label="Règle de comptage des journées"
+            <SelectMenu id="day-rule" className="cl-selm" ariaLabel="Règle de comptage des journées"
               value={stayBillingDayRule} disabled={!canManage || isPending}
-              onChange={(e) => void change(e.target.value as 'NUITS' | 'JOURS_ENTAMES')}>
-              <option value="NUITS">Nuits (par défaut)</option>
-              <option value="JOURS_ENTAMES">Jours entamés (entrée + sortie)</option>
-            </select>
+              onChange={(e) => void change(e.target.value as 'NUITS' | 'JOURS_ENTAMES')}
+              options={[{ value: 'NUITS', label: 'Nuits (par défaut)' },
+                { value: 'JOURS_ENTAMES', label: 'Jours entamés (entrée + sortie)' }]} />
           </div>
         </div>
         <div className="cl-rule-help">
@@ -625,7 +634,7 @@ export function ChambresLitsTab() {
       <RoomsSection canManage={canManage} />
       <BedsSection canManage={canManage} canSetStatus={canSetStatus} />
       <DayRuleSection canManage={canManage} />
-      <OrphanRolesPanel module="hospitalization" />
+      <OrphanRolesPanel module="hospitalization" calm sectionNumber="06" />
     </div>
   );
 }

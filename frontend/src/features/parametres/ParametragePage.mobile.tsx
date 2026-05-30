@@ -36,6 +36,7 @@ import { useChatUnreadCount } from '@/features/messages/hooks/useChatUnreadCount
 import { useClinicSettings } from './hooks/useSettings';
 import { useActiveStayCount } from '@/features/hospitalisation/hooks/useStays';
 import { isPureTech } from '@/lib/auth/roleHelpers';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda:   '/agenda',
@@ -47,6 +48,7 @@ const TAB_MAP: Record<MobileTab, string> = {
 
 export default function ParametrageMobilePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const user = useAuthStore((s) => s.user);
 
   const isAdminOrDoctor =
@@ -74,18 +76,18 @@ export default function ParametrageMobilePage() {
       : '?';
   const roleLabel = user
     ? user.roles.includes('MEDECIN')
-      ? 'Médecin'
+      ? t('role.MEDECIN')
       : user.roles.includes('ADMIN')
-      ? 'Administrateur'
+      ? t('role.ADMIN')
       : user.roles.includes('ASSISTANT')
-      ? 'Assistant(e)'
-      : 'Secrétaire'
+      ? t('role.ASSISTANT')
+      : t('role.SECRETAIRE')
     : '—';
 
   return (
     <MScreen
       tab="menu"
-      topbar={<MTopbar title="Paramètres" />}
+      topbar={<MTopbar title={t('nav.params')} />}
       onTabChange={(t) => navigate(TAB_MAP[t])}
     >
       {/* Profile header */}
@@ -112,13 +114,13 @@ export default function ParametrageMobilePage() {
         {!pureTech && (
           <>
             <div className="m-section-h">
-              <h3>Tableau de bord</h3>
+              <h3>{t('mnav.section.dashboard')}</h3>
             </div>
             <div className="m-card" style={{ marginBottom: 18 }}>
               <MenuRow
                 Icon={BarChartIcon}
-                label="Dashboard"
-                hint="Indicateurs cabinet — KPIs et activité"
+                label={t('nav.dashboard')}
+                hint={t('mnav.dashboardHint')}
                 onClick={() => navigate('/dashboard')}
               />
             </div>
@@ -128,13 +130,13 @@ export default function ParametrageMobilePage() {
         {!pureTech && (isAdminOrDoctor ? (
           <>
             <div className="m-section-h">
-              <h3>Cabinet</h3>
+              <h3>{t('mnav.section.cabinet')}</h3>
             </div>
             <div className="m-card" style={{ marginBottom: 18 }}>
               <MenuRow
                 Icon={FileIcon}
-                label="Paramétrage du cabinet"
-                hint="Identité, tarifs, utilisateurs, congés"
+                label={t('mnav.cabinetConfig')}
+                hint={t('mnav.cabinetConfigHint')}
                 onClick={() => {
                   // The desktop ParametragePage is feature-rich; force the
                   // desktop variant for the few admin tasks that need it.
@@ -144,16 +146,16 @@ export default function ParametrageMobilePage() {
               {isAdmin && modOn('charges') && (
                 <MenuRow
                   Icon={InvoiceIcon}
-                  label="Charges"
-                  hint="Dépenses du cabinet — récapitulatif annuel"
+                  label={t('nav.charges')}
+                  hint={t('mnav.chargesHint')}
                   onClick={() => navigate('/charges')}
                 />
               )}
               {isAdmin && (
                 <MenuRow
                   Icon={Users}
-                  label="Personnel"
-                  hint="RH — congés, absences, salaires"
+                  label={t('nav.personnel')}
+                  hint={t('mnav.personnelHint')}
                   onClick={() => navigate('/personnel')}
                 />
               )}
@@ -171,27 +173,27 @@ export default function ParametrageMobilePage() {
               marginBottom: 18,
             }}
           >
-            Les paramètres du cabinet sont réservés à l’administrateur et au médecin.
+            {t('mnav.adminOnly')}
           </div>
         ))}
 
         {!pureTech && (
           <>
             <div className="m-section-h">
-              <h3>Suivi clinique</h3>
+              <h3>{t('mnav.section.clinical')}</h3>
             </div>
             <div className="m-card" style={{ marginBottom: 18 }}>
               <MenuRow
                 Icon={StethoIcon}
-                label="Consultations"
-                hint="Brouillons + signées"
+                label={t('nav.consult')}
+                hint={t('mnav.consultHint')}
                 onClick={() => navigate('/consultations')}
               />
               {modOn('vaccinations') && (
                 <MenuRow
                   Icon={NeedleIcon}
-                  label="Vaccinations"
-                  hint="Worklist + rappels en retard"
+                  label={t('nav.vaccinations')}
+                  hint={t('mnav.vaccinationsHint')}
                   badge={vaccinationsBadge}
                   onClick={() => navigate('/vaccinations')}
                 />
@@ -199,8 +201,8 @@ export default function ParametrageMobilePage() {
               {modOn('grossesses') && (
                 <MenuRow
                   Icon={HeartIcon}
-                  label="Grossesses"
-                  hint="Suivi prénatal + alertes"
+                  label={t('nav.grossesses')}
+                  hint={t('mnav.grossessesHint')}
                   badge={grossessesBadge}
                   onClick={() => navigate('/grossesses')}
                 />
@@ -208,8 +210,8 @@ export default function ParametrageMobilePage() {
               {modOn('stock') && (
                 <MenuRow
                   Icon={BoxIcon}
-                  label="Stock"
-                  hint="Articles, lots, mouvements"
+                  label={t('nav.stock')}
+                  hint={t('mnav.stockHint')}
                   badge={stockBadge}
                   onClick={() => navigate('/stock')}
                 />
@@ -217,8 +219,8 @@ export default function ParametrageMobilePage() {
               {hospitalizationEnabled && (
                 <MenuRow
                   Icon={ActivityIcon}
-                  label="Hospitalisation"
-                  hint="Patients hospitalisés + séjours"
+                  label={t('nav.sejours')}
+                  hint={t('mnav.hospHint')}
                   badge={sejoursBadge}
                   onClick={() => navigate('/hospitalisation')}
                 />
@@ -228,14 +230,14 @@ export default function ParametrageMobilePage() {
         )}
 
         <div className="m-section-h">
-          <h3>Communication</h3>
+          <h3>{t('mnav.section.comm')}</h3>
         </div>
         <div className="m-card" style={{ marginBottom: 18 }}>
           {modOn('messages') && (
             <MenuRow
               Icon={ChatIcon}
-              label="Messages"
-              hint="Messagerie interne du cabinet"
+              label={t('nav.messages')}
+              hint={t('mnav.messagesHint')}
               badge={messagesBadge}
               onClick={() => navigate('/messages')}
             />
@@ -243,8 +245,8 @@ export default function ParametrageMobilePage() {
           {isAdminOrDoctor && modOn('assistant') && (
             <MenuRow
               Icon={SparklesIcon}
-              label="Assistant IA"
-              hint="Aide à la décision clinique"
+              label={t('nav.assistant')}
+              hint={t('mnav.assistantHint')}
               onClick={() => navigate('/assistant')}
             />
           )}
@@ -253,25 +255,25 @@ export default function ParametrageMobilePage() {
         {!pureTech && (
           <>
             <div className="m-section-h">
-              <h3>Catalogues</h3>
+              <h3>{t('mnav.section.catalogues')}</h3>
             </div>
             <div className="m-card" style={{ marginBottom: 18 }}>
               <MenuRow
                 Icon={PillIcon}
-                label="Médicaments"
-                hint="Référentiel Maroc"
+                label={t('mnav.medications')}
+                hint={t('mnav.medicationsHint')}
                 onClick={() => navigate('/catalogue')}
               />
               <MenuRow
                 Icon={FlaskIcon}
-                label="Analyses biologiques"
-                hint="Tests de laboratoire"
+                label={t('mnav.labs')}
+                hint={t('mnav.labsHint')}
                 onClick={() => navigate('/catalogue/analyses')}
               />
               <MenuRow
                 Icon={DocIcon}
-                label="Radio / Imagerie"
-                hint="Examens d’imagerie médicale"
+                label={t('mnav.imaging')}
+                hint={t('mnav.imagingHint')}
                 onClick={() => navigate('/catalogue/radio')}
               />
             </div>
@@ -279,13 +281,13 @@ export default function ParametrageMobilePage() {
         )}
 
         <div className="m-section-h">
-          <h3>Compte</h3>
+          <h3>{t('mnav.section.account')}</h3>
         </div>
         <div className="m-card">
           <MenuRow
             Icon={Users}
-            label="Mon profil"
-            hint="Identité, signature, mot de passe"
+            label={t('mnav.profile')}
+            hint={t('mnav.profileHint')}
             onClick={() => navigate('/profil')}
           />
           <button
@@ -320,7 +322,7 @@ export default function ParametrageMobilePage() {
             </div>
             <div className="m-row-pri">
               <div className="m-row-main" style={{ color: 'var(--danger)' }}>
-                Déconnexion
+                {t('mnav.logout')}
               </div>
             </div>
           </button>

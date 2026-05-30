@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Plus, Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   usePrescriptionTemplates,
   useDeletePrescriptionTemplate,
@@ -16,13 +17,14 @@ import {
 } from '../hooks/usePrescriptionTemplates';
 import { PrescriptionTemplateDrawer } from './PrescriptionTemplateDrawer';
 
-const SUBTABS: { id: TemplateType; label: string }[] = [
-  { id: 'DRUG', label: 'Médicaments' },
-  { id: 'LAB', label: 'Analyses' },
-  { id: 'IMAGING', label: 'Imagerie' },
+const SUBTABS: { id: TemplateType; labelKey: string }[] = [
+  { id: 'DRUG', labelKey: 'settings.tpl.drug' },
+  { id: 'LAB', labelKey: 'settings.tpl.lab' },
+  { id: 'IMAGING', labelKey: 'settings.tpl.imaging' },
 ];
 
 export function PrescriptionTemplatesTab() {
+  const { t: tr } = useT();
   const [subtab, setSubtab] = useState<TemplateType>('DRUG');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState<PrescriptionTemplate | null>(null);
@@ -39,19 +41,19 @@ export function PrescriptionTemplatesTab() {
     setDrawerOpen(true);
   }
   async function handleDelete(t: PrescriptionTemplate) {
-    if (!confirm(`Supprimer le modèle « ${t.name} » ?`)) return;
+    if (!confirm(tr('settings.tpl.confirmDelete', { name: t.name }))) return;
     try {
       await remove(t.id);
-      toast.success('Modèle supprimé.');
+      toast.success(tr('settings.tpl.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(tr('settings.tpl.deleteErr'));
     }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, display: 'flex', gap: 6 }} role="tablist" aria-label="Type de modèle">
+        <div style={{ flex: 1, display: 'flex', gap: 6 }} role="tablist" aria-label={tr('settings.tpl.typeAria')}>
           {SUBTABS.map((s) => (
             <button
               key={s.id}
@@ -71,34 +73,34 @@ export function PrescriptionTemplatesTab() {
                 cursor: 'pointer',
               }}
             >
-              {s.label}
+              {tr(s.labelKey)}
             </button>
           ))}
         </div>
         <Button variant="primary" onClick={openCreate}>
-          <Plus /> Nouveau modèle
+          <Plus /> {tr('settings.tpl.new')}
         </Button>
       </div>
 
       <Panel style={{ overflow: 'auto', padding: 0 }}>
         {isLoading && (
-          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{tr('common.loading')}</div>
         )}
         {error && (
           <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
         )}
         {!isLoading && !error && templates.length === 0 && (
           <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-            Aucun modèle pour ce type. Créez-en un avec le bouton ci-dessus pour gagner du temps en consultation.
+            {tr('settings.tpl.empty')}
           </div>
         )}
         {templates.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead style={{ background: 'var(--surface-2)' }}>
               <tr>
-                <Th>Nom</Th>
-                <Th style={{ width: 100, textAlign: 'right' }}>Lignes</Th>
-                <Th style={{ width: 180 }}>Mis à jour</Th>
+                <Th>{tr('settings.tpl.colName')}</Th>
+                <Th style={{ width: 100, textAlign: 'right' }}>{tr('settings.tpl.colLines')}</Th>
+                <Th style={{ width: 180 }}>{tr('settings.tpl.colUpdated')}</Th>
                 <Th style={{ width: 120 }}> </Th>
               </tr>
             </thead>
@@ -128,12 +130,12 @@ export function PrescriptionTemplatesTab() {
                           fontFamily: 'inherit',
                         }}
                       >
-                        Modifier
+                        {tr('common.edit')}
                       </button>
                       <button
                         type="button"
                         onClick={() => { void handleDelete(t); }}
-                        aria-label={`Supprimer ${t.name}`}
+                        aria-label={`${tr('common.delete')} ${t.name}`}
                         style={{
                           background: 'none',
                           border: 'none',

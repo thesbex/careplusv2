@@ -11,6 +11,7 @@
  * sont fonctionnelles mais non certifiées linguistiquement.
  */
 import type { Dict, Lang } from './index';
+import { parametresMessages } from './messages.parametres';
 
 const fr: Dict = {
   'common.save': 'Enregistrer',
@@ -47,6 +48,23 @@ const fr: Dict = {
   'settings.language.saved': 'Langue mise à jour.',
   'settings.language.readonly':
     'Seul un super administrateur peut changer la langue de l’application.',
+
+  // V072 — Apparence (thème)
+  'settings.appearance.title': 'Apparence',
+  'settings.appearance.hint':
+    "Personnalise le thème de l'application pour tout le cabinet : mode sombre, ambiance, couleur d'accent et police. Réservé au super administrateur.",
+  'settings.appearance.readonly':
+    'Seul un super administrateur peut modifier l’apparence de l’application.',
+  'settings.appearance.saved': 'Apparence mise à jour.',
+  'settings.appearance.ambiance': 'Mode',
+  'settings.appearance.light': 'Clair',
+  'settings.appearance.dark': 'Sombre',
+  'settings.appearance.canvas': 'Ambiance (canvas)',
+  'settings.appearance.canvasDarkNote': "L'ambiance ne s'applique qu'en mode clair.",
+  'settings.appearance.accent': 'Couleur d’accent',
+  'settings.appearance.font': 'Police',
+  'settings.appearance.reset': 'Annuler',
+  'settings.appearance.unsaved': 'Modifications non enregistrées',
 
   'topbar.searchPatient': 'Rechercher un patient par nom, téléphone, CIN…',
   'topbar.notifications': 'Notifications',
@@ -143,6 +161,50 @@ const fr: Dict = {
   'dash.empty.rdv': 'Aucun rendez-vous prévu.',
   'dash.empty.data12': 'Aucune donnée sur 12 mois.',
   'dash.empty.data': 'Aucune donnée.',
+
+  'settings.logo.title': "Logo de l'établissement (auto-injecté sur les PDFs)",
+  'settings.logo.hint': "Le logo apparaît en haut à gauche de chaque ordonnance, certificat, bon d'analyses, bon d'imagerie et carnet de vaccination généré.",
+  'settings.logo.hint2': 'PNG ou JPEG, max 500 Ko. Idéalement format paysage (~200×80 px), fond transparent recommandé pour PNG.',
+  'settings.logo.none': 'Aucun logo configuré — les PDF afficheront le nom en texte seul.',
+  'settings.logo.placement': 'Emplacement du logo sur les documents',
+  'settings.logo.pos.header': 'En-tête',
+  'settings.logo.pos.headerHint': 'En haut à gauche du document (défaut)',
+  'settings.logo.pos.footer': 'Pied de page',
+  'settings.logo.pos.footerHint': 'En bas du document, au-dessus de la mention CarePlus',
+  'settings.logo.pos.watermark': 'Fond de page (filigrane)',
+  'settings.logo.pos.watermarkHint': 'Centré sur la page, transparent (~8 %), derrière le contenu',
+  'settings.logo.pos.none': 'Aucun',
+  'settings.logo.pos.noneHint': 'Ne pas afficher le logo sur les documents',
+  'settings.logo.replace': 'Remplacer le logo',
+  'settings.logo.upload': 'Téléverser un logo',
+  'settings.logo.uploading': 'Téléversement…',
+  'common.delete': 'Supprimer',
+  'common.deleting': 'Suppression…',
+  'common.create': 'Créer',
+  'common.edit': 'Modifier',
+  'common.close': 'Fermer',
+
+  'settings.rooms.title': 'Salles de consultation',
+  'settings.rooms.new': '+ Nouvelle salle',
+  'settings.rooms.empty': 'Aucune salle déclarée.',
+  'settings.rooms.name': 'Nom *',
+  'settings.rooms.equip': 'Équipements (séparés par virgule)',
+  'settings.rooms.active': 'Salle active',
+  'settings.rooms.inactive': 'Inactive',
+  'settings.rooms.deactivate': 'Désactiver',
+  'settings.rooms.reactivate': 'Réactiver',
+
+  'settings.iso.title': 'Cloisonnement (agendas, vaccinations)',
+  'settings.iso.on': 'Activé',
+  'settings.iso.off': 'Désactivé',
+  'settings.iso.hint': "Quand activé, chaque médecin ne voit que son propre agenda, et chaque secrétaire / assistant(e) uniquement les agendas et la file d'attente des médecins auxquels elle est assignée. La queue Vaccination filtre aussi sur les patients suivis. Désactivé (par défaut), tout est partagé.",
+
+  'module.vaccinations': 'Vaccinations',
+  'module.grossesses': 'Grossesses',
+  'module.stock': 'Stock',
+  'module.messages': 'Messages',
+  'module.assistant': 'Assistant IA',
+  'module.charges': 'Charges',
 };
 
 const en: Dict = {
@@ -180,6 +242,23 @@ const en: Dict = {
   'settings.language.saved': 'Language updated.',
   'settings.language.readonly':
     'Only a super administrator can change the application language.',
+
+  // V072 — Appearance (theme)
+  'settings.appearance.title': 'Appearance',
+  'settings.appearance.hint':
+    'Customize the application theme for the whole practice: dark mode, ambiance, accent color and font. Super administrator only.',
+  'settings.appearance.readonly':
+    'Only a super administrator can change the application appearance.',
+  'settings.appearance.saved': 'Appearance updated.',
+  'settings.appearance.ambiance': 'Mode',
+  'settings.appearance.light': 'Light',
+  'settings.appearance.dark': 'Dark',
+  'settings.appearance.canvas': 'Ambiance (canvas)',
+  'settings.appearance.canvasDarkNote': 'Ambiance only applies in light mode.',
+  'settings.appearance.accent': 'Accent color',
+  'settings.appearance.font': 'Font',
+  'settings.appearance.reset': 'Cancel',
+  'settings.appearance.unsaved': 'Unsaved changes',
 
   'topbar.searchPatient': 'Search a patient by name, phone, ID…',
   'topbar.notifications': 'Notifications',
@@ -276,6 +355,50 @@ const en: Dict = {
   'dash.empty.rdv': 'No appointment scheduled.',
   'dash.empty.data12': 'No data over 12 months.',
   'dash.empty.data': 'No data.',
+
+  'settings.logo.title': 'Facility logo (auto-injected on PDFs)',
+  'settings.logo.hint': 'The logo appears at the top-left of every prescription, certificate, lab/imaging order and vaccination booklet generated.',
+  'settings.logo.hint2': 'PNG or JPEG, max 500 KB. Ideally landscape (~200×80 px), transparent background recommended for PNG.',
+  'settings.logo.none': 'No logo configured — PDFs will show the name as text only.',
+  'settings.logo.placement': 'Logo placement on documents',
+  'settings.logo.pos.header': 'Header',
+  'settings.logo.pos.headerHint': 'Top-left of the document (default)',
+  'settings.logo.pos.footer': 'Footer',
+  'settings.logo.pos.footerHint': 'Bottom of the document, above the CarePlus mention',
+  'settings.logo.pos.watermark': 'Page background (watermark)',
+  'settings.logo.pos.watermarkHint': 'Centered, transparent (~8 %), behind the content',
+  'settings.logo.pos.none': 'None',
+  'settings.logo.pos.noneHint': 'Do not show the logo on documents',
+  'settings.logo.replace': 'Replace logo',
+  'settings.logo.upload': 'Upload a logo',
+  'settings.logo.uploading': 'Uploading…',
+  'common.delete': 'Delete',
+  'common.deleting': 'Deleting…',
+  'common.create': 'Create',
+  'common.edit': 'Edit',
+  'common.close': 'Close',
+
+  'settings.rooms.title': 'Consultation rooms',
+  'settings.rooms.new': '+ New room',
+  'settings.rooms.empty': 'No room declared.',
+  'settings.rooms.name': 'Name *',
+  'settings.rooms.equip': 'Equipment (comma-separated)',
+  'settings.rooms.active': 'Active room',
+  'settings.rooms.inactive': 'Inactive',
+  'settings.rooms.deactivate': 'Deactivate',
+  'settings.rooms.reactivate': 'Reactivate',
+
+  'settings.iso.title': 'Partitioning (agendas, vaccinations)',
+  'settings.iso.on': 'Enabled',
+  'settings.iso.off': 'Disabled',
+  'settings.iso.hint': 'When enabled, each doctor sees only their own agenda, and each secretary / assistant only the agendas and waiting list of the doctors they are assigned to. The Vaccination queue also filters on followed patients. Disabled (default), everything is shared.',
+
+  'module.vaccinations': 'Vaccinations',
+  'module.grossesses': 'Pregnancies',
+  'module.stock': 'Stock',
+  'module.messages': 'Messages',
+  'module.assistant': 'AI Assistant',
+  'module.charges': 'Expenses',
 };
 
 const ar: Dict = {
@@ -312,6 +435,22 @@ const ar: Dict = {
     'تحدد لغة الواجهة لجميع المستخدمين. للمشرف العام فقط. العربية تحوّل العرض إلى اليمين-لليسار.',
   'settings.language.saved': 'تم تحديث اللغة.',
   'settings.language.readonly': 'المشرف العام وحده يمكنه تغيير لغة التطبيق.',
+
+  // V072 — المظهر (السمة)
+  'settings.appearance.title': 'المظهر',
+  'settings.appearance.hint':
+    'تخصيص سمة التطبيق للعيادة بأكملها: الوضع الداكن، الأجواء، لون التمييز والخط. للمشرف العام فقط.',
+  'settings.appearance.readonly': 'المشرف العام وحده يمكنه تغيير مظهر التطبيق.',
+  'settings.appearance.saved': 'تم تحديث المظهر.',
+  'settings.appearance.ambiance': 'الوضع',
+  'settings.appearance.light': 'فاتح',
+  'settings.appearance.dark': 'داكن',
+  'settings.appearance.canvas': 'الأجواء',
+  'settings.appearance.canvasDarkNote': 'تُطبَّق الأجواء في الوضع الفاتح فقط.',
+  'settings.appearance.accent': 'لون التمييز',
+  'settings.appearance.font': 'الخط',
+  'settings.appearance.reset': 'إلغاء',
+  'settings.appearance.unsaved': 'تغييرات غير محفوظة',
 
   'topbar.searchPatient': 'ابحث عن مريض بالاسم أو الهاتف أو رقم التعريف…',
   'topbar.notifications': 'الإشعارات',
@@ -408,6 +547,50 @@ const ar: Dict = {
   'dash.empty.rdv': 'لا يوجد موعد مبرمج.',
   'dash.empty.data12': 'لا توجد بيانات على 12 شهرًا.',
   'dash.empty.data': 'لا توجد بيانات.',
+
+  'settings.logo.title': 'شعار المنشأة (يُدرج تلقائيًا في ملفات PDF)',
+  'settings.logo.hint': 'يظهر الشعار أعلى يسار كل وصفة وشهادة وطلب تحاليل/أشعة ودفتر تطعيم يُنشأ.',
+  'settings.logo.hint2': 'PNG أو JPEG، 500 كيلوبايت كحد أقصى. يُفضّل التنسيق الأفقي (~200×80 بكسل) بخلفية شفافة لـ PNG.',
+  'settings.logo.none': 'لا يوجد شعار مُعد — ستعرض ملفات PDF الاسم كنص فقط.',
+  'settings.logo.placement': 'موضع الشعار على المستندات',
+  'settings.logo.pos.header': 'الترويسة',
+  'settings.logo.pos.headerHint': 'أعلى يسار المستند (افتراضي)',
+  'settings.logo.pos.footer': 'التذييل',
+  'settings.logo.pos.footerHint': 'أسفل المستند، فوق ذكر CarePlus',
+  'settings.logo.pos.watermark': 'خلفية الصفحة (علامة مائية)',
+  'settings.logo.pos.watermarkHint': 'في المنتصف، شفاف (~8 %)، خلف المحتوى',
+  'settings.logo.pos.none': 'بدون',
+  'settings.logo.pos.noneHint': 'عدم إظهار الشعار على المستندات',
+  'settings.logo.replace': 'استبدال الشعار',
+  'settings.logo.upload': 'رفع شعار',
+  'settings.logo.uploading': 'جارٍ الرفع…',
+  'common.delete': 'حذف',
+  'common.deleting': 'جارٍ الحذف…',
+  'common.create': 'إنشاء',
+  'common.edit': 'تعديل',
+  'common.close': 'إغلاق',
+
+  'settings.rooms.title': 'غرف الاستشارة',
+  'settings.rooms.new': '+ غرفة جديدة',
+  'settings.rooms.empty': 'لا توجد غرفة مُعرّفة.',
+  'settings.rooms.name': 'الاسم *',
+  'settings.rooms.equip': 'التجهيزات (مفصولة بفاصلة)',
+  'settings.rooms.active': 'غرفة نشطة',
+  'settings.rooms.inactive': 'غير نشطة',
+  'settings.rooms.deactivate': 'تعطيل',
+  'settings.rooms.reactivate': 'إعادة تفعيل',
+
+  'settings.iso.title': 'الفصل (الأجندات، التطعيمات)',
+  'settings.iso.on': 'مفعّل',
+  'settings.iso.off': 'معطّل',
+  'settings.iso.hint': 'عند التفعيل، يرى كل طبيب أجندته فقط، ويرى كل سكرتير / مساعد فقط أجندات وقائمة انتظار الأطباء المُسندين إليه. تصفّي قائمة التطعيمات أيضًا حسب المرضى المتابَعين. عند التعطيل (الوضع الافتراضي)، كل شيء مشترك.',
+
+  'module.vaccinations': 'التطعيمات',
+  'module.grossesses': 'الحمل',
+  'module.stock': 'المخزون',
+  'module.messages': 'الرسائل',
+  'module.assistant': 'المساعد الذكي',
+  'module.charges': 'المصاريف',
 };
 
 const es: Dict = {
@@ -445,6 +628,23 @@ const es: Dict = {
   'settings.language.saved': 'Idioma actualizado.',
   'settings.language.readonly':
     'Solo un superadministrador puede cambiar el idioma de la aplicación.',
+
+  // V072 — Apariencia (tema)
+  'settings.appearance.title': 'Apariencia',
+  'settings.appearance.hint':
+    'Personaliza el tema de la aplicación para toda la consulta: modo oscuro, ambiente, color de acento y fuente. Solo superadministrador.',
+  'settings.appearance.readonly':
+    'Solo un superadministrador puede cambiar la apariencia de la aplicación.',
+  'settings.appearance.saved': 'Apariencia actualizada.',
+  'settings.appearance.ambiance': 'Modo',
+  'settings.appearance.light': 'Claro',
+  'settings.appearance.dark': 'Oscuro',
+  'settings.appearance.canvas': 'Ambiente (canvas)',
+  'settings.appearance.canvasDarkNote': 'El ambiente solo se aplica en modo claro.',
+  'settings.appearance.accent': 'Color de acento',
+  'settings.appearance.font': 'Fuente',
+  'settings.appearance.reset': 'Cancelar',
+  'settings.appearance.unsaved': 'Cambios sin guardar',
 
   'topbar.searchPatient': 'Buscar un paciente por nombre, teléfono, DNI…',
   'topbar.notifications': 'Notificaciones',
@@ -541,6 +741,60 @@ const es: Dict = {
   'dash.empty.rdv': 'Ninguna cita programada.',
   'dash.empty.data12': 'Sin datos en 12 meses.',
   'dash.empty.data': 'Sin datos.',
+
+  'settings.logo.title': 'Logotipo del establecimiento (autoinsertado en los PDF)',
+  'settings.logo.hint': 'El logotipo aparece arriba a la izquierda de cada receta, certificado, orden de análisis/imagenología y cartilla de vacunación generada.',
+  'settings.logo.hint2': 'PNG o JPEG, máx. 500 KB. Idealmente formato horizontal (~200×80 px), fondo transparente recomendado para PNG.',
+  'settings.logo.none': 'Sin logotipo configurado — los PDF mostrarán el nombre solo como texto.',
+  'settings.logo.placement': 'Ubicación del logotipo en los documentos',
+  'settings.logo.pos.header': 'Encabezado',
+  'settings.logo.pos.headerHint': 'Arriba a la izquierda del documento (predeterminado)',
+  'settings.logo.pos.footer': 'Pie de página',
+  'settings.logo.pos.footerHint': 'Abajo del documento, sobre la mención CarePlus',
+  'settings.logo.pos.watermark': 'Fondo de página (marca de agua)',
+  'settings.logo.pos.watermarkHint': 'Centrado, transparente (~8 %), detrás del contenido',
+  'settings.logo.pos.none': 'Ninguno',
+  'settings.logo.pos.noneHint': 'No mostrar el logotipo en los documentos',
+  'settings.logo.replace': 'Reemplazar logotipo',
+  'settings.logo.upload': 'Subir un logotipo',
+  'settings.logo.uploading': 'Subiendo…',
+  'common.delete': 'Eliminar',
+  'common.deleting': 'Eliminando…',
+  'common.create': 'Crear',
+  'common.edit': 'Editar',
+  'common.close': 'Cerrar',
+
+  'settings.rooms.title': 'Salas de consulta',
+  'settings.rooms.new': '+ Nueva sala',
+  'settings.rooms.empty': 'Ninguna sala declarada.',
+  'settings.rooms.name': 'Nombre *',
+  'settings.rooms.equip': 'Equipamiento (separado por comas)',
+  'settings.rooms.active': 'Sala activa',
+  'settings.rooms.inactive': 'Inactiva',
+  'settings.rooms.deactivate': 'Desactivar',
+  'settings.rooms.reactivate': 'Reactivar',
+
+  'settings.iso.title': 'Compartimentación (agendas, vacunaciones)',
+  'settings.iso.on': 'Activado',
+  'settings.iso.off': 'Desactivado',
+  'settings.iso.hint': 'Cuando está activado, cada médico ve solo su propia agenda, y cada secretaria / asistente solo las agendas y la lista de espera de los médicos asignados. La cola de Vacunación también filtra por pacientes seguidos. Desactivado (predeterminado), todo se comparte.',
+
+  'module.vaccinations': 'Vacunaciones',
+  'module.grossesses': 'Embarazos',
+  'module.stock': 'Inventario',
+  'module.messages': 'Mensajes',
+  'module.assistant': 'Asistente IA',
+  'module.charges': 'Gastos',
 };
 
-export const MESSAGES: Record<Lang, Dict> = { fr, en, ar, es };
+/**
+ * Catalogue de base (nav / settings noyau / dashboard) fusionné avec les
+ * modules par écran (messages.<feature>.ts). Chaque module apporte ses clés
+ * dans les 4 langues — le test de parité garantit qu'aucune langue ne dérive.
+ */
+export const MESSAGES: Record<Lang, Dict> = {
+  fr: { ...fr, ...parametresMessages.fr },
+  en: { ...en, ...parametresMessages.en },
+  ar: { ...ar, ...parametresMessages.ar },
+  es: { ...es, ...parametresMessages.es },
+};

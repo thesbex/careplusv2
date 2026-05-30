@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAgendaIsolation,
   useUpdateAgendaIsolation,
@@ -22,53 +23,33 @@ import {
 } from '../hooks/useAgendaIsolation';
 import { usePractitioners } from '../hooks/usePractitioners';
 
-const ROLES: { code: OrphanRole; label: string }[] = [
-  { code: 'MEDECIN', label: 'Médecin' },
-  { code: 'ADMIN', label: 'Administrateur' },
-  { code: 'SECRETAIRE', label: 'Secrétaire' },
-  { code: 'ASSISTANT', label: 'Assistant(e)' },
-];
+const ROLE_CODES: OrphanRole[] = ['MEDECIN', 'ADMIN', 'SECRETAIRE', 'ASSISTANT'];
 
-interface ModuleCopy {
-  title: string;
-  description: string;
-  toastEnabled: (role: OrphanRole) => string;
-  toastDisabled: (role: OrphanRole) => string;
-  testId: string;
-}
+/** Sous-libellés (variante calm) — contexte hospitalisation (séjours). */
+const SUBLABEL: Record<OrphanRole, string> = {
+  MEDECIN: 'Voit tous les séjours',
+  ADMIN: 'Accès complet · supervision',
+  SECRETAIRE: 'Limité au médecin référent',
+  ASSISTANT: 'Limité au médecin référent',
+};
 
-const COPY: Record<OrphanModule, ModuleCopy> = {
-  vaccination: {
-    title: 'Patients sans médecin référent (vaccination)',
-    description:
-      "Quand le cloisonnement est activé, choisir les rôles qui voient dans la queue Vaccination les patients qu'aucun médecin n'a encore pris en charge. Un médecin devient référent dès qu'il enregistre une action (administration, report, planification) sur une dose du patient.",
-    toastEnabled: (r) => `${r} : peut voir les patients sans médecin référent vaccination.`,
-    toastDisabled: (r) => `${r} : ne voit plus les patients sans médecin référent vaccination.`,
-    testId: 'vaccination-orphan-roles',
-  },
-  pregnancy: {
-    title: 'Grossesses sans médecin référent',
-    description:
-      "Quand le cloisonnement est activé, choisir les rôles qui voient dans la queue Grossesse les patientes qu'aucun médecin n'a encore prises en charge. Un médecin devient référent dès qu'il déclare la grossesse, enregistre une visite obstétricale, une échographie ou un plan de visite.",
-    toastEnabled: (r) => `${r} : peut voir les grossesses sans médecin référent.`,
-    toastDisabled: (r) => `${r} : ne voit plus les grossesses sans médecin référent.`,
-    testId: 'pregnancy-orphan-roles',
-  },
-  hospitalization: {
-    title: 'Séjours sans médecin référent',
-    description:
-      "Quand le cloisonnement est activé, choisir les rôles qui voient dans la liste des patients hospitalisés les séjours sans médecin responsable. Un médecin est référent s'il est le médecin responsable du séjour (saisi à l'admission).",
-    toastEnabled: (r) => `${r} : peut voir les séjours sans médecin référent.`,
-    toastDisabled: (r) => `${r} : ne voit plus les séjours sans médecin référent.`,
-    testId: 'hospitalization-orphan-roles',
-  },
+/** module → (préfixe de clé i18n, data-testid). */
+const MODULE_META: Record<OrphanModule, { prefix: string; testId: string }> = {
+  vaccination: { prefix: 'settings.orphan.vacc', testId: 'vaccination-orphan-roles' },
+  pregnancy: { prefix: 'settings.orphan.preg', testId: 'pregnancy-orphan-roles' },
+  hospitalization: { prefix: 'settings.orphan.hosp', testId: 'hospitalization-orphan-roles' },
 };
 
 interface Props {
   module: OrphanModule;
+  /** Variante « Calm Premium » (carte sans bordure + cases-cartes) — écran Chambres & lits. */
+  calm?: boolean;
+  /** Numéro de section affiché en variante calm (ex. « 06 »). */
+  sectionNumber?: string;
 }
 
-export function OrphanRolesPanel({ module }: Props) {
+export function OrphanRolesPanel({ module, calm = false, sectionNumber = '06' }: Props) {
+  const { t } = useT();
   const { practitioners } = usePractitioners();
   const {
     settings,
@@ -86,7 +67,7 @@ export function OrphanRolesPanel({ module }: Props) {
   if (activeCount < 2) return null;
   if (!agendaStrictIsolation) return null;
 
-  const copy = COPY[module];
+  const meta = MODULE_META[module];
   const currentRoles =
     module === 'vaccination'
       ? vaccinationOrphanVisibleRoles
@@ -96,7 +77,7 @@ export function OrphanRolesPanel({ module }: Props) {
 
   async function toggleRole(role: OrphanRole, next: boolean) {
     if (!settings) {
-      toast.error('Paramètres cabinet non chargés.');
+      toast.error(t('settings.notLoaded'));
       return;
     }
     const updated = new Set(currentRoles);
@@ -112,7 +93,7 @@ export function OrphanRolesPanel({ module }: Props) {
           ? { pregnancyOrphanVisibleRoles: nextArray }
           : { hospitalizationOrphanVisibleRoles: nextArray }),
       });
-      toast.success(next ? copy.toastEnabled(role) : copy.toastDisabled(role));
+      toast.success(t(`${meta.prefix}.${next ? 'on' : 'off'}`, { role: t(`role.${role}`) }));
     } catch (err) {
       const problem = toProblemDetail(err);
       toast.error(
@@ -122,9 +103,47 @@ export function OrphanRolesPanel({ module }: Props) {
     }
   }
 
+  // Variante « Calm Premium » — section sans carte bordée + cases-cartes,
+  // iso aux panneaux 01-05 de l'écran Chambres & lits (panel 06).
+  if (calm) {
+    return (
+      <section className="cl-panel" data-testid={meta.testId}>
+        <div className="cl-panel-h">
+          <span className="ix">{sectionNumber}</span>
+          <h3>{t(`${meta.prefix}.title`)}</h3>
+          <span className="meta">· cloisonnement</span>
+        </div>
+        <div className="cl-panel-b">
+          <p className="cl-help" style={{ margin: 0, maxWidth: 620 }}>{t(`${meta.prefix}.desc`)}</p>
+          <div className="cl-ck-grid">
+            {ROLE_CODES.map((code) => {
+              const checked = currentRoles.includes(code);
+              const label = t(`role.${code}`);
+              return (
+                <label key={code} className={`cl-ck${checked ? ' on' : ''}`}
+                  style={{ cursor: isAdmin ? 'pointer' : 'not-allowed' }}>
+                  <input type="checkbox" checked={checked}
+                    disabled={!isAdmin || isPending || isLoading}
+                    onChange={(e) => void toggleRole(code, e.target.checked)}
+                    aria-label={t('settings.orphan.aria', { module, role: label })}
+                    style={{ position: 'absolute', opacity: 0, width: 1, height: 1, pointerEvents: 'none' }} />
+                  <span className="box">
+                    <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5 5.5 11 12 3.5" /></svg>
+                  </span>
+                  <span className="lab"><b>{label}</b><span>{SUBLABEL[code]}</span></span>
+                </label>
+              );
+            })}
+          </div>
+          <div className="cl-save-hint"><span className="d" />Enregistré automatiquement</div>
+        </div>
+      </section>
+    );
+  }
+
   return (
-    <Panel data-testid={copy.testId}>
-      <PanelHeader>{copy.title}</PanelHeader>
+    <Panel data-testid={meta.testId}>
+      <PanelHeader>{t(`${meta.prefix}.title`)}</PanelHeader>
       <div style={{ padding: 16 }}>
         <div
           style={{
@@ -134,14 +153,15 @@ export function OrphanRolesPanel({ module }: Props) {
             lineHeight: 1.5,
           }}
         >
-          {copy.description}
+          {t(`${meta.prefix}.desc`)}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {ROLES.map((r) => {
-            const checked = currentRoles.includes(r.code);
+          {ROLE_CODES.map((code) => {
+            const checked = currentRoles.includes(code);
+            const label = t(`role.${code}`);
             return (
               <label
-                key={r.code}
+                key={code}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -153,11 +173,11 @@ export function OrphanRolesPanel({ module }: Props) {
                   type="checkbox"
                   checked={checked}
                   disabled={!isAdmin || isPending || isLoading}
-                  onChange={(e) => void toggleRole(r.code, e.target.checked)}
-                  aria-label={`Visibilité orphelins ${module} pour ${r.label}`}
+                  onChange={(e) => void toggleRole(code, e.target.checked)}
+                  aria-label={t('settings.orphan.aria', { module, role: label })}
                   style={{ width: 16, height: 16 }}
                 />
-                <span style={{ fontSize: 13 }}>{r.label}</span>
+                <span style={{ fontSize: 13 }}>{label}</span>
               </label>
             );
           })}

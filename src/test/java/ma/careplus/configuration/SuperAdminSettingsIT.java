@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Map;
 import java.util.UUID;
 import ma.careplus.identity.infrastructure.security.LoginRateLimitFilter;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *   - un ADMIN normal qui ré-émet l'identité inchangée passe (200) — il doit
  *     pouvoir toucher les champs non protégés (cloisonnement, modules).
  * Garde réelle : SettingsController.requireSuperAdminIfProtectedChanges.
+ *
+ * V072 (ADR-044) — l'apparence (thème) est un champ protégé au même titre que la
+ * langue : bottle de la walk QA du 2026-05-30 (panneau Apparence super admin) —
+ * round-trip JSON, refus 403 pour un ADMIN normal, taille bornée (400).
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -229,5 +234,76 @@ class SuperAdminSettingsIT {
                                 {"name":"Cabinet Test","address":"1 rue","city":"Casa","phone":"+212600000000"}
                                 """))
                 .andExpect(status().isOk());
+    }
+
+    // ── V072 — Apparence (thème) ──────────────────────────────────────────────
+
+    /** Le JSON d'apparence tel qu'envoyé par le panneau Apparence (preview puis save). */
+    private static final String APPEARANCE_JSON =
+            "{\"font\":\"jakarta\",\"tone\":\"default\",\"accent\":\"#5b53d8\",\"dark\":true}";
+
+    /**
+     * Bottle QA : un SUPER_ADMIN enregistre l'apparence (mode sombre + accent indigo +
+     * police) → 200, renvoyée telle quelle, et persistée en base (cabinet-wide).
+     */
+    @Test
+    void superAdminCanSaveAndReadBackAppearance() throws Exception {
+        String t = token(superAdminEmail);
+        String body = objectMapper.writeValueAsString(Map.of(
+                "name", "Cabinet Test", "address", "1 rue", "city", "Casa",
+                "phone", "+212600000000", "appearance", APPEARANCE_JSON));
+
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appearance").value(APPEARANCE_JSON));
+
+        String stored = jdbc.queryForObject(
+                "SELECT appearance FROM configuration_clinic_settings LIMIT 1", String.class);
+        assertThat(stored).isEqualTo(APPEARANCE_JSON);
+
+        // Re-lecture via GET → le thème est rechargé depuis le backend (preuve cabinet-wide).
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get(CLINIC_URL).header("Authorization", "Bearer " + t))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.appearance").value(APPEARANCE_JSON));
+    }
+
+    /** Bottle QA : un ADMIN normal ne peut pas changer l'apparence (champ protégé) → 403. */
+    @Test
+    void normalAdminCannotChangeAppearance() throws Exception {
+        String t = token(adminEmail);
+        String body = objectMapper.writeValueAsString(Map.of(
+                "name", "Cabinet Test", "address", "1 rue", "city", "Casa",
+                "phone", "+212600000000", "appearance", APPEARANCE_JSON));
+
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("SUPER_ADMIN_REQUIRED"));
+
+        String stored = jdbc.queryForObject(
+                "SELECT appearance FROM configuration_clinic_settings LIMIT 1", String.class);
+        assertThat(stored).isNull();
+    }
+
+    /** Garde de taille : une apparence > 2000 caractères est rejetée (400). */
+    @Test
+    void oversizedAppearanceRejected() throws Exception {
+        String t = token(superAdminEmail);
+        String huge = "{\"x\":\"" + "a".repeat(2100) + "\"}";
+        String body = objectMapper.writeValueAsString(Map.of(
+                "name", "Cabinet Test", "address", "1 rue", "city", "Casa",
+                "phone", "+212600000000", "appearance", huge));
+
+        mockMvc.perform(put(CLINIC_URL)
+                        .header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isBadRequest());
     }
 }

@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/api/queryClient';
 import { useBootstrapAuth } from '@/lib/auth/useAuth';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { I18nProvider } from '@/lib/i18n/I18nProvider';
+import { AppearanceProvider } from '@/lib/theme/AppearanceProvider';
 
 function BootstrappedRouter() {
   const { ready } = useBootstrapAuth();
@@ -37,7 +38,11 @@ export default function App() {
         {/* I18nProvider lit la langue cabinet (V071) — doit être sous le
             QueryClient. Applique aussi dir=rtl sur <html> pour l'arabe (#122). */}
         <I18nProvider>
+        {/* AppearanceProvider applique le thème cabinet (V072) — sous le
+            QueryClient pour lire /settings/clinic, comme I18nProvider. */}
+        <AppearanceProvider>
         <BootstrappedRouter />
+        </AppearanceProvider>
         <Toaster
           position="top-right"
           toastOptions={{

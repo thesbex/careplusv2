@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAgendaIsolation,
   useUpdateAgendaIsolation,
@@ -27,6 +28,7 @@ import {
 import { usePractitioners } from '../hooks/usePractitioners';
 
 export function AgendaIsolationToggle() {
+  const { t } = useT();
   const { practitioners } = usePractitioners();
   const { settings, agendaStrictIsolation, isLoading } = useAgendaIsolation();
   const { updateAgendaIsolation, isPending } = useUpdateAgendaIsolation();
@@ -42,7 +44,7 @@ export function AgendaIsolationToggle() {
 
   async function handleToggle(next: boolean) {
     if (!settings) {
-      toast.error('Paramètres cabinet non chargés.');
+      toast.error(t('settings.notLoaded'));
       return;
     }
     try {
@@ -50,11 +52,7 @@ export function AgendaIsolationToggle() {
         settings,
         agendaStrictIsolation: next,
       });
-      toast.success(
-        next
-          ? 'Cloisonnement activé — chaque médecin ne voit plus que son agenda.'
-          : 'Cloisonnement désactivé — agendas partagés.',
-      );
+      toast.success(next ? t('settings.iso.onToast') : t('settings.iso.offToast'));
     } catch (err) {
       const problem = toProblemDetail(err);
       toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
@@ -63,7 +61,7 @@ export function AgendaIsolationToggle() {
 
   return (
     <Panel data-testid="agenda-isolation-toggle">
-      <PanelHeader>Cloisonnement (agendas, vaccinations)</PanelHeader>
+      <PanelHeader>{t('settings.iso.title')}</PanelHeader>
       <div style={{ padding: 16 }}>
         <label
           style={{
@@ -84,7 +82,7 @@ export function AgendaIsolationToggle() {
           />
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {agendaStrictIsolation ? 'Activé' : 'Désactivé'}
+              {agendaStrictIsolation ? t('settings.iso.on') : t('settings.iso.off')}
             </div>
             <div
               style={{
@@ -94,11 +92,7 @@ export function AgendaIsolationToggle() {
                 lineHeight: 1.5,
               }}
             >
-              Quand activé, chaque médecin ne voit que son propre agenda, et
-              chaque secrétaire / assistant(e) uniquement les agendas et la
-              file d'attente des médecins auxquels elle est assignée. La
-              queue Vaccination filtre aussi sur les patients suivis.
-              Désactivé (par défaut), tout est partagé.
+              {t('settings.iso.hint')}
             </div>
           </div>
         </label>

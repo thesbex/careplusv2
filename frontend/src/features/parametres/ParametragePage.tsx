@@ -41,6 +41,7 @@ import { OrphanRolesPanel } from './components/OrphanRolesPanel';
 import { ModulesPanel } from './components/ModulesPanel';
 import { BackupRestorePanel } from './components/BackupRestorePanel';
 import { LanguageSettingsSection } from './components/LanguageSettingsSection';
+import { AppearanceSettingsSection } from './components/AppearanceSettingsSection';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
@@ -68,14 +69,6 @@ const NAV_MAP = {
 } as const;
 
 type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'support';
-
-const IDENTITY_HEADER: Record<EstablishmentType, string> = {
-  CABINET: 'Identité du cabinet',
-  CLINIQUE: 'Identité de la clinique',
-  HOPITAL: 'Identité de l’hôpital',
-  CENTRE_MEDICAL: 'Identité du centre médical',
-  AUTRE: 'Identité de l’établissement',
-};
 
 function buildTabs(
   type: EstablishmentType | undefined,
@@ -121,12 +114,8 @@ const EMPTY_FORM: ClinicSettingsForm = {
   hospitalizationEnabled: false,
 };
 
-const ESTABLISHMENT_TYPE_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'HOPITAL' | 'CENTRE_MEDICAL' | 'AUTRE'; label: string }[] = [
-  { value: 'CABINET', label: 'Cabinet' },
-  { value: 'CLINIQUE', label: 'Clinique' },
-  { value: 'HOPITAL', label: 'Hôpital' },
-  { value: 'CENTRE_MEDICAL', label: 'Centre médical' },
-  { value: 'AUTRE', label: 'Autre' },
+const ESTABLISHMENT_TYPES: EstablishmentType[] = [
+  'CABINET', 'CLINIQUE', 'HOPITAL', 'CENTRE_MEDICAL', 'AUTRE',
 ];
 
 // ── Cabinet tab ───────────────────────────────────────────────────────────────
@@ -202,13 +191,13 @@ function CabinetTab() {
     e.preventDefault();
     try {
       await update(form);
-      toast.success('Paramètres enregistrés.');
+      toast.success(t('settings.saved'));
     } catch {
-      toast.error('Échec de la sauvegarde.');
+      toast.error(t('common.saveError'));
     }
   }
 
-  const headerLabel = IDENTITY_HEADER[form.establishmentType ?? 'CABINET'];
+  const headerLabel = t(`settings.identity.header.${form.establishmentType ?? 'CABINET'}`);
 
   return (
     <>
@@ -226,7 +215,7 @@ function CabinetTab() {
       >
         {isLoading && (
           <div style={{ gridColumn: '1 / -1', color: 'var(--ink-3)', fontSize: 12 }}>
-            Chargement…
+            {t('common.loading')}
           </div>
         )}
         {!isSuperAdmin && (
@@ -255,7 +244,7 @@ function CabinetTab() {
           <FieldLabel htmlFor="cab-type">{t('settings.identity.type')}</FieldLabel>
           <Select
             id="cab-type"
-            aria-label="Type d'établissement"
+            aria-label={t('settings.estType.aria')}
             value={form.establishmentType ?? 'CABINET'}
             onChange={(e) => setField('establishmentType', e.target.value as ClinicSettingsForm['establishmentType'])}
             style={{
@@ -269,8 +258,8 @@ function CabinetTab() {
               width: '100%',
             }}
           >
-            {ESTABLISHMENT_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+            {ESTABLISHMENT_TYPES.map((v) => (
+              <option key={v} value={v}>{t(`settings.estType.${v}`)}</option>
             ))}
           </Select>
         </Field>
@@ -425,6 +414,8 @@ function CabinetTab() {
     <div style={{ height: 16 }} />
     <LanguageSettingsSection />
     <div style={{ height: 16 }} />
+    <AppearanceSettingsSection />
+    <div style={{ height: 16 }} />
     <ModulesPanel />
     <div style={{ height: 16 }} />
     <BackupRestorePanel />
@@ -435,6 +426,7 @@ function CabinetTab() {
 // ── Tarifs tab ────────────────────────────────────────────────────────────────
 
 function TarifsTab() {
+  const { t: tr } = useT();
   const { tiers } = useTiers();
   const { updateTier, isPending } = useUpdateTierDiscount();
   const [drafts, setDrafts] = useState<Record<string, number>>({});
@@ -446,24 +438,23 @@ function TarifsTab() {
   async function handleSave(tier: 'NORMAL' | 'PREMIUM') {
     const value = drafts[tier];
     if (value === undefined || value < 0 || value > 100) {
-      toast.error('Pourcentage entre 0 et 100.');
+      toast.error(tr('settings.tarifs.rangeError'));
       return;
     }
     try {
       await updateTier({ tier, discountPercent: value });
-      toast.success('Remise mise à jour.');
+      toast.success(tr('settings.tarifs.saved'));
     } catch {
-      toast.error('Échec de la mise à jour.');
+      toast.error(tr('common.updateError'));
     }
   }
 
   return (
     <Panel>
-      <PanelHeader>Remises automatiques par tier patient</PanelHeader>
+      <PanelHeader>{tr('settings.tarifs.title')}</PanelHeader>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-          La remise est appliquée automatiquement à la facture lors de la signature de la
-          consultation, en fonction du tier renseigné sur le patient.
+          {tr('settings.tarifs.hint')}
         </div>
         {tiers.map((t) => (
           <div
@@ -479,12 +470,12 @@ function TarifsTab() {
             }}
           >
             <span style={{ fontSize: 13, fontWeight: 600 }}>
-              {t.tier === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+              {t.tier === 'PREMIUM' ? `🌟 ${tr('settings.tarifs.premium')}` : tr('settings.tarifs.normal')}
             </span>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
               {t.tier === 'PREMIUM'
-                ? 'Patients identifiés Premium dans le dossier.'
-                : 'Patients standards (par défaut).'}
+                ? tr('settings.tarifs.premiumDesc')
+                : tr('settings.tarifs.normalDesc')}
             </span>
             <Input
               type="number"
@@ -502,7 +493,7 @@ function TarifsTab() {
               disabled={isPending}
               onClick={() => void handleSave(t.tier)}
             >
-              Enregistrer
+              {tr('common.save')}
             </Button>
           </div>
         ))}
@@ -533,6 +524,7 @@ function CongesTab() {
   // selector pour gérer les congés de l'un d'eux. Le MEDECIN connecté est
   // pré-sélectionné par défaut (donc en mode solo, l'expérience reste la
   // même qu'avant : tu gères tes propres congés sans rien voir d'extra).
+  const { t } = useT();
   const currentUser = useAuthStore((s) => s.user);
   const { practitioners } = usePractitioners();
   const activePractitioners = practitioners.filter((p) => p.active);
@@ -560,11 +552,11 @@ function CongesTab() {
     e.preventDefault();
     setFormError(null);
     if (!startDate || !endDate) {
-      setFormError('Veuillez renseigner les deux dates.');
+      setFormError(t('settings.conges.errDates'));
       return;
     }
     if (endDate < startDate) {
-      setFormError('La date de fin doit être après la date de début.');
+      setFormError(t('settings.conges.errOrder'));
       return;
     }
     await createLeave({ startDate, endDate, ...(reason ? { reason } : {}) }).catch(() => null);
@@ -575,14 +567,14 @@ function CongesTab() {
 
   return (
     <Panel>
-      <PanelHeader>Congés &amp; absences</PanelHeader>
+      <PanelHeader>{t('settings.conges.title')}</PanelHeader>
       <div style={{ padding: 16 }}>
         {showPractitionerSelector && (
           <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center' }}>
-            <FieldLabel htmlFor="leave-practitioner" style={{ marginBottom: 0 }}>Médecin</FieldLabel>
+            <FieldLabel htmlFor="leave-practitioner" style={{ marginBottom: 0 }}>{t('settings.conges.doctor')}</FieldLabel>
             <Select
               id="leave-practitioner"
-              aria-label="Sélectionner le médecin"
+              aria-label={t('settings.conges.selectDoctor')}
               value={practitionerId}
               onChange={(e) => setPractitionerId(e.target.value)}
               style={{
@@ -608,21 +600,21 @@ function CongesTab() {
         <form onSubmit={(e) => { void handleSubmit(e); }}>
           <div className="params-leave-form">
             <Field>
-              <FieldLabel htmlFor="leave-start">Date de début</FieldLabel>
+              <FieldLabel htmlFor="leave-start">{t('settings.conges.start')}</FieldLabel>
               <Input id="leave-start" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="leave-end">Date de fin</FieldLabel>
+              <FieldLabel htmlFor="leave-end">{t('settings.conges.end')}</FieldLabel>
               <Input id="leave-end" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </Field>
             <Field>
-              <FieldLabel htmlFor="leave-reason">Motif (facultatif)</FieldLabel>
-              <Input id="leave-reason" placeholder="Congé annuel, formation…" value={reason} onChange={(e) => setReason(e.target.value)} />
+              <FieldLabel htmlFor="leave-reason">{t('settings.conges.reason')}</FieldLabel>
+              <Input id="leave-reason" placeholder={t('settings.conges.reasonPlaceholder')} value={reason} onChange={(e) => setReason(e.target.value)} />
             </Field>
             <Field>
               <FieldLabel>&nbsp;</FieldLabel>
               <Button type="submit" variant="primary" disabled={isPending}>
-                {isPending ? 'Ajout…' : 'Ajouter'}
+                {isPending ? t('settings.conges.adding') : t('common.add')}
               </Button>
             </Field>
           </div>
@@ -634,12 +626,12 @@ function CongesTab() {
         </form>
 
         <div className="params-leave-list">
-          {isLoading && <div className="params-leave-empty">Chargement…</div>}
+          {isLoading && <div className="params-leave-empty">{t('common.loading')}</div>}
           {error && (
             <div className="params-leave-empty" style={{ color: 'var(--danger)' }}>{error}</div>
           )}
           {!isLoading && !error && leaves.length === 0 && (
-            <div className="params-leave-empty">Aucun congé déclaré.</div>
+            <div className="params-leave-empty">{t('settings.conges.empty')}</div>
           )}
           {leaves.map((l) => {
             const upcoming = isFuture(l.endDate);
@@ -651,13 +643,13 @@ function CongesTab() {
                 </div>
                 <div className="params-leave-reason">{l.reason ?? ''}</div>
                 <span className={`params-leave-badge${upcoming ? '' : ' past'}`}>
-                  {upcoming ? 'À venir' : 'Passé'}
+                  {upcoming ? t('settings.conges.upcoming') : t('settings.conges.past')}
                 </span>
                 <Button
                   variant="ghost"
                   iconOnly
                   size="sm"
-                  aria-label="Supprimer ce congé"
+                  aria-label={t('settings.conges.deleteAria')}
                   disabled={isDeletingId === l.id}
                   onClick={() => { void deleteLeave(l.id); }}
                 >
@@ -674,40 +666,40 @@ function CongesTab() {
 
 // ── Droits d'accès tab (QA3-3 v1) ─────────────────────────────────────────────
 
-const PERMISSIONS: { code: string; label: string; category: string }[] = [
-  { code: 'PATIENT_CREATE',     label: 'Créer / modifier un patient',           category: 'Patients' },
-  { code: 'PATIENT_READ',       label: 'Consulter les détails d’un patient',    category: 'Patients' },
-  { code: 'APPOINTMENT_READ',   label: 'Consulter le planning',                 category: 'Rendez-vous' },
-  { code: 'APPOINTMENT_CREATE', label: 'Créer un rendez-vous',                  category: 'Rendez-vous' },
-  { code: 'ARRIVAL_DECLARE',    label: 'Déclarer l’arrivée d’un patient',       category: 'Salle d’attente' },
-  { code: 'VITALS_RECORD',      label: 'Prendre les constantes (poids, tension…)', category: 'Salle d’attente' },
-  { code: 'INVOICE_READ',       label: 'Accéder au module facturation',         category: 'Facturation' },
-  { code: 'INVOICE_ISSUE',      label: 'Émettre / encaisser une facture',       category: 'Facturation' },
+const PERMISSIONS: { code: string; categoryKey: string }[] = [
+  { code: 'PATIENT_CREATE',     categoryKey: 'perm.cat.patients' },
+  { code: 'PATIENT_READ',       categoryKey: 'perm.cat.patients' },
+  { code: 'APPOINTMENT_READ',   categoryKey: 'perm.cat.rdv' },
+  { code: 'APPOINTMENT_CREATE', categoryKey: 'perm.cat.rdv' },
+  { code: 'ARRIVAL_DECLARE',    categoryKey: 'perm.cat.salle' },
+  { code: 'VITALS_RECORD',      categoryKey: 'perm.cat.salle' },
+  { code: 'INVOICE_READ',       categoryKey: 'perm.cat.factu' },
+  { code: 'INVOICE_ISSUE',      categoryKey: 'perm.cat.factu' },
   // QA5-1 — administre les sources d'import auto + valide / rejette les
   // documents arrivés dans la corbeille. Distincte de l'upload manuel.
-  { code: 'DOCUMENT_IMPORT_ADMIN', label: "Administrer l'import auto de documents", category: 'Documents' },
+  { code: 'DOCUMENT_IMPORT_ADMIN', categoryKey: 'perm.cat.documents' },
   // V016 — administre le catalogue des prestations (CRUD + tarifs).
-  { code: 'PRESTATION_ADMIN', label: 'Administrer le catalogue des prestations', category: 'Prestations' },
+  { code: 'PRESTATION_ADMIN', categoryKey: 'perm.cat.prestations' },
   // V018 — import CSV des catalogues médicaments / analyses / radio.
-  { code: 'CATALOG_IMPORT', label: 'Importer un catalogue (médicaments, analyses, radio)', category: 'Catalogue' },
+  { code: 'CATALOG_IMPORT', categoryKey: 'perm.cat.catalogue' },
 ];
 
-const ROLES: { code: RoleCode; label: string; readOnly: boolean }[] = [
-  { code: 'SECRETAIRE', label: 'Secrétaire', readOnly: false },
-  { code: 'ASSISTANT',  label: 'Assistant(e)', readOnly: false },
-  { code: 'MEDECIN',    label: 'Médecin',    readOnly: true },
-  { code: 'ADMIN',      label: 'Administrateur', readOnly: true },
+const ROLES: { code: RoleCode; readOnly: boolean }[] = [
+  { code: 'SECRETAIRE', readOnly: false },
+  { code: 'ASSISTANT',  readOnly: false },
+  { code: 'MEDECIN',    readOnly: true },
+  { code: 'ADMIN',      readOnly: true },
 ];
 
 // Réceptionniste = bureau des admissions ; n'apparaît dans la matrice que
 // lorsque l'établissement hospitalise (clinique / hôpital).
-const RECEPTIONNISTE_ROLE: { code: RoleCode; label: string; readOnly: boolean } = {
+const RECEPTIONNISTE_ROLE: { code: RoleCode; readOnly: boolean } = {
   code: 'RECEPTIONNISTE',
-  label: 'Réceptionniste',
   readOnly: false,
 };
 
 function DroitsTab() {
+  const { t } = useT();
   const { rows, isLoading, error } = useRolePermissions();
   const { update, isPending } = useUpdateRolePermissions();
   const { settings } = useClinicSettings();
@@ -730,7 +722,7 @@ function DroitsTab() {
     const flag: PermissionFlag = { permission, granted: !current };
     try {
       await update({ roleCode, permissions: [flag] });
-      toast.success('Droits mis à jour.');
+      toast.success(t('settings.droits.saved'));
     } catch (err) {
       const problem = toProblemDetail(err);
       toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
@@ -739,16 +731,16 @@ function DroitsTab() {
 
   const grouped = new Map<string, typeof PERMISSIONS>();
   for (const p of PERMISSIONS) {
-    if (!grouped.has(p.category)) grouped.set(p.category, []);
-    grouped.get(p.category)!.push(p);
+    if (!grouped.has(p.categoryKey)) grouped.set(p.categoryKey, []);
+    grouped.get(p.categoryKey)!.push(p);
   }
 
   return (
     <Panel>
       <PanelHeader>
-        <span>Droits d’accès par rôle</span>
+        <span>{t('settings.droits.title')}</span>
         <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
-          MEDECIN / ADMIN ne sont pas modifiables — accès total par défaut.
+          {t('settings.droits.note')}
         </span>
       </PanelHeader>
       <div style={{ padding: 16, overflowX: 'auto' }}>
@@ -756,17 +748,17 @@ function DroitsTab() {
           <div style={{ color: 'var(--danger)', fontSize: 12, marginBottom: 12 }}>{error}</div>
         )}
         {isLoading ? (
-          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+          <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
             <thead>
               <tr>
                 <th style={{ textAlign: 'left', padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
-                  Fonctionnalité
+                  {t('settings.droits.feature')}
                 </th>
                 {ROLES_VISIBLE.map((r) => (
                   <th key={r.code} style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)', fontWeight: 600, textAlign: 'center', minWidth: 100 }}>
-                    {r.label}
+                    {t(`role.${r.code}`)}
                   </th>
                 ))}
               </tr>
@@ -776,13 +768,15 @@ function DroitsTab() {
                 <Fragment key={cat}>
                   <tr>
                     <td colSpan={ROLES_VISIBLE.length + 1} style={{ padding: '10px 12px 4px', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {cat}
+                      {t(cat)}
                     </td>
                   </tr>
-                  {perms.map((p) => (
+                  {perms.map((p) => {
+                    const permLabel = t(`perm.${p.code}`);
+                    return (
                     <tr key={p.code}>
                       <td style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-                        {p.label}
+                        {permLabel}
                       </td>
                       {ROLES_VISIBLE.map((r) => {
                         const granted = matrix.get(r.code)?.get(p.code) ?? false;
@@ -793,23 +787,22 @@ function DroitsTab() {
                               checked={granted}
                               disabled={r.readOnly || isPending}
                               onChange={() => void toggle(r.code, p.code, granted)}
-                              aria-label={`${p.label} pour ${r.label}`}
+                              aria-label={t('settings.droits.aria', { perm: permLabel, role: t(`role.${r.code}`) })}
                               style={{ width: 16, height: 16, cursor: r.readOnly ? 'not-allowed' : 'pointer' }}
                             />
                           </td>
                         );
                       })}
                     </tr>
-                  ))}
+                    );
+                  })}
                 </Fragment>
               ))}
             </tbody>
           </table>
         )}
         <div style={{ marginTop: 14, fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-          Note v1 — la matrice contrôle l’affichage des écrans / actions côté frontend.
-          Les endpoints backend appliquent encore les rôles fixes (le verrouillage final
-          arrive dans la refonte RBAC complète, voir BACKLOG.md).
+          {t('settings.droits.notev1')}
         </div>
       </div>
     </Panel>
@@ -830,8 +823,8 @@ export default function ParametragePage() {
   return (
     <Screen
       active="params"
-      title="Paramètres"
-      sub={tabs.find((t) => t.id === tab)?.label ?? ''}
+      title={t('nav.params')}
+      sub={tabs.find((tb) => tb.id === tab)?.label ?? ''}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
       <div
@@ -843,28 +836,28 @@ export default function ParametragePage() {
           background: 'var(--surface)',
         }}
         role="tablist"
-        aria-label="Onglets paramètres"
+        aria-label={t('settings.tabsAria')}
       >
-        {tabs.map((t) => (
+        {tabs.map((tb) => (
           <button
-            key={t.id}
+            key={tb.id}
             type="button"
             role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
+            aria-selected={tab === tb.id}
+            onClick={() => setTab(tb.id)}
             style={{
               padding: '6px 14px',
               border: '1px solid var(--border)',
               borderRadius: 999,
-              background: tab === t.id ? 'var(--primary)' : 'var(--surface)',
-              color: tab === t.id ? 'white' : 'var(--ink-2)',
+              background: tab === tb.id ? 'var(--primary)' : 'var(--surface)',
+              color: tab === tb.id ? 'white' : 'var(--ink-2)',
               fontFamily: 'inherit',
               fontSize: 12.5,
               fontWeight: 550,
               cursor: 'pointer',
             }}
           >
-            {t.label}
+            {tb.label}
           </button>
         ))}
       </div>

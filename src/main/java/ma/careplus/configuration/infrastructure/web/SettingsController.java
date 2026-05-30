@@ -93,7 +93,9 @@ public class SettingsController {
             /** V070 — codes des modules désactivés par l'admin (vide = tous activés). */
             List<String> disabledModules,
             /** V071 — langue de l'application (fr|en|ar|es). Réglée par le super admin. */
-            String language
+            String language,
+            /** V072 — apparence (JSON : police / ambiance / accent / mode sombre). Réglée par le super admin. */
+            String appearance
     ) {}
 
     public record UpdateClinicSettingsRequest(
@@ -152,7 +154,9 @@ public class SettingsController {
              */
             List<@Pattern(regexp = "vaccinations|grossesses|stock|messages|assistant|charges") String> disabledModules,
             /** V071 — langue de l'application. Optional : null = pas de changement. Protégé super admin. */
-            @Pattern(regexp = "fr|en|ar|es") String language
+            @Pattern(regexp = "fr|en|ar|es") String language,
+            /** V072 — apparence (JSON). Optional : null = pas de changement. Protégé super admin. */
+            @Size(max = 2000) String appearance
     ) {}
 
     public record TierConfigView(UUID id, String tier, BigDecimal discountPercent) {}
@@ -179,7 +183,7 @@ public class SettingsController {
                             + "(logo_blob IS NOT NULL) AS has_logo, "
                             + "rc, if_no, legal_form, logo_position, hospitalization_enabled, "
                             + "stay_billing_day_rule, hospitalization_orphan_visible_roles, "
-                            + "disabled_modules, language "
+                            + "disabled_modules, language, appearance "
                             + "FROM configuration_clinic_settings LIMIT 1",
                     (rs, i) -> new ClinicSettingsView(
                             (UUID) rs.getObject("id"),
@@ -208,7 +212,8 @@ public class SettingsController {
                             rs.getString("stay_billing_day_rule"),
                             readStringArray(rs, "hospitalization_orphan_visible_roles"),
                             readStringArray(rs, "disabled_modules"),
-                            rs.getString("language")));
+                            rs.getString("language"),
+                            rs.getString("appearance")));
             return ResponseEntity.ok(v);
         } catch (EmptyResultDataAccessException e) {
             // No row yet — return 204 so the frontend can render the empty
@@ -237,6 +242,7 @@ public class SettingsController {
         List<String> finalHospOrphanRoles;
         List<String> finalDisabledModules;
         String finalLanguage;
+        String finalAppearance;
         if (existing != null && existing > 0) {
             id = jdbc.queryForObject(
                     "SELECT id FROM configuration_clinic_settings LIMIT 1", UUID.class);
@@ -330,6 +336,13 @@ public class SettingsController {
             } else {
                 finalLanguage = req.language();
             }
+            if (req.appearance() == null) {
+                finalAppearance = jdbc.queryForObject(
+                        "SELECT appearance FROM configuration_clinic_settings WHERE id = ?",
+                        String.class, id);
+            } else {
+                finalAppearance = req.appearance();
+            }
             jdbc.update(
                     "UPDATE configuration_clinic_settings SET name=?, address=?, city=?, "
                             + "phone=?, email=?, inpe=?, cnom=?, ice=?, rib=?, "
@@ -344,6 +357,7 @@ public class SettingsController {
                             + "hospitalization_orphan_visible_roles=?, "
                             + "disabled_modules=?, "
                             + "language=?, "
+                            + "appearance=?, "
                             + "updated_at=now() "
                             + "WHERE id=?",
                     req.name(), req.address(), req.city(), req.phone(),
@@ -360,6 +374,7 @@ public class SettingsController {
                     finalHospOrphanRoles.toArray(String[]::new),
                     finalDisabledModules.toArray(String[]::new),
                     finalLanguage,
+                    finalAppearance,
                     id);
         } else {
             id = UUID.randomUUID();
@@ -384,6 +399,7 @@ public class SettingsController {
                     ? List.copyOf(req.disabledModules())
                     : List.of();
             finalLanguage = req.language() != null ? req.language() : "fr";
+            finalAppearance = req.appearance();
             jdbc.update(
                     "INSERT INTO configuration_clinic_settings "
                             + "(id, name, address, city, phone, email, inpe, cnom, ice, rib, "
@@ -392,8 +408,8 @@ public class SettingsController {
                             + " vaccination_orphan_visible_roles, pregnancy_orphan_visible_roles, "
                             + " rc, if_no, legal_form, hospitalization_enabled, "
                             + " stay_billing_day_rule, hospitalization_orphan_visible_roles, "
-                            + " disabled_modules, language) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " disabled_modules, language, appearance) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     id, req.name(), req.address(), req.city(), req.phone(),
                     nullIfBlank(req.email()), nullIfBlank(req.inpe()),
                     nullIfBlank(req.cnom()), nullIfBlank(req.ice()),
@@ -407,7 +423,8 @@ public class SettingsController {
                     finalStayBillingDayRule,
                     finalHospOrphanRoles.toArray(String[]::new),
                     finalDisabledModules.toArray(String[]::new),
-                    finalLanguage);
+                    finalLanguage,
+                    finalAppearance);
         }
         boolean hasLogo = Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT (logo_blob IS NOT NULL) FROM configuration_clinic_settings WHERE id = ?",
@@ -433,7 +450,7 @@ public class SettingsController {
                 finalReadback[0], finalReadback[1], finalReadback[2], finalReadback[3],
                 finalHospitalizationEnabled,
                 finalStayBillingDayRule, finalHospOrphanRoles, finalDisabledModules,
-                finalLanguage);
+                finalLanguage, finalAppearance);
     }
 
     /**
@@ -448,7 +465,7 @@ public class SettingsController {
         var cur = jdbc.queryForMap(
                 "SELECT name, address, city, phone, email, inpe, cnom, ice, rib, "
                         + "establishment_type, imaging_internal, lab_internal, pharmacy_internal, "
-                        + "hospitalization_enabled, rc, if_no, legal_form, language "
+                        + "hospitalization_enabled, rc, if_no, legal_form, language, appearance "
                         + "FROM configuration_clinic_settings WHERE id = ?", id);
         boolean changed =
                 // Identité du centre médical (champs toujours écrits depuis la requête).
@@ -477,12 +494,14 @@ public class SettingsController {
                 || (req.hospitalizationEnabled() != null
                         && req.hospitalizationEnabled() != toBool(cur.get("hospitalization_enabled")))
                 // V071 — la langue de l'application est réglée par le super admin seul.
-                || (req.language() != null && textChanged(req.language(), cur.get("language")));
+                || (req.language() != null && textChanged(req.language(), cur.get("language")))
+                // V072 — l'apparence (thème) est réglée par le super admin seul.
+                || (req.appearance() != null && textChanged(req.appearance(), cur.get("appearance")));
         if (changed) {
             throw new BusinessException(
                     "SUPER_ADMIN_REQUIRED",
                     "Seul un super administrateur peut modifier l'identité du centre, "
-                            + "les services internes, l'hospitalisation et la langue.",
+                            + "les services internes, l'hospitalisation, la langue et l'apparence.",
                     HttpStatus.FORBIDDEN.value());
         }
     }

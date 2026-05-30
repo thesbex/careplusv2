@@ -17,6 +17,7 @@ import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePrestationCatalog } from '@/features/prestation/hooks/usePrestations';
 import {
   useCreatePrestation,
@@ -39,6 +40,7 @@ interface RowProps {
 }
 
 function Row({ prestation }: RowProps) {
+  const { t } = useT();
   const [draft, setDraft] = useState<PrestationFormPayload>({
     code: prestation.code,
     label: prestation.label,
@@ -59,24 +61,24 @@ function Row({ prestation }: RowProps) {
   async function onSave() {
     try {
       await update({ id: prestation.id, payload: draft });
-      toast.success(`${draft.label} mis à jour.`);
+      toast.success(t('settings.prest.updated', { label: draft.label }));
       setEditing(false);
     } catch (err) {
       const status = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { status?: number } }).response?.status
         : undefined;
-      if (status === 409) toast.error('Code déjà utilisé.');
-      else toast.error('Échec de la sauvegarde.');
+      if (status === 409) toast.error(t('settings.prest.codeDup'));
+      else toast.error(t('common.saveError'));
     }
   }
 
   async function onDeactivate() {
-    if (!confirm(`Désactiver « ${prestation.label} » ?`)) return;
+    if (!confirm(t('settings.prest.confirmDeact', { label: prestation.label }))) return;
     try {
       await deactivate(prestation.id);
-      toast.success('Prestation désactivée.');
+      toast.success(t('settings.prest.deactivated'));
     } catch {
-      toast.error('Échec de la désactivation.');
+      toast.error(t('settings.prest.deactErr'));
     }
   }
 
@@ -86,14 +88,14 @@ function Row({ prestation }: RowProps) {
         <Input
           value={draft.code}
           onChange={(e) => { setDraft({ ...draft, code: e.target.value }); setEditing(true); }}
-          aria-label={`Code ${prestation.label}`}
+          aria-label={t('settings.prest.ariaCode', { label: prestation.label })}
         />
       </td>
       <td style={{ padding: '6px 8px' }}>
         <Input
           value={draft.label}
           onChange={(e) => { setDraft({ ...draft, label: e.target.value }); setEditing(true); }}
-          aria-label={`Libellé ${prestation.code}`}
+          aria-label={t('settings.prest.ariaLabel', { code: prestation.code })}
         />
       </td>
       <td style={{ padding: '6px 8px', width: 120 }}>
@@ -103,7 +105,7 @@ function Row({ prestation }: RowProps) {
           step="0.01"
           value={draft.defaultPrice}
           onChange={(e) => { setDraft({ ...draft, defaultPrice: Number(e.target.value) || 0 }); setEditing(true); }}
-          aria-label={`Tarif ${prestation.label}`}
+          aria-label={t('settings.prest.ariaPrice', { label: prestation.label })}
         />
       </td>
       <td style={{ padding: '6px 8px', textAlign: 'center' }}>
@@ -111,13 +113,13 @@ function Row({ prestation }: RowProps) {
           type="checkbox"
           checked={draft.active}
           onChange={(e) => { setDraft({ ...draft, active: e.target.checked }); setEditing(true); }}
-          aria-label={`Actif ${prestation.label}`}
+          aria-label={t('settings.prest.ariaActive', { label: prestation.label })}
         />
       </td>
       <td style={{ padding: '6px 8px', display: 'flex', gap: 4, justifyContent: 'flex-end' }}>
         {dirty && (
           <Button type="button" variant="primary" size="sm" disabled={saving} onClick={() => void onSave()}>
-            Enregistrer
+            {t('common.save')}
           </Button>
         )}
         {editing && !dirty && (
@@ -127,7 +129,7 @@ function Row({ prestation }: RowProps) {
             size="sm"
             onClick={() => setEditing(false)}
           >
-            Fermer
+            {t('common.close')}
           </Button>
         )}
         <Button
@@ -136,7 +138,7 @@ function Row({ prestation }: RowProps) {
           size="sm"
           disabled={deleting || !prestation.active}
           onClick={() => void onDeactivate()}
-          aria-label={`Supprimer ${prestation.label}`}
+          aria-label={t('settings.prest.ariaDelete', { label: prestation.label })}
         >
           <Trash style={{ width: 12, height: 12 }} />
         </Button>
@@ -146,6 +148,7 @@ function Row({ prestation }: RowProps) {
 }
 
 export function PrestationsTab() {
+  const { t } = useT();
   const { prestations, isLoading } = usePrestationCatalog(true); // include inactive
   const { create, isPending: creating } = useCreatePrestation();
   const [showCreate, setShowCreate] = useState(false);
@@ -155,26 +158,26 @@ export function PrestationsTab() {
     e.preventDefault();
     try {
       await create(draft);
-      toast.success(`${draft.label} ajoutée.`);
+      toast.success(t('settings.prest.added', { label: draft.label }));
       setDraft(EMPTY);
       setShowCreate(false);
     } catch (err) {
       const status = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { status?: number } }).response?.status
         : undefined;
-      if (status === 409) toast.error('Code déjà utilisé.');
-      else if (status === 400) toast.error('Champs obligatoires manquants ou invalides.');
-      else toast.error('Échec de la création.');
+      if (status === 409) toast.error(t('settings.prest.codeDup'));
+      else if (status === 400) toast.error(t('settings.prest.required'));
+      else toast.error(t('settings.prest.createErr'));
     }
   }
 
   return (
     <Panel data-testid="prestations-tab">
       <PanelHeader>
-        Catalogue des prestations
+        {t('settings.prest.title')}
         <span style={{ flex: 1 }} />
         <Button type="button" variant="primary" size="sm" onClick={() => setShowCreate((v) => !v)}>
-          {showCreate ? 'Annuler' : 'Nouvelle prestation'}
+          {showCreate ? t('common.cancel') : t('settings.prest.new')}
         </Button>
       </PanelHeader>
 
@@ -184,37 +187,37 @@ export function PrestationsTab() {
           style={{ padding: 16, display: 'grid', gridTemplateColumns: '120px 1fr 120px auto', gap: 8, alignItems: 'end' }}
         >
           <Field>
-            <FieldLabel htmlFor="new-code">Code *</FieldLabel>
+            <FieldLabel htmlFor="new-code">{t('settings.prest.code')}</FieldLabel>
             <Input id="new-code" value={draft.code}
               onChange={(e) => setDraft({ ...draft, code: e.target.value.toUpperCase() })} placeholder="ECG" />
           </Field>
           <Field>
-            <FieldLabel htmlFor="new-label">Libellé *</FieldLabel>
+            <FieldLabel htmlFor="new-label">{t('settings.prest.label')}</FieldLabel>
             <Input id="new-label" value={draft.label}
               onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Électrocardiogramme" />
           </Field>
           <Field>
-            <FieldLabel htmlFor="new-price">Tarif (MAD) *</FieldLabel>
+            <FieldLabel htmlFor="new-price">{t('settings.prest.price')}</FieldLabel>
             <Input id="new-price" type="number" min={0} step="0.01" value={draft.defaultPrice}
               onChange={(e) => setDraft({ ...draft, defaultPrice: Number(e.target.value) || 0 })} />
           </Field>
           <Button type="submit" variant="primary" disabled={creating || !draft.code || !draft.label}>
-            Ajouter
+            {t('common.add')}
           </Button>
         </form>
       )}
 
       {isLoading ? (
-        <div style={{ padding: 16, color: 'var(--ink-3)' }}>Chargement…</div>
+        <div style={{ padding: 16, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
       ) : (
         <div style={{ padding: 16, overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ textAlign: 'left', color: 'var(--ink-3)', fontSize: 11 }}>
-                <th style={{ padding: '6px 8px' }}>Code</th>
-                <th style={{ padding: '6px 8px' }}>Libellé</th>
-                <th style={{ padding: '6px 8px', width: 120 }}>Tarif (MAD)</th>
-                <th style={{ padding: '6px 8px', width: 60, textAlign: 'center' }}>Actif</th>
+                <th style={{ padding: '6px 8px' }}>{t('settings.prest.colCode')}</th>
+                <th style={{ padding: '6px 8px' }}>{t('settings.prest.colLabel')}</th>
+                <th style={{ padding: '6px 8px', width: 120 }}>{t('settings.prest.colPrice')}</th>
+                <th style={{ padding: '6px 8px', width: 60, textAlign: 'center' }}>{t('settings.prest.colActive')}</th>
                 <th />
               </tr>
             </thead>
@@ -223,7 +226,7 @@ export function PrestationsTab() {
               {prestations.length === 0 && (
                 <tr>
                   <td colSpan={5} style={{ padding: 16, color: 'var(--ink-3)' }}>
-                    Aucune prestation. Cliquer « Nouvelle prestation » pour démarrer.
+                    {t('settings.prest.empty')}
                   </td>
                 </tr>
               )}

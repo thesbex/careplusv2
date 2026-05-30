@@ -26,19 +26,20 @@ import {
   useUpdateLogoPosition,
   type LogoPosition,
 } from '../hooks/useClinicLogo';
-
-const POSITION_OPTIONS: { value: LogoPosition; label: string; hint: string }[] = [
-  { value: 'HEADER', label: 'En-tête', hint: 'En haut à gauche du document (défaut)' },
-  { value: 'FOOTER', label: 'Pied de page', hint: 'En bas du document, au-dessus de la mention CarePlus' },
-  { value: 'WATERMARK', label: 'Fond de page (filigrane)', hint: 'Centré sur la page, transparent (~8 %), derrière le contenu' },
-  { value: 'NONE', label: 'Aucun', hint: 'Ne pas afficher le logo sur les documents' },
-];
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const MAX_BYTES = 500 * 1024;
 const ALLOWED_MIMES = new Set(['image/png', 'image/jpeg']);
 const ACCEPT_ATTR = '.png,.jpg,.jpeg';
 
 export function LogoSettingsSection() {
+  const { t } = useT();
+  const POSITION_OPTIONS: { value: LogoPosition; label: string; hint: string }[] = [
+    { value: 'HEADER', label: t('settings.logo.pos.header'), hint: t('settings.logo.pos.headerHint') },
+    { value: 'FOOTER', label: t('settings.logo.pos.footer'), hint: t('settings.logo.pos.footerHint') },
+    { value: 'WATERMARK', label: t('settings.logo.pos.watermark'), hint: t('settings.logo.pos.watermarkHint') },
+    { value: 'NONE', label: t('settings.logo.pos.none'), hint: t('settings.logo.pos.noneHint') },
+  ];
   const { meta, isLoading } = useClinicLogoMeta();
   const previewUrl = useClinicLogoPreviewUrl(meta);
   const { upload, isPending: isUploading } = useUploadClinicLogo();
@@ -54,9 +55,9 @@ export function LogoSettingsSection() {
     if (next === currentPosition) return;
     try {
       await updatePosition(next);
-      toast.success('Emplacement du logo mis à jour.');
+      toast.success(t('settings.logo.posUpdated'));
     } catch {
-      toast.error('Échec de la mise à jour de l\'emplacement.');
+      toast.error(t('settings.logo.posErr'));
     }
   }
 
@@ -71,29 +72,29 @@ export function LogoSettingsSection() {
 
     setErrorMsg(null);
     if (!ALLOWED_MIMES.has(file.type)) {
-      setErrorMsg('Format non autorisé. Utiliser PNG ou JPEG.');
+      setErrorMsg(t('settings.logo.badFormat'));
       return;
     }
     if (file.size > MAX_BYTES) {
-      setErrorMsg('Image trop volumineuse (max 500 Ko).');
+      setErrorMsg(t('settings.logo.tooBig'));
       return;
     }
     try {
       await upload(file);
-      toast.success('Logo mis à jour.');
+      toast.success(t('settings.logo.updated'));
     } catch {
-      toast.error('Échec du téléversement du logo.');
+      toast.error(t('settings.logo.uploadErr'));
     }
   }
 
   async function handleRemove() {
     // eslint-disable-next-line no-alert
-    if (!window.confirm('Supprimer le logo configuré ?')) return;
+    if (!window.confirm(t('settings.logo.confirmRemove'))) return;
     try {
       await remove();
-      toast.success('Logo supprimé.');
+      toast.success(t('settings.logo.removed'));
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('settings.logo.removeErr'));
     }
   }
 
@@ -101,14 +102,12 @@ export function LogoSettingsSection() {
 
   return (
     <Panel style={{ marginTop: 16 }}>
-      <PanelHeader>Logo de l'établissement (auto-injecté sur les PDFs)</PanelHeader>
+      <PanelHeader>{t('settings.logo.title')}</PanelHeader>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-          Le logo apparaît en haut à gauche de chaque ordonnance, certificat,
-          bon d'analyses, bon d'imagerie et carnet de vaccination généré.
+          {t('settings.logo.hint')}
           <br />
-          PNG ou JPEG, max 500 Ko. Idéalement format paysage (~200×80&nbsp;px),
-          fond transparent recommandé pour PNG.
+          {t('settings.logo.hint2')}
         </div>
 
         <div
@@ -125,7 +124,7 @@ export function LogoSettingsSection() {
           }}
         >
           {isLoading && (
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</span>
           )}
           {!isLoading && hasLogo && previewUrl && (
             <img
@@ -135,11 +134,11 @@ export function LogoSettingsSection() {
             />
           )}
           {!isLoading && hasLogo && !previewUrl && (
-            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement de l'aperçu…</span>
+            <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</span>
           )}
           {!isLoading && !hasLogo && (
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Aucun logo configuré — les PDF afficheront le nom en texte seul.
+              {t('settings.logo.none')}
             </span>
           )}
         </div>
@@ -150,7 +149,7 @@ export function LogoSettingsSection() {
 
         {meta && (
           <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            Format : {meta.mime} · Taille : {(meta.sizeBytes / 1024).toFixed(1)} Ko
+            {t('settings.fileMeta', { mime: meta.mime, size: (meta.sizeBytes / 1024).toFixed(1) })}
           </div>
         )}
 
@@ -158,7 +157,7 @@ export function LogoSettingsSection() {
             avant le premier upload) pour que l'admin pré-règle la position. */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>
-            Emplacement du logo sur les documents
+            {t('settings.logo.placement')}
           </label>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {POSITION_OPTIONS.map((opt) => {
@@ -219,7 +218,7 @@ export function LogoSettingsSection() {
                 void handleRemove();
               }}
             >
-              {isDeleting ? 'Suppression…' : 'Supprimer'}
+              {isDeleting ? t('common.deleting') : t('common.delete')}
             </Button>
           )}
           <Button
@@ -228,10 +227,10 @@ export function LogoSettingsSection() {
             onClick={handlePick}
           >
             {isUploading
-              ? 'Téléversement…'
+              ? t('settings.logo.uploading')
               : hasLogo
-                ? 'Remplacer le logo'
-                : 'Téléverser un logo'}
+                ? t('settings.logo.replace')
+                : t('settings.logo.upload')}
           </Button>
         </div>
       </div>

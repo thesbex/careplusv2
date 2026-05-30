@@ -484,6 +484,47 @@ locuteur natif avant prod ; couverture i18n partielle (nav d'abord), élargie en
 
 ---
 
+## ADR-044 — Apparence configurable par le super admin + mode sombre (thème global)
+
+**2026-05-30** · Status: accepted
+
+Demande : porter le panneau *Tweaks* de la maquette « Calm Premium » en réglage réel
+**configurable par le super admin**, mode sombre inclus.
+
+**Périmètre des réglages.** On retient le sous-ensemble *app-wide* qui a un sens sur le
+shell réel : **police**, **ambiance (canvas, 7 tons)**, **accent**, **mode sombre**. On
+**écarte** les tweaks *logo / nav-style / button-style* de la maquette : le logo passe
+déjà par `LogoSettingsSection` (upload réel) et le shell n'a pas d'état « nav active
+remplie encre » distinct de l'accent — les forcer aurait demandé de refondre la sidebar
+sans gain. L'accent recolore déjà nav + CTA de façon cohérente.
+
+**Mécanisme.** Le thème est appliqué en écrivant des variables CSS sur `<html>`
+(`lib/theme/appearance.ts`), ce qui surcharge à la fois les tokens de `tokens.css` et les
+`--ds2-*` lus par le shell — toute l'app bascule d'un coup. Pas de feuille de styles
+sombre dédiée à maintenir : une palette sombre + les tons clairs sont calculés et posés
+en variables. Bootstrap **sans flash** : `main.tsx` applique le dernier thème (cache
+`localStorage`) avant le 1er rendu ; `AppearanceProvider` (sous le QueryClient, comme
+`I18nProvider`) reconcilie ensuite avec la valeur cabinet.
+
+**Persistance = champ protégé super admin, comme la langue.** L'apparence est un JSON
+stocké dans `configuration_clinic_settings.appearance` (**V072**), exposé par
+`/settings/clinic` et **protégé** par `requireSuperAdminIfProtectedChanges` (mêmes garde
+et schéma que `language`/V071, ADR-043). Choix de la persistance backend (et non
+localStorage seul) : « configurable par le super admin » signifie un réglage **cabinet**
+qui s'applique à tous les postes — le cache local ne sert qu'à l'anti-flash. Si le backend
+ne renvoie pas encore d'apparence (cabinet neuf), on retombe sur le cache plutôt que de
+réinitialiser.
+
+Pas de dépendance ajoutée (règle ADR-015/016/017) : variables CSS natives + polices déjà
+bundlées (`@fontsource` Geist / Plus Jakarta) ; l'option « Système » n'embarque rien.
+
+Limite assumée : 1er passage de mode sombre — couverture par tokens (la grande majorité
+des écrans) ; quelques couleurs codées en dur dans des écrans profonds peuvent demander un
+ajustement ultérieur. ITs `SettingsController` (round-trip `appearance` + garde 403) à
+ajouter en 2e passe.
+
+---
+
 ## How to add an entry
 
 Append at the bottom. Never edit an accepted ADR in place — add a superseding one referencing it (`**Status**: superseded by ADR-NNN`).

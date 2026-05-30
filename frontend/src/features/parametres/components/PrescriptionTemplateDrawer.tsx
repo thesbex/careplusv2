@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close, Pill as PillIcon, Search, Trash } from '@/components/icons';
 import { useCatalogSearch } from '@/features/prescription/hooks/useCatalogSearch';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { CatalogItem, PrescriptionType } from '@/features/prescription/types';
 import {
   useCreatePrescriptionTemplate,
@@ -46,10 +47,11 @@ interface PrescriptionTemplateDrawerProps {
   template?: PrescriptionTemplate | null;
 }
 
-const TYPE_LABEL: Record<TemplateType, string> = {
-  DRUG: 'médicament',
-  LAB: 'analyse',
-  IMAGING: 'examen d\'imagerie',
+/** type → suffixe utilisé pour composer les clés i18n DRUG/LAB/IMAGING. */
+const TYPE_KEY: Record<TemplateType, string> = {
+  DRUG: 'Drug',
+  LAB: 'Lab',
+  IMAGING: 'Imaging',
 };
 
 export function PrescriptionTemplateDrawer({
@@ -58,6 +60,8 @@ export function PrescriptionTemplateDrawer({
   type,
   template,
 }: PrescriptionTemplateDrawerProps) {
+  const { t } = useT();
+  const suffix = TYPE_KEY[type];
   const [name, setName] = useState('');
   const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
   const [query, setQuery] = useState('');
@@ -121,12 +125,12 @@ export function PrescriptionTemplateDrawer({
 
   async function handleSave() {
     if (name.trim().length === 0) {
-      toast.error('Donnez un nom au modèle.');
+      toast.error(t('settings.tpl.needName'));
       return;
     }
     const filled = lines.filter((l) => l.item !== null);
     if (filled.length === 0) {
-      toast.error(`Ajoutez au moins un${type === 'DRUG' ? '' : 'e'} ${TYPE_LABEL[type]}.`);
+      toast.error(t(`settings.tpl.needLine${suffix}`));
       return;
     }
 
@@ -135,20 +139,20 @@ export function PrescriptionTemplateDrawer({
     try {
       if (template) {
         await update(template.id, { name: name.trim(), type, lines: payloadLines });
-        toast.success('Modèle mis à jour.');
+        toast.success(t('settings.tpl.updated'));
       } else {
         await create({ name: name.trim(), type, lines: payloadLines });
-        toast.success('Modèle créé.');
+        toast.success(t('settings.tpl.created'));
       }
       onOpenChange(false);
     } catch (err) {
       const e = err as { response?: { status?: number; data?: { detail?: string } } };
       if (e.response?.status === 409) {
-        toast.error('Vous avez déjà un modèle de ce type avec ce nom.');
+        toast.error(t('settings.tpl.dupName'));
       } else if (e.response?.status === 403) {
-        toast.error('Permission refusée (rôle MEDECIN ou ADMIN requis).');
+        toast.error(t('settings.tpl.permDenied'));
       } else {
-        toast.error(e.response?.data?.detail ?? "Échec de l'enregistrement.");
+        toast.error(e.response?.data?.detail ?? t('settings.tpl.saveErr'));
       }
     }
   }
@@ -157,34 +161,30 @@ export function PrescriptionTemplateDrawer({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="pr-overlay" />
-        <Dialog.Content className="pr-drawer" aria-label="Modèle de prescription">
+        <Dialog.Content className="pr-drawer" aria-label={t('settings.tpl.dialogAria')}>
           <div className="pr-header">
             <PillIcon />
             <div style={{ flex: 1 }}>
               <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-                {template ? 'Modifier le modèle' : 'Nouveau modèle'}
+                {template ? t('settings.tpl.editTitle') : t('settings.tpl.newTitle')}
               </Dialog.Title>
               <Dialog.Description style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: 0 }}>
-                {type === 'DRUG'
-                  ? 'Ordonnance médicamenteuse type'
-                  : type === 'LAB'
-                  ? "Bon d'analyses type"
-                  : "Bon d'imagerie type"}
+                {t(`settings.tpl.desc${suffix}`)}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
 
           <div className="pr-body scroll">
-            <div className="pr-section-h">Nom du modèle</div>
+            <div className="pr-section-h">{t('settings.tpl.nameLabel')}</div>
             <input
               type="text"
               className="pr-search-input"
-              placeholder="ex. HTA stable, Bilan annuel diabète, RX thorax standard…"
+              placeholder={t('settings.tpl.namePlaceholder')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={120}
@@ -197,15 +197,11 @@ export function PrescriptionTemplateDrawer({
                 fontSize: 13,
                 background: 'var(--surface)',
               }}
-              aria-label="Nom du modèle"
+              aria-label={t('settings.tpl.nameLabel')}
             />
 
             <div className="pr-section-h" style={{ marginTop: 16 }}>
-              {type === 'DRUG'
-                ? 'Rechercher un médicament'
-                : type === 'LAB'
-                ? 'Rechercher une analyse'
-                : "Rechercher un examen d'imagerie"}
+              {t(`settings.tpl.search${suffix}`)}
             </div>
             <div className="pr-search" ref={searchWrapRef}>
               <span className="pr-search-icon">
@@ -213,13 +209,7 @@ export function PrescriptionTemplateDrawer({
               </span>
               <input
                 className="pr-search-input"
-                placeholder={
-                  type === 'DRUG'
-                    ? 'Nom commercial ou DCI…'
-                    : type === 'LAB'
-                    ? "Nom de l'analyse ou code…"
-                    : "Nom de l'examen ou code…"
-                }
+                placeholder={t(`settings.tpl.ph${suffix}`)}
                 value={query}
                 onChange={(e) => {
                   setQuery(e.target.value);
@@ -229,15 +219,15 @@ export function PrescriptionTemplateDrawer({
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') setSuggestOpen(false);
                 }}
-                aria-label="Rechercher dans le catalogue"
+                aria-label={t('settings.tpl.searchAria')}
               />
               {suggestOpen && hasQuery && (
                 <div className="pr-suggest" role="listbox">
                   {isFetching && (
-                    <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>Recherche…</div>
+                    <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>{t('settings.tpl.searching')}</div>
                   )}
                   {!isFetching && results.length === 0 && (
-                    <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>Aucun résultat.</div>
+                    <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>{t('settings.tpl.noResult')}</div>
                   )}
                   {results.map((it) => (
                     <button
@@ -257,7 +247,7 @@ export function PrescriptionTemplateDrawer({
             </div>
 
             <div className="pr-section-h" style={{ marginTop: 16 }}>
-              Lignes ({lines.filter((l) => l.item).length})
+              {t('settings.tpl.linesCount', { n: lines.filter((l) => l.item).length })}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {lines.map((l, i) => (
@@ -279,7 +269,7 @@ export function PrescriptionTemplateDrawer({
                         )}
                         <button
                           type="button"
-                          aria-label="Retirer la ligne"
+                          aria-label={t('settings.tpl.removeLineAria')}
                           onClick={() => removeLine(i)}
                           style={{
                             marginLeft: 'auto',
@@ -296,13 +286,13 @@ export function PrescriptionTemplateDrawer({
                       </div>
                       {type === 'DRUG' ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
-                          <Input value={l.dosage} placeholder="Dosage (500mg)" onChange={(v) => updateLine(i, { dosage: v })} />
-                          <Input value={l.frequency} placeholder="Fréquence (3x/j)" onChange={(v) => updateLine(i, { frequency: v })} />
-                          <Input value={l.duration} placeholder="Durée (7 jours)" onChange={(v) => updateLine(i, { duration: v })} />
-                          <Input value={l.quantity} placeholder="Qté (21)" onChange={(v) => updateLine(i, { quantity: v })} />
+                          <Input value={l.dosage} placeholder={t('settings.tpl.dosage')} onChange={(v) => updateLine(i, { dosage: v })} />
+                          <Input value={l.frequency} placeholder={t('settings.tpl.frequency')} onChange={(v) => updateLine(i, { frequency: v })} />
+                          <Input value={l.duration} placeholder={t('settings.tpl.duration')} onChange={(v) => updateLine(i, { duration: v })} />
+                          <Input value={l.quantity} placeholder={t('settings.tpl.qty')} onChange={(v) => updateLine(i, { quantity: v })} />
                           <textarea
                             value={l.instructions}
-                            placeholder="Instructions (après les repas)"
+                            placeholder={t('settings.tpl.instructions')}
                             onChange={(e) => updateLine(i, { instructions: e.target.value })}
                             rows={2}
                             style={{
@@ -319,7 +309,7 @@ export function PrescriptionTemplateDrawer({
                       ) : (
                         <textarea
                           value={l.instructions}
-                          placeholder="Instructions / précisions (optionnel)"
+                          placeholder={t('settings.tpl.instructionsOpt')}
                           onChange={(e) => updateLine(i, { instructions: e.target.value })}
                           rows={2}
                           style={{
@@ -336,7 +326,7 @@ export function PrescriptionTemplateDrawer({
                     </>
                   ) : (
                     <div style={{ fontSize: 12, color: 'var(--ink-3)', textAlign: 'center', padding: '8px 0' }}>
-                      Tape ci-dessus pour ajouter un{type === 'DRUG' ? '' : 'e'} {TYPE_LABEL[type]}.
+                      {t(`settings.tpl.addHint${suffix}`)}
                     </div>
                   )}
                 </div>
@@ -354,7 +344,7 @@ export function PrescriptionTemplateDrawer({
             }}
           >
             <Button type="button" onClick={() => onOpenChange(false)} disabled={isPending}>
-              Annuler
+              {t('common.cancel')}
             </Button>
             <Button
               type="button"
@@ -362,7 +352,7 @@ export function PrescriptionTemplateDrawer({
               onClick={() => { void handleSave(); }}
               disabled={isPending}
             >
-              {template ? 'Enregistrer' : 'Créer le modèle'}
+              {template ? t('common.save') : t('settings.tpl.createBtn')}
             </Button>
           </div>
         </Dialog.Content>

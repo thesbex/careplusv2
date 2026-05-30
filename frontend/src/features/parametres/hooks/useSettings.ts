@@ -42,6 +42,8 @@ export interface ClinicSettings {
   disabledModules?: string[];
   /** V071 — langue de l'application (fr|en|ar|es). Réglée par le super admin. */
   language?: string;
+  /** V072 — apparence (JSON : police / ambiance / accent / mode sombre). Réglée par le super admin. */
+  appearance?: string | null;
 }
 
 /** V070 — modules secondaires débrayables par l'admin (id ↔ libellé de nav). */
@@ -80,6 +82,8 @@ export interface ClinicSettingsForm {
   disabledModules?: string[];
   /** V071 — langue de l'application. Optional (absent = ne pas toucher). */
   language?: string;
+  /** V072 — apparence (JSON). Optional (absent = ne pas toucher). */
+  appearance?: string;
 }
 
 /**

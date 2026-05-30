@@ -158,10 +158,11 @@
   background: var(--ds2-surface-2);
 }
 
-/* DS2 — état actif : fond navy léger + texte navy + accent latéral. */
+/* V072 (Tweaks « Nav active ») — item actif = pastille pleine (ink|accent),
+   pilotée par --nav-active-bg/fg. Fallback : ancien traitement navy doux. */
 .cp-nav-item.active {
-  background: var(--ds2-navy-soft);
-  color: var(--ds2-navy);
+  background: var(--nav-active-bg, var(--ds2-navy-soft));
+  color: var(--nav-active-fg, var(--ds2-navy));
   font-weight: 650;
   box-shadow: none;
 }
@@ -173,7 +174,8 @@
   bottom: 7px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--ds2-navy);
+  background: var(--nav-active-fg, var(--ds2-navy));
+  opacity: 0.55;
 }
 
 .cp-nav-item .ico {

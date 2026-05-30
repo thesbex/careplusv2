@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Textarea } from '@/components/ui/Input';
 import { Phone, Mail, Doc } from '@/components/icons';
 import { useClinicSettings } from '../hooks/useSettings';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const SUPPORT_EMAIL = 'support@careplus.ma';
 const SUPPORT_PHONE = '+212 5 22 00 00 00';
@@ -25,10 +26,11 @@ const SUPPORT_PHONE_DISPLAY = '+212 5 22 00 00 00';
 const APP_VERSION = '1.0.0';
 
 export function SupportTab() {
+  const { t } = useT();
   const { settings } = useClinicSettings();
   const [bugMessage, setBugMessage] = useState('');
 
-  const cabinetName = settings?.name ?? 'Cabinet non identifié';
+  const cabinetName = settings?.name ?? t('settings.support.unidentified');
   const cabinetCity = settings?.city ?? '';
   const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : 'n/a';
 
@@ -39,13 +41,13 @@ export function SupportTab() {
 
   function buildBugContext(): string {
     return [
-      `Cabinet : ${cabinetName}${cabinetCity ? ` · ${cabinetCity}` : ''}`,
-      `Version careplus : ${APP_VERSION}`,
-      `Navigateur : ${userAgent}`,
-      `URL : ${typeof window !== 'undefined' ? window.location.href : 'n/a'}`,
+      `${t('settings.support.ctxCabinet')} : ${cabinetName}${cabinetCity ? ` · ${cabinetCity}` : ''}`,
+      `${t('settings.support.ctxVersion')} : ${APP_VERSION}`,
+      `${t('settings.support.ctxBrowser')} : ${userAgent}`,
+      `${t('settings.support.ctxUrl')} : ${typeof window !== 'undefined' ? window.location.href : 'n/a'}`,
       '',
-      '— Description du problème —',
-      bugMessage || '(décrivez ce qui ne fonctionne pas, étapes pour reproduire, capture d\'écran si possible)',
+      t('settings.support.ctxProblemHdr'),
+      bugMessage || t('settings.support.ctxProblemPlaceholder'),
     ].join('\n');
   }
 
@@ -68,13 +70,10 @@ export function SupportTab() {
   return (
     <div style={{ maxWidth: 720 }}>
       <Panel style={{ marginBottom: 16 }}>
-        <PanelHeader>Coordonnées de l'éditeur</PanelHeader>
+        <PanelHeader>{t('settings.support.editor')}</PanelHeader>
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 13, color: 'var(--ds2-ink-2, var(--ink-2))', lineHeight: 1.5 }}>
-            En cas de bug, dysfonctionnement ou question, contactez l'équipe support
-            careplus par e-mail ou téléphone. Pour un bug, le bouton « Envoyer un rapport »
-            ci-dessous pré-remplit un mail avec le contexte technique (cabinet, version,
-            navigateur) — il ne reste qu'à décrire le problème.
+            {t('settings.support.intro')}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -85,7 +84,7 @@ export function SupportTab() {
             >
               <Mail />
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-                <span style={{ fontSize: 11, color: 'var(--ds2-ink-3, var(--ink-3))', fontWeight: 500 }}>E-mail</span>
+                <span style={{ fontSize: 11, color: 'var(--ds2-ink-3, var(--ink-3))', fontWeight: 500 }}>{t('settings.support.email')}</span>
                 <span style={{ fontWeight: 600 }}>{SUPPORT_EMAIL}</span>
               </span>
             </a>
@@ -96,7 +95,7 @@ export function SupportTab() {
             >
               <Phone />
               <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.2 }}>
-                <span style={{ fontSize: 11, color: 'var(--ds2-ink-3, var(--ink-3))', fontWeight: 500 }}>Téléphone</span>
+                <span style={{ fontSize: 11, color: 'var(--ds2-ink-3, var(--ink-3))', fontWeight: 500 }}>{t('settings.support.phone')}</span>
                 <span style={{ fontWeight: 600 }}>{SUPPORT_PHONE_DISPLAY}</span>
               </span>
             </a>
@@ -105,14 +104,14 @@ export function SupportTab() {
       </Panel>
 
       <Panel style={{ marginBottom: 16 }}>
-        <PanelHeader>Signaler un bug</PanelHeader>
+        <PanelHeader>{t('settings.support.reportTitle')}</PanelHeader>
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <label style={{ fontSize: 12, fontWeight: 550, color: 'var(--ds2-ink-2, var(--ink-2))' }}>
-            Décrivez le problème
+            {t('settings.support.describe')}
             <Textarea
               value={bugMessage}
               onChange={(e) => setBugMessage(e.target.value)}
-              placeholder="Ex. La photo de profil disparaît au bout d'une heure. Reproductible sur Chrome 140 / Cabinet El Amrani."
+              placeholder={t('settings.support.placeholder')}
               style={{ marginTop: 6, minHeight: 120 }}
             />
           </label>
@@ -124,15 +123,14 @@ export function SupportTab() {
             color: 'var(--ds2-ink-3, var(--ink-3))',
             lineHeight: 1.55,
           }}>
-            <strong style={{ color: 'var(--ds2-ink-2)' }}>Contexte joint automatiquement :</strong> nom du cabinet, ville, version careplus,
-            navigateur, URL courante. Vous pouvez supprimer ces lignes avant d'envoyer.
+            <strong style={{ color: 'var(--ds2-ink-2)' }}>{t('settings.support.ctxLabel')}</strong>{t('settings.support.ctxBody')}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button type="button" className="cp-ds2-primary" onClick={handleSendBug}>
-              <Mail /> Envoyer un rapport de bug
+              <Mail /> {t('settings.support.sendBug')}
             </Button>
             <Button type="button" onClick={handleSendGeneric}>
-              <Doc /> Contact général
+              <Doc /> {t('settings.support.contactGeneric')}
             </Button>
           </div>
         </div>

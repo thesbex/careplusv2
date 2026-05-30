@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useCreateRoom,
   useDeactivateRoom,
@@ -39,6 +40,7 @@ function parseTags(raw: string): string[] {
 }
 
 export function RoomsManagementSection() {
+  const { t } = useT();
   const isAdmin = useAuthStore((s) => s.user?.roles.includes('ADMIN') ?? false);
   const { rooms, isLoading, error } = useRoomsList();
   const { createRoom, isPending: creating } = useCreateRoom();
@@ -144,7 +146,7 @@ export function RoomsManagementSection() {
   return (
     <Panel data-testid="rooms-management-section">
       <PanelHeader>
-        <span>Salles de consultation</span>
+        <span>{t('settings.rooms.title')}</span>
         {isAdmin && (
           <Button
             size="sm"
@@ -152,7 +154,7 @@ export function RoomsManagementSection() {
             style={{ marginLeft: 'auto' }}
             onClick={() => (showForm && !editingId ? resetForm() : openCreate())}
           >
-            {showForm && !editingId ? 'Fermer' : '+ Nouvelle salle'}
+            {showForm && !editingId ? t('common.close') : t('settings.rooms.new')}
           </Button>
         )}
       </PanelHeader>
@@ -174,7 +176,7 @@ export function RoomsManagementSection() {
             }}
           >
             <Field>
-              <FieldLabel htmlFor="room-name">Nom *</FieldLabel>
+              <FieldLabel htmlFor="room-name">{t('settings.rooms.name')}</FieldLabel>
               <Input
                 id="room-name"
                 value={draft.name}
@@ -184,7 +186,7 @@ export function RoomsManagementSection() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="room-tags">Équipements (séparés par virgule)</FieldLabel>
+              <FieldLabel htmlFor="room-tags">{t('settings.rooms.equip')}</FieldLabel>
               <Input
                 id="room-tags"
                 value={draft.capabilityTagsRaw}
@@ -207,7 +209,7 @@ export function RoomsManagementSection() {
                     checked={editingActive}
                     onChange={(e) => setEditingActive(e.target.checked)}
                   />
-                  Salle active
+                  {t('settings.rooms.active')}
                 </label>
               </Field>
             )}
@@ -220,28 +222,28 @@ export function RoomsManagementSection() {
               }}
             >
               <Button type="button" onClick={resetForm}>
-                Annuler
+                {t('common.cancel')}
               </Button>
               <Button type="submit" variant="primary" disabled={creating || updating}>
                 {creating || updating
-                  ? 'Enregistrement…'
+                  ? t('common.saving')
                   : editingId
-                  ? 'Enregistrer'
-                  : 'Créer'}
+                  ? t('common.save')
+                  : t('common.create')}
               </Button>
             </div>
           </form>
         )}
 
         {isLoading && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{t('common.loading')}</div>
         )}
         {error && (
           <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>
         )}
         {!isLoading && !error && rooms.length === 0 && (
           <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>
-            Aucune salle déclarée.
+            {t('settings.rooms.empty')}
           </div>
         )}
 
@@ -302,7 +304,7 @@ export function RoomsManagementSection() {
                     fontWeight: 600,
                   }}
                 >
-                  Inactive
+                  {t('settings.rooms.inactive')}
                 </span>
               )}
               {isAdmin && (
@@ -311,9 +313,9 @@ export function RoomsManagementSection() {
                     size="sm"
                     variant="ghost"
                     onClick={() => openEdit(room)}
-                    aria-label={`Modifier ${room.name}`}
+                    aria-label={`${t('common.edit')} ${room.name}`}
                   >
-                    Modifier
+                    {t('common.edit')}
                   </Button>
                   {room.active ? (
                     <Button
@@ -321,9 +323,9 @@ export function RoomsManagementSection() {
                       variant="ghost"
                       disabled={deactivating}
                       onClick={() => void handleDeactivate(room)}
-                      aria-label={`Désactiver ${room.name}`}
+                      aria-label={`${t('settings.rooms.deactivate')} ${room.name}`}
                     >
-                      Désactiver
+                      {t('settings.rooms.deactivate')}
                     </Button>
                   ) : (
                     <Button
@@ -331,9 +333,9 @@ export function RoomsManagementSection() {
                       variant="ghost"
                       disabled={updating}
                       onClick={() => void handleReactivate(room)}
-                      aria-label={`Réactiver ${room.name}`}
+                      aria-label={`${t('settings.rooms.reactivate')} ${room.name}`}
                     >
-                      Réactiver
+                      {t('settings.rooms.reactivate')}
                     </Button>
                   )}
                 </div>

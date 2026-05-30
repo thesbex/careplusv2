@@ -8,6 +8,7 @@ import { Trash } from '@/components/icons';
 import { useLeaves } from './hooks/useLeaves';
 import { useCreateLeave } from './hooks/useCreateLeave';
 import { useDeleteLeave } from './hooks/useDeleteLeave';
+import { useT } from '@/lib/i18n/I18nProvider';
 import './parametres.css';
 
 const MONTHS_FR = [
@@ -26,6 +27,7 @@ function isFuture(endDate: string): boolean {
 
 export default function CongesPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { leaves, isLoading, error } = useLeaves();
   const { createLeave, isPending, error: createError } = useCreateLeave();
   const { deleteLeave, isDeletingId } = useDeleteLeave();
@@ -39,11 +41,11 @@ export default function CongesPage() {
     e.preventDefault();
     setFormError(null);
     if (!startDate || !endDate) {
-      setFormError('Veuillez renseigner les deux dates.');
+      setFormError(t('settings.conges.errDates'));
       return;
     }
     if (endDate < startDate) {
-      setFormError('La date de fin doit être après la date de début.');
+      setFormError(t('settings.conges.errOrder'));
       return;
     }
     await createLeave({ startDate, endDate, ...(reason ? { reason } : {}) }).catch(() => null);
@@ -55,8 +57,8 @@ export default function CongesPage() {
   return (
     <Screen
       active="params"
-      title="Paramètres"
-      sub="Congés & absences"
+      title={t('nav.params')}
+      sub={t('settings.conges.title')}
       onNavigate={(id) => {
         const map = {
           dashboard: '/dashboard',
@@ -74,16 +76,16 @@ export default function CongesPage() {
       <div className="params-sections">
         <section className="params-section">
           <div className="params-section-header">
-            <div className="params-section-title">Congés & absences</div>
+            <div className="params-section-title">{t('settings.conges.title')}</div>
             <div className="params-section-sub">
-              Les jours couverts par une période de congé sont automatiquement exclus du calendrier de prise de RDV.
+              {t('settings.conges.sectionHint')}
             </div>
           </div>
           <div className="params-section-body">
             <form onSubmit={(e) => { void handleSubmit(e); }}>
               <div className="params-leave-form">
                 <Field>
-                  <FieldLabel htmlFor="leave-start">Date de début</FieldLabel>
+                  <FieldLabel htmlFor="leave-start">{t('settings.conges.start')}</FieldLabel>
                   <Input
                     id="leave-start"
                     type="date"
@@ -92,7 +94,7 @@ export default function CongesPage() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="leave-end">Date de fin</FieldLabel>
+                  <FieldLabel htmlFor="leave-end">{t('settings.conges.end')}</FieldLabel>
                   <Input
                     id="leave-end"
                     type="date"
@@ -101,10 +103,10 @@ export default function CongesPage() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="leave-reason">Motif (facultatif)</FieldLabel>
+                  <FieldLabel htmlFor="leave-reason">{t('settings.conges.reason')}</FieldLabel>
                   <Input
                     id="leave-reason"
-                    placeholder="Congé annuel, formation…"
+                    placeholder={t('settings.conges.reasonPlaceholder')}
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                   />
@@ -112,7 +114,7 @@ export default function CongesPage() {
                 <Field>
                   <FieldLabel>&nbsp;</FieldLabel>
                   <Button type="submit" variant="primary" disabled={isPending}>
-                    {isPending ? 'Ajout…' : 'Ajouter'}
+                    {isPending ? t('settings.conges.adding') : t('common.add')}
                   </Button>
                 </Field>
               </div>
@@ -125,13 +127,13 @@ export default function CongesPage() {
 
             <div className="params-leave-list">
               {isLoading && (
-                <div className="params-leave-empty">Chargement…</div>
+                <div className="params-leave-empty">{t('common.loading')}</div>
               )}
               {error && (
                 <div className="params-leave-empty" style={{ color: 'var(--danger)' }}>{error}</div>
               )}
               {!isLoading && !error && leaves.length === 0 && (
-                <div className="params-leave-empty">Aucun congé déclaré.</div>
+                <div className="params-leave-empty">{t('settings.conges.empty')}</div>
               )}
               {leaves.map((l) => {
                 const upcoming = isFuture(l.endDate);
@@ -143,13 +145,13 @@ export default function CongesPage() {
                     </div>
                     <div className="params-leave-reason">{l.reason ?? ''}</div>
                     <span className={`params-leave-badge${upcoming ? '' : ' past'}`}>
-                      {upcoming ? 'À venir' : 'Passé'}
+                      {upcoming ? t('settings.conges.upcoming') : t('settings.conges.past')}
                     </span>
                     <Button
                       variant="ghost"
                       iconOnly
                       size="sm"
-                      aria-label="Supprimer ce congé"
+                      aria-label={t('settings.conges.deleteAria')}
                       disabled={isDeletingId === l.id}
                       onClick={() => { void deleteLeave(l.id); }}
                     >

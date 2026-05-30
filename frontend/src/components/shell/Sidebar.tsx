@@ -20,7 +20,8 @@ import {
   Sparkles,
   Search as SearchIcon,
 } from '@/components/icons';
-import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
+import { BrandWordmark } from '@/components/ui/BrandMark';
+import { ConfigurableBrandMark } from '@/components/ui/ConfigurableBrandMark';
 import { Avatar } from '@/components/ui/Avatar';
 import { UserAvatar } from '@/features/messages/components/UserAvatar';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -120,13 +121,13 @@ function normalizeText(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  MEDECIN: 'Médecin',
-  ADMIN: 'Administrateur',
-  ASSISTANT: 'Assistant(e)',
-  SECRETAIRE: 'Secrétaire',
-  RECEPTIONNISTE: 'Réceptionniste',
-  INFIRMIER: 'Infirmier(ère)',
+const ROLE_KEY: Record<string, string> = {
+  MEDECIN: 'role.MEDECIN',
+  ADMIN: 'role.ADMIN',
+  ASSISTANT: 'role.ASSISTANT',
+  SECRETAIRE: 'role.SECRETAIRE',
+  RECEPTIONNISTE: 'role.RECEPTIONNISTE',
+  INFIRMIER: 'role.INFIRMIER',
 };
 const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE', 'RECEPTIONNISTE', 'INFIRMIER'];
 
@@ -218,18 +219,19 @@ export function Sidebar({
       ? {
           id: sessionUser.id,
           name: `${sessionUser.firstName} ${sessionUser.lastName}`.trim(),
-          role:
-            ROLE_LABELS[
+          role: t(
+            ROLE_KEY[
               ROLE_PRIORITY.find((r) => sessionUser.roles.includes(r)) ?? sessionUser.roles[0] ?? ''
-            ] ?? 'Utilisateur',
+            ] ?? 'role.user',
+          ),
           initials: `${sessionUser.firstName?.[0] ?? ''}${sessionUser.lastName?.[0] ?? ''}`.toUpperCase(),
         }
-      : { name: '—', role: 'Non connecté', initials: '?' });
+      : { name: '—', role: t('role.notConnected'), initials: '?' });
 
   return (
     <nav className="cp-sidebar" aria-label="Navigation principale">
       <div className="cp-brand">
-        <BrandMark size="md" variant="tile" />
+        <ConfigurableBrandMark />
         <div className="cp-brand-name">
           {resolvedCabinet.name === 'careplus' ? (
             <BrandWordmark />

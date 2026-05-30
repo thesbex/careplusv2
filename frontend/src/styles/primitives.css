@@ -26,13 +26,15 @@
 .btn:hover {
   background: var(--bg);
 }
+/* V072 (Tweaks « Boutons ») — remplissage ink|accent via --btn-primary-*.
+   Fallback : accent (--primary), comportement historique. */
 .btn.primary {
-  background: var(--primary);
-  color: var(--primary-ink);
-  border-color: var(--primary);
+  background: var(--btn-primary-bg, var(--primary));
+  color: var(--btn-primary-fg, var(--primary-ink));
+  border-color: var(--btn-primary-bg, var(--primary));
 }
 .btn.primary:hover {
-  background: var(--primary-hover);
+  filter: brightness(0.93);
 }
 .btn.ghost {
   border-color: transparent;

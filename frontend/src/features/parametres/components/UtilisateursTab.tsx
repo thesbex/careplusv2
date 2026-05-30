@@ -30,6 +30,7 @@ import {
 import { usePractitioners } from '../hooks/usePractitioners';
 import { useClinicSettings } from '../hooks/useSettings';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 type UserRole =
   | 'SECRETAIRE'
@@ -67,6 +68,7 @@ function emptyUserDraft(allActiveIds: string[]): UserDraft {
 }
 
 export function UtilisateursTab() {
+  const { t } = useT();
   const { users, isLoading, error } = useUsers();
   const { createUser, isPending } = useCreateUser();
   const { updateUser, isPending: isUpdating } = useUpdateUser();
@@ -120,24 +122,23 @@ export function UtilisateursTab() {
   async function handleResetSubmit() {
     if (!resetTarget) return;
     if (resetPwd.length < 12) {
-      toast.error('Le mot de passe doit faire au moins 12 caractères.');
+      toast.error(t('settings.users.pwdTooShort'));
       return;
     }
     if (resetPwd !== resetConfirm) {
-      toast.error('Les deux mots de passe ne correspondent pas.');
+      toast.error(t('settings.users.pwdMismatch'));
       return;
     }
     try {
       await resetPassword({ id: resetTarget.id, password: resetPwd });
-      toast.success('Mot de passe réinitialisé.', {
-        description:
-          "L'utilisateur devra le changer à sa prochaine connexion.",
+      toast.success(t('settings.users.pwdResetOk'), {
+        description: t('settings.users.pwdResetDesc'),
       });
       closeReset();
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 403) {
-        toast.error("Vous n'avez pas les droits administrateur pour cette action.");
+        toast.error(t('settings.users.errPerm'));
       } else {
         toast.error(
           problem.title,
@@ -205,16 +206,16 @@ export function UtilisateursTab() {
 
   async function handleSubmit() {
     if (!draft.email || !draft.firstName || !draft.lastName) {
-      toast.error('Email, prénom et nom requis.');
+      toast.error(t('settings.users.errRequired'));
       return;
     }
     if (!editingUser) {
       if (!draft.password) {
-        toast.error('Mot de passe initial requis.');
+        toast.error(t('settings.users.errPwdRequired'));
         return;
       }
       if (draft.password.length < 12) {
-        toast.error('Le mot de passe initial doit faire au moins 12 caractères.');
+        toast.error(t('settings.users.errPwdLen'));
         return;
       }
     }
@@ -247,7 +248,7 @@ export function UtilisateursTab() {
           payload.assignedPractitionerIds = [];
         }
         await updateUser({ id: editingUser.id, payload });
-        toast.success('Utilisateur mis à jour.');
+        toast.success(t('settings.users.updated'));
       } else {
         const payload: {
           email: string;
@@ -273,13 +274,13 @@ export function UtilisateursTab() {
           payload.assignedPractitionerIds = draft.assignedPractitionerIds;
         }
         await createUser(payload);
-        toast.success('Utilisateur créé.');
+        toast.success(t('settings.users.created'));
       }
       closeForm();
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 403) {
-        toast.error("Vous n'avez pas les droits administrateur pour cette action.");
+        toast.error(t('settings.users.errPerm'));
       } else if (problem.violations?.length) {
         toast.error(
           problem.violations.map((v) => `${v.field} : ${v.message}`).join(' · '),
@@ -300,14 +301,14 @@ export function UtilisateursTab() {
   return (
     <Panel>
       <PanelHeader>
-        <span>Utilisateurs du cabinet</span>
+        <span>{t('settings.users.title')}</span>
         <Button
           size="sm"
           variant="primary"
           style={{ marginLeft: 'auto' }}
           onClick={() => (showForm ? closeForm() : openCreate())}
         >
-          {showForm ? 'Fermer' : 'Nouveau'}
+          {showForm ? t('common.close') : t('common.new')}
         </Button>
       </PanelHeader>
       <div style={{ padding: 16 }}>
@@ -326,7 +327,7 @@ export function UtilisateursTab() {
             }}
           >
             <Field>
-              <FieldLabel htmlFor="user-email">Email *</FieldLabel>
+              <FieldLabel htmlFor="user-email">{t('settings.users.email')}</FieldLabel>
               <Input
                 id="user-email"
                 value={draft.email}
@@ -335,7 +336,7 @@ export function UtilisateursTab() {
             </Field>
             {!editingUser && (
               <Field>
-                <FieldLabel htmlFor="user-password">Mot de passe initial *</FieldLabel>
+                <FieldLabel htmlFor="user-password">{t('settings.users.password')}</FieldLabel>
                 <Input
                   id="user-password"
                   type="password"
@@ -343,15 +344,15 @@ export function UtilisateursTab() {
                   onChange={(e) => setDraft({ ...draft, password: e.target.value })}
                 />
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                  12 caractères minimum.
+                  {t('settings.users.pwdHint')}
                 </div>
               </Field>
             )}
             <Field>
-              <FieldLabel htmlFor="user-role">Rôle</FieldLabel>
+              <FieldLabel htmlFor="user-role">{t('settings.users.role')}</FieldLabel>
               <Select
                 id="user-role"
-                aria-label="Rôle"
+                aria-label={t('settings.users.role')}
                 value={draft.role}
                 onChange={(e) =>
                   setDraft({ ...draft, role: e.target.value as UserRole })
@@ -366,35 +367,35 @@ export function UtilisateursTab() {
                   background: 'var(--surface)',
                 }}
               >
-                <option value="SECRETAIRE">Secrétaire</option>
-                <option value="ASSISTANT">Assistant(e)</option>
-                <option value="MEDECIN">Médecin</option>
-                <option value="ADMIN">Administrateur</option>
+                <option value="SECRETAIRE">{t('role.SECRETAIRE')}</option>
+                <option value="ASSISTANT">{t('role.ASSISTANT')}</option>
+                <option value="MEDECIN">{t('role.MEDECIN')}</option>
+                <option value="ADMIN">{t('role.ADMIN')}</option>
                 {/* V069 — Super administrateur : habilité en plus à l'identité du
                     centre, aux services internes et à l'hospitalisation. Proposé
                     seulement à un super admin (ou si on édite un compte qui l'est déjà). */}
                 {(isSuperAdmin || draft.role === 'SUPER_ADMIN') && (
-                  <option value="SUPER_ADMIN">Super administrateur</option>
+                  <option value="SUPER_ADMIN">{t('role.SUPER_ADMIN')}</option>
                 )}
                 {/* Techniciens internes — gated sur le service interne correspondant
                     (Paramètres > Cabinet > Services internes). On garde l'option si
                     on édite un utilisateur qui la porte déjà, même service désactivé. */}
                 {(labInternal || draft.role === 'LAB') && (
-                  <option value="LAB">Technicien laboratoire</option>
+                  <option value="LAB">{t('role.LAB')}</option>
                 )}
                 {(imagingInternal || draft.role === 'RADIO') && (
-                  <option value="RADIO">Technicien radiologie</option>
+                  <option value="RADIO">{t('role.RADIO')}</option>
                 )}
                 {/* Réceptionniste = bureau des admissions, gated sur la capacité
                     hospitalisation (clinique / hôpital). On garde l'option si on
                     édite un utilisateur qui la porte déjà, même capacité désactivée. */}
                 {(hospitalizationEnabled || draft.role === 'RECEPTIONNISTE') && (
-                  <option value="RECEPTIONNISTE">Réceptionniste</option>
+                  <option value="RECEPTIONNISTE">{t('role.RECEPTIONNISTE')}</option>
                 )}
               </Select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="user-firstname">Prénom *</FieldLabel>
+              <FieldLabel htmlFor="user-firstname">{t('settings.users.firstName')}</FieldLabel>
               <Input
                 id="user-firstname"
                 value={draft.firstName}
@@ -402,7 +403,7 @@ export function UtilisateursTab() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="user-lastname">Nom *</FieldLabel>
+              <FieldLabel htmlFor="user-lastname">{t('settings.users.lastName')}</FieldLabel>
               <Input
                 id="user-lastname"
                 value={draft.lastName}
@@ -410,7 +411,7 @@ export function UtilisateursTab() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="user-phone">Téléphone</FieldLabel>
+              <FieldLabel htmlFor="user-phone">{t('settings.users.phone')}</FieldLabel>
               <Input
                 id="user-phone"
                 value={draft.phone}
@@ -422,7 +423,7 @@ export function UtilisateursTab() {
                 style={{ gridColumn: '1 / -1' }}
                 data-testid="user-specialty-field"
               >
-                <FieldLabel htmlFor="user-specialty">Spécialité</FieldLabel>
+                <FieldLabel htmlFor="user-specialty">{t('settings.users.specialty')}</FieldLabel>
                 <Input
                   id="user-specialty"
                   maxLength={120}
@@ -430,7 +431,7 @@ export function UtilisateursTab() {
                   onChange={(e) =>
                     setDraft({ ...draft, specialty: e.target.value })
                   }
-                  placeholder="Médecin généraliste, Pédiatre, Cardiologue…"
+                  placeholder={t('settings.users.specialtyPlaceholder')}
                 />
               </Field>
             )}
@@ -439,7 +440,7 @@ export function UtilisateursTab() {
                 style={{ gridColumn: '1 / -1' }}
                 data-testid="user-assignment-section"
               >
-                <FieldLabel>Médecins gérés</FieldLabel>
+                <FieldLabel>{t('settings.users.managedDoctors')}</FieldLabel>
                 <div
                   style={{
                     fontSize: 11.5,
@@ -447,8 +448,7 @@ export function UtilisateursTab() {
                     marginBottom: 8,
                   }}
                 >
-                  Cocher les médecins dont cet utilisateur peut consulter les
-                  agendas et les patients.
+                  {t('settings.users.managedHint')}
                 </div>
                 <div
                   style={{
@@ -505,7 +505,7 @@ export function UtilisateursTab() {
                 gap: 8,
               }}
             >
-              <Button onClick={closeForm}>Annuler</Button>
+              <Button onClick={closeForm}>{t('common.cancel')}</Button>
               <Button
                 variant="primary"
                 disabled={submitting}
@@ -513,11 +513,11 @@ export function UtilisateursTab() {
               >
                 {submitting
                   ? editingUser
-                    ? 'Enregistrement…'
-                    : 'Création…'
+                    ? t('common.saving')
+                    : t('settings.users.creating')
                   : editingUser
-                  ? 'Enregistrer'
-                  : 'Créer'}
+                  ? t('common.save')
+                  : t('common.create')}
               </Button>
             </div>
           </div>
@@ -528,7 +528,7 @@ export function UtilisateursTab() {
             data-testid="reset-password-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label={`Réinitialiser le mot de passe de ${resetTarget.firstName} ${resetTarget.lastName}`}
+            aria-label={t('settings.users.resetAria', { name: `${resetTarget.firstName} ${resetTarget.lastName}` })}
             style={{
               position: 'fixed',
               inset: 0,
@@ -554,18 +554,17 @@ export function UtilisateursTab() {
               }}
             >
               <div style={{ fontSize: 15, fontWeight: 600 }}>
-                Réinitialiser le mot de passe
+                {t('settings.users.resetTitle')}
               </div>
               <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-                Définissez un nouveau mot de passe pour{' '}
+                {t('settings.users.resetDescPre')}
                 <strong>
                   {resetTarget.firstName} {resetTarget.lastName}
                 </strong>
-                . L'utilisateur sera obligé de le changer à sa prochaine
-                connexion.
+                {t('settings.users.resetDescPost')}
               </div>
               <Field>
-                <FieldLabel htmlFor="reset-pwd">Nouveau mot de passe</FieldLabel>
+                <FieldLabel htmlFor="reset-pwd">{t('settings.users.newPwd')}</FieldLabel>
                 <Input
                   id="reset-pwd"
                   type="password"
@@ -574,11 +573,11 @@ export function UtilisateursTab() {
                   onChange={(e) => setResetPwd(e.target.value)}
                 />
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                  12 caractères minimum.
+                  {t('settings.users.pwdHint')}
                 </div>
               </Field>
               <Field>
-                <FieldLabel htmlFor="reset-pwd-confirm">Confirmer</FieldLabel>
+                <FieldLabel htmlFor="reset-pwd-confirm">{t('settings.users.confirm')}</FieldLabel>
                 <Input
                   id="reset-pwd-confirm"
                   type="password"
@@ -596,14 +595,14 @@ export function UtilisateursTab() {
                 }}
               >
                 <Button onClick={closeReset} disabled={isResetting}>
-                  Annuler
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   variant="primary"
                   disabled={isResetting}
                   onClick={() => void handleResetSubmit()}
                 >
-                  {isResetting ? 'Réinitialisation…' : 'Réinitialiser'}
+                  {isResetting ? t('settings.users.resetting') : t('settings.users.reset')}
                 </Button>
               </div>
             </div>
@@ -611,14 +610,14 @@ export function UtilisateursTab() {
         )}
 
         {isLoading && (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{t('common.loading')}</div>
         )}
         {error && (
           <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>
         )}
         {users.length === 0 && !isLoading && (
           <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>
-            Aucun utilisateur.
+            {t('settings.users.empty')}
           </div>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -657,7 +656,7 @@ export function UtilisateursTab() {
                       fontWeight: 600,
                     }}
                   >
-                    {r}
+                    {t(`role.${r}`)}
                   </span>
                 ))}
               </div>
@@ -666,26 +665,26 @@ export function UtilisateursTab() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    aria-label={`Modifier ${u.firstName} ${u.lastName}`}
+                    aria-label={`${t('common.edit')} ${u.firstName} ${u.lastName}`}
                     onClick={() => void openEdit(u)}
                   >
-                    Modifier
+                    {t('common.edit')}
                   </Button>
                   {u.id !== currentUserId && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      aria-label={`Réinitialiser le mot de passe de ${u.firstName} ${u.lastName}`}
+                      aria-label={t('settings.users.resetAria', { name: `${u.firstName} ${u.lastName}` })}
                       onClick={() => openReset(u)}
                     >
-                      Réinitialiser MdP
+                      {t('settings.users.resetPwd')}
                     </Button>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
                     iconOnly
-                    aria-label="Désactiver l'utilisateur"
+                    aria-label={t('settings.users.deactivateAria')}
                     disabled={isDeactivating}
                     onClick={() => void deactivateUser(u.id)}
                   >
@@ -695,7 +694,7 @@ export function UtilisateursTab() {
               )}
               {!u.enabled && (
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  Désactivé
+                  {t('settings.users.disabled')}
                 </span>
               )}
             </div>
