@@ -100,3 +100,46 @@
   background: var(--bg);
   color: var(--ink-3);
 }
+
+/* ── Sous-onglets « Calm Premium » (underline + pill accent actif) ──────────── */
+.params-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 24px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  overflow-x: auto;
+}
+.params-tab {
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-3);
+  padding: 9px 14px;
+  border-radius: 10px 10px 0 0;
+  position: relative;
+  white-space: nowrap;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+}
+.params-tab:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.params-tab.on {
+  color: var(--primary-hover, var(--primary));
+  font-weight: 700;
+  background: var(--primary-soft);
+}
+.params-tab.on::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 3px 3px 0 0;
+}

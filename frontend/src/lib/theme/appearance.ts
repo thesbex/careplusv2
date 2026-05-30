@@ -54,14 +54,14 @@ export interface Appearance {
 }
 
 export const APPEARANCE_DEFAULT: Appearance = {
-  font: 'geist',
-  tone: 'default',
-  accent: '#1e4dab',
+  font: 'jakarta',
+  tone: 'porcelain',
+  accent: '#5b53d8', // mauve
   dark: false,
   navActive: 'accent',
   btnPrimary: 'accent',
   logo: 'cross',
-  logoBg: '#1e4dab',
+  logoBg: '#5b53d8', // tuile logo = accent par défaut
   logoFg: '#ffffff',
 };
 
@@ -79,8 +79,8 @@ export const LOGO_OPTIONS: { value: LogoMark; labelKey: string }[] = [
   { value: 'module', labelKey: 'settings.appearance.logo.module' },
 ];
 
-export const LOGO_BG_OPTIONS = ['#1c1b18', '#1e4dab', '#5b53d8', '#0e5b3e', '#ffffff'];
-export const LOGO_FG_OPTIONS = ['#ffffff', '#1c1b18', '#1e4dab', '#5b53d8'];
+export const LOGO_BG_OPTIONS = ['#5b53d8', '#1c1b18', '#2b5fcc', '#0e5b3e', '#ffffff'];
+export const LOGO_FG_OPTIONS = ['#ffffff', '#1c1b18', '#2b5fcc', '#5b53d8'];
 
 export const FONT_OPTIONS: { value: ThemeFont; label: string; stack: string; labelKey?: string }[] = [
   { value: 'geist', label: 'Geist', stack: "'Geist', ui-sans-serif, system-ui, sans-serif" },
@@ -169,9 +169,9 @@ export const TONE_OPTIONS: { value: ThemeTone; label: string; labelKey: string }
 ];
 
 export const ACCENT_OPTIONS: { value: string; label: string; labelKey: string }[] = [
-  { value: '#1e4dab', label: 'Saphir', labelKey: 'settings.appearance.accent.saphir' },
+  { value: '#5b53d8', label: 'Mauve', labelKey: 'settings.appearance.accent.mauve' },
+  { value: '#2b5fcc', label: 'Saphir', labelKey: 'settings.appearance.accent.saphir' },
   { value: '#0e5b3e', label: 'Vert bouteille', labelKey: 'settings.appearance.accent.vertBouteille' },
-  { value: '#5b53d8', label: 'Indigo', labelKey: 'settings.appearance.accent.indigo' },
   { value: '#b0410f', label: 'Terracotta', labelKey: 'settings.appearance.accent.terracotta' },
   { value: '#1f1f1f', label: 'Encre', labelKey: 'settings.appearance.accent.encre' },
 ];

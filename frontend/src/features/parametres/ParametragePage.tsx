@@ -827,17 +827,7 @@ export default function ParametragePage() {
       sub={tabs.find((tb) => tb.id === tab)?.label ?? ''}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          padding: '12px 24px',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--surface)',
-        }}
-        role="tablist"
-        aria-label={t('settings.tabsAria')}
-      >
+      <div className="params-tabs" role="tablist" aria-label={t('settings.tabsAria')}>
         {tabs.map((tb) => (
           <button
             key={tb.id}
@@ -845,17 +835,7 @@ export default function ParametragePage() {
             role="tab"
             aria-selected={tab === tb.id}
             onClick={() => setTab(tb.id)}
-            style={{
-              padding: '6px 14px',
-              border: '1px solid var(--border)',
-              borderRadius: 999,
-              background: tab === tb.id ? 'var(--primary)' : 'var(--surface)',
-              color: tab === tb.id ? 'white' : 'var(--ink-2)',
-              fontFamily: 'inherit',
-              fontSize: 12.5,
-              fontWeight: 550,
-              cursor: 'pointer',
-            }}
+            className={`params-tab${tab === tb.id ? ' on' : ''}`}
           >
             {tb.label}
           </button>
