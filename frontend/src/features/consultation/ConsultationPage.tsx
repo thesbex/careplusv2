@@ -39,6 +39,7 @@ import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
 import { ConsentUploadDialog } from '@/features/consent/components/ConsentUploadDialog';
 import { useConfrereLetters } from '@/features/confrere/hooks/useConfrereLetters';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { PatientContextCard } from './components/PatientContextCard';
 import { QuickVitalsDialog } from './components/QuickVitalsDialog';
 import { SoapEditor, ActionBtn, DocRow } from './components/SoapEditor';
@@ -82,6 +83,7 @@ function apiFromForm(v: ConsultationFormValues) {
 
 export default function ConsultationPage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, error, update, isSaving, lastSavedAt } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
@@ -120,7 +122,7 @@ export default function ConsultationPage() {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1_000);
     } catch {
-      toast.error('Téléchargement du courrier impossible.');
+      toast.error(tr('consult.letterDownloadFailed'));
     }
   }
   const [postSignDialogOpen, setPostSignDialogOpen] = useState(false);
@@ -182,7 +184,7 @@ export default function ConsultationPage() {
       timerRef.current = setTimeout(() => {
         lastSentRef.current = serialized;
         update(apiFromForm(values as ConsultationFormValues)).catch((err: unknown) => {
-          toast.error('Autosave échoué', {
+          toast.error(tr('consult.autosaveFailed'), {
             description: err instanceof Error ? err.message : undefined,
           });
         });
@@ -200,8 +202,8 @@ export default function ConsultationPage() {
     const parsed = consultationSignSchema.safeParse(values);
     if (!parsed.success) {
       const firstErr = parsed.error.issues[0];
-      toast.error('Impossible de signer', {
-        description: firstErr?.message ?? 'Tous les champs SOAP doivent être renseignés.',
+      toast.error(tr('consult.sign.errorTitle'), {
+        description: firstErr?.message ? tr(firstErr.message) : tr('consult.sign.allRequired'),
       });
       await trigger();
       return false;
@@ -210,19 +212,19 @@ export default function ConsultationPage() {
     try {
       await update(apiFromForm(values));
     } catch {
-      toast.error('Sauvegarde pré-signature échouée');
+      toast.error(tr('consult.preSignSaveFailed'));
       return false;
     }
     const ok = await sign();
     if (ok) {
-      toast.success('Consultation signée. Détail de la facturation ouvert.');
+      toast.success(tr('consult.signedOpenBilling'));
       // Au lieu de rediriger immédiatement, ouvrir le détail facture pour que
       // le médecin puisse ajuster montants/remise avant que la secrétaire
       // n'émette. La modale poll le brouillon (créé en AFTER_COMMIT) jusqu'à
       // apparition. Demande Y. Boutaleb 2026-05-01.
       setPostSignDialogOpen(true);
     } else {
-      toast.error('Signature refusée par le serveur.');
+      toast.error(tr('consult.signRefused'));
     }
     return ok;
   }
@@ -254,17 +256,17 @@ export default function ConsultationPage() {
     ? lastSavedAt.toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit' })
     : '—';
   const patientLabel = patient
-    ? `${patient.fullName} (${patient.age} ans · ${patient.sex})`
+    ? `${patient.fullName} (${tr('consult.ctx.yearsOld', { n: patient.age })} · ${patient.sex})`
     : consultation
-    ? 'Patient introuvable'
-    : 'Chargement…';
+    ? tr('consult.patientNotFound')
+    : tr('common.loading');
 
   if (error) {
     return (
       <Screen
         active="consult"
-        title="Consultation"
-        sub="Erreur"
+        title={tr('consult.title')}
+        sub={tr('consult.errorSub')}
         onNavigate={(navId) => navigate(navigateMap[navId])}
       >
         <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
@@ -275,12 +277,12 @@ export default function ConsultationPage() {
   return (
     <Screen
       active="consult"
-      title="Consultation en cours"
-      sub={`${patientLabel}${consultation ? ` · Débutée à ${startedLabel}` : ''}`}
+      title={tr('consult.titleInProgress')}
+      sub={`${patientLabel}${consultation ? ` · ${tr('consult.startedAtSub', { time: startedLabel })}` : ''}`}
       topbarRight={
         consultation && patient ? (
           <Button onClick={() => navigate(`/patients/${patient.id}`)}>
-            Voir dossier patient
+            {tr('consult.openDossier')}
           </Button>
         ) : undefined
       }
@@ -302,25 +304,25 @@ export default function ConsultationPage() {
         <div className="cs-soap-col">
           <div className="cs-soap-toolbar">
             <Pill status={isSigned ? 'done' : isSuspended ? 'arrived' : 'consult'} dot>
-              {isSigned ? 'Signée' : isSuspended ? 'Suspendue' : 'En consultation'}
+              {isSigned ? tr('consult.status.signed') : isSuspended ? tr('consult.status.suspended') : tr('consult.status.inConsult')}
             </Pill>
             <span className="tnum" style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Démarrée {startedLabel}
+              {tr('consult.startedAt', { time: startedLabel })}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <SoapToolbarButtons
                 disabled={isSigned}
-                onApplyTemplate={(t) => {
-                  setValue('subjectif', t.subjectif ?? '', { shouldDirty: true });
-                  setValue('objectif', t.objectif ?? '', { shouldDirty: true });
-                  setValue('analyse', t.analyse ?? '', { shouldDirty: true });
-                  setValue('plan', t.plan ?? '', { shouldDirty: true });
-                  toast.success(`Modèle « ${t.name} » appliqué.`);
+                onApplyTemplate={(tpl) => {
+                  setValue('subjectif', tpl.subjectif ?? '', { shouldDirty: true });
+                  setValue('objectif', tpl.objectif ?? '', { shouldDirty: true });
+                  setValue('analyse', tpl.analyse ?? '', { shouldDirty: true });
+                  setValue('plan', tpl.plan ?? '', { shouldDirty: true });
+                  toast.success(tr('consult.toolbar.templateApplied', { name: tpl.name }));
                 }}
                 onInsertCim={(text) => {
                   const cur = getValues('analyse') ?? '';
                   setValue('analyse', cur.trim() ? `${cur}\n${text}` : text, { shouldDirty: true });
-                  toast.success('Code CIM-10 ajouté à l\'analyse.');
+                  toast.success(tr('consult.toolbar.cimAdded'));
                 }}
               />
             </div>
@@ -328,7 +330,7 @@ export default function ConsultationPage() {
 
           <div className="cs-soap-body scroll">
             {isLoading && !consultation ? (
-              <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement de la consultation…</div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{tr('consult.loadingConsultation')}</div>
             ) : (
               <SoapEditor
                 register={register}
@@ -343,7 +345,7 @@ export default function ConsultationPage() {
                       disabled={!watch('analyse')?.trim()}
                       onClick={() => setPromoteOpen(true)}
                     >
-                      + Ajouter aux antécédents
+                      {tr('consult.addToHistory')}
                     </Button>
                   ) : null
                 }
@@ -355,10 +357,10 @@ export default function ConsultationPage() {
             <span className="cs-autosave">
               <Check aria-hidden="true" />{' '}
               {isSaving
-                ? 'Enregistrement…'
+                ? tr('consult.saving')
                 : isSigned
-                ? `Signée le ${savedLabel}`
-                : `Enregistré automatiquement · ${savedLabel}`}
+                ? tr('consult.signedOn', { time: savedLabel })
+                : tr('consult.autosavedAt', { time: savedLabel })}
             </span>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               <Button
@@ -378,7 +380,7 @@ export default function ConsultationPage() {
                   setSuspendOpen(true);
                 }}
               >
-                Suspendre
+                {tr('consult.suspend')}
               </Button>
               {/* Bouton "Certificat" du footer retiré (doublon du CTA principal
                   en haut + de l'action "Certificat médical" dans la colonne
@@ -394,49 +396,58 @@ export default function ConsultationPage() {
         </div>
 
         <div className="cs-actions-col scroll">
-          <div className="cs-section-h">Actions</div>
+          <div className="cs-section-h">{tr('consult.actions.title')}</div>
 
           <div className="cs-actions-list">
             <ActionBtn
               icon="Pill"
               color="primary"
-              label="Prescription médicaments"
-              sub={`Ordonnance${prescriptions.length > 0 ? ` · ${prescriptions.length} créée${prescriptions.length > 1 ? 's' : ''}` : ''}`}
+              label={tr('consult.actions.rx')}
+              sub={
+                prescriptions.length > 0
+                  ? tr(
+                      prescriptions.length > 1
+                        ? 'consult.actions.rxSubCountPlural'
+                        : 'consult.actions.rxSubCount',
+                      { n: prescriptions.length },
+                    )
+                  : tr('consult.actions.rxSub')
+              }
               disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('DRUG')}
             />
             <ActionBtn
               icon="Flask"
-              label="Bon d'analyses"
-              sub="Biologie médicale"
+              label={tr('consult.actions.lab')}
+              sub={tr('consult.actions.labSub')}
               disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('LAB')}
             />
             <ActionBtn
               icon="Scan"
-              label="Bon d'imagerie"
-              sub="Radio · écho · IRM"
+              label={tr('consult.actions.imaging')}
+              sub={tr('consult.actions.imagingSub')}
               disabled={isSigned || isSuspended || !consultation}
               onClick={() => setRxOpen('IMAGING')}
             />
             <ActionBtn
               icon="Doc"
-              label="Certificat médical"
-              sub="Aptitude · présence · repos"
+              label={tr('consult.actions.cert')}
+              sub={tr('consult.actions.certSub')}
               disabled={!consultation || isSigned || isSuspended}
               onClick={() => setCertificatOpen(true)}
             />
             <ActionBtn
               icon="Doc"
-              label="Courrier confrère"
-              sub="Lettre à un médecin externe"
+              label={tr('consult.actions.letter')}
+              sub={tr('consult.actions.letterSub')}
               disabled={!consultation || isSigned || isSuspended}
               onClick={() => setConfrereOpen(true)}
             />
             <ActionBtn
               icon="Calendar"
-              label="Prochain RDV"
-              sub="Contrôle / suivi"
+              label={tr('consult.actions.followUp')}
+              sub={tr('consult.actions.followUpSub')}
               disabled={!consultation}
               onClick={() => setFollowUpOpen(true)}
             />
@@ -447,26 +458,26 @@ export default function ConsultationPage() {
                   2) Importer le scan signé (PDF/photo) → attache au dossier. */}
             <ActionBtn
               icon="Doc"
-              label="Consentement éclairé"
-              sub="Générer un PDF à signer"
+              label={tr('consult.actions.consent')}
+              sub={tr('consult.actions.consentSub')}
               disabled={!consultation || !consultation.patientId}
               onClick={() => setConsentOpen(true)}
             />
             <ActionBtn
               icon="Upload"
-              label="Importer consentement signé"
-              sub="Scan / photo du consentement"
+              label={tr('consult.actions.consentUpload')}
+              sub={tr('consult.actions.consentUploadSub')}
               disabled={!consultation || !consultation.patientId}
               onClick={() => setConsentUploadOpen(true)}
             />
           </div>
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
-            Documents générés
+            {tr('consult.docs.title')}
           </div>
           <div className="cs-docs-list" style={{ fontSize: 12 }}>
             {prescriptions.length === 0 && confrereLetters.length === 0 && (
-              <div style={{ color: 'var(--ink-3)' }}>Aucun document généré.</div>
+              <div style={{ color: 'var(--ink-3)' }}>{tr('consult.docs.none')}</div>
             )}
             {prescriptions.map((p) => {
               // Le libellé "Documents générés" doit refléter le type réel
@@ -477,18 +488,18 @@ export default function ConsultationPage() {
               const titleSuffix =
                 p.type === 'CERT' || p.type === 'SICK_LEAVE'
                   ? '' // un certificat n'a généralement qu'une ligne libellée "corps"
-                  : ` · ${lineCount} ligne${lineCount > 1 ? 's' : ''}`;
+                  : ` · ${tr(lineCount > 1 ? 'consult.docs.linesPlural' : 'consult.docs.lines', { n: lineCount })}`;
               const subLabel =
                 p.type === 'DRUG'
-                  ? 'Médicaments'
+                  ? tr('consult.docs.type.drug')
                   : p.type === 'LAB'
-                  ? 'Analyses'
+                  ? tr('consult.docs.type.lab')
                   : p.type === 'IMAGING'
-                  ? 'Imagerie'
+                  ? tr('consult.docs.type.imaging')
                   : p.type === 'CERT'
-                  ? 'Certificat médical'
+                  ? tr('consult.docs.type.cert')
                   : p.type === 'SICK_LEAVE'
-                  ? 'Arrêt de travail'
+                  ? tr('consult.docs.type.sickLeave')
                   : (p.type ?? '—');
               return (
               <div key={p.id}>
@@ -501,23 +512,23 @@ export default function ConsultationPage() {
                         onDelete: () => {
                           if (
                             !confirm(
-                              `Supprimer « ${docMeta.label} » ? Cette ordonnance sera retirée de la consultation.`,
+                              tr('consult.docs.confirmDelete', { label: docMeta.label }),
                             )
                           )
                             return;
                           removePrescription(p.id)
-                            .then(() => toast.success('Ordonnance supprimée.'))
+                            .then(() => toast.success(tr('consult.docs.deleted')))
                             .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
                               const status = err.response?.status;
                               if (status === 409) {
                                 toast.error(
                                   err.response?.data?.message ??
-                                    'Analyse/radio déjà en file interne — annulez-la d’abord.',
+                                    tr('consult.docs.deleteInQueue'),
                                 );
                               } else if (status === 400) {
-                                toast.error('Impossible : la consultation est clôturée.');
+                                toast.error(tr('consult.docs.deleteClosed'));
                               } else {
-                                toast.error('Suppression de l’ordonnance impossible.');
+                                toast.error(tr('consult.docs.deleteFailed'));
                               }
                             });
                         },
@@ -539,8 +550,8 @@ export default function ConsultationPage() {
             {confrereLetters.map((letter) => (
               <DocRow
                 key={letter.id}
-                title={letter.title ?? 'Courrier au confrère'}
-                meta="Courrier confrère"
+                title={letter.title ?? tr('consult.docs.confrereLetter')}
+                meta={tr('consult.docs.confrereLetterMeta')}
                 onClick={() => { void downloadConfrereLetter(letter.id, letter.title); }}
               />
             ))}
@@ -549,7 +560,7 @@ export default function ConsultationPage() {
           {id && <ConsultationPrestationsPanel consultationId={id} readOnly={isSigned} />}
 
           <div className="cs-section-h" style={{ marginTop: 18 }}>
-            Facturation
+            {tr('consult.billing.title')}
           </div>
           <Panel className="cs-billing-panel">
             {activeStay && (
@@ -561,32 +572,31 @@ export default function ConsultationPage() {
                   fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.4,
                 }}
               >
-                <strong>Patient hospitalisé.</strong> Cette facture sera rattachée au séjour en
-                cours et réglée à la sortie du patient (englobée dans la facture d'hospitalisation).
-                Aucun encaissement immédiat.
+                <strong>{tr('consult.billing.hospitalizedTitle')}</strong>{' '}
+                {tr('consult.billing.hospitalizedNote')}
               </div>
             )}
             {!invoice && (
               <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-3)' }}>
                 {isSigned
-                  ? 'Facture brouillon en cours de création…'
-                  : 'La facture brouillon sera générée à la signature.'}
+                  ? tr('consult.billing.draftCreating')
+                  : tr('consult.billing.draftOnSign')}
               </div>
             )}
             {invoice && (
               <div style={{ padding: '10px 12px', fontSize: 12 }}>
                 <div className="cs-billing-row">
-                  <span style={{ color: 'var(--ink-3)' }}>Sous-total</span>
+                  <span style={{ color: 'var(--ink-3)' }}>{tr('consult.billing.subtotal')}</span>
                   <span className="tnum">{invoice.totalAmount.toFixed(2).replace('.', ',')} MAD</span>
                 </div>
                 {invoice.discountAmount > 0 && (
                   <div className="cs-billing-row">
-                    <span style={{ color: 'var(--ink-3)' }}>Remise</span>
+                    <span style={{ color: 'var(--ink-3)' }}>{tr('consult.billing.discount')}</span>
                     <span className="tnum">- {invoice.discountAmount.toFixed(2).replace('.', ',')} MAD</span>
                   </div>
                 )}
                 <div className="cs-billing-total">
-                  <span>Net à régler</span>
+                  <span>{tr('consult.billing.netDue')}</span>
                   <span className="tnum">{invoice.netAmount.toFixed(2).replace('.', ',')} MAD</span>
                 </div>
                 {!isSigned && id && (
@@ -595,7 +605,7 @@ export default function ConsultationPage() {
                       type="number"
                       min={0}
                       step="0.01"
-                      placeholder="Remise (MAD)"
+                      placeholder={tr('consult.billing.discountPlaceholder')}
                       value={adjustingDiscount ?? ''}
                       onChange={(e) =>
                         setAdjustingDiscount(e.target.value === '' ? null : Number(e.target.value))
@@ -619,13 +629,13 @@ export default function ConsultationPage() {
                           discountAmount: adjustingDiscount,
                         })
                           .then(() => {
-                            toast.success('Total ajusté.');
+                            toast.success(tr('consult.billing.adjusted'));
                             setAdjustingDiscount(null);
                           })
-                          .catch(() => toast.error('Ajustement refusé (rôle médecin requis).'));
+                          .catch(() => toast.error(tr('consult.billing.adjustRefused')));
                       }}
                     >
-                      Ajuster
+                      {tr('consult.billing.adjust')}
                     </Button>
                   </div>
                 )}
@@ -635,7 +645,7 @@ export default function ConsultationPage() {
                     style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
                     onClick={() => navigate('/facturation')}
                   >
-                    Ouvrir la facture →
+                    {tr('consult.billing.openInvoice')}
                   </Button>
                 )}
               </div>
@@ -749,7 +759,7 @@ export default function ConsultationPage() {
               boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
             }}
           >
-            Génération du brouillon de facture en cours…
+            {tr('consult.billing.generatingDraft')}
           </div>
         </div>
       )}
@@ -769,7 +779,7 @@ export default function ConsultationPage() {
             // because useCreatePrescription invalidates the consultation query.
             // The doctor opens / prints the bons from that list when ready.
             setRxOpen(null);
-            toast.success('Ordonnance créée.');
+            toast.success(tr('consult.rxCreated'));
           }}
         />
       )}

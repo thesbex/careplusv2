@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { Doc, Clipboard } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useSoapTemplates, type SoapTemplate } from '../hooks/useSoapTemplates';
 import { CIM10_CODES } from '../cim10';
 
@@ -75,6 +76,7 @@ export function SoapToolbarButtons({
   onInsertCim: (text: string) => void;
 }) {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const { templates, isLoading } = useSoapTemplates();
   const tpl = usePopover();
   const cim = usePopover();
@@ -91,30 +93,30 @@ export function SoapToolbarButtons({
   return (
     <>
       <Button ref={tpl.btnRef} size="sm" type="button" disabled={disabled} onClick={() => tpl.setOpen((o) => !o)}>
-        <Doc /> Modèles
+        <Doc /> {tr('consult.toolbar.templates')}
       </Button>
       {tpl.open && tpl.pos
         ? createPortal(
             <div ref={tpl.popRef} role="listbox" style={{ ...POP, top: tpl.pos.top, left: tpl.pos.left, minWidth: 240 }}>
-              {isLoading && <div style={{ padding: 8, fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>}
+              {isLoading && <div style={{ padding: 8, fontSize: 12, color: 'var(--ink-3)' }}>{tr('common.loading')}</div>}
               {!isLoading && templates.length === 0 && (
                 <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.5 }}>
-                  Aucun modèle de consultation.
+                  {tr('consult.toolbar.noTemplates')}
                   <button
                     type="button"
                     onClick={() => { tpl.setOpen(false); navigate('/profil'); }}
                     style={{ display: 'block', marginTop: 6, background: 'none', border: 'none', padding: 0,
                       color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}
                   >
-                    Créer un modèle dans Mon profil →
+                    {tr('consult.toolbar.createTemplate')}
                   </button>
                 </div>
               )}
-              {templates.map((t) => (
-                <button key={t.id} type="button" style={optStyle}
+              {templates.map((tplItem) => (
+                <button key={tplItem.id} type="button" style={optStyle}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => { onApplyTemplate(t); tpl.setOpen(false); }}>
-                  <span style={{ fontWeight: 600 }}>{t.name}</span>
+                  onClick={() => { onApplyTemplate(tplItem); tpl.setOpen(false); }}>
+                  <span style={{ fontWeight: 600 }}>{tplItem.name}</span>
                 </button>
               ))}
             </div>,
@@ -123,7 +125,7 @@ export function SoapToolbarButtons({
         : null}
 
       <Button ref={cim.btnRef} size="sm" type="button" disabled={disabled} onClick={() => { setQ(''); cim.setOpen((o) => !o); }}>
-        <Clipboard /> CIM-10
+        <Clipboard /> {tr('consult.toolbar.cim')}
       </Button>
       {cim.open && cim.pos
         ? createPortal(
@@ -132,13 +134,13 @@ export function SoapToolbarButtons({
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Rechercher un code ou un libellé…"
+                placeholder={tr('consult.toolbar.cimSearch')}
                 style={{ width: '100%', height: 30, padding: '0 8px', marginBottom: 4,
                   border: '1px solid var(--border)', borderRadius: 5, fontFamily: 'inherit', fontSize: 12.5,
                   background: 'var(--surface)' }}
               />
               {filtered.length === 0 && (
-                <div style={{ padding: 8, fontSize: 12, color: 'var(--ink-3)' }}>Aucun code correspondant.</div>
+                <div style={{ padding: 8, fontSize: 12, color: 'var(--ink-3)' }}>{tr('consult.toolbar.cimEmpty')}</div>
               )}
               {filtered.map((c) => (
                 <button key={c.code} type="button" style={optStyle}

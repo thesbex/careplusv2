@@ -7,6 +7,8 @@
  * ───────────────────────────────────────────────────────────────────────── */
 
 .ws-patients {
+  /* Calm Premium : ombre douce des cartes sans bordure */
+  --pat-sh: 0 1px 2px rgba(20, 30, 50, 0.04), 0 10px 34px -20px rgba(20, 30, 50, 0.2);
   padding: 18px 22px 0;
   display: flex;
   flex-direction: column;
@@ -14,6 +16,7 @@
   height: 100%;
   overflow: hidden;
 }
+[data-theme='dark'] .ws-patients { --pat-sh: 0 1px 2px rgba(0, 0, 0, 0.4); }
 
 /* ── Views (saved-view tabs) ─────────────────────────────────────────────── */
 .ws-patients .views {
@@ -40,8 +43,8 @@
   gap: 6px;
 }
 .ws-patients .views button.on {
-  color: var(--ds2-ink, var(--ink));
-  font-weight: 600;
+  color: var(--ds2-navy, var(--primary));
+  font-weight: 700;
 }
 .ws-patients .views button.on::after {
   content: "";
@@ -49,22 +52,22 @@
   left: 0;
   right: 0;
   bottom: -1px;
-  height: 2px;
-  background: var(--ds2-ink, var(--ink));
+  height: 2.5px;
+  background: var(--ds2-navy, var(--primary));
   border-radius: 2px;
 }
 .ws-patients .views button .ct {
-  background: var(--ds2-navy, var(--primary, #1E4DAB));
-  color: #fff;
+  background: var(--ds2-border, var(--border));
+  color: var(--ds2-ink-3, var(--ink-3));
   font-size: 10.5px;
   padding: 1px 7px;
-  border-radius: 8px;
+  border-radius: 999px;
   font-weight: 700;
   letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
 }
 .ws-patients .views button.on .ct {
-  background: var(--ds2-ink, var(--ink));
+  background: var(--ds2-navy, var(--primary));
   color: #fff;
 }
 .ws-patients .views .vside {
@@ -84,15 +87,24 @@
 }
 .ws-patients .kpi {
   background: var(--ds2-surface, var(--surface));
-  border: 1px solid var(--ds2-border, var(--border));
-  border-radius: 10px;
-  padding: 13px 16px;
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--pat-sh);
+  padding: 17px 18px;
   position: relative;
+  overflow: hidden;
 }
-.ws-patients .kpi.hero {
-  border-top: 3px solid var(--ds2-navy, var(--primary, #1E4DAB));
-  padding-top: 11px;
+[data-theme='dark'] .ws-patients .kpi { border: 1px solid var(--border); }
+.ws-patients .kpi.hero::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ds2-navy, var(--primary, #1E4DAB));
 }
+.ws-patients .kpi.hero .k { color: var(--ds2-navy, var(--primary)); }
 .ws-patients .kpi .k {
   font-size: 11.5px;
   color: var(--ds2-ink-2, var(--ink-2));
@@ -109,10 +121,10 @@
   display: inline-block;
 }
 .ws-patients .kpi .v {
-  font-size: 24px;
-  font-weight: 700;
-  margin-top: 6px;
-  letter-spacing: -0.025em;
+  font-size: 27px;
+  font-weight: 800;
+  margin-top: 9px;
+  letter-spacing: -0.03em;
   color: var(--ds2-ink, var(--ink));
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -149,11 +161,11 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  background: var(--ds2-surface, var(--surface));
+  background: var(--ds2-surface-2, var(--surface-2));
   border: 1px solid var(--ds2-border, var(--border));
-  border-radius: 8px;
-  padding: 0 12px;
-  height: 38px;
+  border-radius: 11px;
+  padding: 0 13px;
+  height: 42px;
   font-size: 13px;
   flex: 1;
   max-width: 340px;
@@ -181,11 +193,11 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  height: 32px;
-  padding: 0 10px;
+  height: 38px;
+  padding: 0 13px;
   border: 1px solid var(--ds2-border, var(--border));
-  background: var(--ds2-surface, var(--surface));
-  border-radius: 7px;
+  background: var(--ds2-surface-2, var(--surface-2));
+  border-radius: 999px;
   font-size: 12.5px;
   color: var(--ds2-ink-2, var(--ink-2));
   font-weight: 500;
@@ -215,8 +227,8 @@
   line-height: 1;
 }
 .ws-patients .fpill.active {
-  border-color: var(--ds2-navy, var(--blue, var(--primary)));
-  background: var(--ds2-navy-soft, var(--blue-tint, var(--primary-soft)));
+  border-color: transparent;
+  background: var(--ds2-navy-soft, var(--primary-soft));
   color: var(--ds2-navy, var(--primary));
 }
 .ws-patients .fpill.active b {
@@ -261,18 +273,18 @@
 .ws-patients .bulkbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: #0B1410;
-  color: #F2EFE8;
-  padding: 9px 14px;
-  border-radius: 8px;
+  gap: 13px;
+  background: var(--ds2-navy, var(--primary));
+  color: #fff;
+  padding: 11px 16px;
+  border-radius: 13px;
   margin-bottom: 12px;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 .ws-patients .bulkbar .cnt { font-weight: 600; letter-spacing: -0.005em; }
 .ws-patients .bulkbar .cnt b {
-  color: #7DB5FF;
-  font-weight: 700;
+  color: #fff;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .ws-patients .bulkbar .sep {
@@ -284,10 +296,10 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 9px;
-  border-radius: 5px;
-  color: #C7D0DD;
-  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 600;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -300,9 +312,9 @@
 }
 .ws-patients .bulkbar .clear {
   margin-left: auto;
-  color: #F2EFE8;
+  color: rgba(255, 255, 255, 0.82);
   font-size: 12.5px;
-  font-weight: 500;
+  font-weight: 600;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -334,20 +346,22 @@
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .ws-patients .ptbl {
   background: var(--ds2-surface, var(--surface));
-  border: 1px solid var(--ds2-border, var(--border));
-  border-radius: 10px;
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--pat-sh);
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
+[data-theme='dark'] .ws-patients .ptbl { border: 1px solid var(--border); }
 .ws-patients .ptbl-head {
   display: grid;
   grid-template-columns: 30px 1.7fr 140px 1.4fr 110px 95px 100px 28px;
   gap: 12px;
   align-items: center;
-  padding: 11px 16px;
-  background: var(--ds2-surface-2, var(--surface-2));
+  padding: 13px 18px;
+  background: transparent;
   border-bottom: 1px solid var(--ds2-border, var(--border));
   font-size: 10.5px;
   font-weight: 600;
@@ -363,8 +377,20 @@
   cursor: pointer;
 }
 .ws-patients .ptbl-head .sortable.on { color: var(--ds2-ink, var(--ink)); }
+/* Anti-débordement : les cellules de grille ne grandissent pas au-delà de leur
+   piste (libellés longs = ellipse), donc jamais de scrollbar horizontale. */
+.ws-patients .ptbl-head > *,
+.ws-patients .ptr > * {
+  min-width: 0;
+}
+.ws-patients .ptbl-head > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-patients .ptbl-body {
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
 }
 .ws-patients .ptr {
@@ -380,35 +406,35 @@
   background: var(--ds2-surface, var(--surface));
 }
 .ws-patients .ptr:first-child { border-top: none; }
-.ws-patients .ptr:hover { background: var(--ds2-navy-chart-soft, var(--blue-tint, #EDF2FA)); }
+.ws-patients .ptr:hover { background: var(--ds2-surface-2, var(--surface-2)); }
 .ws-patients .ptr.preview {
-  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
+  background: var(--accent-tint, var(--ds2-navy-soft, var(--primary-soft)));
   box-shadow: inset 3px 0 0 var(--ds2-navy, var(--primary));
 }
-.ws-patients .ptr.preview:hover { background: var(--ds2-navy-chart-soft, #DCE5F5); }
+.ws-patients .ptr.preview:hover { background: var(--accent-tint, var(--primary-soft)); }
 
 /* Checkbox custom */
 .ws-patients .ck {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border: 1.5px solid var(--ds2-border-strong, var(--border-strong, #B0B6C2));
-  border-radius: 3px;
-  background: #fff;
+  border-radius: 6px;
+  background: var(--ds2-surface, var(--surface));
   display: grid;
   place-items: center;
   color: #fff;
-  font-weight: 700;
-  font-size: 10px;
+  font-weight: 800;
+  font-size: 11px;
   flex-shrink: 0;
   cursor: pointer;
 }
 .ws-patients .ck.on {
-  background: var(--ds2-ink, var(--ink));
-  border-color: var(--ds2-ink, var(--ink));
+  background: var(--ds2-navy, var(--primary));
+  border-color: var(--ds2-navy, var(--primary));
 }
 .ws-patients .ck.dash {
-  background: var(--ds2-ink, var(--ink));
-  border-color: var(--ds2-ink, var(--ink));
+  background: var(--ds2-navy, var(--primary));
+  border-color: var(--ds2-navy, var(--primary));
   position: relative;
 }
 .ws-patients .ck.dash::after {
@@ -515,14 +541,14 @@
 .ws-patients .ptag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 20px;
+  gap: 5px;
+  height: 22px;
   min-height: 0;
-  max-height: 20px;
-  line-height: 20px;
-  padding: 0 7px;
-  border-radius: 4px;
-  font-size: 10.5px;
+  max-height: 22px;
+  line-height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: -0.005em;
   white-space: nowrap;
@@ -547,21 +573,29 @@
 .ws-patients .ptag.amb      { background: #FBEFE3; color: #6E4A0A; }
 .ws-patients .ptag.more     { background: #EFEDE5; color: var(--ds2-ink-3, var(--ink-3)); }
 
-/* Status pills (overrides — use existing .pill classes if present) */
+/* Status — point + texte (Calm Premium .pstatus) */
 .ws-patients .ppill {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 10px;
-  border-radius: 11px;
-  font-size: 11px;
-  font-weight: 600;
+  gap: 7px;
+  height: auto;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
+  font-weight: 700;
   letter-spacing: -0.005em;
+  white-space: nowrap;
 }
-.ws-patients .ppill.consult { background: var(--ds2-navy, #1E4DAB); color: #fff; }
-.ws-patients .ppill.arrived { background: #DEF0E6; color: #2F8F6B; }
-.ws-patients .ppill.waiting { background: #FBEFE3; color: #9A6B12; }
-.ws-patients .ppill.done    { background: #F2F1EC; color: #6B6B6B; }
+.ws-patients .ppill .d { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ws-patients .ppill.consult { color: var(--ds2-navy, var(--primary)); }
+.ws-patients .ppill.consult .d { background: var(--ds2-navy, var(--primary)); }
+.ws-patients .ppill.arrived { color: var(--ds2-green, var(--success)); }
+.ws-patients .ppill.arrived .d { background: var(--ds2-green, var(--success)); }
+.ws-patients .ppill.waiting { color: var(--ds2-amber, var(--amber)); }
+.ws-patients .ppill.waiting .d { background: var(--ds2-amber, var(--amber)); }
+.ws-patients .ppill.done    { color: var(--ds2-ink-4, var(--ink-4)); }
+.ws-patients .ppill.done .d { background: var(--ds2-ink-4, var(--ink-4)); }
 
 .ws-patients .more-btn {
   width: 26px;
@@ -587,11 +621,11 @@
 .ws-patients .pager {
   display: flex;
   align-items: center;
-  padding: 10px 16px;
+  padding: 13px 18px;
   border-top: 1px solid var(--ds2-border, var(--border));
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--ds2-ink-3, var(--ink-3));
-  background: var(--ds2-surface-2, var(--surface-2));
+  background: transparent;
   flex-shrink: 0;
 }
 .ws-patients .pager b {
@@ -646,13 +680,15 @@
 /* ── Detail rail (right) ─────────────────────────────────────────────────── */
 .ws-patients .drail {
   background: var(--ds2-surface, var(--surface));
-  border: 1px solid var(--ds2-border, var(--border));
-  border-radius: 10px;
+  border: none;
+  border-radius: 16px;
+  box-shadow: var(--pat-sh);
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
+[data-theme='dark'] .ws-patients .drail { border: 1px solid var(--border); }
 .ws-patients .drail-h {
   padding: 14px 16px;
   display: flex;
@@ -713,12 +749,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px;
-  background: var(--ds2-navy-chart-soft, var(--blue-tint, #DCE5F5));
-  border-bottom: 1px solid var(--ds2-navy-soft, var(--blue-soft, #C8D7F0));
-  font-size: 11.5px;
+  padding: 11px 18px;
+  background: var(--accent-tint, var(--ds2-navy-soft, var(--primary-soft)));
+  border-bottom: none;
+  font-size: 11px;
   color: var(--ds2-navy, var(--primary));
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 .ws-patients .drail-stat .dot {
   width: 6px;
@@ -863,13 +900,13 @@
 
 /* Next appointment compact */
 .ws-patients .next-mini {
-  background: var(--ds2-navy, var(--primary));
+  background: var(--ds2-green, var(--success));
   color: #fff;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 13px;
 }
 .ws-patients .next-mini .when-blk {
   width: 38px;
@@ -917,11 +954,11 @@
 
 /* Footer actions */
 .ws-patients .drail-foot {
-  padding: 12px 16px;
-  border-top: 1px solid var(--ds2-border, var(--border));
+  padding: 14px 18px;
+  border-top: 1px solid var(--ds2-border-soft, var(--border-soft));
   display: flex;
-  gap: 6px;
-  background: var(--ds2-surface-2, var(--surface-2));
+  gap: 8px;
+  background: transparent;
 }
 .ws-patients .drail-foot button {
   flex: 1;

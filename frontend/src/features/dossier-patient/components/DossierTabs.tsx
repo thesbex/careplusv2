@@ -16,6 +16,7 @@
  * Uses Radix Tabs (already in package.json) for keyboard navigation.
  */
 import * as RadixTabs from '@radix-ui/react-tabs';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { DossierTab } from '../types';
 import type { PatientTabCounts } from '../hooks/useTabCounts';
 
@@ -45,49 +46,50 @@ export function DossierTabs({
   showSejours,
   counts,
 }: DossierTabsProps) {
+  const { t } = useT();
   // Build the tab list dynamically — `count` only set when counts are loaded.
   const TABS: Tab[] = [
-    { id: 'timeline', label: 'Chronologie' },
+    { id: 'timeline', label: t('dossier.tab.timeline') },
     {
       id: 'consults',
-      label: 'Consultations',
+      label: t('dossier.tab.consults'),
       ...(counts ? { count: counts.consultations } : {}),
     },
-    { id: 'vitals', label: 'Constantes' },
+    { id: 'vitals', label: t('dossier.tab.vitals') },
     {
       id: 'prescr',
-      label: 'Prescriptions',
+      label: t('dossier.tab.prescr'),
       ...(counts ? { count: counts.prescriptions } : {}),
     },
-    { id: 'vaccination', label: 'Vaccination' },
+    { id: 'vaccination', label: t('dossier.tab.vaccination') },
   ];
 
   if (showGrossesse) {
-    TABS.push({ id: 'grossesse', label: 'Grossesse' });
+    TABS.push({ id: 'grossesse', label: t('dossier.tab.grossesse') });
   }
   if (showSejours) {
-    TABS.push({ id: 'sejours', label: 'Séjours' });
+    TABS.push({ id: 'sejours', label: t('dossier.tab.sejours') });
   }
 
   TABS.push(
     {
       id: 'analyses',
-      label: 'Analyses',
+      label: t('dossier.tab.analyses'),
       ...(counts ? { count: counts.analyses } : {}),
     },
     {
       id: 'imagerie',
-      label: 'Imagerie',
+      label: t('dossier.tab.imagerie'),
       ...(counts ? { count: counts.imagerie } : {}),
     },
     {
       id: 'docs',
-      label: 'Documents',
+      label: t('dossier.tab.docs'),
       ...(counts ? { count: counts.documents } : {}),
     },
     {
       id: 'factu',
-      label: 'Facturation',
+      label: t('dossier.tab.factu'),
       ...(counts ? { count: counts.facturation } : {}),
     },
   );
@@ -99,7 +101,7 @@ export function DossierTabs({
       style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
     >
       <RadixTabs.List
-        aria-label="Sections du dossier patient"
+        aria-label={t('dossier.tabs.aria')}
         style={{
           display: 'flex',
           gap: 2,

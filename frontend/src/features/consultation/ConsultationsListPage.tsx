@@ -19,6 +19,7 @@ import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { ChevronRight, ChevronLeft, ChevronDown, Lock, Doc, Plus, File } from '@/components/icons';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { useT, type I18nContextValue } from '@/lib/i18n/I18nProvider';
 import { useConsultations } from './hooks/useConsultations';
 import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
 import type { ConsultationApi } from './hooks/useConsultation';
@@ -74,16 +75,22 @@ function dateKey(iso: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function dayLabel(key: string, today: string, yesterday: string): string {
+function dayLabel(
+  key: string,
+  today: string,
+  yesterday: string,
+  lang: string,
+  t: I18nContextValue['t'],
+): string {
   const d = new Date(key);
-  const human = d.toLocaleDateString('fr-MA', {
+  const human = d.toLocaleDateString(lang === 'fr' ? 'fr-MA' : lang, {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-  if (key === today) return `Aujourd'hui · ${human}`;
-  if (key === yesterday) return `Hier · ${human}`;
+  if (key === today) return t('consult.list.todayWithDate', { date: human });
+  if (key === yesterday) return t('consult.list.yesterdayWithDate', { date: human });
   return human.charAt(0).toUpperCase() + human.slice(1);
 }
 
@@ -201,21 +208,21 @@ function KpiCard({
 }
 
 const ETAT_OPTIONS = [
-  { value: 'all', label: 'Tous' },
-  { value: 'brouillon', label: 'Brouillon / En cours' },
-  { value: 'signee', label: 'Signée' },
+  { value: 'all', labelKey: 'consult.list.etat.all' },
+  { value: 'brouillon', labelKey: 'consult.list.etat.draft' },
+  { value: 'signee', labelKey: 'consult.list.etat.signed' },
 ];
 
 const PERIODE_OPTIONS = [
-  { value: 'all', label: 'Tout' },
-  { value: '7', label: '7 derniers jours' },
-  { value: '30', label: '30 derniers jours' },
-  { value: 'month', label: 'Ce mois' },
+  { value: 'all', labelKey: 'consult.list.periode.all' },
+  { value: '7', labelKey: 'consult.list.periode.7' },
+  { value: '30', labelKey: 'consult.list.periode.30' },
+  { value: 'month', labelKey: 'consult.list.periode.month' },
 ];
 
 const SORT_OPTIONS = [
-  { value: 'desc', label: 'Date · plus récent' },
-  { value: 'asc', label: 'Date · plus ancien' },
+  { value: 'desc', labelKey: 'consult.list.sort.desc' },
+  { value: 'asc', labelKey: 'consult.list.sort.asc' },
 ];
 
 /** Chip-style dropdown (iso pilule de filtre) — remplace les anciens stubs désactivés. */
@@ -347,6 +354,7 @@ function ChipSelect({
 }
 
 function DayHeader({ label, count }: { label: string; count: number }) {
+  const { t } = useT();
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '14px 4px 8px' }}>
       <span
@@ -361,7 +369,7 @@ function DayHeader({ label, count }: { label: string; count: number }) {
         {label}
       </span>
       <span className="tnum" style={{ fontSize: 11, color: 'var(--ink-4)' }}>
-        · {count} consultation{count > 1 ? 's' : ''}
+        {t(count > 1 ? 'consult.list.dayConsultPlural' : 'consult.list.dayConsult', { n: count })}
       </span>
     </div>
   );
@@ -370,6 +378,7 @@ function DayHeader({ label, count }: { label: string; count: number }) {
 const TABLE_GRID = '90px 1.4fr 1.5fr 1fr 90px 120px 130px';
 
 function TableHeader() {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -386,13 +395,13 @@ function TableHeader() {
         background: 'var(--surface-2)',
       }}
     >
-      <span>Heure</span>
-      <span>Patient</span>
-      <span>Motif · Diagnostic</span>
-      <span>Type · Médecin</span>
-      <span style={{ textAlign: 'right' }}>Durée</span>
-      <span>Statut</span>
-      <span>Suite</span>
+      <span>{t('consult.list.col.heure')}</span>
+      <span>{t('consult.list.col.patient')}</span>
+      <span>{t('consult.list.col.motifDx')}</span>
+      <span>{t('consult.list.col.typeMed')}</span>
+      <span style={{ textAlign: 'right' }}>{t('consult.list.col.duree')}</span>
+      <span>{t('consult.list.col.statut')}</span>
+      <span>{t('consult.list.col.suite')}</span>
     </div>
   );
 }
@@ -410,6 +419,7 @@ function ConsultationRow({
   onClick: () => void;
   practitionerName: string | undefined;
 }) {
+  const { t } = useT();
   const initials = patientInitials(c.patientId);
   const color = avatarColor(c.patientId);
   const statut = statusKey(c);
@@ -417,10 +427,10 @@ function ConsultationRow({
 
   const statutBadge =
     statut === 'en-cours'
-      ? { bg: 'var(--primary-soft)', fg: 'var(--primary)', label: 'En cours', dot: true }
+      ? { bg: 'var(--primary-soft)', fg: 'var(--primary)', label: t('consult.list.badge.inProgress'), dot: true }
       : statut === 'annulee'
-        ? { bg: 'var(--bg-alt)', fg: 'var(--ink-4)', label: 'Annulée', dot: false, strike: true }
-        : { bg: '#E6F0E5', fg: '#2E5A2A', label: 'Terminée', dot: false };
+        ? { bg: 'var(--bg-alt)', fg: 'var(--ink-4)', label: t('consult.list.badge.cancelled'), dot: false, strike: true }
+        : { bg: '#E6F0E5', fg: '#2E5A2A', label: t('consult.list.badge.done'), dot: false };
 
   return (
     <div
@@ -483,10 +493,10 @@ function ConsultationRow({
               whiteSpace: 'nowrap',
             }}
           >
-            Patient {shortId(c.patientId)}
+            {t('consult.list.patientLabel', { id: shortId(c.patientId) })}
           </div>
           <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            dossier · —
+            {t('consult.list.dossierEmpty')}
           </div>
         </div>
       </div>
@@ -526,7 +536,7 @@ function ConsultationRow({
       </div>
 
       <div style={{ fontSize: 12, minWidth: 0 }}>
-        <div style={{ fontWeight: 550, color: 'var(--ink-2)' }}>Suivi</div>
+        <div style={{ fontWeight: 550, color: 'var(--ink-2)' }}>{t('consult.list.followUp')}</div>
         <div
           style={{
             fontSize: 11,
@@ -550,7 +560,7 @@ function ConsultationRow({
           textAlign: 'right',
         }}
       >
-        {dur !== null ? `${dur} min` : '—'}
+        {dur !== null ? t('consult.followUp.minutes', { n: dur }) : '—'}
       </div>
 
       <div>
@@ -599,7 +609,7 @@ function ConsultationRow({
                 borderRadius: 3,
               }}
             >
-              <Doc /> Ordo
+              <Doc /> {t('consult.list.ordo')}
             </span>
             <Lock aria-hidden="true" />
           </>
@@ -615,6 +625,7 @@ function ConsultationRow({
 
 export default function ConsultationsListPage() {
   const navigate = useNavigate();
+  const { t, lang } = useT();
   const isMobile = useIsMobile();
   const { consultations, isLoading, error } = useConsultations();
   const { data: practitioners } = usePractitioners();
@@ -633,10 +644,10 @@ export default function ConsultationsListPage() {
 
   const medecinOptions = useMemo(
     () => [
-      { value: '', label: 'Tous' },
+      { value: '', label: t('consult.list.filter.all') },
       ...practitioners.map((p) => ({ value: p.id, label: `Dr ${p.lastName}` })),
     ],
-    [practitioners],
+    [practitioners, t],
   );
 
   const periodeFrom = useMemo(() => {
@@ -707,21 +718,21 @@ export default function ConsultationsListPage() {
 
   function exportCsv() {
     const header = [
-      'Date',
-      'Heure',
-      'Référence',
-      'Patient',
-      'Médecin',
-      'Motif',
-      'Diagnostic',
-      'Statut',
-      'Durée (min)',
+      t('consult.list.csv.date'),
+      t('consult.list.csv.heure'),
+      t('consult.list.csv.ref'),
+      t('consult.list.csv.patient'),
+      t('consult.list.csv.medecin'),
+      t('consult.list.csv.motif'),
+      t('consult.list.csv.diagnostic'),
+      t('consult.list.csv.statut'),
+      t('consult.list.csv.duree'),
     ];
     const rows = filtered.map((c) => [
       dateKey(c.startedAt),
       formatHeure(c.startedAt),
       formatId(c),
-      `Patient ${shortId(c.patientId)}`,
+      t('consult.list.patientLabel', { id: shortId(c.patientId) }),
       practName.get(c.practitionerId) ?? `Dr ${shortId(c.practitionerId)}`,
       c.motif ?? '',
       c.diagnosis ?? '',
@@ -741,11 +752,11 @@ export default function ConsultationsListPage() {
   }
 
   const segs: { id: SegmentKey; label: string; count: number }[] = [
-    { id: 'toutes', label: 'Toutes', count: counts.all },
-    { id: 'aujourdhui', label: "Aujourd'hui", count: counts.today },
-    { id: 'semaine', label: 'Cette semaine', count: counts.week },
-    { id: 'en-cours', label: 'En cours', count: counts.inProgress },
-    { id: 'annulees', label: 'Annulées', count: counts.cancelled },
+    { id: 'toutes', label: t('consult.list.seg.all'), count: counts.all },
+    { id: 'aujourdhui', label: t('consult.list.seg.today'), count: counts.today },
+    { id: 'semaine', label: t('consult.list.seg.week'), count: counts.week },
+    { id: 'en-cours', label: t('consult.list.seg.inProgress'), count: counts.inProgress },
+    { id: 'annulees', label: t('consult.list.seg.cancelled'), count: counts.cancelled },
   ];
 
   // ── Mobile : on garde la liste cards simple ──────────────────────────────
@@ -758,16 +769,16 @@ export default function ConsultationsListPage() {
         onTabChange={(t) => navigate(TAB_MAP[t])}
         topbar={
           <MTopbar
-            left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-            title="Mes consultations"
-            sub={`${consultations.length} consultation${consultations.length > 1 ? 's' : ''}`}
+            left={<MIconBtn icon="ChevronLeft" label={t('consult.list.back')} onClick={() => navigate('/parametres')} />}
+            title={t('consult.list.mobileTitle')}
+            sub={t(consultations.length > 1 ? 'consult.list.consultCountPlural' : 'consult.list.consultCount', { n: consultations.length })}
           />
         }
         fab={
           <button
             type="button"
             onClick={() => navigate('/patients')}
-            aria-label="Démarrer depuis un patient"
+            aria-label={t('consult.list.fabAria')}
             style={{
               position: 'fixed',
               right: 16,
@@ -785,17 +796,17 @@ export default function ConsultationsListPage() {
               zIndex: 5,
             }}
           >
-            + Depuis patient
+            + {t('consult.list.fabFromPatient')}
           </button>
         }
       >
         <div style={{ padding: 12 }}>
-          {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>}
+          {isLoading && <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>}
           {error && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
           {drafts.length > 0 && (
             <Panel style={{ marginBottom: 16 }}>
               <PanelHeader>
-                <span>En cours · brouillon ({drafts.length})</span>
+                <span>{t('consult.list.draftSection', { n: drafts.length })}</span>
               </PanelHeader>
               <div style={{ padding: 12 }}>
                 {drafts.map((c) => (
@@ -813,13 +824,13 @@ export default function ConsultationsListPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{formatId(c)}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                        Patient {shortId(c.patientId)} · {formatHeure(c.startedAt)}
+                        {t('consult.list.patientLabel', { id: shortId(c.patientId) })} · {formatHeure(c.startedAt)}
                       </div>
                       {c.motif && (
                         <div style={{ fontSize: 12, color: 'var(--ink-2)', marginTop: 4 }}>{c.motif}</div>
                       )}
                     </div>
-                    <Pill status="consult" dot>Brouillon</Pill>
+                    <Pill status="consult" dot>{t('consult.list.badge.draft')}</Pill>
                     <ChevronRight aria-hidden="true" />
                   </button>
                 ))}
@@ -829,7 +840,7 @@ export default function ConsultationsListPage() {
           {signed.length > 0 && (
             <Panel>
               <PanelHeader>
-                <span>Signées ({signed.length})</span>
+                <span>{t('consult.list.signedSection', { n: signed.length })}</span>
               </PanelHeader>
               <div style={{ padding: 12 }}>
                 {signed.map((c) => (
@@ -847,10 +858,10 @@ export default function ConsultationsListPage() {
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 600 }}>{formatId(c)}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                        Patient {shortId(c.patientId)} · {formatHeure(c.startedAt)}
+                        {t('consult.list.patientLabel', { id: shortId(c.patientId) })} · {formatHeure(c.startedAt)}
                       </div>
                     </div>
-                    <Pill status="done" dot>Signée</Pill>
+                    <Pill status="done" dot>{t('consult.status.signed')}</Pill>
                     <Lock aria-hidden="true" />
                     <ChevronRight aria-hidden="true" />
                   </button>
@@ -867,15 +878,18 @@ export default function ConsultationsListPage() {
   return (
     <Screen
       active="consult"
-      title="Consultations"
-      sub={`Historique · ${consultations.length} consultation${consultations.length > 1 ? 's' : ''} · ${counts.inProgress} en cours`}
+      title={t('nav.consult')}
+      sub={t('consult.list.subDesktop', {
+        total: t(consultations.length > 1 ? 'consult.list.consultCountPlural' : 'consult.list.consultCount', { n: consultations.length }),
+        inProgress: counts.inProgress,
+      })}
       topbarRight={
         <>
           <Button onClick={exportCsv} disabled={filtered.length === 0}>
-            <File /> Export
+            <File /> {t('consult.list.export')}
           </Button>
           <Button variant="primary" onClick={() => navigate('/patients')}>
-            <Plus /> Nouvelle consultation
+            <Plus /> {t('consult.list.newConsult')}
           </Button>
         </>
       }
@@ -893,22 +907,25 @@ export default function ConsultationsListPage() {
           }}
         >
           <KpiCard
-            label="Aujourd'hui"
+            label={t('consult.list.kpiToday')}
             value={String(kpis.todayCount)}
-            sub={`${kpis.todayInProgress} en cours · ${kpis.todayDone} terminée${kpis.todayDone > 1 ? 's' : ''}`}
+            sub={t(kpis.todayDone > 1 ? 'consult.list.kpiTodaySubPlural' : 'consult.list.kpiTodaySub', {
+              inProgress: kpis.todayInProgress,
+              done: kpis.todayDone,
+            })}
           />
           {kpis.avgDuration !== null ? (
             <KpiCard
-              label="Durée moyenne"
+              label={t('consult.list.kpiAvgDuration')}
               value={String(kpis.avgDuration)}
-              unit="min"
-              sub="cible 25 min"
+              unit={t('consult.list.minUnit')}
+              sub={t('consult.list.kpiAvgTarget')}
             />
           ) : (
-            <KpiCard label="Durée moyenne" value="—" sub="cible 25 min" />
+            <KpiCard label={t('consult.list.kpiAvgDuration')} value="—" sub={t('consult.list.kpiAvgTarget')} />
           )}
-          <KpiCard label="Taux ordonnance" value="—" unit="%" sub="à venir" />
-          <KpiCard label="Annulations · 30j" value="—" sub="à venir" />
+          <KpiCard label={t('consult.list.kpiRxRate')} value="—" unit="%" sub={t('consult.list.comingSoon')} />
+          <KpiCard label={t('consult.list.kpiCancellations')} value="—" sub={t('consult.list.comingSoon')} />
         </div>
 
         {/* Toolbar row 1 : segmented + sort */}
@@ -934,7 +951,7 @@ export default function ConsultationsListPage() {
               height: 30,
             }}
             role="tablist"
-            aria-label="Segments"
+            aria-label={t('consult.list.segmentsAria')}
           >
             {segs.map((s) => {
               const on = seg === s.id;
@@ -989,10 +1006,10 @@ export default function ConsultationsListPage() {
               height: 30,
             }}
           >
-            <span>Trier par</span>
+            <span>{t('consult.list.sortBy')}</span>
             <ChipSelect
               value={sortDir}
-              options={SORT_OPTIONS}
+              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
               onChange={(v) => setSortDir(v as 'desc' | 'asc')}
               minWidth={170}
             />
@@ -1022,20 +1039,26 @@ export default function ConsultationsListPage() {
               marginRight: 4,
             }}
           >
-            Filtres
+            {t('consult.list.filters')}
           </span>
           <ChipSelect
-            label="Médecin"
+            label={t('consult.list.filter.medecin')}
             value={medecin}
             options={medecinOptions}
             onChange={setMedecin}
             minWidth={210}
           />
-          <ChipSelect label="État" value={etat} options={ETAT_OPTIONS} onChange={setEtat} minWidth={190} />
           <ChipSelect
-            label="Période"
+            label={t('consult.list.filter.etat')}
+            value={etat}
+            options={ETAT_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
+            onChange={setEtat}
+            minWidth={190}
+          />
+          <ChipSelect
+            label={t('consult.list.filter.periode')}
             value={periode}
-            options={PERIODE_OPTIONS}
+            options={PERIODE_OPTIONS.map((o) => ({ value: o.value, label: t(o.labelKey) }))}
             onChange={setPeriode}
             minWidth={180}
           />
@@ -1060,7 +1083,7 @@ export default function ConsultationsListPage() {
                 gap: 4,
               }}
             >
-              Réinitialiser
+              {t('consult.list.filter.reset')}
             </button>
           )}
         </div>
@@ -1069,20 +1092,20 @@ export default function ConsultationsListPage() {
         <div className="scroll" style={{ flex: 1, overflow: 'auto', background: 'var(--bg)' }}>
           <div style={{ padding: '0 20px' }}>
             {isLoading && (
-              <div style={{ padding: 32, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+              <div style={{ padding: 32, color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
             )}
             {error && (
               <div style={{ padding: 32, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
             )}
             {!isLoading && filtered.length === 0 && !error && (
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-                Aucune consultation ne correspond à ce filtre.
+                {t('consult.list.empty')}
               </div>
             )}
 
             {groupedByDay.map(([key, items]) => (
               <div key={key}>
-                <DayHeader label={dayLabel(key, today, yesterday)} count={items.length} />
+                <DayHeader label={dayLabel(key, today, yesterday, lang, t)} count={items.length} />
                 <Panel style={{ margin: '0 0 18px', padding: 0, overflow: 'hidden' }}>
                   <TableHeader />
                   {items.map((c, i) => (
@@ -1114,15 +1137,16 @@ export default function ConsultationsListPage() {
                 }}
               >
                 <span>
-                  Affichage de{' '}
-                  <strong style={{ color: 'var(--ink-2)' }}>{filtered.length}</strong>{' '}
-                  consultation{filtered.length > 1 ? 's' : ''} sur {consultations.length}
+                  {t('consult.list.showing', {
+                    shown: t(filtered.length > 1 ? 'consult.list.consultCountPlural' : 'consult.list.consultCount', { n: filtered.length }),
+                    total: consultations.length,
+                  })}
                 </span>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                   <Button size="sm">
                     <ChevronLeft />
                   </Button>
-                  <span className="tnum">Page 1 / 1</span>
+                  <span className="tnum">{t('consult.list.page')}</span>
                   <Button size="sm">
                     <ChevronRight />
                   </Button>

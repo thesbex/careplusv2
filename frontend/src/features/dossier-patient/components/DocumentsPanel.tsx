@@ -16,10 +16,11 @@ import { useState } from 'react';
 import { File, Trash } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { Select } from '@/components/ui/Input';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   usePatientDocuments,
   downloadDocument,
-  DOCUMENT_TYPE_LABEL,
+  documentTypeKey,
   type DocumentType,
   type PatientDocument,
 } from '../hooks/usePatientDocuments';
@@ -56,6 +57,7 @@ function formatDate(iso: string): string {
 }
 
 export function DocumentsPanel({ patientId, filter, compact = false }: DocumentsPanelProps) {
+  const { t } = useT();
   const {
     documents, isLoading, error,
     upload, isUploading, uploadError,
@@ -80,7 +82,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
 
   async function handleFile(f: File) {
     if (f.size > MAX_BYTES) {
-      setLocalError('Fichier trop volumineux (max 10 Mo).');
+      setLocalError(t('dossier.docs.tooBig'));
       return;
     }
     setLocalError(null);
@@ -93,7 +95,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
   }
 
   async function handleDelete(d: PatientDocument) {
-    if (!confirm(`Supprimer « ${d.originalFilename} » ?`)) return;
+    if (!confirm(t('dossier.docs.confirmDelete', { name: d.originalFilename }))) return;
     try {
       await remove(d.id);
     } catch {
@@ -105,7 +107,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
     try {
       await downloadDocument(d);
     } catch {
-      setLocalError('Téléchargement impossible.');
+      setLocalError(t('dossier.docs.downloadFailed'));
     }
   }
 
@@ -115,12 +117,12 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontSize: 14, fontWeight: 650 }}>
-              {filter ? DOCUMENT_TYPE_LABEL[filter] + 's' : 'Documents du dossier'}
+              {filter ? t(documentTypeKey(filter)) : t('dossier.docs.records')}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
               {filter
-                ? `Téléversez les ${DOCUMENT_TYPE_LABEL[filter].toLowerCase()}s antérieurs.`
-                : "Anciennes prescriptions, comptes rendus, analyses, imagerie."}
+                ? t('dossier.docs.uploadPriorOf', { type: t(documentTypeKey(filter)).toLowerCase() })
+                : t('dossier.docs.subtitle')}
             </div>
           </div>
         </div>
@@ -144,15 +146,15 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
               <Select
                 value={pendingType}
                 onChange={(e) => setPendingType(e.target.value as DocumentType)}
-                aria-label="Type de document"
+                aria-label={t('dossier.docs.typeAria')}
                 style={{
                   height: 32, fontSize: 12.5, fontFamily: 'inherit',
                   border: '1px solid var(--border)', borderRadius: 6,
                   padding: '0 8px', background: 'var(--surface)',
                 }}
               >
-                {ALL_TYPES.map((t) => (
-                  <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
+                {ALL_TYPES.map((dt) => (
+                  <option key={dt} value={dt}>{t(documentTypeKey(dt))}</option>
                 ))}
               </Select>
             )}
@@ -160,7 +162,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
               type="text"
               value={pendingNotes}
               onChange={(e) => setPendingNotes(e.target.value)}
-              placeholder="Note (optionnelle) — ex. Reçu en consultation"
+              placeholder={t('dossier.docs.notePlaceholder')}
               style={{
                 flex: 1, minWidth: 160, height: 32, fontSize: 12.5,
                 border: '1px solid var(--border)', borderRadius: 6,
@@ -170,12 +172,12 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
             <DocumentUploadButton
               accept={ACCEPT}
               disabled={isUploading}
-              uploadLabel={isUploading ? 'Envoi…' : 'Téléverser'}
+              uploadLabel={isUploading ? t('dossier.docs.sending') : t('dossier.docs.upload')}
               onFile={(f) => { void handleFile(f); }}
             />
           </div>
           <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            PDF, JPEG, PNG, WebP, HEIC — max 10 Mo. « Photographier » ouvre directement la caméra.
+            {t('dossier.docs.formatsHint')}
           </div>
           {(uploadError ?? localError) && (
             <div style={{ fontSize: 12, color: 'var(--danger)' }}>{uploadError ?? localError}</div>
@@ -191,7 +193,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
             const count = k === 'ALL'
               ? documents.length
               : documents.filter((d) => d.type === k).length;
-            const label = k === 'ALL' ? 'Tous' : DOCUMENT_TYPE_LABEL[k];
+            const label = k === 'ALL' ? t('dossier.docs.all') : t(documentTypeKey(k));
             return (
               <button
                 key={k}
@@ -215,7 +217,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
 
       {/* List */}
       {isLoading && (
-        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
       )}
       {!isLoading && error && (
         <div style={{ fontSize: 12, color: 'var(--danger)' }}>{error}</div>
@@ -223,8 +225,8 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
       {!isLoading && !error && visible.length === 0 && (
         <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
           {filter
-            ? `Aucun document de type « ${DOCUMENT_TYPE_LABEL[filter]} ».`
-            : 'Aucun document pour ce patient.'}
+            ? t('dossier.docs.emptyOfType', { type: t(documentTypeKey(filter)) })
+            : t('dossier.docs.empty')}
         </div>
       )}
       {!isLoading && !error && visible.length > 0 && (
@@ -243,7 +245,7 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
               <button
                 type="button"
                 onClick={() => setPreviewDoc(d)}
-                title="Visualiser"
+                title={t('dossier.docs.view')}
                 style={{
                   flex: 1, textAlign: 'left', background: 'none', border: 'none',
                   cursor: 'pointer', fontFamily: 'inherit', padding: 0,
@@ -253,29 +255,29 @@ export function DocumentsPanel({ patientId, filter, compact = false }: Documents
               >
                 <span style={{ fontSize: 12.5, fontWeight: 600 }}>{d.originalFilename}</span>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  {DOCUMENT_TYPE_LABEL[d.type]} · {formatDate(d.uploadedAt)} · {formatSize(d.sizeBytes)}
+                  {t(documentTypeKey(d.type))} · {formatDate(d.uploadedAt)} · {formatSize(d.sizeBytes)}
                   {d.notes ? ` · ${d.notes}` : ''}
                 </span>
               </button>
               <button
                 type="button"
                 onClick={() => { void handleDownload(d); }}
-                title="Télécharger"
-                aria-label={`Télécharger ${d.originalFilename}`}
+                title={t('dossier.docs.download')}
+                aria-label={t('dossier.docs.downloadAria', { name: d.originalFilename })}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--ink-3)', fontSize: 11, padding: '4px 8px',
                   borderRadius: 4, fontFamily: 'inherit',
                 }}
               >
-                Télécharger
+                {t('dossier.docs.download')}
               </button>
               {canDelete && (
                 <button
                   type="button"
                   onClick={() => { void handleDelete(d); }}
                   disabled={isRemoving}
-                  aria-label={`Supprimer ${d.originalFilename}`}
+                  aria-label={t('dossier.docs.deleteAria', { name: d.originalFilename })}
                   style={{
                     background: 'none', border: 'none', cursor: 'pointer',
                     color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0,

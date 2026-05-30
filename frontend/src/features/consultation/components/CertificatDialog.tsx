@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { PdfGenerationOverlay } from '@/features/prescription/components/PdfGenerationOverlay';
 
 interface CertificatDialogProps {
@@ -24,26 +25,14 @@ interface CertificatDialogProps {
 
 type TemplateKind = 'APTITUDE' | 'PRESENCE' | 'REPOS' | null;
 
-const TEMPLATES: { kind: Exclude<TemplateKind, null>; label: string; body: string }[] = [
-  {
-    kind: 'APTITUDE',
-    label: 'Aptitude',
-    body:
-      "Le patient est en bonne santé et apte à reprendre toutes ses activités " +
-      "professionnelles et sportives habituelles, sans contre-indication médicale.",
-  },
-  {
-    kind: 'PRESENCE',
-    label: 'Présence en consultation',
-    body:
-      "Le patient s'est présenté à mon cabinet ce jour pour consultation médicale.",
-  },
-  {
-    kind: 'REPOS',
-    label: 'Repos',
-    body: '', // body généré dynamiquement à partir des champs structurés
-  },
-];
+const TEMPLATE_KINDS: Exclude<TemplateKind, null>[] = ['APTITUDE', 'PRESENCE', 'REPOS'];
+
+/** Libellé i18n d'un kind de modèle de certificat. */
+const TEMPLATE_LABEL_KEY: Record<Exclude<TemplateKind, null>, string> = {
+  APTITUDE: 'consult.cert.tpl.aptitude',
+  PRESENCE: 'consult.cert.tpl.presence',
+  REPOS: 'consult.cert.tpl.rest',
+};
 
 /** Aujourd'hui en YYYY-MM-DD (composantes locales — ne pas utiliser toISOString). */
 function todayLocalIso(): string {
@@ -74,21 +63,30 @@ function formatFr(iso: string): string {
 }
 
 /** Génère le corps texte structuré pour le modèle Repos. */
-function buildRestBody(days: number, startIso: string, allowsOuting: boolean): string {
+function buildRestBody(
+  days: number,
+  startIso: string,
+  allowsOuting: boolean,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
   const endIso = addDaysIso(startIso, Math.max(0, days - 1));
   const startFr = formatFr(startIso);
   const endFr = formatFr(endIso);
-  const dayLabel = days <= 1 ? 'jour' : 'jours';
-  const outing = allowsOuting ? 'Sortie autorisée.' : 'Sortie non autorisée.';
-  return (
-    `L'état de santé du patient nécessite un repos de ${days} ${dayLabel} ` +
-    `du ${startFr} au ${endFr} inclus. ${outing}`
-  );
+  const dayLabel = days <= 1 ? t('consult.cert.day') : t('consult.cert.days');
+  const outing = allowsOuting ? t('consult.cert.outingAllowed') : t('consult.cert.outingNotAllowed');
+  return t('consult.cert.body.rest', {
+    days,
+    dayLabel,
+    start: startFr,
+    end: endFr,
+    outing,
+  });
 }
 
 export function CertificatDialog({
   open, onOpenChange, consultationId, onCreated,
 }: CertificatDialogProps) {
+  const { t } = useT();
   const [body, setBody] = useState('');
   const [activeTemplate, setActiveTemplate] = useState<TemplateKind>(null);
 
@@ -115,9 +113,9 @@ export function CertificatDialog({
   // Quand on est sur le modèle Repos, le body suit les champs structurés.
   useEffect(() => {
     if (activeTemplate === 'REPOS') {
-      setBody(buildRestBody(restDays, restStartDate, restAllowsOuting));
+      setBody(buildRestBody(restDays, restStartDate, restAllowsOuting, t));
     }
-  }, [activeTemplate, restDays, restStartDate, restAllowsOuting]);
+  }, [activeTemplate, restDays, restStartDate, restAllowsOuting, t]);
 
   const restEndDate = useMemo(
     () => addDaysIso(restStartDate, Math.max(0, restDays - 1)),
@@ -129,10 +127,11 @@ export function CertificatDialog({
   function pickTemplate(kind: Exclude<TemplateKind, null>) {
     setActiveTemplate(kind);
     if (kind === 'REPOS') {
-      setBody(buildRestBody(restDays, restStartDate, restAllowsOuting));
+      setBody(buildRestBody(restDays, restStartDate, restAllowsOuting, t));
+    } else if (kind === 'APTITUDE') {
+      setBody(t('consult.cert.body.aptitude'));
     } else {
-      const tmpl = TEMPLATES.find((t) => t.kind === kind);
-      setBody(tmpl?.body ?? '');
+      setBody(t('consult.cert.body.presence'));
     }
   }
 
@@ -145,7 +144,7 @@ export function CertificatDialog({
       }).then((r) => r.data),
     onSuccess: (created) => {
       void qc.invalidateQueries({ queryKey: ['prescriptions'] });
-      toast.success('Certificat généré.');
+      toast.success(t('consult.cert.generated'));
       // Ouvre le PDF dans un nouvel onglet (fetch + blob — l'auth Bearer
       // est sur l'instance axios, on ne peut pas mettre direct dans <a href>).
       // L'overlay reste visible pendant ce 2e appel.
@@ -155,7 +154,7 @@ export function CertificatDialog({
           const url = URL.createObjectURL(r.data as Blob);
           window.open(url, '_blank', 'noopener,noreferrer');
         })
-        .catch(() => toast.error('Aperçu PDF impossible.'))
+        .catch(() => toast.error(t('consult.cert.pdfFailed')))
         .finally(() => setGenerating(false));
       onCreated?.(created.id);
       onOpenChange(false);
@@ -164,7 +163,7 @@ export function CertificatDialog({
       setGenerating(false);
       const msg =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        'Création du certificat refusée.';
+        t('consult.cert.createRefused');
       toast.error(msg);
     },
   });
@@ -174,11 +173,11 @@ export function CertificatDialog({
 
   function submit() {
     if (activeTemplate === 'REPOS' && !restValid) {
-      toast.error('Saisissez un nombre de jours entre 1 et 30 et une date de début valide.');
+      toast.error(t('consult.cert.errRestValid'));
       return;
     }
     if (body.trim().length < 10) {
-      toast.error('Le corps du certificat doit faire au moins 10 caractères.');
+      toast.error(t('consult.cert.errBodyMin'));
       return;
     }
     setGenerating(true);
@@ -211,27 +210,26 @@ export function CertificatDialog({
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>
-              Certificat médical
+              {t('consult.cert.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
           <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>
-            Le certificat est généré en PDF avec en-tête cabinet + INPE/CNOM, et
-            le corps que vous saisissez ci-dessous.
+            {t('consult.cert.description')}
           </Dialog.Description>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-            {TEMPLATES.map((t) => {
-              const active = activeTemplate === t.kind;
+            {TEMPLATE_KINDS.map((kind) => {
+              const active = activeTemplate === kind;
               return (
                 <button
-                  key={t.kind}
+                  key={kind}
                   type="button"
-                  onClick={() => pickTemplate(t.kind)}
+                  onClick={() => pickTemplate(kind)}
                   style={{
                     height: 28,
                     padding: '0 12px',
@@ -245,7 +243,7 @@ export function CertificatDialog({
                     cursor: 'pointer',
                   }}
                 >
-                  Modèle : {t.label}
+                  {t('consult.cert.template', { label: t(TEMPLATE_LABEL_KEY[kind]) })}
                 </button>
               );
             })}
@@ -267,7 +265,7 @@ export function CertificatDialog({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
                   <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>
-                    Nombre de jours <span style={{ color: 'var(--danger, #dc2626)' }}>*</span>
+                    {t('consult.cert.restDays')} <span style={{ color: 'var(--danger, #dc2626)' }}>*</span>
                   </span>
                   <input
                     type="number"
@@ -278,7 +276,7 @@ export function CertificatDialog({
                       const v = Number(e.target.value);
                       setRestDays(Number.isFinite(v) ? v : 0);
                     }}
-                    aria-label="Nombre de jours de repos"
+                    aria-label={t('consult.cert.restDaysAria')}
                     style={{
                       height: 34,
                       border: '1px solid var(--border)',
@@ -290,12 +288,12 @@ export function CertificatDialog({
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                  <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Date de début</span>
+                  <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{t('consult.cert.restStart')}</span>
                   <input
                     type="date"
                     value={restStartDate}
                     onChange={(e) => setRestStartDate(e.target.value)}
-                    aria-label="Date de début du repos"
+                    aria-label={t('consult.cert.restStartAria')}
                     style={{
                       height: 34,
                       border: '1px solid var(--border)',
@@ -313,9 +311,9 @@ export function CertificatDialog({
                   type="checkbox"
                   checked={restAllowsOuting}
                   onChange={(e) => setRestAllowsOuting(e.target.checked)}
-                  aria-label="Sortie autorisée"
+                  aria-label={t('consult.cert.outingLabel')}
                 />
-                <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>Sortie autorisée</span>
+                <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>{t('consult.cert.outingLabel')}</span>
               </label>
 
               <div
@@ -329,14 +327,14 @@ export function CertificatDialog({
                   padding: '8px 10px',
                 }}
               >
-                Date de fin (incluse) : <strong style={{ color: 'var(--ink-1)' }}>
+                {t('consult.cert.endDate')}<strong style={{ color: 'var(--ink-1)' }}>
                   {restValid ? formatFr(restEndDate) : '—'}
                 </strong>
               </div>
 
               {!restValid && (
                 <div role="alert" style={{ fontSize: 11.5, color: 'var(--danger, #dc2626)' }}>
-                  Saisissez un nombre de jours entre 1 et 30.
+                  {t('consult.cert.restDaysHint')}
                 </div>
               )}
             </div>
@@ -345,9 +343,9 @@ export function CertificatDialog({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Saisissez le corps du certificat…"
+            placeholder={t('consult.cert.bodyPlaceholder')}
             rows={9}
-            aria-label="Corps du certificat"
+            aria-label={t('consult.cert.bodyAria')}
             style={{
               width: '100%',
               border: '1px solid var(--border)',
@@ -361,20 +359,20 @@ export function CertificatDialog({
           />
           {activeTemplate === 'REPOS' && (
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-              Le corps est synchronisé avec les champs ci-dessus. Vous pouvez l'éditer ensuite.
+              {t('consult.cert.bodySync')}
             </div>
           )}
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
             <Dialog.Close asChild>
-              <Button>Annuler</Button>
+              <Button>{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button
               variant="primary"
               onClick={submit}
               disabled={submitDisabled}
             >
-              {generating || mutation.isPending ? 'Génération…' : 'Générer le certificat'}
+              {generating || mutation.isPending ? t('consult.cert.generating') : t('consult.cert.generate')}
             </Button>
           </div>
         </Dialog.Content>

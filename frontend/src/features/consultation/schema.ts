@@ -23,10 +23,10 @@ export const consultationDraftSchema = z.object({
  * sont volontairement explicites pour lever cette ambiguïté côté praticien.
  */
 export const consultationSignSchema = z.object({
-  subjectif: z.string().min(1, 'Subjectif (S) requis pour signer'),
-  objectif: z.string().min(1, 'Objectif (O) requis pour signer'),
-  analyse: z.string().min(1, 'Appréciation / diagnostic (A du SOAP) requis pour signer'),
-  plan: z.string().min(1, 'Plan (P) requis pour signer'),
+  subjectif: z.string().min(1, 'consult.sign.sRequired'),
+  objectif: z.string().min(1, 'consult.sign.oRequired'),
+  analyse: z.string().min(1, 'consult.sign.aRequired'),
+  plan: z.string().min(1, 'consult.sign.pRequired'),
 });
 
 export type ConsultationDraft = z.infer<typeof consultationDraftSchema>;

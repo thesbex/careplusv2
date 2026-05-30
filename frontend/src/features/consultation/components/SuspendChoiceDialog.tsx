@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface Props {
   open: boolean;
@@ -37,6 +38,7 @@ export function SuspendChoiceDialog({
   onSuspended,
   onCancelled,
 }: Props) {
+  const { t } = useT();
   const [mode, setMode] = useState<'choice' | 'cancel'>('choice');
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,10 +56,10 @@ export function SuspendChoiceDialog({
     try {
       const ok = await onSuspend();
       if (!ok) {
-        toast.error('Suspension refusée par le serveur.');
+        toast.error(t('consult.suspendDialog.refused'));
         return;
       }
-      toast.success('Consultation suspendue. Patient remis dans la file.');
+      toast.success(t('consult.suspendDialog.suspended'));
       onSuspended?.();
       close();
     } finally {
@@ -67,7 +69,7 @@ export function SuspendChoiceDialog({
 
   async function handleCancelConfirm() {
     if (reason.trim().length < 3) {
-      toast.error('Raison requise (3 caractères min).');
+      toast.error(t('consult.suspendDialog.reasonRequired'));
       return;
     }
     setBusy(true);
@@ -75,17 +77,17 @@ export function SuspendChoiceDialog({
       // 1) Suspend la consultation pour la sortir du flux actif.
       const ok = await onSuspend();
       if (!ok) {
-        toast.error('Suspension refusée par le serveur.');
+        toast.error(t('consult.suspendDialog.refused'));
         return;
       }
       // 2) Annule le RDV lié.
       try {
         await onCancel(reason.trim());
       } catch {
-        toast.error("Consultation suspendue mais annulation du RDV refusée.");
+        toast.error(t('consult.suspendDialog.cancelRefused'));
         return;
       }
-      toast.success('Consultation suspendue, rendez-vous annulé.');
+      toast.success(t('consult.suspendDialog.cancelled'));
       onCancelled?.();
       close();
     } finally {
@@ -97,7 +99,7 @@ export function SuspendChoiceDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Suspendre la consultation"
+      aria-label={t('consult.suspendDialog.aria')}
       data-testid="suspend-choice-dialog"
       style={{
         position: 'fixed',
@@ -125,13 +127,13 @@ export function SuspendChoiceDialog({
         }}
       >
         <div style={{ fontSize: 15, fontWeight: 600 }}>
-          Suspendre la consultation
+          {t('consult.suspendDialog.title')}
         </div>
 
         {mode === 'choice' && (
           <>
             <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-              Que voulez-vous faire du rendez-vous ?
+              {t('consult.suspendDialog.question')}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <button
@@ -152,10 +154,9 @@ export function SuspendChoiceDialog({
                   cursor: busy ? 'not-allowed' : 'pointer',
                 }}
               >
-                ↩ Remettre le patient en salle d'attente
+                {t('consult.suspendDialog.resume')}
                 <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 400, marginTop: 4 }}>
-                  Le patient réapparaît dans la file d'attente, la consultation
-                  reprend dès la première saisie.
+                  {t('consult.suspendDialog.resumeDesc')}
                 </div>
               </button>
               {!hideCancelBranch && (
@@ -177,16 +178,16 @@ export function SuspendChoiceDialog({
                     cursor: busy ? 'not-allowed' : 'pointer',
                   }}
                 >
-                  ✕ Annuler le rendez-vous
+                  {t('consult.suspendDialog.cancel')}
                   <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 400, marginTop: 4 }}>
-                    Le patient sort du flux du jour. Une raison est requise.
+                    {t('consult.suspendDialog.cancelDesc')}
                   </div>
                 </button>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button onClick={close} disabled={busy}>
-                Fermer
+                {t('common.close')}
               </Button>
             </div>
           </>
@@ -195,11 +196,10 @@ export function SuspendChoiceDialog({
         {mode === 'cancel' && (
           <>
             <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-              Indiquez la raison de l'annulation (visible dans l'historique du
-              patient).
+              {t('consult.suspendDialog.cancelReasonHint')}
             </div>
             <Field>
-              <FieldLabel htmlFor="suspend-cancel-reason">Raison *</FieldLabel>
+              <FieldLabel htmlFor="suspend-cancel-reason">{t('consult.suspendDialog.reasonLabel')}</FieldLabel>
               <textarea
                 id="suspend-cancel-reason"
                 data-testid="suspend-cancel-reason"
@@ -207,7 +207,7 @@ export function SuspendChoiceDialog({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 disabled={busy}
-                placeholder="Empêchement, patient parti sans attendre, …"
+                placeholder={t('consult.suspendDialog.reasonPlaceholder')}
                 style={{
                   width: '100%',
                   border: '1px solid var(--border)',
@@ -222,7 +222,7 @@ export function SuspendChoiceDialog({
             </Field>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
               <Button onClick={() => setMode('choice')} disabled={busy}>
-                ← Retour
+                {t('consult.suspendDialog.back')}
               </Button>
               <Button
                 variant="primary"
@@ -230,7 +230,7 @@ export function SuspendChoiceDialog({
                 disabled={busy || reason.trim().length < 3}
                 onClick={() => void handleCancelConfirm()}
               >
-                {busy ? 'Annulation…' : "Confirmer l'annulation"}
+                {busy ? t('consult.suspendDialog.cancelling') : t('consult.suspendDialog.confirmCancel')}
               </Button>
             </div>
           </>

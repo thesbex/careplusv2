@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { ConsultationApi } from './useConsultation';
 
 interface ListParams {
@@ -10,6 +11,7 @@ interface ListParams {
 }
 
 export function useConsultations(params: ListParams = {}) {
+  const { t } = useT();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['consultations', params],
     queryFn: () =>
@@ -20,7 +22,7 @@ export function useConsultations(params: ListParams = {}) {
   return {
     consultations: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les consultations.' : null,
+    error: error ? t('consult.loadListError') : null,
     refetch,
   };
 }

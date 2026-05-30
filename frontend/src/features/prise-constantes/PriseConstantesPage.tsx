@@ -25,7 +25,8 @@ import { PreviousVitalsCard } from './components/PreviousVitalsCard';
 import { useRecordVitals } from './hooks/useRecordVitals';
 import { useAppointment } from './hooks/useAppointment';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
-import { vitalsFormSchema, type VitalsFormValues } from './schema';
+import { useT } from '@/lib/i18n/I18nProvider';
+import { vitalsFormSchema, translateVitalsError, type VitalsFormValues } from './schema';
 import './prise-constantes.css';
 
 /**
@@ -54,6 +55,7 @@ const EMPTY_VITALS: VitalsFormValues = {
 
 export default function PriseConstantesPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
   const { appointment, isLoading: aptLoading, error: aptError } = useAppointment(appointmentId);
@@ -66,8 +68,8 @@ export default function PriseConstantesPage() {
       })
     : '—';
   const patientSub = patient
-    ? `${patient.fullName} · ${patient.age} ans · RDV ${aptTime}`
-    : 'Chargement…';
+    ? t('vitals.patientSub', { name: patient.fullName, age: patient.age, time: aptTime })
+    : t('common.loading');
 
   const {
     register,
@@ -108,16 +110,19 @@ export default function PriseConstantesPage() {
           (err as { response?: { data?: { message?: string } } })
             ?.response?.data?.message ??
           null;
-        toast.error('Erreur lors de l\'enregistrement', {
-          description: axiosMsg ?? 'Vérifiez votre connexion et réessayez.',
+        toast.error(t('vitals.toast.saveError'), {
+          description: axiosMsg ?? t('vitals.toast.saveErrorDesc'),
         });
       }
     },
     (errs) => {
       const first = Object.values(errs)[0] as { message?: string } | undefined;
       const root = (errs as { root?: { message?: string } }).root;
-      toast.error('Impossible d\'enregistrer', {
-        description: root?.message ?? first?.message ?? 'Vérifiez les valeurs saisies.',
+      toast.error(t('vitals.toast.invalid'), {
+        description:
+          translateVitalsError(root?.message, t) ??
+          translateVitalsError(first?.message, t) ??
+          t('vitals.toast.invalidDesc'),
       });
     },
   );
@@ -145,15 +150,15 @@ export default function PriseConstantesPage() {
     return (
       <Screen
         active="salle"
-        title="Prise des constantes"
-        sub="Chargement impossible"
+        title={t('vitals.title')}
+        sub={t('vitals.loadFailedSub')}
         onNavigate={(id) => navigate(navMap[id])}
       >
         <div role="alert" style={{ padding: 24, color: 'var(--danger)', fontSize: 14 }}>
           {aptError ?? patError}
           <div style={{ marginTop: 12 }}>
             <button type="button" onClick={() => navigate('/salle')} className="btn">
-              {"Retour à la salle d'attente"}
+              {t('vitals.backToWaiting')}
             </button>
           </div>
         </div>
@@ -164,11 +169,11 @@ export default function PriseConstantesPage() {
     return (
       <Screen
         active="salle"
-        title="Prise des constantes"
-        sub="Chargement…"
+        title={t('vitals.title')}
+        sub={t('common.loading')}
         onNavigate={(id) => navigate(navMap[id])}
       >
-        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du patient…</div>
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('vitals.loadingPatient')}</div>
       </Screen>
     );
   }
@@ -177,13 +182,13 @@ export default function PriseConstantesPage() {
   const patientCardData = {
     initials: patient.initials,
     fullName: patient.fullName,
-    meta: `${patient.age} ans · ${patient.sex} · RDV ${aptTime}`,
+    meta: t('vitals.patientMeta', { age: patient.age, sex: patient.sex, time: aptTime }),
   };
 
   return (
     <Screen
       active="salle"
-      title="Prise des constantes"
+      title={t('vitals.title')}
       sub={patientSub}
       onNavigate={(id) => navigate(navMap[id])}
     >
@@ -195,7 +200,7 @@ export default function PriseConstantesPage() {
 
             {/* Étape 1 · Mesures */}
             <div className="pc-section">
-              <div className="pc-step-h">Étape 1 · Mesures</div>
+              <div className="pc-step-h">{t('vitals.step1')}</div>
               <div className="pc-vitals-grid">
 
                 {/* Tension artérielle — composite card (SYS / DIA) */}
@@ -210,7 +215,7 @@ export default function PriseConstantesPage() {
                   >
                     <Heart />
                     <span style={{ fontSize: 11.5, color: 'var(--ink-2)', fontWeight: 550 }}>
-                      Tension artérielle
+                      {t('vitals.ta')}
                     </span>
                   </div>
                   <div
@@ -224,7 +229,7 @@ export default function PriseConstantesPage() {
                     <input
                       className="input tnum"
                       type="number"
-                      aria-label="Tension systolique"
+                      aria-label={t('vitals.taSys')}
                       style={{
                         height: 44,
                         fontSize: 24,
@@ -244,7 +249,7 @@ export default function PriseConstantesPage() {
                     <input
                       className="input tnum"
                       type="number"
-                      aria-label="Tension diastolique"
+                      aria-label={t('vitals.taDia')}
                       style={{
                         height: 44,
                         fontSize: 24,
@@ -269,71 +274,71 @@ export default function PriseConstantesPage() {
                       marginTop: 4,
                     }}
                   >
-                    {errors.tensionSys?.message ??
-                      errors.tensionDia?.message ??
-                      'Plage acceptée : 20 – 300 / 10 – 250 mmHg'}
+                    {translateVitalsError(errors.tensionSys?.message, t) ??
+                      translateVitalsError(errors.tensionDia?.message, t) ??
+                      t('vitals.taRange')}
                   </div>
                 </Panel>
 
                 {/* Fréquence cardiaque */}
                 <VitalFieldLarge
                   icon="Heart"
-                  label="Fréquence cardiaque"
+                  label={t('vitals.fc')}
                   unit="bpm"
-                  norm="Plage acceptée : 10 – 300"
+                  norm={t('vitals.fcRange')}
                   type="number"
-                  aria-label="Fréquence cardiaque"
-                  errorMessage={errors.pulse?.message}
+                  aria-label={t('vitals.fc')}
+                  errorMessage={translateVitalsError(errors.pulse?.message, t)}
                   {...register('pulse', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Température */}
                 <VitalFieldLarge
                   icon="Thermo"
-                  label="Température"
+                  label={t('vitals.temp')}
                   unit="°C"
-                  norm="Plage acceptée : 20,0 – 46,0"
+                  norm={t('vitals.tempRange')}
                   type="number"
                   step="0.1"
-                  aria-label="Température"
-                  errorMessage={errors.tempC?.message}
+                  aria-label={t('vitals.temp')}
+                  errorMessage={translateVitalsError(errors.tempC?.message, t)}
                   {...register('tempC', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* SpO₂ */}
                 <VitalFieldLarge
                   icon="Dot"
-                  label="SpO₂"
+                  label={t('vitals.spo2')}
                   unit="%"
-                  norm="Plage acceptée : 0 – 100"
+                  norm={t('vitals.spo2Range')}
                   type="number"
-                  aria-label="Saturation O₂"
-                  errorMessage={errors.spo2?.message}
+                  aria-label={t('vitals.spo2Aria')}
+                  errorMessage={translateVitalsError(errors.spo2?.message, t)}
                   {...register('spo2', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Poids */}
                 <VitalFieldLarge
                   icon="Dot"
-                  label="Poids"
+                  label={t('vitals.weight')}
                   unit="kg"
-                  norm="Plage acceptée : 0,2 – 500"
+                  norm={t('vitals.weightRange')}
                   type="number"
                   step="0.1"
-                  aria-label="Poids"
-                  errorMessage={errors.weightKg?.message}
+                  aria-label={t('vitals.weight')}
+                  errorMessage={translateVitalsError(errors.weightKg?.message, t)}
                   {...register('weightKg', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
 
                 {/* Taille */}
                 <VitalFieldLarge
                   icon="Dot"
-                  label="Taille"
+                  label={t('vitals.height')}
                   unit="cm"
-                  norm="Plage acceptée : 20 – 260"
+                  norm={t('vitals.heightRange')}
                   type="number"
-                  aria-label="Taille"
-                  errorMessage={errors.heightCm?.message}
+                  aria-label={t('vitals.height')}
+                  errorMessage={translateVitalsError(errors.heightCm?.message, t)}
                   {...register('heightCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
                 />
               </div>
@@ -341,18 +346,18 @@ export default function PriseConstantesPage() {
               {/* BMI info bar */}
               <div className="pc-imc-bar">
                 <Clock />
-                IMC calculé :&nbsp;
+                {t('vitals.bmiCalc')}&nbsp;
                 <strong style={{ color: 'var(--ink)' }}>{bmi}</strong>
-                &nbsp;— Normal · Périmètre abdominal et glycémie capillaire en option ci-dessous.
+                &nbsp;{t('vitals.bmiNote')}
               </div>
             </div>
 
             {/* Étape 2 · Mesures optionnelles */}
             <div className="pc-section">
-              <div className="pc-step-h">Étape 2 · Mesures optionnelles</div>
+              <div className="pc-step-h">{t('vitals.step2')}</div>
               <div className="pc-optional-grid">
                 <Field>
-                  <label htmlFor="pc-glycemia">Glycémie capillaire (g/L)</label>
+                  <label htmlFor="pc-glycemia">{t('vitals.glycemia')}</label>
                   <Input
                     id="pc-glycemia"
                     type="number"
@@ -364,7 +369,7 @@ export default function PriseConstantesPage() {
                   />
                 </Field>
                 <Field>
-                  <label htmlFor="pc-abdominal">Périmètre abdominal (cm)</label>
+                  <label htmlFor="pc-abdominal">{t('vitals.abdo')}</label>
                   <Input
                     id="pc-abdominal"
                     type="number"
@@ -375,7 +380,7 @@ export default function PriseConstantesPage() {
                   />
                 </Field>
                 <Field>
-                  <label htmlFor="pc-resp">FR (/min)</label>
+                  <label htmlFor="pc-resp">{t('vitals.fr')}</label>
                   <Input
                     id="pc-resp"
                     type="number"
@@ -386,13 +391,13 @@ export default function PriseConstantesPage() {
                   />
                 </Field>
                 <Field>
-                  <label htmlFor="pc-headcirc">Périmètre crânien (cm)</label>
+                  <label htmlFor="pc-headcirc">{t('vitals.headCirc')}</label>
                   <Input
                     id="pc-headcirc"
                     type="number"
                     step="0.1"
                     placeholder="—"
-                    aria-label="Périmètre crânien"
+                    aria-label={t('vitals.headCircAria')}
                     {...register('headCircumferenceCm', {
                       setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)),
                     })}
@@ -403,20 +408,20 @@ export default function PriseConstantesPage() {
 
             {/* Étape 3 · Motif & contexte */}
             <div className="pc-section">
-              <div className="pc-step-h">Étape 3 · Motif &amp; contexte</div>
+              <div className="pc-step-h">{t('vitals.step3')}</div>
               <Field style={{ marginTop: 10 }}>
-                <label htmlFor="pc-notes">Motif déclaré par le patient</label>
+                <label htmlFor="pc-notes">{t('vitals.notes')}</label>
                 <Textarea id="pc-notes" {...register('notes')} />
               </Field>
               <div className="pc-checks-row">
                 <label className="pc-check-label">
-                  <input type="checkbox" {...register('jeun')} /> À jeun
+                  <input type="checkbox" {...register('jeun')} /> {t('vitals.fasting')}
                 </label>
                 <label className="pc-check-label">
-                  <input type="checkbox" {...register('carnet')} /> Carnet de santé apporté
+                  <input type="checkbox" {...register('carnet')} /> {t('vitals.booklet')}
                 </label>
                 <label className="pc-check-label">
-                  <input type="checkbox" {...register('analyses')} /> Résultats d'analyses apportés
+                  <input type="checkbox" {...register('analyses')} /> {t('vitals.labResults')}
                 </label>
               </div>
             </div>

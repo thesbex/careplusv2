@@ -7,6 +7,7 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/Button';
 import { Lock, Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface SignatureLockProps {
   onConfirm: () => Promise<boolean>;
@@ -16,6 +17,7 @@ interface SignatureLockProps {
 }
 
 export function SignatureLock({ onConfirm, isSigning, signed, disabled }: SignatureLockProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
 
   async function handleConfirm() {
@@ -27,7 +29,7 @@ export function SignatureLock({ onConfirm, isSigning, signed, disabled }: Signat
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <Button variant="primary" disabled={signed || disabled}>
-          <Lock /> {signed ? 'Consultation signée' : 'Clôturer et facturer →'}
+          <Lock /> {signed ? t('consult.lock.signed') : t('consult.lock.closeAndBill')}
         </Button>
       </Dialog.Trigger>
 
@@ -59,10 +61,10 @@ export function SignatureLock({ onConfirm, isSigning, signed, disabled }: Signat
             }}
           >
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-              Signer et verrouiller la consultation
+              {t('consult.lock.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -71,13 +73,12 @@ export function SignatureLock({ onConfirm, isSigning, signed, disabled }: Signat
           <Dialog.Description
             style={{ fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.6, marginBottom: 20 }}
           >
-            Cette action va verrouiller la consultation. Les notes SOAP ne pourront plus être
-            modifiées et une facture brouillon sera générée automatiquement.
+            {t('consult.lock.description')}
           </Dialog.Description>
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <Dialog.Close asChild>
-              <Button>Annuler</Button>
+              <Button>{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button
               variant="primary"
@@ -86,7 +87,7 @@ export function SignatureLock({ onConfirm, isSigning, signed, disabled }: Signat
                 void handleConfirm();
               }}
             >
-              <Lock /> {isSigning ? 'Signature…' : 'Confirmer et clôturer'}
+              <Lock /> {isSigning ? t('consult.lock.signing') : t('consult.lock.confirm')}
             </Button>
           </div>
         </Dialog.Content>

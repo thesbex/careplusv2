@@ -4,6 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface SoapTemplate {
   id: string;
@@ -24,6 +25,7 @@ export interface SoapTemplateWriteRequest {
 }
 
 export function useSoapTemplates() {
+  const { t } = useT();
   const query = useQuery({
     queryKey: ['soap-templates'],
     queryFn: () => api.get<SoapTemplate[]>('/soap-templates').then((r) => r.data),
@@ -32,7 +34,7 @@ export function useSoapTemplates() {
   return {
     templates: query.data ?? [],
     isLoading: query.isLoading,
-    error: query.error ? 'Impossible de charger les modèles de consultation.' : null,
+    error: query.error ? t('consult.tpl.loadError') : null,
   };
 }
 

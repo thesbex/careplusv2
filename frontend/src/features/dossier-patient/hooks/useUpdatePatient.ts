@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type AllergySeverity = 'LEGERE' | 'MODEREE' | 'SEVERE';
 export type AntecedentType =
@@ -59,6 +60,7 @@ export interface UpdatePatientForm {
 
 export function useUpdatePatient(id: string) {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const mutation = useMutation({
     mutationFn: async (form: UpdatePatientForm) => {
@@ -145,7 +147,7 @@ export function useUpdatePatient(id: string) {
     isPending: mutation.isPending,
     error: mutation.error
       ? (mutation.error as { response?: { data?: { message?: string } } })
-          .response?.data?.message ?? 'Erreur lors de la modification.'
+          .response?.data?.message ?? t('dossier.update.error')
       : null,
     reset: mutation.reset,
   };

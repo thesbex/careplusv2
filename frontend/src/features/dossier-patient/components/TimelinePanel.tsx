@@ -3,6 +3,7 @@
  * Ported from design/prototype/screens/dossier-patient.jsx lines 85–129.
  */
 import { Pill } from '@/components/ui/Pill';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { TimelineEvent } from '../types';
 
 interface TimelinePanelProps {
@@ -10,6 +11,7 @@ interface TimelinePanelProps {
 }
 
 export function TimelinePanel({ events }: TimelinePanelProps) {
+  const { t } = useT();
   return (
     <div className="scroll" style={{ padding: '20px 24px' }}>
       <div
@@ -22,7 +24,7 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
           marginBottom: 12,
         }}
       >
-        Chronologie médicale
+        {t('dossier.timeline.title')}
       </div>
 
       {events.map((e, i) => (
@@ -80,7 +82,7 @@ export function TimelinePanel({ events }: TimelinePanelProps) {
               <span style={{ fontWeight: 600, fontSize: 13 }}>{e.title}</span>
               {e.live && (
                 <Pill status="consult" dot>
-                  En cours
+                  {t('dossier.timeline.inProgress')}
                 </Pill>
               )}
               <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>

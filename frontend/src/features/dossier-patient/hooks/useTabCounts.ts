@@ -16,6 +16,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface PatientTabCounts {
   consultations: number;
@@ -37,6 +38,7 @@ export function useTabCounts(patientId: string | undefined): {
   isLoading: boolean;
   error: string | null;
 } {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: tabCountsQueryKey(patientId),
     queryFn: () =>
@@ -48,6 +50,6 @@ export function useTabCounts(patientId: string | undefined): {
   return {
     counts: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger les compteurs.' : null,
+    error: error ? t('dossier.hook.countsLoadError') : null,
   };
 }

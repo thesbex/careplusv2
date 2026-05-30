@@ -6,6 +6,7 @@ import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { Pill } from '@/components/ui/Pill';
 import { Button } from '@/components/ui/Button';
 import { Print, Edit, Plus, Warn, Sparkles } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PatientSummary } from '../types';
 import { useInsurances } from '../hooks/useInsurances';
 
@@ -28,12 +29,13 @@ export function PatientHeader({
   isStartingConsult,
   isPrinting,
 }: PatientHeaderProps) {
+  const { t } = useT();
   // V044/coverage-fix — render the actual mutuelle name + policy number from
   // the canonical fields instead of the legacy hard-coded `insurance: '—'`
   // string. Pre-fix this row always read "—" even when the patient had a
   // mutuelle on file (user report 2026-05-17).
   const { insurances } = useInsurances();
-  const coverageLabel = formatCoverage(patient, insurances);
+  const coverageLabel = formatCoverage(patient, insurances, t);
   return (
     <div
       style={{
@@ -54,19 +56,19 @@ export function PatientHeader({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
           <div style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.015em' }}>
             {patient.tier === 'PREMIUM' && (
-              <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 6 }}>
+              <span title={t('dossier.premiumTitle')} aria-label={t('dossier.premiumTitle')} style={{ marginRight: 6 }}>
                 🌟
               </span>
             )}
             {patient.fullName}
           </div>
           <Pill>
-            ♂ {patient.sex} · {patient.age} ans
+            ♂ {patient.sex} · {patient.age} {t('dossier.years')}
           </Pill>
-          <Pill>CIN {patient.cin}</Pill>
+          <Pill>{t('dossier.cin', { cin: patient.cin })}</Pill>
           {patient.tier === 'PREMIUM' && (
             <Pill style={{ background: '#FFF3CD', color: '#7A5A00', borderColor: '#F0DA8C' }}>
-              Premium
+              {t('dossier.premium')}
             </Pill>
           )}
         </div>
@@ -80,25 +82,25 @@ export function PatientHeader({
             marginTop: 6,
           }}
         >
-          <span>Né le {patient.birthDate}</span>
+          <span>{t('dossier.bornOn', { date: patient.birthDate })}</span>
           <span>{patient.phone}</span>
           <span>{patient.email}</span>
-          <span>Groupe {patient.bloodGroup}</span>
+          <span>{t('dossier.bloodGroupShort', { group: patient.bloodGroup })}</span>
           <span>{coverageLabel}</span>
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <Button onClick={onPrint} disabled={isPrinting}>
-          <Print /> {isPrinting ? 'Préparation…' : 'Imprimer'}
+          <Print /> {isPrinting ? t('dossier.preparing') : t('dossier.print')}
         </Button>
         {onEdit && (
           <Button onClick={onEdit}>
-            <Edit /> Modifier
+            <Edit /> {t('dossier.edit')}
           </Button>
         )}
         {onAskAi && (
-          <Button onClick={onAskAi} title="Synthèse / aide à la décision sur ce dossier">
-            <Sparkles /> Demander à l'IA
+          <Button onClick={onAskAi} title={t('dossier.askAiTitle')}>
+            <Sparkles /> {t('dossier.askAi')}
           </Button>
         )}
         {onNewConsultation && (
@@ -107,7 +109,7 @@ export function PatientHeader({
             onClick={onNewConsultation}
             disabled={isStartingConsult}
           >
-            <Plus /> {isStartingConsult ? 'Démarrage…' : 'Nouvelle consultation'}
+            <Plus /> {isStartingConsult ? t('dossier.starting') : t('dossier.newConsultation')}
           </Button>
         )}
       </div>
@@ -131,12 +133,15 @@ export function PatientHeader({
 export function formatCoverage(
   patient: Pick<PatientSummary, 'mutuelleInsuranceId' | 'mutuellePolicyNumber'>,
   insurances: { id: string; name: string }[],
+  t?: (key: string, vars?: Record<string, string | number>) => string,
 ): string {
-  if (!patient.mutuelleInsuranceId) return 'Aucune mutuelle';
+  const tr = t ?? ((k: string) => k);
+  if (!patient.mutuelleInsuranceId) return t ? tr('dossier.coverageNone') : 'Aucune mutuelle';
   const name =
-    insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? 'Mutuelle';
+    insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ??
+    (t ? tr('dossier.coverageFallback') : 'Mutuelle');
   return patient.mutuellePolicyNumber
-    ? `${name} · N° ${patient.mutuellePolicyNumber}`
+    ? (t ? tr('dossier.coveragePolicy', { name, policy: patient.mutuellePolicyNumber }) : `${name} · N° ${patient.mutuellePolicyNumber}`)
     : name;
 }
 
@@ -145,6 +150,7 @@ interface AllergyStripProps {
 }
 
 export function AllergyStrip({ patient }: AllergyStripProps) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -156,7 +162,7 @@ export function AllergyStrip({ patient }: AllergyStripProps) {
         borderBottom: '1px solid #E8CFA9',
       }}
       role="alert"
-      aria-label="Allergie connue"
+      aria-label={t('dossier.allergyKnown')}
     >
       <div
         style={{
@@ -168,7 +174,7 @@ export function AllergyStrip({ patient }: AllergyStripProps) {
           fontSize: 12,
         }}
       >
-        <Warn aria-hidden="true" /> Allergie
+        <Warn aria-hidden="true" /> {t('dossier.allergy')}
       </div>
       <span style={{ fontSize: 12.5, color: 'var(--ink)' }}>
         {(patient.allergyNotes.split('(')[0] ?? '').trim()}{' '}
@@ -184,11 +190,11 @@ export function AllergyStrip({ patient }: AllergyStripProps) {
       />
       <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
         <span>
-          <strong>ATCD :</strong> {patient.antecedents}
+          <strong>{t('dossier.atcd')}</strong> {patient.antecedents}
         </span>
         <span style={{ color: 'var(--ink-3)' }}>·</span>
         <span>
-          <strong>Traitement chronique :</strong> {patient.chronicTreatment}
+          <strong>{t('dossier.chronicTreatment')} :</strong> {patient.chronicTreatment}
         </span>
       </div>
     </div>

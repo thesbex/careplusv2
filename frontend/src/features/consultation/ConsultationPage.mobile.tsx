@@ -30,6 +30,7 @@ import { CertificatDialog } from './components/CertificatDialog';
 import { ConfrereLetterDialog } from '@/features/confrere/components/ConfrereLetterDialog';
 import { useConfrereLetters } from '@/features/confrere/hooks/useConfrereLetters';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { VitalIcon } from './components/VitalIcon';
 import { useConsultation } from './hooks/useConsultation';
 import { useSignConsultation } from './hooks/useSignConsultation';
@@ -63,15 +64,16 @@ function apiFromForm(v: ConsultationFormValues) {
   };
 }
 
-const SECTIONS: { key: keyof ConsultationFormValues; letter: string; title: string }[] = [
-  { key: 'subjectif', letter: 'S', title: 'Subjectif' },
-  { key: 'objectif', letter: 'O', title: 'Objectif' },
-  { key: 'analyse', letter: 'A', title: 'Appréciation' },
-  { key: 'plan', letter: 'P', title: 'Plan' },
+const SECTIONS: { key: keyof ConsultationFormValues; letter: string; titleKey: string }[] = [
+  { key: 'subjectif', letter: 'S', titleKey: 'consult.soap.s.mobile' },
+  { key: 'objectif', letter: 'O', titleKey: 'consult.soap.o.mobile' },
+  { key: 'analyse', letter: 'A', titleKey: 'consult.soap.a.mobile' },
+  { key: 'plan', letter: 'P', titleKey: 'consult.soap.p.mobile' },
 ];
 
 export default function ConsultationMobilePage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const { id } = useParams<{ id?: string }>();
   const { consultation, isLoading, update, isSaving } = useConsultation(id);
   const { patient } = usePatient(consultation?.patientId);
@@ -95,25 +97,25 @@ export default function ConsultationMobilePage() {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1_000);
     } catch {
-      toast.error('Téléchargement du courrier impossible.');
+      toast.error(tr('consult.letterDownloadFailed'));
     }
   }
   const { remove: removePrescription } = useDeletePrescription(id, consultation?.patientId);
 
   function handleDeletePrescription(prescriptionId: string, label: string) {
-    if (!confirm(`Supprimer « ${label} » ? Cette ordonnance sera retirée de la consultation.`)) return;
+    if (!confirm(tr('consult.docs.confirmDelete', { label }))) return;
     removePrescription(prescriptionId)
-      .then(() => toast.success('Ordonnance supprimée.'))
+      .then(() => toast.success(tr('consult.docs.deleted')))
       .catch((err: { response?: { status?: number; data?: { message?: string } } }) => {
         const status = err.response?.status;
         if (status === 409) {
           toast.error(
-            err.response?.data?.message ?? 'Analyse/radio déjà en file interne — annulez-la d’abord.',
+            err.response?.data?.message ?? tr('consult.docs.deleteInQueue'),
           );
         } else if (status === 400) {
-          toast.error('Impossible : la consultation est clôturée.');
+          toast.error(tr('consult.docs.deleteClosed'));
         } else {
-          toast.error('Suppression de l’ordonnance impossible.');
+          toast.error(tr('consult.docs.deleteFailed'));
         }
       });
   }
@@ -163,7 +165,7 @@ export default function ConsultationMobilePage() {
       timerRef.current = setTimeout(() => {
         lastSentRef.current = serialized;
         update(apiFromForm(values as ConsultationFormValues)).catch(() => {
-          toast.error('Autosave échoué');
+          toast.error(tr('consult.autosaveFailed'));
         });
       }, AUTOSAVE_DEBOUNCE_MS);
     });
@@ -177,18 +179,18 @@ export default function ConsultationMobilePage() {
     const values = getValues();
     const parsed = consultationSignSchema.safeParse(values);
     if (!parsed.success) {
-      toast.error('Tous les champs SOAP doivent être renseignés.');
+      toast.error(tr('consult.sign.allRequired'));
       return;
     }
     try {
       await update(apiFromForm(values));
     } catch {
-      toast.error('Sauvegarde échouée.');
+      toast.error(tr('consult.saveFailed'));
       return;
     }
     const ok = await sign();
     if (ok) {
-      toast.success('Consultation signée. Détail de la facturation ouvert.');
+      toast.success(tr('consult.signedOpenBilling'));
       // Parité desktop : ouvrir le drawer facture (édition lignes / remise /
       // émission) au lieu de rediriger directement. Le brouillon est créé en
       // AFTER_COMMIT — useInvoiceByConsultation poll jusqu'à apparition.
@@ -220,9 +222,9 @@ export default function ConsultationMobilePage() {
       }}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
-          title="Consultation"
-          sub={patient ? patient.fullName : 'Chargement…'}
+          left={<MIconBtn icon="ChevronLeft" label={tr('consult.list.back')} onClick={() => navigate(-1)} />}
+          title={tr('consult.title')}
+          sub={patient ? patient.fullName : tr('common.loading')}
         />
       }
     >
@@ -257,8 +259,8 @@ export default function ConsultationMobilePage() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600 }}>{patient?.fullName ?? '—'}</div>
           <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            {patient ? `${patient.sex} · ${patient.age} ans` : ''}
-            {vitals?.systolicMmhg ? ` · TA ${taLabel}` : ''}
+            {patient ? `${patient.sex} · ${tr('consult.ctx.yearsOld', { n: patient.age })}` : ''}
+            {vitals?.systolicMmhg ? ` · ${tr('consult.vital.ta')} ${taLabel}` : ''}
           </div>
           {patient && (
             // V044/coverage-fix — show mutuelle inline so the praticien knows
@@ -287,11 +289,11 @@ export default function ConsultationMobilePage() {
           // visite (pas seulement TA/FC/T°/SpO₂). Les cellules sont rendues
           // de manière conditionnelle : pas d'affichage "—" pour les valeurs
           // jamais saisies, pour ne pas saturer l'écran mobile.
-          <div className="cs-m-vitals-grid" role="region" aria-label="Constantes">
+          <div className="cs-m-vitals-grid" role="region" aria-label={tr('consult.ctx.vitals')}>
             {vitals.systolicMmhg != null && vitals.diastolicMmhg != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="ta" />TA
+                  <VitalIcon vital="ta" />{tr('consult.vital.ta')}
                 </div>
                 <div className="cs-m-vital-v">{taLabel}</div>
               </div>
@@ -299,7 +301,7 @@ export default function ConsultationMobilePage() {
             {vitals.heartRateBpm != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="fc" />FC
+                  <VitalIcon vital="fc" />{tr('consult.vital.fc')}
                 </div>
                 <div className="cs-m-vital-v">{vitals.heartRateBpm}</div>
               </div>
@@ -307,7 +309,7 @@ export default function ConsultationMobilePage() {
             {vitals.respiratoryRateBpm != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="fr" />FR
+                  <VitalIcon vital="fr" />{tr('consult.vital.fr')}
                 </div>
                 <div className="cs-m-vital-v">{vitals.respiratoryRateBpm}</div>
               </div>
@@ -315,7 +317,7 @@ export default function ConsultationMobilePage() {
             {vitals.temperatureC != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="temp" />T°
+                  <VitalIcon vital="temp" />{tr('consult.vital.temp')}
                 </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.temperatureC).toFixed(1).replace('.', ',')}
@@ -325,7 +327,7 @@ export default function ConsultationMobilePage() {
             {vitals.spo2Percent != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="spo2" />SpO₂
+                  <VitalIcon vital="spo2" />{tr('consult.vital.spo2')}
                 </div>
                 <div className="cs-m-vital-v">{vitals.spo2Percent}</div>
               </div>
@@ -333,7 +335,7 @@ export default function ConsultationMobilePage() {
             {vitals.weightKg != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="poids" />Poids
+                  <VitalIcon vital="poids" />{tr('consult.vital.weight')}
                 </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.weightKg).toFixed(1).replace('.', ',')}
@@ -343,7 +345,7 @@ export default function ConsultationMobilePage() {
             {vitals.heightCm != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="taille" />Taille
+                  <VitalIcon vital="taille" />{tr('consult.vital.height')}
                 </div>
                 <div className="cs-m-vital-v">{Number(vitals.heightCm)}</div>
               </div>
@@ -351,7 +353,7 @@ export default function ConsultationMobilePage() {
             {vitals.bmi != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="imc" />IMC
+                  <VitalIcon vital="imc" />{tr('consult.vital.bmi')}
                 </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.bmi).toFixed(1).replace('.', ',')}
@@ -361,7 +363,7 @@ export default function ConsultationMobilePage() {
             {vitals.glycemiaGPerL != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="glycemie" />Glycémie
+                  <VitalIcon vital="glycemie" />{tr('consult.vital.glycemia')}
                 </div>
                 <div className="cs-m-vital-v">
                   {Number(vitals.glycemiaGPerL).toFixed(2).replace('.', ',')}
@@ -371,7 +373,7 @@ export default function ConsultationMobilePage() {
             {vitals.abdominalPerimeterCm != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="abdo" />P. abdo
+                  <VitalIcon vital="abdo" />{tr('consult.vital.abdo')}
                 </div>
                 <div className="cs-m-vital-v">{Number(vitals.abdominalPerimeterCm)}</div>
               </div>
@@ -379,7 +381,7 @@ export default function ConsultationMobilePage() {
             {vitals.headCircumferenceCm != null && (
               <div className="cs-m-vital-cell">
                 <div className="cs-m-vital-k">
-                  <VitalIcon vital="cranien" />P. crânien
+                  <VitalIcon vital="cranien" />{tr('consult.vital.head')}
                 </div>
                 <div className="cs-m-vital-v">{Number(vitals.headCircumferenceCm)}</div>
               </div>
@@ -388,24 +390,24 @@ export default function ConsultationMobilePage() {
         )}
 
         {isLoading && !consultation ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{tr('common.loading')}</div>
         ) : (
           <>
           {/* Modèles SOAP + CIM-10 — parité desktop (barre d'outils consultation). */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
             <SoapToolbarButtons
               disabled={isSigned}
-              onApplyTemplate={(t) => {
-                setValue('subjectif', t.subjectif ?? '', { shouldDirty: true });
-                setValue('objectif', t.objectif ?? '', { shouldDirty: true });
-                setValue('analyse', t.analyse ?? '', { shouldDirty: true });
-                setValue('plan', t.plan ?? '', { shouldDirty: true });
-                toast.success(`Modèle « ${t.name} » appliqué.`);
+              onApplyTemplate={(tpl) => {
+                setValue('subjectif', tpl.subjectif ?? '', { shouldDirty: true });
+                setValue('objectif', tpl.objectif ?? '', { shouldDirty: true });
+                setValue('analyse', tpl.analyse ?? '', { shouldDirty: true });
+                setValue('plan', tpl.plan ?? '', { shouldDirty: true });
+                toast.success(tr('consult.toolbar.templateApplied', { name: tpl.name }));
               }}
               onInsertCim={(text) => {
                 const cur = getValues('analyse') ?? '';
                 setValue('analyse', cur.trim() ? `${cur}\n${text}` : text, { shouldDirty: true });
-                toast.success('Code CIM-10 ajouté à l\'analyse.');
+                toast.success(tr('consult.toolbar.cimAdded'));
               }}
             />
           </div>
@@ -413,7 +415,7 @@ export default function ConsultationMobilePage() {
             {SECTIONS.map((s) => (
               <div key={s.key} className="m-field">
                 <label htmlFor={`m-soap-${s.key}`}>
-                  <strong>{s.letter}</strong> · {s.title}
+                  <strong>{s.letter}</strong> · {tr(s.titleKey)}
                 </label>
                 <textarea
                   id={`m-soap-${s.key}`}
@@ -439,7 +441,7 @@ export default function ConsultationMobilePage() {
                         cursor: 'pointer',
                       }}
                     >
-                      + Ajouter aux antécédents
+                      {tr('consult.addToHistory')}
                     </button>
                   </div>
                 )}
@@ -451,12 +453,12 @@ export default function ConsultationMobilePage() {
 
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 8 }}>
           {isSigning
-            ? 'Signature…'
+            ? tr('consult.signing')
             : isSigned
-            ? 'Consultation signée.'
+            ? tr('consult.signedShort')
             : isSaving
-            ? 'Enregistrement…'
-            : 'Enregistré automatiquement.'}
+            ? tr('consult.saving')
+            : tr('consult.autosaved')}
         </div>
 
         {/* Prescriptions creation buttons (DRUG / LAB / IMAGING). */}
@@ -475,7 +477,7 @@ export default function ConsultationMobilePage() {
             disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('DRUG')}
           >
-            Médic.
+            {tr('consult.mobile.drug')}
           </button>
           <button
             type="button"
@@ -484,7 +486,7 @@ export default function ConsultationMobilePage() {
             disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('LAB')}
           >
-            Analyses
+            {tr('consult.mobile.lab')}
           </button>
           <button
             type="button"
@@ -493,7 +495,7 @@ export default function ConsultationMobilePage() {
             disabled={isSigned || isSuspended || !consultation}
             onClick={() => setRxOpen('IMAGING')}
           >
-            Imagerie
+            {tr('consult.mobile.imaging')}
           </button>
           <button
             type="button"
@@ -502,7 +504,7 @@ export default function ConsultationMobilePage() {
             disabled={isSigned || isSuspended || !consultation}
             onClick={() => setCertificatOpen(true)}
           >
-            Certificat
+            {tr('consult.mobile.cert')}
           </button>
           <button
             type="button"
@@ -511,7 +513,7 @@ export default function ConsultationMobilePage() {
             disabled={isSigned || isSuspended || !consultation}
             onClick={() => setConfrereOpen(true)}
           >
-            Courrier
+            {tr('consult.mobile.letter')}
           </button>
           <button
             type="button"
@@ -520,20 +522,20 @@ export default function ConsultationMobilePage() {
             disabled={!consultation}
             onClick={() => setFollowUpOpen(true)}
           >
-            Prochain RDV
+            {tr('consult.mobile.followUp')}
           </button>
         </div>
 
         {/* Documents générés — list of prescriptions for this consultation. */}
         <div className="m-section-h" style={{ marginTop: 18 }}>
-          <h3>Documents générés</h3>
+          <h3>{tr('consult.docs.title')}</h3>
           {prescriptions.length + confrereLetters.length > 0 && (
             <span className="more">{prescriptions.length + confrereLetters.length}</span>
           )}
         </div>
         {prescriptions.length === 0 && confrereLetters.length === 0 ? (
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-            Aucun document généré pour cette consultation.
+            {tr('consult.docs.noneMobile')}
           </div>
         ) : (
           <div className="m-card">
@@ -543,20 +545,20 @@ export default function ConsultationMobilePage() {
               const docMeta = metaForPrescription(p);
               const typeLabel =
                 p.type === 'DRUG'
-                  ? 'Médicaments'
+                  ? tr('consult.docs.type.drug')
                   : p.type === 'LAB'
-                  ? 'Analyses'
+                  ? tr('consult.docs.type.lab')
                   : p.type === 'IMAGING'
-                  ? 'Imagerie'
+                  ? tr('consult.docs.type.imaging')
                   : p.type === 'CERT'
-                  ? 'Certificat médical'
+                  ? tr('consult.docs.type.cert')
                   : p.type === 'SICK_LEAVE'
-                  ? 'Arrêt de travail'
+                  ? tr('consult.docs.type.sickLeave')
                   : (p.type ?? '—');
               const isLetter = p.type === 'CERT' || p.type === 'SICK_LEAVE';
               const titleSuffix = isLetter
                 ? ''
-                : ` · ${p.lines.length} ligne${p.lines.length > 1 ? 's' : ''}`;
+                : ` · ${tr(p.lines.length > 1 ? 'consult.docs.linesPlural' : 'consult.docs.lines', { n: p.lines.length })}`;
               return (
                 <div key={p.id}>
                 <button
@@ -611,7 +613,7 @@ export default function ConsultationMobilePage() {
                       cursor: 'pointer',
                     }}
                   >
-                    <Trash aria-hidden="true" /> Supprimer
+                    <Trash aria-hidden="true" /> {tr('common.delete')}
                   </button>
                 )}
                 </div>
@@ -636,8 +638,8 @@ export default function ConsultationMobilePage() {
                 }}
               >
                 <div className="m-row-pri">
-                  <div className="m-row-main">{letter.title ?? 'Courrier au confrère'}</div>
-                  <div className="m-row-sub">Courrier confrère</div>
+                  <div className="m-row-main">{letter.title ?? tr('consult.docs.confrereLetter')}</div>
+                  <div className="m-row-sub">{tr('consult.docs.confrereLetterMeta')}</div>
                 </div>
                 <ChevronRight aria-hidden="true" />
               </button>
@@ -655,7 +657,7 @@ export default function ConsultationMobilePage() {
               void handleSign();
             }}
           >
-            <Lock aria-hidden="true" /> {isSigned ? 'Signée' : 'Clôturer la consultation'}
+            <Lock aria-hidden="true" /> {isSigned ? tr('consult.status.signed') : tr('consult.closeConsultation')}
           </button>
         </div>
       </div>
@@ -673,7 +675,7 @@ export default function ConsultationMobilePage() {
             // (DRUG + LAB + IMAGING). The new entry appears immediately in
             // "Documents générés" via the consultation query invalidation.
             setRxOpen(null);
-            toast.success('Ordonnance créée.');
+            toast.success(tr('consult.rxCreated'));
           }}
         />
       )}
@@ -738,7 +740,7 @@ export default function ConsultationMobilePage() {
               boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
             }}
           >
-            Génération du brouillon de facture en cours…
+            {tr('consult.billing.generatingDraft')}
           </div>
         </div>
       )}

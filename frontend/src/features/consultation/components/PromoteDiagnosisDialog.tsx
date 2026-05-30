@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   usePromoteDiagnosis,
   type AntecedentCategory,
@@ -29,32 +30,32 @@ interface Props {
   onSuccess?: () => void;
 }
 
-const TYPE_OPTIONS: { value: AntecedentType; label: string }[] = [
-  { value: 'MEDICAL', label: 'Médical' },
-  { value: 'CHIRURGICAL', label: 'Chirurgical' },
-  { value: 'FAMILIAL', label: 'Familial' },
-  { value: 'GYNECO_OBSTETRIQUE', label: 'Gynéco-obstétrique' },
-  { value: 'HABITUS', label: 'Habitudes de vie' },
+const TYPE_OPTIONS: AntecedentType[] = [
+  'MEDICAL',
+  'CHIRURGICAL',
+  'FAMILIAL',
+  'GYNECO_OBSTETRIQUE',
+  'HABITUS',
 ];
 
-const CATEGORY_OPTIONS: { value: AntecedentCategory; label: string }[] = [
-  { value: 'PERSONNEL_MALADIES_CHRONIQUES', label: 'Maladies chroniques' },
-  { value: 'PERSONNEL_MALADIES_PASSEES', label: 'Maladies passées' },
-  { value: 'PERSONNEL_CHIRURGIES', label: 'Chirurgies' },
-  { value: 'PERSONNEL_HOSPITALISATIONS', label: 'Hospitalisations' },
-  { value: 'PERSONNEL_TRAUMATISMES', label: 'Traumatismes' },
-  { value: 'PERSONNEL_ALLERGIES', label: 'Allergies' },
-  { value: 'FAMILIAL', label: 'Familial' },
-  { value: 'MEDICAMENTEUX_EN_COURS', label: 'Médicaments en cours' },
-  { value: 'MEDICAMENTEUX_PASSES', label: 'Médicaments passés' },
-  { value: 'MEDICAMENTEUX_AUTOMEDICATION', label: 'Automédication' },
-  { value: 'SOCIAL_TABAC', label: 'Tabac' },
-  { value: 'SOCIAL_ALCOOL', label: 'Alcool' },
-  { value: 'SOCIAL_DROGUES', label: 'Drogues' },
-  { value: 'SOCIAL_ACTIVITE_PHYSIQUE', label: 'Activité physique' },
-  { value: 'SOCIAL_PROFESSION', label: 'Profession' },
-  { value: 'GYNECO_OBSTETRICAL', label: 'Gynéco-obstétrical' },
-  { value: 'PSYCHIATRIQUE', label: 'Psychiatrique' },
+const CATEGORY_OPTIONS: AntecedentCategory[] = [
+  'PERSONNEL_MALADIES_CHRONIQUES',
+  'PERSONNEL_MALADIES_PASSEES',
+  'PERSONNEL_CHIRURGIES',
+  'PERSONNEL_HOSPITALISATIONS',
+  'PERSONNEL_TRAUMATISMES',
+  'PERSONNEL_ALLERGIES',
+  'FAMILIAL',
+  'MEDICAMENTEUX_EN_COURS',
+  'MEDICAMENTEUX_PASSES',
+  'MEDICAMENTEUX_AUTOMEDICATION',
+  'SOCIAL_TABAC',
+  'SOCIAL_ALCOOL',
+  'SOCIAL_DROGUES',
+  'SOCIAL_ACTIVITE_PHYSIQUE',
+  'SOCIAL_PROFESSION',
+  'GYNECO_OBSTETRICAL',
+  'PSYCHIATRIQUE',
 ];
 
 const DESC_MAX = 512;
@@ -67,6 +68,7 @@ export function PromoteDiagnosisDialog({
   defaultOccurredOn,
   onSuccess,
 }: Props) {
+  const { t } = useT();
   const { promote, isPending } = usePromoteDiagnosis();
 
   const [description, setDescription] = useState(initialDescription);
@@ -91,11 +93,11 @@ export function PromoteDiagnosisDialog({
   async function handleSave() {
     const trimmed = description.trim();
     if (trimmed.length === 0) {
-      toast.error('La description est requise.');
+      toast.error(t('consult.promote.descRequired'));
       return;
     }
     if (trimmed.length > DESC_MAX) {
-      toast.error(`Description trop longue (maximum ${DESC_MAX} caractères).`);
+      toast.error(t('consult.promote.descTooLong', { max: DESC_MAX }));
       return;
     }
     try {
@@ -106,7 +108,7 @@ export function PromoteDiagnosisDialog({
         occurredOn: occurredOn || null,
         category: category === '' ? null : category,
       });
-      toast.success('Antécédent ajouté.');
+      toast.success(t('consult.promote.added'));
       onSuccess?.();
       onOpenChange(false);
     } catch (err) {
@@ -115,11 +117,11 @@ export function PromoteDiagnosisDialog({
           ? (err as { response?: { status?: number } }).response?.status
           : undefined;
       if (status === 400) {
-        toast.error('Données invalides — vérifiez les champs.');
+        toast.error(t('consult.promote.invalid'));
       } else if (status === 403) {
-        toast.error("Vous n'avez pas les droits pour cette action.");
+        toast.error(t('consult.promote.forbidden'));
       } else {
-        toast.error("Échec de l'enregistrement.");
+        toast.error(t('consult.promote.saveError'));
       }
     }
   }
@@ -128,7 +130,7 @@ export function PromoteDiagnosisDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Ajouter le diagnostic aux antécédents"
+      aria-label={t('consult.promote.aria')}
       data-testid="promote-diagnosis-dialog"
       style={{
         position: 'fixed',
@@ -158,15 +160,14 @@ export function PromoteDiagnosisDialog({
         }}
       >
         <div style={{ fontSize: 15, fontWeight: 600 }}>
-          Ajouter ce diagnostic aux antécédents
+          {t('consult.promote.title')}
         </div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-          Le diagnostic devient un antécédent médical structuré du dossier
-          patient. Modifiez le libellé avant d'enregistrer si besoin.
+          {t('consult.promote.description')}
         </div>
 
         <Field>
-          <FieldLabel htmlFor="promote-desc">Description *</FieldLabel>
+          <FieldLabel htmlFor="promote-desc">{t('consult.promote.descLabel')}</FieldLabel>
           <textarea
             id="promote-desc"
             data-testid="promote-diagnosis-description"
@@ -187,13 +188,13 @@ export function PromoteDiagnosisDialog({
             }}
           />
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-            {description.length} / {DESC_MAX} caractères
+            {t('consult.promote.charCount', { n: description.length, max: DESC_MAX })}
           </div>
         </Field>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Field>
-            <FieldLabel htmlFor="promote-type">Type *</FieldLabel>
+            <FieldLabel htmlFor="promote-type">{t('consult.promote.typeLabel')}</FieldLabel>
             <select
               id="promote-type"
               value={type}
@@ -209,16 +210,16 @@ export function PromoteDiagnosisDialog({
                 background: 'var(--surface)',
               }}
             >
-              {TYPE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
+              {TYPE_OPTIONS.map((value) => (
+                <option key={value} value={value}>
+                  {t(`consult.antType.${value}`)}
                 </option>
               ))}
             </select>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="promote-occurred">Survenu le</FieldLabel>
+            <FieldLabel htmlFor="promote-occurred">{t('consult.promote.occurredOn')}</FieldLabel>
             <input
               id="promote-occurred"
               type="date"
@@ -239,7 +240,7 @@ export function PromoteDiagnosisDialog({
         </div>
 
         <Field>
-          <FieldLabel htmlFor="promote-category">Catégorie</FieldLabel>
+          <FieldLabel htmlFor="promote-category">{t('consult.promote.category')}</FieldLabel>
           <select
             id="promote-category"
             value={category}
@@ -257,10 +258,10 @@ export function PromoteDiagnosisDialog({
               background: 'var(--surface)',
             }}
           >
-            <option value="">— Aucune —</option>
-            {CATEGORY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
+            <option value="">{t('consult.promote.categoryNone')}</option>
+            {CATEGORY_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {t(`consult.antCat.${value}`)}
               </option>
             ))}
           </select>
@@ -275,14 +276,14 @@ export function PromoteDiagnosisDialog({
           }}
         >
           <Button onClick={() => onOpenChange(false)} disabled={isPending}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
             disabled={isPending}
             onClick={() => void handleSave()}
           >
-            {isPending ? 'Enregistrement…' : 'Enregistrer'}
+            {isPending ? t('common.saving') : t('common.save')}
           </Button>
         </div>
       </div>

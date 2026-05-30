@@ -8,6 +8,7 @@ import { Close, Plus } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatient } from './hooks/usePatient';
 import { usePatientPhoto } from './hooks/usePatientPhoto';
 import { useTabCounts } from './hooks/useTabCounts';
@@ -58,6 +59,7 @@ function isValidName(v: string) {
 }
 
 function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
+  const { t } = useT();
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
       <span style={{ fontSize: 11.5, fontWeight: 650, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
@@ -73,14 +75,17 @@ function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
           borderRadius: 4, fontFamily: 'inherit',
         }}
       >
-        <Plus style={{ width: 12, height: 12 }} /> Ajouter
+        <Plus style={{ width: 12, height: 12 }} /> {t('common.add')}
       </button>
     </div>
   );
 }
 
-const SEVERITY_LABELS: Record<AllergySeverity, string> = {
-  LEGERE: 'Légère', MODEREE: 'Modérée', SEVERE: 'Sévère',
+/** Clés i18n des gravités d'allergie (`dossier.severity.*`). */
+const SEVERITY_KEYS: Record<AllergySeverity, string> = {
+  LEGERE: 'dossier.severity.LEGERE',
+  MODEREE: 'dossier.severity.MODEREE',
+  SEVERE: 'dossier.severity.SEVERE',
 };
 
 const SEVERITY_COLORS: Record<AllergySeverity, { bg: string; color: string; border: string }> = {
@@ -89,9 +94,13 @@ const SEVERITY_COLORS: Record<AllergySeverity, { bg: string; color: string; bord
   SEVERE:  { bg: 'var(--danger-soft, #FFEBEE)', color: 'var(--danger)', border: '#EF9A9A' },
 };
 
-const ANTECEDENT_TYPE_LABELS: Record<AntecedentType, string> = {
-  MEDICAL: 'Médical', CHIRURGICAL: 'Chirurgical', FAMILIAL: 'Familial',
-  GYNECO_OBSTETRIQUE: 'Gynéco-Obstétrique', HABITUS: 'Habitudes de vie',
+/** Clés i18n des types d'antécédent (`dossier.antecedent.*`). */
+const ANTECEDENT_TYPE_KEYS: Record<AntecedentType, string> = {
+  MEDICAL: 'dossier.antecedent.MEDICAL',
+  CHIRURGICAL: 'dossier.antecedent.CHIRURGICAL',
+  FAMILIAL: 'dossier.antecedent.FAMILIAL',
+  GYNECO_OBSTETRIQUE: 'dossier.antecedent.GYNECO_OBSTETRIQUE',
+  HABITUS: 'dossier.antecedent.HABITUS',
 };
 
 const ANTECEDENT_TYPES: AntecedentType[] = [
@@ -99,11 +108,12 @@ const ANTECEDENT_TYPES: AntecedentType[] = [
 ];
 
 function RemoveBtn({ onClick }: { onClick: () => void }) {
+  const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label="Supprimer"
+      aria-label={t('dossier.form.removeAria')}
       style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0, flexShrink: 0 }}
     >
       <Close style={{ width: 13, height: 13 }} />
@@ -124,6 +134,7 @@ function EditPatientPanel({
   initialPhotoDocumentId: string | null;
   onClose: () => void;
 }) {
+  const { t: tr } = useT();
   const { update, isPending, error, reset } = useUpdatePatient(patientId);
   const photo = usePatientPhoto(patientId);
   const { insurances } = useInsurances();
@@ -140,7 +151,7 @@ function EditPatientPanel({
   }
 
   async function handlePhotoRemove() {
-    if (!confirm('Supprimer la photo du patient ?')) return;
+    if (!confirm(tr('dossier.photo.confirmRemove'))) return;
     try {
       await photo.remove();
     } catch {
@@ -200,22 +211,22 @@ function EditPatientPanel({
     // so the user actually sees the offending field.
     if (!isValidName(form.firstName)) {
       setActiveTab('personnel');
-      setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(tr('dossier.valid.firstName'));
       return;
     }
     if (!isValidName(form.lastName)) {
       setActiveTab('personnel');
-      setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(tr('dossier.valid.lastName'));
       return;
     }
     if (!form.phone.trim()) {
       setActiveTab('personnel');
-      setValidationError('Le numéro de téléphone est obligatoire.');
+      setValidationError(tr('dossier.valid.phoneRequired'));
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
       setActiveTab('personnel');
-      setValidationError('Numéro de téléphone invalide.');
+      setValidationError(tr('dossier.valid.phoneInvalid'));
       return;
     }
     // mutateAsync resolves on success, rejects on failure. Closing the panel
@@ -251,8 +262,8 @@ function EditPatientPanel({
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Modifier le patient</span>
-        <Button variant="ghost" size="sm" iconOnly aria-label="Fermer" onClick={onClose}>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{tr('dossier.form.editPatient')}</span>
+        <Button variant="ghost" size="sm" iconOnly aria-label={tr('common.close')} onClick={onClose}>
           <Close />
         </Button>
       </div>
@@ -281,7 +292,7 @@ function EditPatientPanel({
               marginBottom: -1,
             }}
           >
-            {t === 'personnel' ? 'Informations personnelles' : 'Informations médicales'}
+            {t === 'personnel' ? tr('dossier.form.tabPersonal') : tr('dossier.form.tabMedical')}
           </button>
         ))}
       </div>
@@ -302,13 +313,13 @@ function EditPatientPanel({
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               <DocumentUploadButton
                 accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                uploadLabel={photo.isUploading ? 'Envoi…' : 'Téléverser'}
-                cameraLabel="Photographier"
+                uploadLabel={photo.isUploading ? tr('dossier.photo.sending') : tr('dossier.photo.upload')}
+                cameraLabel={tr('dossier.photo.camera')}
                 disabled={photo.isUploading || photo.isRemoving}
                 onFile={(f) => { void handlePhotoFile(f); }}
               />
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                JPEG, PNG, WebP, HEIC — max 2 Mo.
+                {tr('dossier.photo.formats')}
               </div>
               {initialPhotoDocumentId && (
                 <button
@@ -322,7 +333,7 @@ function EditPatientPanel({
                     fontFamily: 'inherit', textDecoration: 'underline',
                   }}
                 >
-                  {photo.isRemoving ? 'Suppression…' : 'Retirer la photo'}
+                  {photo.isRemoving ? tr('dossier.photo.removing') : tr('dossier.photo.remove')}
                 </button>
               )}
               {photo.uploadError && (
@@ -334,36 +345,36 @@ function EditPatientPanel({
           <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><Lbl>Prénom *</Lbl>
+            <div><Lbl>{tr('dossier.form.firstName')}</Lbl>
               <Input value={form.firstName} onChange={(e) => setField('firstName', sanitizeName(e.target.value))} autoFocus />
             </div>
-            <div><Lbl>Nom *</Lbl>
+            <div><Lbl>{tr('dossier.form.lastName')}</Lbl>
               <Input value={form.lastName} onChange={(e) => setField('lastName', sanitizeName(e.target.value))} />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><Lbl>Sexe</Lbl>
+            <div><Lbl>{tr('dossier.form.sex')}</Lbl>
               <Select
                 value={form.gender}
                 onChange={(e) => setField('gender', e.target.value as 'M' | 'F' | 'O')}
                 style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
               >
-                <option value="M">Homme</option>
-                <option value="F">Femme</option>
-                <option value="O">Autre</option>
+                <option value="M">{tr('dossier.form.male')}</option>
+                <option value="F">{tr('dossier.form.female')}</option>
+                <option value="O">{tr('dossier.form.other')}</option>
               </Select>
             </div>
-            <div><Lbl>Date de naissance</Lbl>
+            <div><Lbl>{tr('dossier.form.birthDate')}</Lbl>
               <Input type="date" value={form.birthDate} onChange={(e) => setField('birthDate', e.target.value)} />
             </div>
           </div>
 
-          <div><Lbl>CIN</Lbl>
+          <div><Lbl>{tr('dossier.form.cin')}</Lbl>
             <Input value={form.cin} onChange={(e) => setField('cin', e.target.value)} placeholder="BE 328451" />
           </div>
 
-          <div><Lbl>Téléphone *</Lbl>
+          <div><Lbl>{tr('dossier.form.phone')}</Lbl>
             <Input
               type="tel"
               value={form.phone}
@@ -373,11 +384,11 @@ function EditPatientPanel({
             />
           </div>
 
-          <div><Lbl>Email</Lbl>
+          <div><Lbl>{tr('dossier.form.email')}</Lbl>
             <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="patient@email.ma" />
           </div>
 
-          <div><Lbl>Ville</Lbl>
+          <div><Lbl>{tr('dossier.form.city')}</Lbl>
             <Input value={form.city} onChange={(e) => setField('city', e.target.value)} placeholder="Casablanca" />
           </div>
 
@@ -385,7 +396,7 @@ function EditPatientPanel({
 
           {/* ── Tier patient (Normal / Premium) ──────────────────────────── */}
           <div>
-            <Lbl>Type de patient</Lbl>
+            <Lbl>{tr('dossier.form.patientType')}</Lbl>
             <div style={{ display: 'flex', gap: 6 }}>
               {(['NORMAL', 'PREMIUM'] as const).map((t) => (
                 <button
@@ -405,7 +416,7 @@ function EditPatientPanel({
                     color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
                   }}
                 >
-                  {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+                  {t === 'PREMIUM' ? tr('dossier.form.premiumStar') : tr('dossier.form.normal')}
                 </button>
               ))}
             </div>
@@ -419,26 +430,26 @@ function EditPatientPanel({
                 checked={form.hasMutuelle}
                 onChange={(e) => setField('hasMutuelle', e.target.checked)}
               />
-              <span>A une mutuelle</span>
+              <span>{tr('dossier.form.hasMutuelle')}</span>
             </label>
           </div>
           {form.hasMutuelle && (
             <>
               <div>
-                <Lbl>Organisme</Lbl>
+                <Lbl>{tr('dossier.form.organism')}</Lbl>
                 <Select
                   value={form.mutuelleInsuranceId}
                   onChange={(e) => setField('mutuelleInsuranceId', e.target.value)}
                   style={{ width: '100%', height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
                 >
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{tr('dossier.form.selectPlaceholder')}</option>
                   {insurances.map((ins) => (
                     <option key={ins.id} value={ins.id}>{ins.name}</option>
                   ))}
                 </Select>
               </div>
               <div>
-                <Lbl>Numéro de police</Lbl>
+                <Lbl>{tr('dossier.form.policyNumber')}</Lbl>
                 <Input
                   value={form.mutuellePolicyNumber}
                   onChange={(e) => setField('mutuellePolicyNumber', e.target.value)}
@@ -451,7 +462,7 @@ function EditPatientPanel({
 
         {/* ── Onglet Médical ─────────────────────────────────────────────── */}
         <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
-          <div><Lbl>Groupe sanguin</Lbl>
+          <div><Lbl>{tr('dossier.form.bloodGroup')}</Lbl>
             <Select
               value={form.bloodGroup}
               onChange={(e) => setField('bloodGroup', e.target.value)}
@@ -467,7 +478,7 @@ function EditPatientPanel({
 
           {/* ── Allergies ─────────────────────────────────────────────── */}
         <div>
-          <SectionHeader label="Allergies" onAdd={addNewAllergy} />
+          <SectionHeader label={tr('dossier.form.allergies')} onAdd={addNewAllergy} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {/* Existing */}
             {form.existingAllergies.map((a) => (
@@ -479,7 +490,7 @@ function EditPatientPanel({
                   color: SEVERITY_COLORS[a.severity].color,
                   border: `1px solid ${SEVERITY_COLORS[a.severity].border}`,
                 }}>
-                  {SEVERITY_LABELS[a.severity]}
+                  {tr(SEVERITY_KEYS[a.severity])}
                 </span>
                 <RemoveBtn onClick={() => removeExistingAllergy(a.id)} />
               </div>
@@ -491,7 +502,7 @@ function EditPatientPanel({
                   <Input
                     value={a.substance}
                     onChange={(e) => updateNewAllergy(i, { ...a, substance: e.target.value })}
-                    placeholder="Ex. Pénicilline, iode…"
+                    placeholder={tr('dossier.form.allergyPlaceholder')}
                     style={{ flex: 1, fontSize: 12.5 }}
                   />
                   <RemoveBtn onClick={() => removeNewAllergy(i)} />
@@ -510,14 +521,14 @@ function EditPatientPanel({
                         color: a.severity === sev ? SEVERITY_COLORS[sev].color : 'var(--ink-3)',
                       }}
                     >
-                      {SEVERITY_LABELS[sev]}
+                      {tr(SEVERITY_KEYS[sev])}
                     </button>
                   ))}
                 </div>
               </div>
             ))}
             {form.existingAllergies.length === 0 && form.newAllergies.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucune allergie.</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>{tr('dossier.form.noAllergy')}</div>
             )}
           </div>
         </div>
@@ -527,14 +538,14 @@ function EditPatientPanel({
 
         {/* ── Antécédents ───────────────────────────────────────────── */}
         <div>
-          <SectionHeader label="Antécédents" onAdd={addNewAntecedent} />
+          <SectionHeader label={tr('dossier.form.antecedents')} onAdd={addNewAntecedent} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {/* Existing */}
             {form.existingAntecedents.map((a) => (
               <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 11, fontWeight: 650, color: 'var(--primary)', marginBottom: 2, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-                    {ANTECEDENT_TYPE_LABELS[a.type]}
+                    {tr(ANTECEDENT_TYPE_KEYS[a.type])}
                   </div>
                   <div style={{ fontSize: 12.5 }}>{a.description}</div>
                 </div>
@@ -550,20 +561,20 @@ function EditPatientPanel({
                     onChange={(e) => updateNewAntecedent(i, { ...a, type: e.target.value as AntecedentType })}
                     style={{ flex: 1, height: 32, border: '1px solid var(--border)', borderRadius: 6, padding: '0 8px', fontSize: 12.5, fontFamily: 'inherit', background: 'var(--surface)', color: 'var(--ink)' }}
                   >
-                    {ANTECEDENT_TYPES.map((t) => <option key={t} value={t}>{ANTECEDENT_TYPE_LABELS[t]}</option>)}
+                    {ANTECEDENT_TYPES.map((at) => <option key={at} value={at}>{tr(ANTECEDENT_TYPE_KEYS[at])}</option>)}
                   </Select>
                   <RemoveBtn onClick={() => removeNewAntecedent(i)} />
                 </div>
                 <Textarea
                   value={a.description}
                   onChange={(e) => updateNewAntecedent(i, { ...a, description: e.target.value })}
-                  placeholder="Description…"
+                  placeholder={tr('dossier.form.descriptionPlaceholder')}
                   style={{ height: 56, fontSize: 12.5, resize: 'vertical' }}
                 />
               </div>
             ))}
             {form.existingAntecedents.length === 0 && form.newAntecedents.length === 0 && (
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucun antécédent.</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>{tr('dossier.form.noAntecedent')}</div>
             )}
           </div>
         </div>
@@ -572,8 +583,8 @@ function EditPatientPanel({
           <div style={{ height: 1, background: 'var(--border)' }} />
 
           {/* ── Notes médicales libres ──────────────────────────────────────────── */}
-          <div><Lbl>Notes médicales libres</Lbl>
-            <Textarea value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 64 }} />
+          <div><Lbl>{tr('dossier.form.notes')}</Lbl>
+            <Textarea value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={tr('dossier.form.notesPlaceholder')} style={{ height: 64 }} />
           </div>
 
           {/* ── Divider ───────────────────────────────────────────────── */}
@@ -581,7 +592,7 @@ function EditPatientPanel({
 
           {/* ── Documents historiques (QA2-2) ─────────────────────────── */}
           <div>
-            <Lbl>Documents historiques</Lbl>
+            <Lbl>{tr('dossier.form.historicalDocs')}</Lbl>
             <DocumentsPanel patientId={patientId} compact />
           </div>
         </div>
@@ -592,9 +603,9 @@ function EditPatientPanel({
 
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <Button type="submit" variant="primary" disabled={isPending} style={{ flex: 1 }}>
-            {isPending ? 'Enregistrement…' : 'Enregistrer'}
+            {isPending ? tr('common.saving') : tr('common.save')}
           </Button>
-          <Button type="button" variant="ghost" onClick={onClose}>Annuler</Button>
+          <Button type="button" variant="ghost" onClick={onClose}>{tr('common.cancel')}</Button>
         </div>
       </form>
     </Panel>
@@ -604,6 +615,7 @@ function EditPatientPanel({
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DossierPage() {
+  const { t } = useT();
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { patient, raw, isLoading, error } = usePatient(id);
@@ -646,7 +658,7 @@ export default function DossierPage() {
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1_000);
     } catch {
-      toast.error('Impossible de générer la synthèse du patient.');
+      toast.error(t('dossier.synthesisError'));
     } finally {
       setIsPrinting(false);
     }
@@ -658,25 +670,25 @@ export default function DossierPage() {
       const created = await startConsultation({ patientId: raw.id });
       void navigate(`/consultations/${created.id}`);
     } catch {
-      toast.error('Impossible de démarrer la consultation', {
-        description: 'Le rôle MEDECIN est requis pour cette action.',
+      toast.error(t('dossier.startConsultError'), {
+        description: t('dossier.startConsultErrorDesc'),
       });
     }
   }
 
   if (isLoading) {
     return (
-      <Screen active="patients" title="Patients" sub="Chargement…" onNavigate={() => {}}>
-        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du dossier…</div>
+      <Screen active="patients" title={t('nav.patients')} sub={t('common.loading')} onNavigate={() => {}}>
+        <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('dossier.loadingRecord')}</div>
       </Screen>
     );
   }
 
   if (error || !patient || !raw) {
     return (
-      <Screen active="patients" title="Patients" sub="Erreur" onNavigate={() => {}}>
+      <Screen active="patients" title={t('nav.patients')} sub={t('dossier.errorSub')} onNavigate={() => {}}>
         <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>
-          {error ?? 'Patient introuvable.'}
+          {error ?? t('dossier.recordNotFound')}
         </div>
       </Screen>
     );
@@ -724,8 +736,8 @@ export default function DossierPage() {
   return (
     <Screen
       active="patients"
-      title="Patients"
-      sub={`${patient.fullName} · Dossier N° ${patient.dossierNo}`}
+      title={t('nav.patients')}
+      sub={`${patient.fullName} · ${t('dossier.dossierNo', { no: patient.dossierNo })}`}
       onNavigate={(navId) => {
         const map = {
           dashboard: '/dashboard',
@@ -779,11 +791,11 @@ export default function DossierPage() {
           <DossierTabPanel value="consults">
             <div className="dp-tab-scroll" style={{ padding: '20px 24px' }}>
               {!raw && (
-                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+                <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
               )}
               {raw && patientConsultations.length === 0 && (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune consultation enregistrée pour ce patient.
+                  {t('dossier.consults.empty')}
                 </div>
               )}
               {patientConsultations.length > 0 && (
@@ -826,7 +838,7 @@ export default function DossierPage() {
                         className={`pill ${c.status === 'SIGNEE' ? 'done' : c.status === 'SUSPENDUE' ? 'arrived' : 'consult'}`}
                         style={{ fontSize: 11 }}
                       >
-                        {c.status === 'SIGNEE' ? 'Signée' : c.status === 'SUSPENDUE' ? 'Suspendue' : 'Brouillon'}
+                        {c.status === 'SIGNEE' ? t('dossier.status.signee') : c.status === 'SUSPENDUE' ? t('dossier.status.suspendue') : t('dossier.status.brouillon')}
                       </span>
                     </button>
                   ))}
@@ -842,7 +854,7 @@ export default function DossierPage() {
               <DocumentsPanel patientId={raw.id} filter="PRESCRIPTION_HISTORIQUE" />
               {patientPrescriptions.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune prescription générée pour ce patient.
+                  {t('dossier.prescr.empty')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -879,7 +891,7 @@ export default function DossierPage() {
                           {p.type !== 'CERT' && p.type !== 'SICK_LEAVE' && (
                             <>
                               {' · '}
-                              {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}
+                              {p.lines.length} {p.lines.length > 1 ? t('dossier.linePlural') : t('dossier.line')}
                             </>
                           )}
                         </div>
@@ -895,7 +907,7 @@ export default function DossierPage() {
                             fontWeight: 600,
                           }}
                         >
-                          override allergie
+                          {t('dossier.allergyOverride')}
                         </span>
                       )}
                     </button>
@@ -937,7 +949,7 @@ export default function DossierPage() {
               {/* QA9-13 — génération d'un consentement éclairé (PDF rattaché au dossier). */}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                 <Button variant="primary" onClick={() => setShowConsent(true)}>
-                  <Plus style={{ width: 14, height: 14 }} /> Générer un consentement
+                  <Plus style={{ width: 14, height: 14 }} /> {t('dossier.generateConsent')}
                 </Button>
               </div>
               <DocumentsPanel patientId={raw.id} />
@@ -947,7 +959,7 @@ export default function DossierPage() {
             <div className="dp-tab-scroll" style={{ padding: '20px 24px' }}>
               {patientInvoices.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune facture pour ce patient.
+                  {t('dossier.factu.empty')}
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -981,8 +993,8 @@ export default function DossierPage() {
                             {inv.netAmount.toFixed(2).replace('.', ',')} MAD
                             {paid > 0 && (
                               <>
-                                {' · encaissé '}
-                                {paid.toFixed(2).replace('.', ',')} MAD
+                                {' · '}
+                                {t('dossier.collected', { amount: paid.toFixed(2).replace('.', ',') })}
                               </>
                             )}
                           </div>

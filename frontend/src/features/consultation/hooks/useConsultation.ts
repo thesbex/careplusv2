@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface ConsultationApi {
   id: string;
@@ -37,6 +38,7 @@ export interface UseConsultationResult {
 
 export function useConsultation(id?: string): UseConsultationResult {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['consultation', id],
@@ -61,10 +63,10 @@ export function useConsultation(id?: string): UseConsultationResult {
   return {
     consultation: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger la consultation.' : null,
+    error: error ? t('consult.loadError') : null,
     update,
     isSaving: updateMutation.isPending,
-    saveError: updateMutation.error ? 'Échec de la sauvegarde.' : null,
+    saveError: updateMutation.error ? t('common.saveError') : null,
     lastSavedAt: data ? new Date(data.updatedAt) : null,
   };
 }

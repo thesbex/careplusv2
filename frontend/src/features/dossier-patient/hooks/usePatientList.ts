@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type Segment = 'tous' | 'recent' | 'chroniques' | 'nouveaux';
 
@@ -70,6 +71,7 @@ const EMPTY_COUNTS: SegmentCounts = { tous: 0, recent: 0, chroniques: 0, nouveau
  * or an options bag. Legacy callers default to segment="tous", page 0, size 40.
  */
 export function usePatientList(input: string | UsePatientListOptions = '') {
+  const { t } = useT();
   const opts: UsePatientListOptions = typeof input === 'string' ? { q: input } : input;
   const {
     q = '',
@@ -105,6 +107,6 @@ export function usePatientList(input: string | UsePatientListOptions = '') {
     size: data?.size ?? size,
     counts: data?.counts ?? EMPTY_COUNTS,
     isLoading,
-    error: error ? 'Impossible de charger la liste des patients.' : null,
+    error: error ? t('dossier.hook.listLoadError') : null,
   };
 }

@@ -15,6 +15,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Close, Trash } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { PatientAvatar } from '@/components/ui/PatientAvatar';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useUpdatePatient, type UpdatePatientForm } from '../hooks/useUpdatePatient';
 import { usePatientPhoto } from '../hooks/usePatientPhoto';
 import type { PatientViewApi } from '../hooks/usePatient';
@@ -38,6 +39,7 @@ export function EditPatientMobileSheet({
   onOpenChange,
   patient,
 }: EditPatientMobileSheetProps) {
+  const { t } = useT();
   const { update, isPending, error, reset } = useUpdatePatient(patient.id);
   const photo = usePatientPhoto(patient.id);
 
@@ -66,19 +68,19 @@ export function EditPatientMobileSheet({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidName(form.firstName)) {
-      setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(t('dossier.valid.firstName'));
       return;
     }
     if (!isValidName(form.lastName)) {
-      setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(t('dossier.valid.lastName'));
       return;
     }
     if (!form.phone.trim()) {
-      setValidationError('Le numéro de téléphone est obligatoire.');
+      setValidationError(t('dossier.valid.phoneRequired'));
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
-      setValidationError('Numéro de téléphone invalide.');
+      setValidationError(t('dossier.valid.phoneInvalid'));
       return;
     }
     await update(form).catch(() => null);
@@ -97,7 +99,7 @@ export function EditPatientMobileSheet({
   }
 
   async function handlePhotoRemove() {
-    if (!confirm('Supprimer la photo du patient ?')) return;
+    if (!confirm(t('dossier.photo.confirmRemove'))) return;
     try {
       await photo.remove();
     } catch {
@@ -144,12 +146,12 @@ export function EditPatientMobileSheet({
             }}
           >
             <Dialog.Title style={{ fontSize: 14, fontWeight: 700, flex: 1, margin: 0 }}>
-              Modifier le patient
+              {t('dossier.form.editPatient')}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Fermer"
+                aria-label={t('common.close')}
                 style={{
                   background: 'transparent',
                   border: 0,
@@ -188,8 +190,8 @@ export function EditPatientMobileSheet({
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <DocumentUploadButton
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                  uploadLabel="Téléverser"
-                  cameraLabel="Photographier"
+                  uploadLabel={t('dossier.photo.upload')}
+                  cameraLabel={t('dossier.photo.camera')}
                   disabled={photo.isUploading}
                   onFile={(f) => {
                     void handlePhotoFile(f);
@@ -217,7 +219,7 @@ export function EditPatientMobileSheet({
                     }}
                   >
                     <Trash style={{ width: 12, height: 12 }} aria-hidden="true" />
-                    Supprimer la photo
+                    {t('dossier.photo.remove')}
                   </button>
                 )}
                 {photo.uploadError && (
@@ -228,7 +230,7 @@ export function EditPatientMobileSheet({
               </div>
             </div>
 
-            <Field label="Prénom *">
+            <Field label={t('dossier.form.firstName')}>
               <input
                 className="m-input"
                 value={form.firstName}
@@ -236,7 +238,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Nom *">
+            <Field label={t('dossier.form.lastName')}>
               <input
                 className="m-input"
                 value={form.lastName}
@@ -244,7 +246,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Sexe">
+            <Field label={t('dossier.form.sex')}>
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['M', 'F', 'O'] as const).map((g) => (
                   <button
@@ -264,13 +266,13 @@ export function EditPatientMobileSheet({
                       cursor: 'pointer',
                     }}
                   >
-                    {g === 'M' ? 'Homme' : g === 'F' ? 'Femme' : 'Autre'}
+                    {g === 'M' ? t('dossier.form.male') : g === 'F' ? t('dossier.form.female') : t('dossier.form.other')}
                   </button>
                 ))}
               </div>
             </Field>
 
-            <Field label="Date de naissance">
+            <Field label={t('dossier.form.birthDate')}>
               <input
                 className="m-input"
                 type="date"
@@ -280,7 +282,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Téléphone *">
+            <Field label={t('dossier.form.phone')}>
               <input
                 className="m-input"
                 type="tel"
@@ -291,7 +293,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="CIN">
+            <Field label={t('dossier.form.cin')}>
               <input
                 className="m-input"
                 value={form.cin}
@@ -299,7 +301,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Email">
+            <Field label={t('dossier.form.email')}>
               <input
                 className="m-input"
                 type="email"
@@ -308,7 +310,7 @@ export function EditPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Ville">
+            <Field label={t('dossier.form.city')}>
               <input
                 className="m-input"
                 value={form.city}
@@ -324,12 +326,12 @@ export function EditPatientMobileSheet({
 
             {saved && (
               <div role="status" style={{ color: 'var(--success, #2E7D32)', fontSize: 12 }}>
-                Modifications enregistrées.
+                {t('dossier.mobile.savedChanges')}
               </div>
             )}
 
             <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>
-              Allergies, antécédents, mutuelle et notes : modifiables depuis la version desktop.
+              {t('dossier.mobile.editMoreDesktop')}
             </div>
 
             <button
@@ -338,7 +340,7 @@ export function EditPatientMobileSheet({
               disabled={isPending || photo.isUploading || photo.isRemoving}
               style={{ height: 44, marginTop: 4 }}
             >
-              {isPending ? 'Enregistrement…' : 'Enregistrer'}
+              {isPending ? t('common.saving') : t('common.save')}
             </button>
           </form>
         </Dialog.Content>

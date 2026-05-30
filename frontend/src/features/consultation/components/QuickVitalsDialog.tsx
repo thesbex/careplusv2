@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { VitalsApi } from '../hooks/useLatestVitals';
 import { VitalIcon, type VitalKey } from './VitalIcon';
 
@@ -104,6 +105,7 @@ function fromCurrent(c: VitalsApi | null | undefined): FormState {
 export function QuickVitalsDialog({
   open, onOpenChange, consultationId, appointmentId, patientId, current,
 }: QuickVitalsDialogProps) {
+  const { t } = useT();
   const [form, setForm] = useState<FormState>(() => fromCurrent(current));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
@@ -137,7 +139,7 @@ export function QuickVitalsDialog({
       headCircumferenceCm: toNumOrNull(form.headCircumferenceCm),
     };
     if (Object.values(payload).every((v) => v === null)) {
-      toast.error('Renseignez au moins une constante.');
+      toast.error(t('consult.quickVitals.atLeastOne'));
       return;
     }
     setIsSubmitting(true);
@@ -150,7 +152,7 @@ export function QuickVitalsDialog({
         : `/consultations/${consultationId}/vitals`;
       const res = await api.post<VitalsApi>(url, payload);
       const created = res.data;
-      toast.success('Constantes enregistrées.');
+      toast.success(t('consult.quickVitals.saved'));
       // Optimistic cache update — push the freshly-created record at the head
       // of the patient-vitals list so the consultation TA banner reflects the
       // new values *immediately*, without waiting for a refetch round-trip.
@@ -196,7 +198,7 @@ export function QuickVitalsDialog({
       const description = errs.length > 0
         ? errs.map((x) => `${x.field ?? '?'} : ${x.defaultMessage ?? x.message ?? ''}`).join(' · ')
         : (e?.response?.data?.detail ?? e?.response?.data?.message);
-      toast.error('Enregistrement refusé', { description });
+      toast.error(t('consult.quickVitals.saveRefused'), { description });
     } finally {
       setIsSubmitting(false);
     }
@@ -227,12 +229,12 @@ export function QuickVitalsDialog({
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
             <Dialog.Title style={{ fontSize: 14, fontWeight: 650, margin: 0, flex: 1 }}>
-              Saisir les constantes
+              {t('consult.quickVitals.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Fermer"
+                aria-label={t('common.close')}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--ink-3)', padding: 6, borderRadius: 6, lineHeight: 0,
@@ -247,17 +249,17 @@ export function QuickVitalsDialog({
             padding: 18,
             display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12,
           }}>
-            <Field vital="ta" label="Systolique (mmHg)" hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
-            <Field vital="ta" label="Diastolique (mmHg)" hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
-            <Field vital="fc" label="FC (bpm)" hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
-            <Field vital="fr" label="FR (/min)" hint="0 – 100" {...field('respiratoryRateBpm')} placeholder="16" />
-            <Field vital="spo2" label="SpO₂ (%)" hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
-            <Field vital="temp" label="T° (°C)" hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
-            <Field vital="poids" label="Poids (kg)" hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
-            <Field vital="taille" label="Taille (cm)" hint="20 – 260" {...field('heightCm')} placeholder="178" />
-            <Field vital="glycemie" label="Glycémie (g/L)" hint="0,1 – 15,0" {...field('glycemiaGPerL')} placeholder="0,95" />
-            <Field vital="abdo" label="Périm. abdo. (cm)" hint="0 – 300" {...field('abdominalPerimeterCm')} placeholder="92" />
-            <Field vital="cranien" label="Périm. crânien (cm)" hint="20 – 80" {...field('headCircumferenceCm')} placeholder="44" />
+            <Field vital="ta" label={t('consult.quickVitals.systolic')} hint="20 – 300" {...field('systolicMmhg')} placeholder="120" />
+            <Field vital="ta" label={t('consult.quickVitals.diastolic')} hint="10 – 250" {...field('diastolicMmhg')} placeholder="80" />
+            <Field vital="fc" label={t('consult.quickVitals.fc')} hint="10 – 300" {...field('heartRateBpm')} placeholder="72" />
+            <Field vital="fr" label={t('consult.quickVitals.fr')} hint="0 – 100" {...field('respiratoryRateBpm')} placeholder="16" />
+            <Field vital="spo2" label={t('consult.quickVitals.spo2')} hint="0 – 100" {...field('spo2Percent')} placeholder="98" />
+            <Field vital="temp" label={t('consult.quickVitals.temp')} hint="20,0 – 46,0" {...field('temperatureC')} placeholder="36,8" />
+            <Field vital="poids" label={t('consult.quickVitals.weight')} hint="0,2 – 500" {...field('weightKg')} placeholder="72,5" />
+            <Field vital="taille" label={t('consult.quickVitals.height')} hint="20 – 260" {...field('heightCm')} placeholder="178" />
+            <Field vital="glycemie" label={t('consult.quickVitals.glycemia')} hint="0,1 – 15,0" {...field('glycemiaGPerL')} placeholder="0,95" />
+            <Field vital="abdo" label={t('consult.quickVitals.abdo')} hint="0 – 300" {...field('abdominalPerimeterCm')} placeholder="92" />
+            <Field vital="cranien" label={t('consult.quickVitals.head')} hint="20 – 80" {...field('headCircumferenceCm')} placeholder="44" />
           </div>
 
           <div style={{
@@ -265,7 +267,7 @@ export function QuickVitalsDialog({
             display: 'flex', gap: 8, justifyContent: 'flex-end',
           }}>
             <Dialog.Close asChild>
-              <Button type="button" size="sm">Annuler</Button>
+              <Button type="button" size="sm">{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button
               type="button"
@@ -274,7 +276,7 @@ export function QuickVitalsDialog({
               disabled={isSubmitting}
               onClick={() => { void handleSave(); }}
             >
-              {isSubmitting ? 'Enregistrement…' : 'Enregistrer'}
+              {isSubmitting ? t('common.saving') : t('common.save')}
             </Button>
           </div>
         </Dialog.Content>
@@ -293,6 +295,7 @@ function Field({
   hint?: string;
   vital?: VitalKey;
 }) {
+  const { t } = useT();
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11.5 }}>
       <span
@@ -322,7 +325,7 @@ function Field({
       />
       {hint && (
         <span style={{ fontSize: 10.5, color: 'var(--ink-3)', fontWeight: 500 }}>
-          Plage acceptée : {hint}
+          {t('consult.quickVitals.range', { hint })}
         </span>
       )}
     </label>

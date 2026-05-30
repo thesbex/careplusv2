@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type AllergySeverity = 'LEGERE' | 'MODEREE' | 'SEVERE';
 export type AntecedentType =
@@ -48,6 +49,7 @@ interface CreatedPatient {
 
 export function useCreatePatient() {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const mutation = useMutation({
     mutationFn: async (form: CreatePatientForm) => {
@@ -97,7 +99,7 @@ export function useCreatePatient() {
     isPending: mutation.isPending,
     error: mutation.error
       ? (mutation.error as { response?: { data?: { message?: string } } })
-          .response?.data?.message ?? 'Erreur lors de la création.'
+          .response?.data?.message ?? t('dossier.create.error')
       : null,
     reset: mutation.reset,
   };

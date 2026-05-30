@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { ConsultationApi } from './useConsultation';
 
 export function useSignConsultation(id?: string) {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -31,6 +33,6 @@ export function useSignConsultation(id?: string) {
     sign,
     isSigning: mutation.isPending,
     signed: mutation.isSuccess,
-    error: mutation.error ? 'Signature impossible. Réessayez.' : null,
+    error: mutation.error ? t('consult.signRefused') : null,
   };
 }

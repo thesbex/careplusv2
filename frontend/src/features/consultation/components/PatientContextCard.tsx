@@ -7,6 +7,7 @@ import { Warn, Plus } from '@/components/icons';
 import type { PatientSummary } from '@/features/dossier-patient/types';
 import type { VitalsApi } from '../hooks/useLatestVitals';
 import { useInsurances } from '@/features/dossier-patient/hooks/useInsurances';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { VitalIcon, type VitalKey } from './VitalIcon';
 
 interface PatientContextCardProps {
@@ -82,6 +83,7 @@ export function PatientContextCard({
   // hooks. Insurance catalogue is small and cached, so the extra fetch when
   // the patient is null is harmless (it primes the query for when data lands).
   const { insurances } = useInsurances();
+  const { t } = useT();
   const mutuelleName =
     patient?.mutuelleInsuranceId
       ? insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? null
@@ -100,7 +102,7 @@ export function PatientContextCard({
           fontSize: 12,
         }}
       >
-        Chargement du patient…
+        {t('consult.ctx.loadingPatient')}
       </div>
     );
   }
@@ -156,20 +158,20 @@ export function PatientContextCard({
       </div>
       <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>
         {patient.tier === 'PREMIUM' && (
-          <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
+          <span title={t('consult.ctx.premium')} aria-label={t('consult.ctx.premium')} style={{ marginRight: 4 }}>
             🌟
           </span>
         )}
         {patient.fullName}
       </div>
       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-        {patient.age} ans · {patient.sex} · {patient.dossierNo}
+        {t('consult.ctx.yearsOld', { n: patient.age })} · {patient.sex} · {patient.dossierNo}
       </div>
 
       {patient.allergies.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 10 }}>
           <span className="pill allergy">
-            <Warn aria-hidden="true" /> Allergie : {patient.allergies.join(', ')}
+            <Warn aria-hidden="true" /> {t('consult.ctx.allergy', { list: patient.allergies.join(', ') })}
           </span>
         </div>
       )}
@@ -177,21 +179,21 @@ export function PatientContextCard({
       {/* Couverture (mutuelle) — always shown so the praticien knows if the
           patient is covered without opening the edit form. */}
       <div style={{ marginTop: 10, fontSize: 11.5 }}>
-        <span style={{ color: 'var(--ink-3)' }}>Couverture : </span>
+        <span style={{ color: 'var(--ink-3)' }}>{t('consult.ctx.coverage')}</span>
         {patient.mutuelleInsuranceId ? (
           <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>
-            {mutuelleName ?? 'Mutuelle'}
+            {mutuelleName ?? t('consult.ctx.mutuelle')}
             {patient.mutuellePolicyNumber ? ` · ${patient.mutuellePolicyNumber}` : ''}
           </span>
         ) : (
-          <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>aucune mutuelle</span>
+          <span style={{ color: 'var(--ink-3)', fontStyle: 'italic' }}>{t('consult.ctx.noMutuelle')}</span>
         )}
       </div>
 
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <SectionH>Constantes {vitalsTime ? `· ${vitalsTime}` : ''}</SectionH>
+            <SectionH>{vitalsTime ? t('consult.ctx.vitalsAt', { time: vitalsTime }) : t('consult.ctx.vitals')}</SectionH>
           </div>
           {/*
             Action button — "Saisir" plein quand aucune constante n'a été
@@ -210,7 +212,7 @@ export function PatientContextCard({
                 marginBottom: 6,
               }}
             >
-              Modifier
+              {t('consult.ctx.modify')}
             </button>
           )}
         </div>
@@ -219,7 +221,7 @@ export function PatientContextCard({
             {!vitals && (
               <>
                 <div style={{ color: 'var(--ink-3)', marginBottom: 8 }}>
-                  Aucune constante prise pour cette consultation.
+                  {t('consult.ctx.noVitals')}
                 </div>
                 {canRecordVitals && onRecordVitals && (
                   <button
@@ -242,7 +244,7 @@ export function PatientContextCard({
                       gap: 4,
                     }}
                   >
-                    <Plus aria-hidden="true" /> Saisir les constantes
+                    <Plus aria-hidden="true" /> {t('consult.ctx.recordVitals')}
                   </button>
                 )}
               </>
@@ -256,20 +258,20 @@ export function PatientContextCard({
                   voyait FC mais pas taille, donc croyait à une perte de données.
                   Les valeurs étaient bien persistées — seul le rendu mentait.
                 */}
-                {ta && <VitalRow vital="ta" k="TA" v={`${ta} mmHg`} warn={taWarn} />}
-                {fc != null && <VitalRow vital="fc" k="FC" v={`${fc} bpm`} />}
-                {fr != null && <VitalRow vital="fr" k="FR" v={`${fr} /min`} />}
-                {tempStr && <VitalRow vital="temp" k="T°" v={`${tempStr} °C`} />}
-                {spo2 != null && <VitalRow vital="spo2" k="SpO₂" v={`${spo2}%`} />}
-                {weightStr && <VitalRow vital="poids" k="Poids" v={`${weightStr} kg`} />}
-                {heightNum != null && <VitalRow vital="taille" k="Taille" v={`${heightNum} cm`} />}
-                {bmiStr && <VitalRow vital="imc" k="IMC" v={`${bmiStr} kg/m²`} warn={bmiWarn} />}
-                {glycemiaStr && <VitalRow vital="glycemie" k="Glycémie" v={`${glycemiaStr} g/L`} />}
+                {ta && <VitalRow vital="ta" k={t('consult.vital.ta')} v={`${ta} mmHg`} warn={taWarn} />}
+                {fc != null && <VitalRow vital="fc" k={t('consult.vital.fc')} v={`${fc} bpm`} />}
+                {fr != null && <VitalRow vital="fr" k={t('consult.vital.fr')} v={`${fr} /min`} />}
+                {tempStr && <VitalRow vital="temp" k={t('consult.vital.temp')} v={`${tempStr} °C`} />}
+                {spo2 != null && <VitalRow vital="spo2" k={t('consult.vital.spo2')} v={`${spo2}%`} />}
+                {weightStr && <VitalRow vital="poids" k={t('consult.vital.weight')} v={`${weightStr} kg`} />}
+                {heightNum != null && <VitalRow vital="taille" k={t('consult.vital.height')} v={`${heightNum} cm`} />}
+                {bmiStr && <VitalRow vital="imc" k={t('consult.vital.bmi')} v={`${bmiStr} kg/m²`} warn={bmiWarn} />}
+                {glycemiaStr && <VitalRow vital="glycemie" k={t('consult.vital.glycemia')} v={`${glycemiaStr} g/L`} />}
                 {abdominalNum != null && (
-                  <VitalRow vital="abdo" k="Périm. abdo." v={`${abdominalNum} cm`} />
+                  <VitalRow vital="abdo" k={t('consult.vital.abdoLong')} v={`${abdominalNum} cm`} />
                 )}
                 {headCircNum != null && (
-                  <VitalRow vital="cranien" k="Périm. crânien" v={`${headCircNum} cm`} />
+                  <VitalRow vital="cranien" k={t('consult.vital.headLong')} v={`${headCircNum} cm`} />
                 )}
               </>
             )}
@@ -279,16 +281,16 @@ export function PatientContextCard({
 
       {patient.antecedents && (
         <div style={{ marginTop: 14 }}>
-          <SectionH>Antécédents</SectionH>
+          <SectionH>{t('consult.ctx.history')}</SectionH>
           <div style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'pre-line' }}>
-            {patient.antecedents || 'Aucun'}
+            {patient.antecedents || t('consult.ctx.noneHistory')}
           </div>
         </div>
       )}
 
       {patient.chronicTreatment && (
         <div style={{ marginTop: 14 }}>
-          <SectionH>Traitement en cours</SectionH>
+          <SectionH>{t('consult.ctx.chronicTreatment')}</SectionH>
           <div style={{ fontSize: 12, color: 'var(--ink-2)', whiteSpace: 'pre-line' }}>
             {patient.chronicTreatment}
           </div>

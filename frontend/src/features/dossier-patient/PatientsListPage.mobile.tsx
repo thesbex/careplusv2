@@ -22,8 +22,11 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronDown, ChevronRight, Plus, Search, Warn } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatientList, type PatientListItem, type Segment } from './hooks/usePatientList';
 import { NewPatientMobileSheet } from './components/NewPatientMobileSheet';
+
+type T = (key: string, vars?: Record<string, string | number>) => string;
 
 function toAge(birthDate: string): number {
   const d = new Date(birthDate);
@@ -48,19 +51,19 @@ function avatarColor(id: string): string {
   return AVATAR_PALETTE[idx] ?? '#2A7CE7';
 }
 
-function relativeShort(iso: string | null | undefined): string {
-  if (!iso) return 'Nouveau';
+function relativeShort(iso: string | null | undefined, t: T): string {
+  if (!iso) return t('dossier.mlist.relNew');
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   const days = Math.floor((Date.now() - d.getTime()) / (24 * 60 * 60 * 1000));
   if (days < 0) return '';
-  if (days < 1) return "auj.";
-  if (days === 1) return 'hier';
-  if (days < 14) return `il y a ${days} j`;
+  if (days < 1) return t('dossier.mlist.relToday');
+  if (days === 1) return t('dossier.mlist.relYesterday');
+  if (days < 14) return t('dossier.mlist.relDays', { n: days });
   const weeks = Math.floor(days / 7);
-  if (weeks < 9) return `il y a ${weeks} sem`;
+  if (weeks < 9) return t('dossier.mlist.relWeeks', { n: weeks });
   const months = Math.floor(days / 30);
-  if (months < 12) return `il y a ${months} mois`;
+  if (months < 12) return t('dossier.mlist.relMonths', { n: months });
   return '';
 }
 
@@ -82,9 +85,10 @@ function MPatientRow({
   isFirst: boolean;
   onOpen: () => void;
 }) {
+  const { t } = useT();
   const initials = `${p.firstName.charAt(0)}${p.lastName.charAt(0)}`.toUpperCase();
   const nextLabel = shortDateTime(p.nextAppointmentAt);
-  const lastLabel = relativeShort(p.lastVisitAt);
+  const lastLabel = relativeShort(p.lastVisitAt, t);
 
   return (
     <button
@@ -129,8 +133,8 @@ function MPatientRow({
           </span>
           {p.allergy && (
             <span
-              title="Allergie connue"
-              aria-label="Allergie connue"
+              title={t('dossier.mlist.allergyKnown')}
+              aria-label={t('dossier.mlist.allergyKnown')}
               style={{
                 width: 16, height: 16, borderRadius: '50%',
                 background: 'var(--amber-soft)', color: 'var(--amber)',
@@ -152,7 +156,7 @@ function MPatientRow({
                 color: '#9A2A52',
               }}
             >
-              Grossesse
+              {t('dossier.mlist.pregnancy')}
             </span>
           )}
           {p.isNew && (
@@ -165,13 +169,13 @@ function MPatientRow({
                 color: 'var(--primary)',
               }}
             >
-              Nouveau
+              {t('dossier.mlist.new')}
             </span>
           )}
           {p.tier === 'PREMIUM' && (
             <span
               className="m-pill"
-              aria-label="Patient Premium"
+              aria-label={t('dossier.mlist.premiumAria')}
               style={{
                 fontSize: 10,
                 padding: '1px 6px',
@@ -179,7 +183,7 @@ function MPatientRow({
                 color: 'var(--amber)',
               }}
             >
-              Premium
+              {t('dossier.mlist.premium')}
             </span>
           )}
         </div>
@@ -194,9 +198,9 @@ function MPatientRow({
           }}
         >
           <span className="tnum">
-            {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}
+            {p.birthDate ? `${toAge(p.birthDate)} ${t('dossier.years')}` : '—'}
             {' · '}
-            {p.gender === 'M' ? 'Homme' : p.gender === 'F' ? 'Femme' : '—'}
+            {p.gender === 'M' ? t('dossier.mlist.male') : p.gender === 'F' ? t('dossier.mlist.female') : '—'}
           </span>
           {p.tags && p.tags.length > 0 && (
             <>
@@ -219,7 +223,7 @@ function MPatientRow({
         {/* Line 3 — last visit + next RDV */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-            <span style={{ color: 'var(--ink-4)' }}>Vu : </span>
+            <span style={{ color: 'var(--ink-4)' }}>{t('dossier.mlist.seen')}</span>
             <span className="tnum" style={{ color: 'var(--ink-2)', fontWeight: 500 }}>
               {lastLabel}
             </span>
@@ -242,6 +246,7 @@ function MPatientRow({
 }
 
 export default function PatientsListMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   // Mode "picker" — appelé depuis /rdv/new pour choisir un patient. Clic sur
@@ -285,9 +290,9 @@ export default function PatientsListMobilePage() {
   }, [patients]);
 
   const segMobile = [
-    { id: 'tous' as Segment,        label: 'Tous',       count: counts.tous },
-    { id: 'chroniques' as Segment,  label: 'Chroniques', count: counts.chroniques },
-    { id: 'nouveaux' as Segment,    label: 'Nouveaux',   count: counts.nouveaux },
+    { id: 'tous' as Segment,        label: t('dossier.seg.tous'),        count: counts.tous },
+    { id: 'chroniques' as Segment,  label: t('dossier.seg.chroniques'),  count: counts.chroniques },
+    { id: 'nouveaux' as Segment,    label: t('dossier.seg.nouveaux'),    count: counts.nouveaux },
   ];
 
   return (
@@ -295,17 +300,17 @@ export default function PatientsListMobilePage() {
       tab="patients"
       topbar={
         <MTopbar
-          title="Patients"
-          sub={`${counts.tous} dossier${counts.tous !== 1 ? 's' : ''}`}
-          right={<MIconBtn icon="Filter" label="Filtres" />}
+          title={t('nav.patients')}
+          sub={counts.tous !== 1 ? t('dossier.recordCountPlural', { count: counts.tous }) : t('dossier.recordCount', { count: counts.tous })}
+          right={<MIconBtn icon="Filter" label={t('dossier.mlist.filters')} />}
         />
       }
-      onTabChange={(t) => navigate(TAB_MAP[t])}
+      onTabChange={(tab) => navigate(TAB_MAP[tab])}
       fab={
         canCreatePatient ? (
           <button
             type="button"
-            aria-label="Nouveau patient"
+            aria-label={t('dossier.mlist.newPatient')}
             onClick={() => setShowNew(true)}
             style={{
               position: 'fixed',
@@ -355,8 +360,8 @@ export default function PatientsListMobilePage() {
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Nom, téléphone, CIN…"
-            aria-label="Rechercher un patient"
+            placeholder={t('dossier.mlist.searchPlaceholder')}
+            aria-label={t('dossier.mlist.searchAria')}
             style={{
               flex: 1,
               border: 0,
@@ -373,7 +378,7 @@ export default function PatientsListMobilePage() {
       {/* Segmented pills — horizontal scroll if it overflows. */}
       <div
         role="tablist"
-        aria-label="Filtres patients"
+        aria-label={t('dossier.mlist.filtersAria')}
         style={{
           padding: '10px 16px',
           background: 'var(--surface)',
@@ -441,7 +446,11 @@ export default function PatientsListMobilePage() {
         }}
       >
         <span>
-          {isLoading ? 'Chargement…' : `${total} résultat${total > 1 ? 's' : ''}`}
+          {isLoading
+            ? t('common.loading')
+            : total > 1
+            ? t('dossier.mlist.resultsPlural', { count: total })
+            : t('dossier.mlist.results', { count: total })}
         </span>
         <span
           style={{
@@ -455,7 +464,7 @@ export default function PatientsListMobilePage() {
             color: 'var(--ink-3)',
           }}
         >
-          Trier <ChevronDown />
+          {t('dossier.mlist.sort')} <ChevronDown />
         </span>
       </div>
 
@@ -475,8 +484,8 @@ export default function PatientsListMobilePage() {
             }}
           >
             {q
-              ? 'Aucun patient ne correspond à votre recherche.'
-              : 'Aucun patient enregistré.'}
+              ? t('dossier.mlist.emptySearch')
+              : t('dossier.mlist.empty')}
           </div>
         ) : (
           groups.map(([letter, rows]) => (
@@ -519,9 +528,7 @@ export default function PatientsListMobilePage() {
           lineHeight: 1.5,
         }}
       >
-        Astuce : appuyez sur le bouton « + » pour créer un nouveau patient.
-        Pour saisir allergies, antécédents, mutuelle ou documents historiques,
-        utilisez la version desktop (formulaire complet à onglets).
+        {t('dossier.mlist.tip')}
       </div>
 
       <NewPatientMobileSheet

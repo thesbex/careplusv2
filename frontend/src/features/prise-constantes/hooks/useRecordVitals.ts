@@ -1,10 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { UseRecordVitalsResult } from '../types';
 import type { VitalsFormValues } from '../schema';
 
 export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const mutation = useMutation({
     mutationFn: (values: VitalsFormValues) =>
@@ -57,6 +59,6 @@ export function useRecordVitals(appointmentId?: string): UseRecordVitalsResult {
     submit,
     isPending: mutation.isPending,
     isSuccess: mutation.isSuccess,
-    error: mutation.error ? 'Erreur lors de l\'enregistrement. Réessayez.' : null,
+    error: mutation.error ? t('vitals.recordError') : null,
   };
 }

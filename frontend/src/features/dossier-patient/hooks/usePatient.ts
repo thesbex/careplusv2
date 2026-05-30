@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PatientSummary } from '../types';
 
 interface PatientViewApi {
@@ -30,7 +31,7 @@ function toAge(birthDate: string): number {
   return age;
 }
 
-function adapt(v: PatientViewApi): PatientSummary {
+function adapt(v: PatientViewApi, createdLabel: string): PatientSummary {
   const summary: PatientSummary = {
     id: v.id,
     dossierNo: v.id.slice(0, 8).toUpperCase(),
@@ -74,7 +75,7 @@ function adapt(v: PatientViewApi): PatientSummary {
     currentMedications: [],
     currentMedicationsSince: '',
     admin: [
-      { k: 'Date création', v: new Date(v.createdAt).toLocaleDateString('fr-MA') },
+      { k: createdLabel, v: new Date(v.createdAt).toLocaleDateString('fr-MA') },
     ],
   };
   if (v.tier === 'NORMAL' || v.tier === 'PREMIUM') summary.tier = v.tier;
@@ -92,6 +93,7 @@ export function usePatient(id?: string): {
   isLoading: boolean;
   error: string | null;
 } {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['patient', id],
     queryFn: () => api.get<PatientViewApi>(`/patients/${id}`).then((r) => r.data),
@@ -100,9 +102,9 @@ export function usePatient(id?: string): {
   });
 
   return {
-    patient: data ? adapt(data) : null,
+    patient: data ? adapt(data, t('dossier.admin.created')) : null,
     raw: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger le dossier patient.' : null,
+    error: error ? t('dossier.loadError') : null,
   };
 }

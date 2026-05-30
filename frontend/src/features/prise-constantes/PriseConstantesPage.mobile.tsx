@@ -21,7 +21,8 @@ import { Heart, Thermo, Signal, Warn } from '@/components/icons';
 import { useRecordVitals } from './hooks/useRecordVitals';
 import { useAppointment } from './hooks/useAppointment';
 import { usePatient } from '@/features/dossier-patient/hooks/usePatient';
-import { vitalsFormSchema, type VitalsFormValues } from './schema';
+import { useT } from '@/lib/i18n/I18nProvider';
+import { vitalsFormSchema, translateVitalsError, type VitalsFormValues } from './schema';
 import './prise-constantes.css';
 
 /** Empty form values — same rationale as the desktop variant: never pre-fill. */
@@ -55,11 +56,12 @@ const largeInputStyle: CSSProperties = {
 
 export default function PriseConstantesMobilePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { appointmentId } = useParams<{ appointmentId?: string }>();
   const { submit, isPending } = useRecordVitals(appointmentId);
   const { appointment, isLoading: aptLoading, error: aptError } = useAppointment(appointmentId);
   const { patient, isLoading: patLoading, error: patError } = usePatient(appointment?.patientId);
-  const patientName = patient?.fullName ?? 'Chargement…';
+  const patientName = patient?.fullName ?? t('common.loading');
   const allergyLabel =
     patient && patient.allergies.length > 0 ? patient.allergies.join(', ') : null;
 
@@ -94,16 +96,19 @@ export default function PriseConstantesMobilePage() {
           (err as { response?: { data?: { message?: string } } })
             ?.response?.data?.message ??
           null;
-        toast.error('Erreur lors de l\'enregistrement', {
-          description: axiosMsg ?? 'Vérifiez votre connexion et réessayez.',
+        toast.error(t('vitals.toast.saveError'), {
+          description: axiosMsg ?? t('vitals.toast.saveErrorDesc'),
         });
       }
     },
     (errs) => {
       const first = Object.values(errs)[0] as { message?: string } | undefined;
       const root = (errs as { root?: { message?: string } }).root;
-      toast.error('Impossible d\'enregistrer', {
-        description: root?.message ?? first?.message ?? 'Vérifiez les valeurs saisies.',
+      toast.error(t('vitals.toast.invalid'), {
+        description:
+          translateVitalsError(root?.message, t) ??
+          translateVitalsError(first?.message, t) ??
+          t('vitals.toast.invalidDesc'),
       });
     },
   );
@@ -118,10 +123,10 @@ export default function PriseConstantesMobilePage() {
         topbar={
           <MTopbar
             left={
-              <MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/salle')} />
+              <MIconBtn icon="ChevronLeft" label={t('consult.list.back')} onClick={() => navigate('/salle')} />
             }
-            title="Constantes"
-            sub="Erreur de chargement"
+            title={t('vitals.mobile.title')}
+            sub={t('vitals.mobile.errorSub')}
           />
         }
       >
@@ -139,14 +144,14 @@ export default function PriseConstantesMobilePage() {
         topbar={
           <MTopbar
             left={
-              <MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/salle')} />
+              <MIconBtn icon="ChevronLeft" label={t('consult.list.back')} onClick={() => navigate('/salle')} />
             }
-            title="Constantes"
-            sub="Chargement…"
+            title={t('vitals.mobile.title')}
+            sub={t('common.loading')}
           />
         }
       >
-        <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>Chargement du patient…</div>
+        <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>{t('vitals.loadingPatient')}</div>
       </MScreen>
     );
   }
@@ -160,11 +165,11 @@ export default function PriseConstantesMobilePage() {
           left={
             <MIconBtn
               icon="ChevronLeft"
-              label="Retour"
+              label={t('consult.list.back')}
               onClick={() => navigate('/salle')}
             />
           }
-          title="Constantes"
+          title={t('vitals.mobile.title')}
           sub={patientName}
         />
       }
@@ -176,28 +181,28 @@ export default function PriseConstantesMobilePage() {
           {allergyLabel && (
             <div className="pc-m-allergy-bar">
               <Warn />
-              <span>Allergie : {allergyLabel}</span>
+              <span>{t('vitals.mobile.allergy', { list: allergyLabel })}</span>
             </div>
           )}
 
           {/* Section heading */}
           <div className="m-section-h">
-            <h3>Signes vitaux</h3>
+            <h3>{t('vitals.mobile.vitalSigns')}</h3>
           </div>
 
           {/* Tension artérielle — composite (SYS / DIA) */}
           <div className="m-card" style={{ marginBottom: 10 }}>
             <div className="pc-m-card-header">
               <span style={{ color: 'var(--primary)' }}><Heart /></span>
-              <span className="pc-m-card-label">Tension artérielle</span>
-              <span className="pc-m-card-ref">Ref. 120/80</span>
+              <span className="pc-m-card-label">{t('vitals.ta')}</span>
+              <span className="pc-m-card-ref">{t('vitals.mobile.taRef')}</span>
             </div>
             <div className="pc-m-input-row">
               <input
                 className="m-input"
                 type="number"
                 placeholder="—"
-                aria-label="Tension systolique"
+                aria-label={t('vitals.taSys')}
                 style={largeInputStyle}
                 {...register('tensionSys', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
@@ -206,7 +211,7 @@ export default function PriseConstantesMobilePage() {
                 className="m-input"
                 type="number"
                 placeholder="—"
-                aria-label="Tension diastolique"
+                aria-label={t('vitals.taDia')}
                 style={largeInputStyle}
                 {...register('tensionDia', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
@@ -218,15 +223,15 @@ export default function PriseConstantesMobilePage() {
           <div className="m-card" style={{ marginBottom: 10 }}>
             <div className="pc-m-card-header">
               <span style={{ color: 'var(--primary)' }}><Heart /></span>
-              <span className="pc-m-card-label">Fréquence cardiaque</span>
-              <span className="pc-m-card-ref">Ref. 60–100</span>
+              <span className="pc-m-card-label">{t('vitals.fc')}</span>
+              <span className="pc-m-card-ref">{t('vitals.mobile.fcRef')}</span>
             </div>
             <div className="pc-m-input-row">
               <input
                 className="m-input"
                 type="number"
                 placeholder="—"
-                aria-label="Fréquence cardiaque"
+                aria-label={t('vitals.fc')}
                 style={largeInputStyle}
                 {...register('pulse', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
@@ -238,8 +243,8 @@ export default function PriseConstantesMobilePage() {
           <div className="m-card" style={{ marginBottom: 10 }}>
             <div className="pc-m-card-header">
               <span style={{ color: 'var(--primary)' }}><Thermo /></span>
-              <span className="pc-m-card-label">Température</span>
-              <span className="pc-m-card-ref">Ref. 36,1–37,2</span>
+              <span className="pc-m-card-label">{t('vitals.temp')}</span>
+              <span className="pc-m-card-ref">{t('vitals.mobile.tempRef')}</span>
             </div>
             <div className="pc-m-input-row">
               <input
@@ -247,7 +252,7 @@ export default function PriseConstantesMobilePage() {
                 type="number"
                 step="0.1"
                 placeholder="—"
-                aria-label="Température"
+                aria-label={t('vitals.temp')}
                 style={largeInputStyle}
                 {...register('tempC', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
@@ -259,15 +264,15 @@ export default function PriseConstantesMobilePage() {
           <div className="m-card" style={{ marginBottom: 10 }}>
             <div className="pc-m-card-header">
               <span style={{ color: 'var(--primary)' }}><Signal /></span>
-              <span className="pc-m-card-label">Saturation O₂</span>
-              <span className="pc-m-card-ref">Ref. ≥ 95</span>
+              <span className="pc-m-card-label">{t('vitals.mobile.spo2')}</span>
+              <span className="pc-m-card-ref">{t('vitals.mobile.spo2Ref')}</span>
             </div>
             <div className="pc-m-input-row">
               <input
                 className="m-input"
                 type="number"
                 placeholder="—"
-                aria-label="Saturation O₂"
+                aria-label={t('vitals.spo2Aria')}
                 style={largeInputStyle}
                 {...register('spo2', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
@@ -277,27 +282,27 @@ export default function PriseConstantesMobilePage() {
 
           {/* Poids · Taille · IMC row */}
           <div className="m-field" style={{ marginTop: 12 }}>
-            <label>Poids · Taille · IMC</label>
+            <label>{t('vitals.mobile.weightHeightBmi')}</label>
             <div className="pc-m-wht-grid">
               <input
                 className="m-input"
                 type="number"
                 step="0.1"
-                placeholder="Poids"
-                aria-label="Poids (kg)"
+                placeholder={t('vitals.mobile.weightPlaceholder')}
+                aria-label={t('vitals.mobile.weightAria')}
                 {...register('weightKg', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"
                 type="number"
-                placeholder="Taille"
-                aria-label="Taille (cm)"
+                placeholder={t('vitals.mobile.heightPlaceholder')}
+                aria-label={t('vitals.mobile.heightAria')}
                 {...register('heightCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"
-                placeholder="IMC"
-                aria-label="IMC calculé"
+                placeholder={t('vitals.mobile.bmiPlaceholder')}
+                aria-label={t('vitals.mobile.bmiAria')}
                 disabled
                 value={bmi}
                 onChange={() => undefined}
@@ -313,42 +318,42 @@ export default function PriseConstantesMobilePage() {
             tablette → champ absent → valeur jamais envoyée.
           */}
           <div className="m-field" style={{ marginTop: 12 }}>
-            <label>FR · Glycémie · Périm. abdo.</label>
+            <label>{t('vitals.mobile.optionalRow')}</label>
             <div className="pc-m-wht-grid">
               <input
                 className="m-input"
                 type="number"
-                placeholder="FR (/min)"
-                aria-label="Fréquence respiratoire"
+                placeholder={t('vitals.mobile.frPlaceholder')}
+                aria-label={t('vitals.mobile.frAria')}
                 {...register('respRate', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"
                 type="number"
                 step="0.1"
-                placeholder="Glycémie g/L"
-                aria-label="Glycémie capillaire"
+                placeholder={t('vitals.mobile.glycemiaPlaceholder')}
+                aria-label={t('vitals.mobile.glycemiaAria')}
                 {...register('glycemia', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
               <input
                 className="m-input"
                 type="number"
-                placeholder="P. abdo (cm)"
-                aria-label="Périmètre abdominal"
+                placeholder={t('vitals.mobile.abdoPlaceholder')}
+                aria-label={t('vitals.mobile.abdoAria')}
                 {...register('abdominalCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
               />
             </div>
           </div>
 
           <div className="m-field" style={{ marginTop: 12 }}>
-            <label htmlFor="m-pc-head">Périmètre crânien (cm)</label>
+            <label htmlFor="m-pc-head">{t('vitals.headCirc')}</label>
             <input
               id="m-pc-head"
               className="m-input"
               type="number"
               step="0.1"
-              placeholder="Pédiatrie"
-              aria-label="Périmètre crânien"
+              placeholder={t('vitals.mobile.headPlaceholder')}
+              aria-label={t('vitals.mobile.headAria')}
               {...register('headCircumferenceCm', { setValueAs: (v: unknown) => (v === '' || v == null || Number.isNaN(v) ? null : Number(v)) })}
             />
           </div>
@@ -360,7 +365,7 @@ export default function PriseConstantesMobilePage() {
             style={{ marginTop: 16 }}
             disabled={isPending}
           >
-            {isPending ? 'Enregistrement…' : 'Enregistrer et passer la main'}
+            {isPending ? t('common.saving') : t('vitals.mobile.save')}
           </button>
 
         </div>

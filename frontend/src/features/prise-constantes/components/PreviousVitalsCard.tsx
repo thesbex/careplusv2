@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Warn } from '@/components/icons';
 import { REFERENCE_RANGES } from '../fixtures';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface PreviousVitalsCardProps {
   /**
@@ -36,17 +37,15 @@ interface PreviousVitalsCardProps {
   submitting?: boolean;
 }
 
-function formatRecordedBy(user: { firstName: string; lastName: string; roles: string[] } | null): string {
-  if (!user) return 'utilisateur · ' + new Date().toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false });
-  const ROLE_LABELS: Record<string, string> = {
-    MEDECIN: 'Médecin',
-    ADMIN: 'Administrateur',
-    ASSISTANT: 'Assistant(e)',
-    SECRETAIRE: 'Secrétaire',
-  };
+function formatRecordedBy(
+  user: { firstName: string; lastName: string; roles: string[] } | null,
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): string {
+  const fallbackTime = new Date().toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false });
+  if (!user) return t('vitals.recordedByFallback', { time: fallbackTime });
   const ROLE_PRIORITY = ['MEDECIN', 'ADMIN', 'ASSISTANT', 'SECRETAIRE'];
   const code = ROLE_PRIORITY.find((r) => user.roles.includes(r)) ?? user.roles[0] ?? '';
-  const role = ROLE_LABELS[code] ?? '—';
+  const role = code ? t(`role.${code}`) : '—';
   const time = new Date().toLocaleTimeString('fr-MA', { hour: '2-digit', minute: '2-digit', hour12: false });
   return `${user.firstName} ${user.lastName} · ${role} · ${time}`;
 }
@@ -59,7 +58,8 @@ export function PreviousVitalsCard({
   submitting = false,
 }: PreviousVitalsCardProps) {
   const sessionUser = useAuthStore((s) => s.user);
-  const recordedBy = formatRecordedBy(sessionUser);
+  const { t } = useT();
+  const recordedBy = formatRecordedBy(sessionUser, t);
   return (
     <>
       {/* Patient identity */}
@@ -73,7 +73,7 @@ export function PreviousVitalsCard({
 
       {/* Reference ranges panel */}
       <Panel style={{ marginBottom: 12 }}>
-        <PanelHeader>Repères (H 30-50 ans)</PanelHeader>
+        <PanelHeader>{t('vitals.references')}</PanelHeader>
         <div style={{ padding: '10px 14px', fontSize: 12 }}>
           {REFERENCE_RANGES.map((r) => (
             <div
@@ -117,9 +117,9 @@ export function PreviousVitalsCard({
               marginBottom: 4,
             }}
           >
-            <Warn /> TA légèrement élevée
+            <Warn /> {t('vitals.taHighTitle')}
           </div>
-          Le patient sera orienté en consultation. Le médecin en sera informé.
+          {t('vitals.taHighDesc')}
         </div>
       )}
 
@@ -132,7 +132,7 @@ export function PreviousVitalsCard({
         disabled={submitting}
         type="submit"
       >
-        Envoyer en consultation →
+        {t('vitals.sendToConsult')}
       </Button>
       <Button
         style={{ width: '100%', justifyContent: 'center', marginTop: 8 }}
@@ -140,7 +140,7 @@ export function PreviousVitalsCard({
         disabled={submitting}
         type="button"
       >
-        Enregistrer et remettre en attente
+        {t('vitals.saveAndWait')}
       </Button>
 
       {/* Footer */}
@@ -152,7 +152,7 @@ export function PreviousVitalsCard({
           marginTop: 10,
         }}
       >
-        Saisi par {recordedBy}
+        {t('vitals.recordedBy', { who: recordedBy })}
       </div>
     </>
   );

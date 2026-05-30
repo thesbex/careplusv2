@@ -12,6 +12,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type DocumentType =
   | 'PRESCRIPTION_HISTORIQUE'
@@ -21,6 +22,10 @@ export type DocumentType =
   | 'CONSENTEMENT'
   | 'AUTRE';
 
+/**
+ * Libellés FR de secours (utilisés hors contexte i18n). Pour l'affichage,
+ * préférer `t(documentTypeKey(type))` dans les composants.
+ */
 export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   PRESCRIPTION_HISTORIQUE: 'Ancienne prescription',
   ANALYSE: "Résultat d'analyse",
@@ -29,6 +34,11 @@ export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
   CONSENTEMENT: 'Consentement signé',
   AUTRE: 'Autre',
 };
+
+/** Clé i18n (`dossier.docType.*`) pour un type de document. */
+export function documentTypeKey(type: DocumentType): string {
+  return `dossier.docType.${type}`;
+}
 
 export interface PatientDocument {
   id: string;
@@ -48,17 +58,14 @@ export interface UploadDocumentInput {
   notes?: string;
 }
 
-function extractMessage(err: unknown): string {
+function extractMessage(err: unknown, fallback: string): string {
   const e = err as { response?: { data?: { detail?: string; message?: string } } };
-  return (
-    e?.response?.data?.detail ??
-    e?.response?.data?.message ??
-    "Échec du transfert. Vérifie le format (PDF, JPEG, PNG) et la taille (< 10 Mo)."
-  );
+  return e?.response?.data?.detail ?? e?.response?.data?.message ?? fallback;
 }
 
 export function usePatientDocuments(patientId: string | undefined) {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const list = useQuery({
     queryKey: ['patient-documents', patientId],
@@ -107,10 +114,10 @@ export function usePatientDocuments(patientId: string | undefined) {
   return {
     documents: list.data ?? [],
     isLoading: list.isLoading,
-    error: list.error ? 'Impossible de charger les documents.' : null,
+    error: list.error ? t('dossier.docs.loadError') : null,
     upload: upload.mutateAsync,
     isUploading: upload.isPending,
-    uploadError: upload.error ? extractMessage(upload.error) : null,
+    uploadError: upload.error ? extractMessage(upload.error, t('dossier.docs.uploadError')) : null,
     remove: remove.mutateAsync,
     isRemoving: remove.isPending,
   };

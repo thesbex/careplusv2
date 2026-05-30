@@ -12,6 +12,7 @@
  * via recharts si le besoin se confirme.
  */
 import { useResultTrends, type TrendSeries } from '@/features/prescription/hooks/useResultValues';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const W = 340;
 const H = 80;
@@ -24,6 +25,7 @@ function formatPoint(p: { recordedAt: string; value: number; unit: string | null
 }
 
 function MiniChart({ series }: { series: TrendSeries }) {
+  const { t } = useT();
   const points = series.points;
   if (points.length === 0) return null;
 
@@ -63,19 +65,24 @@ function MiniChart({ series }: { series: TrendSeries }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{series.analyte}</div>
         <div style={{ fontSize: 12, color: 'var(--ink-2)' }}>
-          Dernière : <strong>{last.value}</strong>
+          {t('dossier.trends.last')} <strong>{last.value}</strong>
           {last.unit ? ` ${last.unit}` : ''}
         </div>
       </div>
       <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-        {points.length} mesure{points.length > 1 ? 's' : ''} · min {min} · max {max}
+        {t('dossier.trends.minMax', {
+          count: points.length,
+          measure: points.length > 1 ? t('dossier.vitals.measurePlural') : t('dossier.vitals.measure'),
+          min,
+          max,
+        })}
       </div>
       <svg
         width={W}
         height={H}
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Évolution ${series.analyte}`}
+        aria-label={t('dossier.trends.evolutionOf', { analyte: series.analyte })}
         style={{ display: 'block' }}
       >
         {/* Min / max grid lines */}
@@ -121,12 +128,13 @@ function MiniChart({ series }: { series: TrendSeries }) {
 }
 
 export function BiologicalTrendsPanel({ patientId }: { patientId: string }) {
+  const { t } = useT();
   const { series, isLoading, error } = useResultTrends(patientId);
 
   if (isLoading) {
     return (
       <div style={{ color: 'var(--ink-3)', fontSize: 12, padding: 12 }}>
-        Chargement de l'évolution…
+        {t('dossier.trends.loading')}
       </div>
     );
   }
@@ -155,9 +163,7 @@ export function BiologicalTrendsPanel({ patientId }: { patientId: string }) {
         }}
         data-testid="trends-empty"
       >
-        Aucun résultat saisi pour ce patient. Les valeurs entrées sur les bons
-        d'analyses apparaîtront ici, avec une courbe d'évolution quand la même
-        analyse aura été re-prescrite.
+        {t('dossier.trends.empty')}
       </div>
     );
   }
@@ -176,7 +182,7 @@ export function BiologicalTrendsPanel({ patientId }: { patientId: string }) {
               marginBottom: 8,
             }}
           >
-            Évolution
+            {t('dossier.trends.evolution')}
           </div>
           <div
             style={{
@@ -203,7 +209,7 @@ export function BiologicalTrendsPanel({ patientId }: { patientId: string }) {
               marginBottom: 8,
             }}
           >
-            Dernière valeur (mesure unique)
+            {t('dossier.trends.singleValue')}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {oneShot.map((s) => {

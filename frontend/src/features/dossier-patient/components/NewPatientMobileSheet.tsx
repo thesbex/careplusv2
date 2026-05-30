@@ -14,6 +14,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Close } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useCreatePatient,
   type CreatePatientForm,
@@ -57,6 +58,7 @@ export function NewPatientMobileSheet({
   onOpenChange,
   onCreated,
 }: NewPatientMobileSheetProps) {
+  const { t } = useT();
   const { create, isPending, error, reset } = useCreatePatient();
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -82,11 +84,11 @@ export function NewPatientMobileSheet({
 
   function setPhotoFromFile(file: File) {
     if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) {
-      setPhotoError('Format non supporté (JPEG, PNG, WebP, HEIC).');
+      setPhotoError(t('dossier.photo.badFormatShort'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setPhotoError('Photo trop volumineuse (max 2 Mo).');
+      setPhotoError(t('dossier.photo.tooBig'));
       return;
     }
     setPhotoError(null);
@@ -107,28 +109,28 @@ export function NewPatientMobileSheet({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValidName(form.firstName)) {
-      setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(t('dossier.valid.firstName'));
       return;
     }
     if (!isValidName(form.lastName)) {
-      setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(t('dossier.valid.lastName'));
       return;
     }
     if (!form.phone.trim()) {
-      setValidationError('Le numéro de téléphone est obligatoire.');
+      setValidationError(t('dossier.valid.phoneRequired'));
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
-      setValidationError('Numéro de téléphone invalide.');
+      setValidationError(t('dossier.valid.phoneInvalid'));
       return;
     }
     if (!form.birthDate) {
-      setValidationError('La date de naissance est obligatoire.');
+      setValidationError(t('dossier.valid.birthRequired'));
       return;
     }
     const today = new Date().toISOString().slice(0, 10);
     if (form.birthDate > today) {
-      setValidationError('La date de naissance ne peut pas être dans le futur.');
+      setValidationError(t('dossier.valid.birthFuture'));
       return;
     }
     const created = await create(form).catch(() => null);
@@ -192,12 +194,12 @@ export function NewPatientMobileSheet({
             }}
           >
             <Dialog.Title style={{ fontSize: 14, fontWeight: 700, flex: 1, margin: 0 }}>
-              Nouveau patient
+              {t('dossier.form.newPatient')}
             </Dialog.Title>
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Fermer"
+                aria-label={t('common.close')}
                 style={{
                   background: 'transparent',
                   border: 0,
@@ -252,14 +254,14 @@ export function NewPatientMobileSheet({
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
-                  'Photo'
+                  t('dossier.photo.label')
                 )}
               </div>
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <DocumentUploadButton
                   accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                  uploadLabel="Téléverser"
-                  cameraLabel="Photographier"
+                  uploadLabel={t('dossier.photo.upload')}
+                  cameraLabel={t('dossier.photo.camera')}
                   onFile={setPhotoFromFile}
                 />
                 {pendingPhoto && (
@@ -278,7 +280,7 @@ export function NewPatientMobileSheet({
                       textDecoration: 'underline',
                     }}
                   >
-                    Retirer la photo
+                    {t('dossier.photo.remove')}
                   </button>
                 )}
                 {photoError && (
@@ -287,7 +289,7 @@ export function NewPatientMobileSheet({
               </div>
             </div>
 
-            <Field label="Prénom *">
+            <Field label={t('dossier.form.firstName')}>
               <input
                 className="m-input"
                 value={form.firstName}
@@ -297,7 +299,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Nom *">
+            <Field label={t('dossier.form.lastName')}>
               <input
                 className="m-input"
                 value={form.lastName}
@@ -306,7 +308,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Sexe">
+            <Field label={t('dossier.form.sex')}>
               <div style={{ display: 'flex', gap: 6 }}>
                 {(['M', 'F', 'O'] as const).map((g) => (
                   <button
@@ -327,13 +329,13 @@ export function NewPatientMobileSheet({
                       cursor: 'pointer',
                     }}
                   >
-                    {g === 'M' ? 'Homme' : g === 'F' ? 'Femme' : 'Autre'}
+                    {g === 'M' ? t('dossier.form.male') : g === 'F' ? t('dossier.form.female') : t('dossier.form.other')}
                   </button>
                 ))}
               </div>
             </Field>
 
-            <Field label="Date de naissance *">
+            <Field label={t('dossier.form.birthDateReq')}>
               <input
                 className="m-input"
                 type="date"
@@ -343,7 +345,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Téléphone *">
+            <Field label={t('dossier.form.phone')}>
               <input
                 className="m-input"
                 type="tel"
@@ -354,7 +356,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="CIN">
+            <Field label={t('dossier.form.cin')}>
               <input
                 className="m-input"
                 value={form.cin}
@@ -363,7 +365,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Email">
+            <Field label={t('dossier.form.email')}>
               <input
                 className="m-input"
                 type="email"
@@ -373,7 +375,7 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Ville">
+            <Field label={t('dossier.form.city')}>
               <input
                 className="m-input"
                 value={form.city}
@@ -382,27 +384,27 @@ export function NewPatientMobileSheet({
               />
             </Field>
 
-            <Field label="Type de patient">
+            <Field label={t('dossier.form.patientType')}>
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['NORMAL', 'PREMIUM'] as const).map((t) => (
+                {(['NORMAL', 'PREMIUM'] as const).map((tier) => (
                   <button
-                    key={t}
+                    key={tier}
                     type="button"
-                    onClick={() => set('tier', t)}
+                    onClick={() => set('tier', tier)}
                     style={{
                       flex: 1,
                       height: 36,
                       borderRadius: 8,
-                      border: `1px solid ${form.tier === t ? 'var(--primary)' : 'var(--border)'}`,
-                      background: form.tier === t ? 'var(--primary-soft)' : 'var(--surface)',
-                      color: form.tier === t ? 'var(--primary)' : 'var(--ink-2)',
+                      border: `1px solid ${form.tier === tier ? 'var(--primary)' : 'var(--border)'}`,
+                      background: form.tier === tier ? 'var(--primary-soft)' : 'var(--surface)',
+                      color: form.tier === tier ? 'var(--primary)' : 'var(--ink-2)',
                       fontWeight: 600,
                       fontFamily: 'inherit',
                       fontSize: 13,
                       cursor: 'pointer',
                     }}
                   >
-                    {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+                    {tier === 'PREMIUM' ? t('dossier.form.premiumStar') : t('dossier.form.normal')}
                   </button>
                 ))}
               </div>
@@ -415,8 +417,7 @@ export function NewPatientMobileSheet({
             )}
 
             <div style={{ fontSize: 11, color: 'var(--ink-3)', lineHeight: 1.4 }}>
-              Allergies, antécédents, mutuelle, documents historiques : à compléter
-              ensuite depuis le dossier patient (version desktop pour le formulaire complet).
+              {t('dossier.mobile.createMoreDesktop')}
             </div>
 
             <button
@@ -426,10 +427,10 @@ export function NewPatientMobileSheet({
               style={{ height: 44, marginTop: 4 }}
             >
               {isUploadingPhoto
-                ? 'Téléversement de la photo…'
+                ? t('dossier.photo.uploadingPhoto')
                 : isPending
-                ? 'Enregistrement…'
-                : 'Créer le patient'}
+                ? t('common.saving')
+                : t('dossier.form.createPatient')}
             </button>
           </form>
         </Dialog.Content>

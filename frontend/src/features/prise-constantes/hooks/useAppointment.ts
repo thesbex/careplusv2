@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface AppointmentApi {
   id: string;
@@ -17,6 +18,7 @@ export interface AppointmentApi {
 }
 
 export function useAppointment(id?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['appointment', id],
     queryFn: () => api.get<AppointmentApi>(`/appointments/${id}`).then((r) => r.data),
@@ -27,6 +29,6 @@ export function useAppointment(id?: string) {
   return {
     appointment: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger le RDV.' : null,
+    error: error ? t('vitals.loadAppointmentError') : null,
   };
 }

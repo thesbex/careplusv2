@@ -9,6 +9,7 @@
  * ce panneau les agrège juste pour offrir une vue longitudinale.
  */
 import { Panel } from '@/components/ui/Panel';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatientVitalsHistory } from '../hooks/usePatientVitalsHistory';
 import { EvolutionChart, type Series } from './EvolutionChart';
 import type { VitalsApi } from '@/features/consultation/hooks/useLatestVitals';
@@ -40,6 +41,7 @@ function ChartCard({
   formatY,
   hint,
 }: ChartCardProps) {
+  const { t } = useT();
   return (
     <Panel>
       <div style={{ padding: '14px 16px 12px' }}>
@@ -74,7 +76,7 @@ function ChartCard({
           normalRange={normalRange}
           yDomain={yDomain}
           formatY={formatY}
-          ariaLabel={`Évolution ${title}`}
+          ariaLabel={t('dossier.vitals.evolutionOf', { title })}
         />
       </div>
     </Panel>
@@ -115,6 +117,7 @@ function lastValue(
 }
 
 export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
+  const { t } = useT();
   const { history, isLoading } = usePatientVitalsHistory(patientId);
 
   // Le DossierTabPanel parent est `display: flex; overflow: hidden` — sans
@@ -131,7 +134,7 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
   if (isLoading) {
     return (
       <div className="scroll" style={containerStyle}>
-        <div style={{ color: 'var(--ink-3)' }}>Chargement de l'historique…</div>
+        <div style={{ color: 'var(--ink-3)' }}>{t('dossier.vitals.loadingHistory')}</div>
       </div>
     );
   }
@@ -147,9 +150,9 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
             fontSize: 13,
           }}
         >
-          Aucune constante enregistrée pour ce patient.
+          {t('dossier.vitals.empty')}
           <div style={{ fontSize: 11.5, marginTop: 4 }}>
-            Les graphes apparaîtront dès la première saisie en consultation.
+            {t('dossier.vitals.emptyHint')}
           </div>
         </div>
       </div>
@@ -178,11 +181,11 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
   return (
     <div className="scroll" style={containerStyle}>
       <div style={{ marginBottom: 16 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>Évolution des constantes</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>{t('dossier.vitals.evolution')}</h3>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
-          {history.length} mesure{history.length > 1 ? 's' : ''} enregistrée
-          {history.length > 1 ? 's' : ''} sur l'ensemble des consultations. Survol des points pour
-          voir la valeur exacte et la date.
+          {history.length}{' '}
+          {history.length > 1 ? t('dossier.vitals.measurePlural') : t('dossier.vitals.measure')}{' '}
+          {t('dossier.vitals.recordedHint', { plural: history.length > 1 ? 's' : '' })}
         </div>
       </div>
 
@@ -197,19 +200,19 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
         }}
       >
         <ChartCard
-          title="Tension artérielle"
+          title={t('dossier.vitals.bloodPressure')}
           current={taCurrent}
           unit="mmHg"
-          hint="Systolique / Diastolique"
+          hint={t('dossier.vitals.bpHint')}
           series={[
-            { id: 'sys', label: 'Systolique', color: C_PRI, points: sysPoints },
-            { id: 'dia', label: 'Diastolique', color: C_DIA, points: diaPoints },
+            { id: 'sys', label: t('dossier.vitals.systolic'), color: C_PRI, points: sysPoints },
+            { id: 'dia', label: t('dossier.vitals.diastolic'), color: C_DIA, points: diaPoints },
           ]}
           normalRange={[80, 130]}
         />
 
         <ChartCard
-          title="Fréquence cardiaque"
+          title={t('dossier.vitals.heartRate')}
           current={lastValue(history, 'heartRateBpm')}
           unit="bpm"
           series={[{ id: 'fc', label: 'FC', color: C_PRI, points: fcPoints }]}
@@ -217,7 +220,7 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
         />
 
         <ChartCard
-          title="Température"
+          title={t('dossier.vitals.temperature')}
           current={lastValue(history, 'temperatureC', (v) => v.toFixed(1).replace('.', ','))}
           unit="°C"
           series={[{ id: 't', label: 'T°', color: C_PRI, points: tPoints }]}
@@ -227,7 +230,7 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
         />
 
         <ChartCard
-          title="Saturation O₂"
+          title={t('dossier.vitals.o2sat')}
           current={lastValue(history, 'spo2Percent')}
           unit="%"
           series={[{ id: 'spo2', label: 'SpO₂', color: C_PRI, points: spo2Points }]}
@@ -236,29 +239,29 @@ export function VitalsEvolutionPanel({ patientId }: VitalsEvolutionPanelProps) {
         />
 
         <ChartCard
-          title="Poids"
+          title={t('dossier.vitals.weight')}
           current={lastValue(history, 'weightKg', (v) => v.toFixed(1).replace('.', ','))}
           unit="kg"
-          series={[{ id: 'w', label: 'Poids', color: C_PRI, points: wPoints }]}
+          series={[{ id: 'w', label: t('dossier.vitals.weight'), color: C_PRI, points: wPoints }]}
           formatY={(v) => v.toFixed(1).replace('.', ',')}
         />
 
         <ChartCard
-          title="IMC"
+          title={t('dossier.vitals.bmi')}
           current={lastValue(history, 'bmi', (v) => v.toFixed(1).replace('.', ','))}
           unit="kg/m²"
-          hint="Plage normale 18,5 – 25"
+          hint={t('dossier.vitals.bmiHint')}
           series={[{ id: 'bmi', label: 'IMC', color: C_PRI, points: bmiPoints }]}
           normalRange={[18.5, 25]}
           formatY={(v) => v.toFixed(1).replace('.', ',')}
         />
 
         <ChartCard
-          title="Glycémie"
+          title={t('dossier.vitals.glycemia')}
           current={lastValue(history, 'glycemiaGPerL', (v) => v.toFixed(2).replace('.', ','))}
           unit="g/L"
-          hint="Mesures à jeun et post-prandiales confondues"
-          series={[{ id: 'gly', label: 'Glycémie', color: C_PRI, points: glyPoints }]}
+          hint={t('dossier.vitals.glycemiaHint')}
+          series={[{ id: 'gly', label: t('dossier.vitals.glycemia'), color: C_PRI, points: glyPoints }]}
           normalRange={[0.7, 1.1]}
           formatY={(v) => v.toFixed(2).replace('.', ',')}
         />

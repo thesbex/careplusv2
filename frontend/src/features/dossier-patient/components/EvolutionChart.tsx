@@ -21,6 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface SeriesPoint {
   /** ISO timestamp ou Date — converti en `Date` côté composant. */
@@ -123,6 +124,7 @@ export function EvolutionChart({
   formatY = defaultFormatY,
   ariaLabel,
 }: EvolutionChartProps) {
+  const { t } = useT();
   const data = useMemo(() => mergeSeries(series), [series]);
 
   // Calcul de min/max effectifs sur les données pour élargir un yDomain
@@ -161,7 +163,7 @@ export function EvolutionChart({
           fontStyle: 'italic',
         }}
       >
-        Aucune donnée enregistrée.
+        {t('dossier.chart.noData')}
       </div>
     );
   }

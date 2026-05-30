@@ -20,8 +20,9 @@ import {
 import { useInsurances } from './hooks/useInsurances';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { File as FileIcon, Trash } from '@/components/icons';
-import { DOCUMENT_TYPE_LABEL, type DocumentType } from './hooks/usePatientDocuments';
+import { documentTypeKey, type DocumentType } from './hooks/usePatientDocuments';
 
 const DOC_ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif';
 const DOC_MAX_BYTES = 10 * 1024 * 1024;
@@ -52,6 +53,7 @@ function isValidName(v: string) {
 }
 
 function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
+  const { t } = useT();
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
       <span style={{ fontSize: 11.5, fontWeight: 650, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
@@ -67,16 +69,17 @@ function SectionHeader({ label, onAdd }: { label: string; onAdd: () => void }) {
           borderRadius: 4, fontFamily: 'inherit',
         }}
       >
-        <Plus style={{ width: 12, height: 12 }} /> Ajouter
+        <Plus style={{ width: 12, height: 12 }} /> {t('common.add')}
       </button>
     </div>
   );
 }
 
-const SEVERITY_LABELS: Record<AllergySeverity, string> = {
-  LEGERE: 'Légère',
-  MODEREE: 'Modérée',
-  SEVERE: 'Sévère',
+/** Clés i18n des gravités d'allergie (`dossier.severity.*`). */
+const SEVERITY_KEYS: Record<AllergySeverity, string> = {
+  LEGERE: 'dossier.severity.LEGERE',
+  MODEREE: 'dossier.severity.MODEREE',
+  SEVERE: 'dossier.severity.SEVERE',
 };
 
 const SEVERITY_COLORS: Record<AllergySeverity, { bg: string; color: string; border: string }> = {
@@ -85,12 +88,13 @@ const SEVERITY_COLORS: Record<AllergySeverity, { bg: string; color: string; bord
   SEVERE:  { bg: 'var(--danger-soft, #FFEBEE)', color: 'var(--danger)', border: '#EF9A9A' },
 };
 
-const ANTECEDENT_TYPE_LABELS: Record<AntecedentType, string> = {
-  MEDICAL:            'Médical',
-  CHIRURGICAL:        'Chirurgical',
-  FAMILIAL:           'Familial',
-  GYNECO_OBSTETRIQUE: 'Gynéco-Obstétrique',
-  HABITUS:            'Habitudes de vie',
+/** Clés i18n des types d'antécédent (`dossier.antecedent.*`). */
+const ANTECEDENT_TYPE_KEYS: Record<AntecedentType, string> = {
+  MEDICAL:            'dossier.antecedent.MEDICAL',
+  CHIRURGICAL:        'dossier.antecedent.CHIRURGICAL',
+  FAMILIAL:           'dossier.antecedent.FAMILIAL',
+  GYNECO_OBSTETRIQUE: 'dossier.antecedent.GYNECO_OBSTETRIQUE',
+  HABITUS:            'dossier.antecedent.HABITUS',
 };
 
 const ANTECEDENT_TYPES: AntecedentType[] = [
@@ -136,6 +140,7 @@ function AllergyRow({
   onChange: (index: number, next: AllergyEntry) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t } = useT();
   return (
     <div style={{
       border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
@@ -145,13 +150,13 @@ function AllergyRow({
         <Input
           value={entry.substance}
           onChange={(e) => onChange(index, { ...entry, substance: e.target.value })}
-          placeholder="Ex. Pénicilline, aspirine, iode…"
+          placeholder={t('dossier.form.allergyPlaceholderLong')}
           style={{ flex: 1, fontSize: 12.5 }}
         />
         <button
           type="button"
           onClick={() => onRemove(index)}
-          aria-label="Supprimer"
+          aria-label={t('dossier.form.removeAria')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0 }}
         >
           <Close style={{ width: 14, height: 14 }} />
@@ -171,7 +176,7 @@ function AllergyRow({
               color: entry.severity === sev ? SEVERITY_COLORS[sev].color : 'var(--ink-3)',
             }}
           >
-            {SEVERITY_LABELS[sev]}
+            {t(SEVERITY_KEYS[sev])}
           </button>
         ))}
       </div>
@@ -190,6 +195,7 @@ function AntecedentRow({
   onChange: (index: number, next: AntecedentEntry) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t: tr } = useT();
   return (
     <div style={{
       border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px',
@@ -202,13 +208,13 @@ function AntecedentRow({
           style={{ flex: 1 }}
         >
           {ANTECEDENT_TYPES.map((t) => (
-            <option key={t} value={t}>{ANTECEDENT_TYPE_LABELS[t]}</option>
+            <option key={t} value={t}>{tr(ANTECEDENT_TYPE_KEYS[t])}</option>
           ))}
         </Select>
         <button
           type="button"
           onClick={() => onRemove(index)}
-          aria-label="Supprimer"
+          aria-label={tr('dossier.form.removeAria')}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0 }}
         >
           <Close style={{ width: 14, height: 14 }} />
@@ -217,7 +223,7 @@ function AntecedentRow({
       <Textarea
         value={entry.description}
         onChange={(e) => onChange(index, { ...entry, description: e.target.value })}
-        placeholder="Description…"
+        placeholder={tr('dossier.form.descriptionPlaceholder')}
         style={{ height: 56, fontSize: 12.5, resize: 'vertical' }}
       />
     </div>
@@ -231,6 +237,7 @@ function NewPatientPanel({
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  const { t: tr } = useT();
   const { create, isPending, error, reset } = useCreatePatient();
   const [form, setForm] = useState<CreatePatientForm>(EMPTY_FORM);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -285,33 +292,33 @@ function NewPatientPanel({
     // hidden field on the Médical tab.
     if (!isValidName(form.firstName)) {
       setActiveTab('personnel');
-      setValidationError('Prénom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(tr('dossier.valid.firstName'));
       return;
     }
     if (!isValidName(form.lastName)) {
       setActiveTab('personnel');
-      setValidationError('Nom invalide (lettres uniquement, 2 caractères min).');
+      setValidationError(tr('dossier.valid.lastName'));
       return;
     }
     if (!form.phone.trim()) {
       setActiveTab('personnel');
-      setValidationError('Le numéro de téléphone est obligatoire.');
+      setValidationError(tr('dossier.valid.phoneRequired'));
       return;
     }
     if (!/^[\d\s+\-().]{6,20}$/.test(form.phone.trim())) {
       setActiveTab('personnel');
-      setValidationError('Numéro de téléphone invalide.');
+      setValidationError(tr('dossier.valid.phoneInvalid'));
       return;
     }
     if (!form.birthDate) {
       setActiveTab('personnel');
-      setValidationError('La date de naissance est obligatoire.');
+      setValidationError(tr('dossier.valid.birthRequired'));
       return;
     }
     const today = new Date().toISOString().slice(0, 10);
     if (form.birthDate > today) {
       setActiveTab('personnel');
-      setValidationError('La date de naissance ne peut pas être dans le futur.');
+      setValidationError(tr('dossier.valid.birthFuture'));
       return;
     }
     const created = await create(form).catch(() => null);
@@ -337,7 +344,7 @@ function NewPatientPanel({
           });
         }
       } catch {
-        setDocError('Patient créé, mais certains éléments (photo / documents) n\'ont pas pu être téléversés. Reprenez depuis son dossier.');
+        setDocError(tr('dossier.form.partialUploadError'));
       } finally {
         setIsUploadingDocs(false);
       }
@@ -348,11 +355,11 @@ function NewPatientPanel({
 
   function setPhotoFromFile(file: File) {
     if (!/^image\/(jpeg|png|webp|heic|heif)$/i.test(file.type)) {
-      setPhotoError('Format non supporté pour une photo (JPEG, PNG, WebP, HEIC).');
+      setPhotoError(tr('dossier.photo.badFormat'));
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setPhotoError('Photo trop volumineuse (max 2 Mo).');
+      setPhotoError(tr('dossier.photo.tooBig'));
       return;
     }
     setPhotoError(null);
@@ -372,7 +379,7 @@ function NewPatientPanel({
 
   function addPendingDoc(file: File) {
     if (file.size > DOC_MAX_BYTES) {
-      setDocError('Fichier trop volumineux (max 10 Mo).');
+      setDocError(tr('dossier.form.fileTooBig'));
       return;
     }
     setDocError(null);
@@ -401,8 +408,8 @@ function NewPatientPanel({
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border)', gap: 8 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Nouveau patient</span>
-        <Button variant="ghost" size="sm" iconOnly aria-label="Fermer" onClick={onClose}>
+        <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{tr('dossier.form.newPatient')}</span>
+        <Button variant="ghost" size="sm" iconOnly aria-label={tr('common.close')} onClick={onClose}>
           <Close />
         </Button>
       </div>
@@ -433,7 +440,7 @@ function NewPatientPanel({
               marginBottom: -1,
             }}
           >
-            {t === 'personnel' ? 'Informations personnelles' : 'Informations médicales'}
+            {t === 'personnel' ? tr('dossier.form.tabPersonal') : tr('dossier.form.tabMedical')}
           </button>
         ))}
       </div>
@@ -466,18 +473,18 @@ function NewPatientPanel({
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                'Photo'
+                tr('dossier.photo.label')
               )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               <DocumentUploadButton
                 accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
-                uploadLabel="Téléverser"
-                cameraLabel="Photographier"
+                uploadLabel={tr('dossier.photo.upload')}
+                cameraLabel={tr('dossier.photo.camera')}
                 onFile={setPhotoFromFile}
               />
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                JPEG, PNG, WebP, HEIC — max 2 Mo. Téléversée après création.
+                {tr('dossier.photo.formatsAfterCreate')}
               </div>
               {pendingPhoto && (
                 <button
@@ -490,7 +497,7 @@ function NewPatientPanel({
                     fontFamily: 'inherit', textDecoration: 'underline',
                   }}
                 >
-                  Retirer la photo
+                  {tr('dossier.photo.remove')}
                 </button>
               )}
               {photoError && (
@@ -502,27 +509,27 @@ function NewPatientPanel({
           <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><Lbl>Prénom *</Lbl>
+            <div><Lbl>{tr('dossier.form.firstName')}</Lbl>
               <Input value={form.firstName} onChange={(e) => set('firstName', sanitizeName(e.target.value))} placeholder="Mohamed" autoFocus />
             </div>
-            <div><Lbl>Nom *</Lbl>
+            <div><Lbl>{tr('dossier.form.lastName')}</Lbl>
               <Input value={form.lastName} onChange={(e) => set('lastName', sanitizeName(e.target.value))} placeholder="Alami" />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div><Lbl>Sexe</Lbl>
+            <div><Lbl>{tr('dossier.form.sex')}</Lbl>
               <Select
                 value={form.gender}
                 onChange={(e) => set('gender', e.target.value as 'M' | 'F' | 'O')}
                 style={{ width: '100%' }}
               >
-                <option value="M">Homme</option>
-                <option value="F">Femme</option>
-                <option value="O">Autre</option>
+                <option value="M">{tr('dossier.form.male')}</option>
+                <option value="F">{tr('dossier.form.female')}</option>
+                <option value="O">{tr('dossier.form.other')}</option>
               </Select>
             </div>
-            <div><Lbl>Date de naissance *</Lbl>
+            <div><Lbl>{tr('dossier.form.birthDateReq')}</Lbl>
               <Input
                 type="date"
                 required
@@ -533,11 +540,11 @@ function NewPatientPanel({
             </div>
           </div>
 
-          <div><Lbl>CIN</Lbl>
+          <div><Lbl>{tr('dossier.form.cin')}</Lbl>
             <Input value={form.cin} onChange={(e) => set('cin', e.target.value)} placeholder="BE 328451" />
           </div>
 
-          <div><Lbl>Téléphone *</Lbl>
+          <div><Lbl>{tr('dossier.form.phone')}</Lbl>
             <Input
               type="tel"
               value={form.phone}
@@ -550,11 +557,11 @@ function NewPatientPanel({
             />
           </div>
 
-          <div><Lbl>Email</Lbl>
+          <div><Lbl>{tr('dossier.form.email')}</Lbl>
             <Input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="patient@email.ma" />
           </div>
 
-          <div><Lbl>Ville</Lbl>
+          <div><Lbl>{tr('dossier.form.city')}</Lbl>
             <Input value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="Casablanca" />
           </div>
 
@@ -564,7 +571,7 @@ function NewPatientPanel({
           {/* Tier + Mutuelle — stay on Personnel because they drive billing,
               not clinical decisions. */}
           <div>
-            <Lbl>Type de patient</Lbl>
+            <Lbl>{tr('dossier.form.patientType')}</Lbl>
             <div style={{ display: 'flex', gap: 8 }}>
               {(['NORMAL', 'PREMIUM'] as const).map((t) => (
                 <button
@@ -583,23 +590,23 @@ function NewPatientPanel({
                     cursor: 'pointer',
                   }}
                 >
-                  {t === 'PREMIUM' ? '🌟 Premium' : 'Normal'}
+                  {t === 'PREMIUM' ? tr('dossier.form.premiumStar') : tr('dossier.form.normal')}
                 </button>
               ))}
             </div>
             {form.tier === 'PREMIUM' && (
               <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-                Une remise automatique sera appliquée à la facturation (configurée dans Paramétrage).
+                {tr('dossier.form.premiumNote')}
               </div>
             )}
           </div>
 
           <div>
-            <Lbl>A une mutuelle ?</Lbl>
+            <Lbl>{tr('dossier.form.hasMutuelleQ')}</Lbl>
             <div style={{ display: 'flex', gap: 8 }}>
               {[
-                { v: false, l: 'Non' },
-                { v: true, l: 'Oui' },
+                { v: false, l: tr('dossier.form.no') },
+                { v: true, l: tr('dossier.form.yes') },
               ].map((opt) => (
                 <button
                   key={String(opt.v)}
@@ -625,13 +632,13 @@ function NewPatientPanel({
           {form.hasMutuelle && (
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
               <div>
-                <Lbl>Compagnie</Lbl>
+                <Lbl>{tr('dossier.form.company')}</Lbl>
                 <Select
                   value={form.mutuelleInsuranceId}
                   onChange={(e) => set('mutuelleInsuranceId', e.target.value)}
                   style={{ width: '100%' }}
                 >
-                  <option value="">— Sélectionner —</option>
+                  <option value="">{tr('dossier.form.selectPlaceholder')}</option>
                   {insurances.map((ins) => (
                     <option key={ins.id} value={ins.id}>
                       {ins.name}
@@ -640,7 +647,7 @@ function NewPatientPanel({
                 </Select>
               </div>
               <div>
-                <Lbl>N° de police</Lbl>
+                <Lbl>{tr('dossier.form.policyNumberShort')}</Lbl>
                 <Input
                   value={form.mutuellePolicyNumber}
                   onChange={(e) => set('mutuellePolicyNumber', e.target.value)}
@@ -653,7 +660,7 @@ function NewPatientPanel({
 
         {/* ── Onglet Médical ─────────────────────────────────────────────── */}
         <div hidden={activeTab !== 'medical'} style={{ display: activeTab === 'medical' ? 'flex' : 'none', flexDirection: 'column', gap: 14 }}>
-          <div><Lbl>Groupe sanguin</Lbl>
+          <div><Lbl>{tr('dossier.form.bloodGroup')}</Lbl>
             <Select
               value={form.bloodGroup}
               onChange={(e) => set('bloodGroup', e.target.value)}
@@ -671,9 +678,9 @@ function NewPatientPanel({
 
           {/* Allergies */}
           <div>
-            <SectionHeader label="Allergies" onAdd={addAllergy} />
+            <SectionHeader label={tr('dossier.form.allergies')} onAdd={addAllergy} />
             {form.allergies.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucune allergie enregistrée.</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>{tr('dossier.form.noAllergyRecorded')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {form.allergies.map((a, i) => (
@@ -688,9 +695,9 @@ function NewPatientPanel({
 
           {/* Antécédents */}
           <div>
-            <SectionHeader label="Antécédents" onAdd={addAntecedent} />
+            <SectionHeader label={tr('dossier.form.antecedents')} onAdd={addAntecedent} />
             {form.antecedents.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>Aucun antécédent enregistré.</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>{tr('dossier.form.noAntecedentRecorded')}</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {form.antecedents.map((a, i) => (
@@ -704,8 +711,8 @@ function NewPatientPanel({
           <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
 
           {/* Notes médicales */}
-          <div><Lbl>Notes médicales libres</Lbl>
-            <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Contexte, observations…" style={{ height: 80 }} />
+          <div><Lbl>{tr('dossier.form.notes')}</Lbl>
+            <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder={tr('dossier.form.notesPlaceholder')} style={{ height: 80 }} />
           </div>
 
           {/* Divider */}
@@ -713,10 +720,9 @@ function NewPatientPanel({
 
           {/* Documents historiques (anciennes prescriptions, analyses, radio, comptes rendus) */}
           <div>
-            <Lbl>Documents historiques</Lbl>
+            <Lbl>{tr('dossier.form.historicalDocs')}</Lbl>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: -2, marginBottom: 8 }}>
-              Anciennes prescriptions, résultats d'analyses, imagerie, comptes rendus.
-              Téléversés automatiquement après création du patient.
+              {tr('dossier.form.historicalDocsHint')}
             </div>
             <div
               style={{
@@ -730,20 +736,20 @@ function NewPatientPanel({
                 <Select
                   value={pendingDocType}
                   onChange={(e) => setPendingDocType(e.target.value as DocumentType)}
-                  aria-label="Type de document"
+                  aria-label={tr('dossier.docs.typeAria')}
                 >
-                  {DOC_TYPES.map((t) => (
-                    <option key={t} value={t}>{DOCUMENT_TYPE_LABEL[t]}</option>
+                  {DOC_TYPES.map((dt) => (
+                    <option key={dt} value={dt}>{tr(documentTypeKey(dt))}</option>
                   ))}
                 </Select>
                 <DocumentUploadButton
                   accept={DOC_ACCEPT}
-                  uploadLabel="Ajouter un fichier"
+                  uploadLabel={tr('dossier.form.addFile')}
                   onFile={(f) => addPendingDoc(f)}
                 />
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                PDF, JPEG, PNG, WebP, HEIC — max 10 Mo par fichier. « Photographier » ouvre la caméra directement.
+                {tr('dossier.form.docFormatsHint')}
               </div>
               {docError && (
                 <div style={{ fontSize: 12, color: 'var(--danger)' }}>{docError}</div>
@@ -768,13 +774,13 @@ function NewPatientPanel({
                         {d.file.name}
                       </span>
                       <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                        {DOCUMENT_TYPE_LABEL[d.type]} · {(d.file.size / 1024).toFixed(0)} Ko
+                        {tr(documentTypeKey(d.type))} · {(d.file.size / 1024).toFixed(0)} Ko
                       </span>
                       <input
                         type="text"
                         value={d.notes}
                         onChange={(e) => updatePendingDocNotes(i, e.target.value)}
-                        placeholder="Note (optionnelle)"
+                        placeholder={tr('dossier.form.docNotePlaceholder')}
                         style={{
                           height: 26, fontSize: 11.5,
                           border: '1px solid var(--border)', borderRadius: 4,
@@ -785,7 +791,7 @@ function NewPatientPanel({
                     <button
                       type="button"
                       onClick={() => removePendingDoc(i)}
-                      aria-label={`Retirer ${d.file.name}`}
+                      aria-label={tr('dossier.form.removeFileAria', { name: d.file.name })}
                       style={{
                         background: 'none', border: 'none', cursor: 'pointer',
                         color: 'var(--ink-3)', padding: 4, borderRadius: 4, lineHeight: 0,
@@ -808,10 +814,10 @@ function NewPatientPanel({
 
         <Button type="submit" variant="primary" disabled={isPending || isUploadingDocs} style={{ marginTop: 4 }}>
           {isUploadingDocs
-            ? 'Téléversement des documents…'
+            ? tr('dossier.form.uploadingDocs')
             : isPending
-            ? 'Enregistrement…'
-            : 'Créer le patient'}
+            ? tr('common.saving')
+            : tr('dossier.form.createPatient')}
         </Button>
       </form>
     </Panel>
@@ -1012,6 +1018,7 @@ function PatientRow({
   onOpen: () => void;
   practitionerLabel: string;
 }) {
+  const { t: tr } = useT();
   const st = statusOf(p);
   // 2 tags max + extra "more" si plus, allergie en pill spécifique
   const tags = (p.tags ?? []).slice(0, 2);
@@ -1029,7 +1036,7 @@ function PatientRow({
         onClick={(e) => { e.stopPropagation(); onCheck(!checked); }}
         role="checkbox"
         aria-checked={checked}
-        aria-label={`Sélectionner ${p.firstName} ${p.lastName}`}
+        aria-label={tr('dossier.row.selectPatient', { name: `${p.firstName} ${p.lastName}` })}
       >
         {checked && '✓'}
       </span>
@@ -1057,12 +1064,12 @@ function PatientRow({
             >
               {p.firstName} {p.lastName}
             </button>
-            {p.chronic && <span className="flag">Chronique</span>}
+            {p.chronic && <span className="flag">{tr('dossier.row.chronic')}</span>}
           </div>
           <div className="s">
             <span className="dossier">{humanId(p.id)}</span>
             <span className="sep">·</span>
-            <span>{p.gender === 'M' ? 'H' : p.gender === 'F' ? 'F' : 'M'} · {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}</span>
+            <span>{p.gender === 'M' ? tr('dossier.filter.sexMaleShort') : p.gender === 'F' ? tr('dossier.filter.sexFemaleShort') : 'M'} · {p.birthDate ? `${toAge(p.birthDate)} ${tr('dossier.years')}` : '—'}</span>
           </div>
         </div>
       </div>
@@ -1080,8 +1087,8 @@ function PatientRow({
             <span key={t} className="ptag dx" title={t}>{label}</span>
           );
         })}
-        {p.allergy && <span className="ptag allergy">Allergie</span>}
-        {p.pregnant && <span className="ptag preg">Grossesse</span>}
+        {p.allergy && <span className="ptag allergy">{tr('dossier.row.allergyTag')}</span>}
+        {p.pregnant && <span className="ptag preg">{tr('dossier.row.pregnancyTag')}</span>}
         {extra > 0 && <span className="ptag more">+{extra}</span>}
         {tags.length === 0 && !p.allergy && !p.pregnant && (
           <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>—</span>
@@ -1090,7 +1097,7 @@ function PatientRow({
 
       {/* Mutuelle (placeholder — la liste API n'expose pas le nom mutuelle pour l'instant) */}
       <div className="col-mut">
-        {p.tier === 'PREMIUM' ? 'Privée' : <span style={{ color: 'var(--ink-4)' }}>—</span>}
+        {p.tier === 'PREMIUM' ? tr('dossier.row.private') : <span style={{ color: 'var(--ink-4)' }}>—</span>}
       </div>
 
       {/* Dernier RDV */}
@@ -1103,7 +1110,8 @@ function PatientRow({
       {/* Statut */}
       <div>
         <span className={`ppill ${st === 'en-consult' ? 'consult' : st === 'en-attente' ? 'waiting' : st === 'termine' ? 'arrived' : st === 'inactif' ? 'done' : 'arrived'}`}>
-          {st === 'en-consult' ? 'En consult.' : st === 'en-attente' ? 'En attente' : st === 'termine' ? 'Terminé' : st === 'inactif' ? 'Inactif' : 'Actif'}
+          <span className="d" />
+          {st === 'en-consult' ? tr('dossier.row.statusConsult') : st === 'en-attente' ? tr('dossier.row.statusWaiting') : st === 'termine' ? tr('dossier.row.statusDone') : st === 'inactif' ? tr('dossier.row.statusInactive') : tr('dossier.row.statusActive')}
         </span>
       </div>
 
@@ -1111,8 +1119,8 @@ function PatientRow({
       <button
         type="button"
         className="more-btn"
-        onClick={(e) => { e.stopPropagation(); alert('Plus d\'actions : à venir'); }}
-        aria-label="Plus d'actions"
+        onClick={(e) => { e.stopPropagation(); alert(tr('dossier.row.moreActionsTodo')); }}
+        aria-label={tr('dossier.row.moreActions')}
       >
         ⋯
       </button>
@@ -1130,6 +1138,7 @@ function PatientDrailPanel({
   onClose: () => void;
   onOpen: () => void;
 }) {
+  const { t } = useT();
   const navigate = useNavigate();
   const st = statusOf(p);
   return (
@@ -1143,22 +1152,22 @@ function PatientDrailPanel({
         <div className="who">
           <div className="n">{p.firstName} {p.lastName}</div>
           <div className="s">
-            <span>{p.gender === 'M' ? 'H' : 'F'} · {p.birthDate ? `${toAge(p.birthDate)} ans` : '—'}</span>
+            <span>{p.gender === 'M' ? t('dossier.filter.sexMaleShort') : t('dossier.filter.sexFemaleShort')} · {p.birthDate ? `${toAge(p.birthDate)} ${t('dossier.years')}` : '—'}</span>
             <span>·</span>
             <span><b>{humanId(p.id)}</b></span>
-            {p.tier === 'PREMIUM' && (<><span>·</span><span>Privée</span></>)}
+            {p.tier === 'PREMIUM' && (<><span>·</span><span>{t('dossier.row.private')}</span></>)}
           </div>
         </div>
-        <button type="button" className="close-btn" onClick={onClose} aria-label="Fermer">✕</button>
+        <button type="button" className="close-btn" onClick={onClose} aria-label={t('common.close')}>✕</button>
       </div>
 
       <div className="drail-stat">
         <span className="dot" />
-        {st === 'en-consult' && <>EN CONSULTATION — Salle 2</>}
-        {st === 'en-attente' && <>EN ATTENTE</>}
-        {st === 'termine' && <>CONSULTATION TERMINÉE</>}
-        {st === 'actif' && <>PATIENT ACTIF</>}
-        {st === 'inactif' && <>PATIENT INACTIF — relance suggérée</>}
+        {st === 'en-consult' && <>{t('dossier.drail.statusConsultRoom')}</>}
+        {st === 'en-attente' && <>{t('dossier.drail.statusWaiting')}</>}
+        {st === 'termine' && <>{t('dossier.drail.statusDone')}</>}
+        {st === 'actif' && <>{t('dossier.drail.statusActive')}</>}
+        {st === 'inactif' && <>{t('dossier.drail.statusInactive')}</>}
         <span className="meta">
           {p.nextAppointmentAt ? formatDateTime(p.nextAppointmentAt) : (p.lastVisitAt ? formatDate(p.lastVisitAt) : '—')}
         </span>
@@ -1170,7 +1179,7 @@ function PatientDrailPanel({
           <div className="drail-sec">
             <div className="all-strip">
               <div className="ic">!</div>
-              <div><b>Allergies :</b> à vérifier dans le dossier complet</div>
+              <div><b>{t('dossier.drail.allergiesLabel')}</b> {t('dossier.drail.allergiesCheck')}</div>
             </div>
           </div>
         )}
@@ -1178,16 +1187,16 @@ function PatientDrailPanel({
         {/* Constantes — placeholder (vitals pas exposés sur PatientListItem) */}
         <div className="drail-sec">
           <div className="drail-sec-h">
-            Constantes — dernière mesure
+            {t('dossier.drail.lastVitals')}
             <span className="ln" />
-            <button type="button" className="lnk" onClick={onOpen}>Tout voir</button>
+            <button type="button" className="lnk" onClick={onOpen}>{t('dossier.drail.seeAll')}</button>
           </div>
           <div className="v-snap">
             {[
-              { k: 'TA',       v: '—', unit: 'mmHg', ago: 'pas de relevé', warn: false },
-              { k: 'FC',       v: '—', unit: 'bpm',  ago: 'pas de relevé', warn: false },
-              { k: 'Glycémie', v: '—', unit: 'g/L',  ago: 'pas de relevé', warn: false },
-              { k: 'Poids',    v: '—', unit: 'kg',   ago: 'pas de relevé', warn: false },
+              { k: 'TA',       v: '—', unit: 'mmHg', ago: t('dossier.drail.noMeasure'), warn: false },
+              { k: 'FC',       v: '—', unit: 'bpm',  ago: t('dossier.drail.noMeasure'), warn: false },
+              { k: t('dossier.vitals.glycemia'), v: '—', unit: 'g/L',  ago: t('dossier.drail.noMeasure'), warn: false },
+              { k: t('dossier.vitals.weight'),    v: '—', unit: 'kg',   ago: t('dossier.drail.noMeasure'), warn: false },
             ].map((m) => (
               <div key={m.k} className={`cell ${m.warn ? 'warn' : ''}`}>
                 <div className="k">{m.k}</div>
@@ -1200,20 +1209,20 @@ function PatientDrailPanel({
 
         {/* Dossier */}
         <div className="drail-sec">
-          <div className="drail-sec-h">Dossier<span className="ln" /></div>
+          <div className="drail-sec-h">{t('dossier.drail.record')}<span className="ln" /></div>
           <div className="info-rows">
-            <div className="info-row"><span className="k">Né le</span><span className="v">{p.birthDate ? formatDate(p.birthDate) : '—'}</span></div>
-            <div className="info-row"><span className="k">N° dossier</span><span className="v mono">{humanId(p.id)}</span></div>
-            <div className="info-row"><span className="k">CIN</span><span className="v">{p.cin ?? '—'}</span></div>
-            <div className="info-row"><span className="k">Adresse</span><span className="v" style={{ fontWeight: 500, color: 'var(--ink-2)' }}>{p.city ?? '—'}</span></div>
-            <div className="info-row"><span className="k">Téléphone</span><span className="v">{p.phone ?? '—'}</span></div>
+            <div className="info-row"><span className="k">{t('dossier.drail.bornOn')}</span><span className="v">{p.birthDate ? formatDate(p.birthDate) : '—'}</span></div>
+            <div className="info-row"><span className="k">{t('dossier.drail.recordNo')}</span><span className="v mono">{humanId(p.id)}</span></div>
+            <div className="info-row"><span className="k">{t('dossier.drail.cin')}</span><span className="v">{p.cin ?? '—'}</span></div>
+            <div className="info-row"><span className="k">{t('dossier.drail.address')}</span><span className="v" style={{ fontWeight: 500, color: 'var(--ink-2)' }}>{p.city ?? '—'}</span></div>
+            <div className="info-row"><span className="k">{t('dossier.drail.phone')}</span><span className="v">{p.phone ?? '—'}</span></div>
           </div>
         </div>
 
         {/* Next RDV mini */}
         {p.nextAppointmentAt && (
           <div className="drail-sec">
-            <div className="drail-sec-h">Prochain RDV<span className="ln" /></div>
+            <div className="drail-sec-h">{t('dossier.drail.nextRdv')}<span className="ln" /></div>
             <button
               type="button"
               className="next-mini"
@@ -1236,13 +1245,13 @@ function PatientDrailPanel({
 
       <div className="drail-foot">
         <button type="button" onClick={() => { if (p.phone) window.location.href = `sms:${p.phone}`; }} disabled={!p.phone}>
-          SMS
+          {t('dossier.drail.sms')}
         </button>
         <button type="button" onClick={() => navigate(`/agenda?patient=${p.id}`)}>
-          RDV
+          {t('dossier.drail.rdv')}
         </button>
         <button type="button" className="cta" onClick={onOpen}>
-          Ouvrir dossier
+          {t('dossier.drail.openRecord')}
         </button>
       </div>
     </aside>
@@ -1251,25 +1260,35 @@ function PatientDrailPanel({
 
 // ─── Bulk actions bar iso maquette (.bulkbar) ────────────────────────────
 function BulkBar({ count, onClear }: { count: number; onClear: () => void }) {
+  const { t } = useT();
   function notImpl(action: string) {
-    alert(`${action} : action à venir (${count} patient${count > 1 ? 's' : ''}).`);
+    alert(
+      count > 1
+        ? t('dossier.bulk.actionTodoPlural', { action, count })
+        : t('dossier.bulk.actionTodo', { action, count }),
+    );
   }
   return (
     <div className="bulkbar">
-      <span className="cnt"><b>{count}</b> patient{count > 1 ? 's' : ''} sélectionné{count > 1 ? 's' : ''}</span>
+      <span className="cnt">
+        {count > 1
+          ? t('dossier.bulk.selectedPlural', { count })
+          : t('dossier.bulk.selected', { count })}
+      </span>
       <span className="sep" />
-      <button type="button" className="act" onClick={() => notImpl('Envoyer SMS')}>Envoyer SMS</button>
-      <button type="button" className="act" onClick={() => notImpl('Créer relance')}>Créer relance</button>
-      <button type="button" className="act" onClick={() => notImpl('Planifier RDV')}>Planifier RDV</button>
-      <button type="button" className="act" onClick={() => notImpl('Étiqueter')}>Étiqueter</button>
-      <button type="button" className="act" onClick={() => notImpl('Exporter sélection')}>Exporter sélection</button>
-      <button type="button" className="clear" onClick={onClear}>Tout désélectionner</button>
+      <button type="button" className="act" onClick={() => notImpl(t('dossier.bulk.sendSms'))}>{t('dossier.bulk.sendSms')}</button>
+      <button type="button" className="act" onClick={() => notImpl(t('dossier.bulk.createFollowup'))}>{t('dossier.bulk.createFollowup')}</button>
+      <button type="button" className="act" onClick={() => notImpl(t('dossier.bulk.scheduleRdv'))}>{t('dossier.bulk.scheduleRdv')}</button>
+      <button type="button" className="act" onClick={() => notImpl(t('dossier.bulk.tag'))}>{t('dossier.bulk.tag')}</button>
+      <button type="button" className="act" onClick={() => notImpl(t('dossier.bulk.export'))}>{t('dossier.bulk.export')}</button>
+      <button type="button" className="clear" onClick={onClear}>{t('dossier.bulk.deselectAll')}</button>
     </div>
   );
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────
 export default function PatientsListPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [seg, setSeg] = useState<ExtSegment>('tous');
   const [page, setPage] = useState(0);
@@ -1281,8 +1300,8 @@ export default function PatientsListPage() {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchInput), 250);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 250);
+    return () => clearTimeout(timer);
   }, [searchInput]);
 
   const [statusFilter, setStatusFilter] = useState<'' | 'actif' | 'inactif'>('actif');
@@ -1290,7 +1309,6 @@ export default function PatientsListPage() {
   const [ageRange, setAgeRange] = useState<'' | 'CHILD' | 'ADULT' | 'SENIOR'>('');
   const [sortBy, setSortBy] = useState<'name' | 'lastVisit' | 'createdAt'>('name');
   const [density, setDensity] = useState<'cozy' | 'compact'>('cozy');
-  void density; // utilisé pour ajustement futur du padding (compact)
 
   const apiSegment: Segment =
     seg === 'nouveaux' ? 'nouveaux'
@@ -1349,13 +1367,13 @@ export default function PatientsListPage() {
   const canCreatePatient = userPerms == null || userPerms.includes('PATIENT_CREATE');
 
   const segItems: Array<{ id: ExtSegment; label: string; count: number }> = useMemo(() => [
-    { id: 'tous',       label: 'Tous',              count: counts.tous },
-    { id: 'actifs',     label: 'Actifs',            count: counts.tous },
-    { id: 'nouveaux',   label: 'Nouveaux · 30 j',   count: counts.nouveaux },
-    { id: 'chroniques', label: 'Chroniques',        count: counts.chroniques },
-    { id: 'sans-rdv',   label: 'Sans RDV · 6 m',    count: sansRdvCount },
-    { id: 'pediatrie',  label: 'Pédiatrie',         count: counts.tous },
-  ], [counts, sansRdvCount]);
+    { id: 'tous',       label: t('dossier.seg.tous'),        count: counts.tous },
+    { id: 'actifs',     label: t('dossier.seg.actifs'),      count: counts.tous },
+    { id: 'nouveaux',   label: t('dossier.seg.nouveaux30'),  count: counts.nouveaux },
+    { id: 'chroniques', label: t('dossier.seg.chroniques'),  count: counts.chroniques },
+    { id: 'sans-rdv',   label: t('dossier.seg.sansRdv6m'),   count: sansRdvCount },
+    { id: 'pediatrie',  label: t('dossier.seg.pediatrie'),   count: counts.tous },
+  ], [counts, sansRdvCount, t]);
 
   function toggleCheck(id: string, next: boolean) {
     setCheckedIds((prev) => {
@@ -1371,7 +1389,11 @@ export default function PatientsListPage() {
   const someChecked = checkedIds.size > 0 && !allChecked;
 
   function exportCsv() {
-    const rows = [['Nom', 'Prénom', 'Sexe', 'Date naissance', 'CIN', 'Téléphone', 'Ville', 'Tier', 'Dernière visite', 'Prochain RDV']];
+    const rows = [[
+      t('dossier.csv.lastName'), t('dossier.csv.firstName'), t('dossier.csv.sex'),
+      t('dossier.csv.birthDate'), t('dossier.csv.cin'), t('dossier.csv.phone'),
+      t('dossier.csv.city'), t('dossier.csv.tier'), t('dossier.csv.lastVisit'), t('dossier.csv.nextRdv'),
+    ]];
     for (const p of patients) {
       rows.push([
         p.lastName, p.firstName, p.gender, p.birthDate, p.cin ?? '', p.phone ?? '',
@@ -1394,8 +1416,8 @@ export default function PatientsListPage() {
 
   const topRight = (
     <>
-      <Button type="button" onClick={exportCsv}>Exporter CSV</Button>
-      <Button type="button" onClick={() => alert('Importer un fichier CSV/Excel : à venir.')}>Importer</Button>
+      <Button type="button" onClick={exportCsv}>{t('dossier.list.exportCsv')}</Button>
+      <Button type="button" onClick={() => alert(t('dossier.list.importTodo'))}>{t('dossier.list.import')}</Button>
       {canCreatePatient && (
         <Button
           className="cp-ds2-primary"
@@ -1403,7 +1425,7 @@ export default function PatientsListPage() {
           onClick={() => setShowNew((v) => !v)}
           aria-pressed={showNew}
         >
-          <Plus /> Nouveau patient
+          <Plus /> {t('dossier.list.newPatient')}
         </Button>
       )}
     </>
@@ -1411,14 +1433,14 @@ export default function PatientsListPage() {
 
   const selectedPatient = selected ? patients.find((p) => p.id === selected) ?? null : null;
   const totalPagesEff = Math.max(1, Math.ceil(total / pageSize));
-  const sortLabel = sortBy === 'name' ? 'Nom A–Z' : sortBy === 'lastVisit' ? 'Dernière visite' : 'Date de création';
+  const sortLabel = sortBy === 'name' ? t('dossier.sort.name') : sortBy === 'lastVisit' ? t('dossier.sort.lastVisit') : t('dossier.sort.createdAt');
   const sortLabel2 = sortLabel; void sortLabel2;
 
   return (
     <Screen
       active="patients"
-      title="Patients"
-      sub={`${counts.tous.toLocaleString('fr-FR')} dossier${counts.tous !== 1 ? 's' : ''}`}
+      title={t('nav.patients')}
+      sub={counts.tous !== 1 ? t('dossier.recordCountPlural', { count: counts.tous.toLocaleString('fr-FR') }) : t('dossier.recordCount', { count: counts.tous.toLocaleString('fr-FR') })}
       topbarRight={topRight}
     >
       <div className="ws-patients">
@@ -1440,10 +1462,10 @@ export default function PatientsListPage() {
           <button
             type="button"
             style={{ color: 'var(--ds2-navy, var(--primary))', fontWeight: 600 }}
-            onClick={() => alert('Créer une vue personnalisée : à venir')}
-          >+ Vue</button>
+            onClick={() => alert(t('dossier.list.createViewTodo'))}
+          >{t('dossier.list.addView')}</button>
           <div className="vside">
-            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Tri</span>
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{t('dossier.list.sort')}</span>
             <button
               type="button"
               className="fpill"
@@ -1460,24 +1482,24 @@ export default function PatientsListPage() {
         {/* KPI strip */}
         <div className="kpi-strip">
           <div className="kpi hero">
-            <div className="k">Patients actifs</div>
+            <div className="k">{t('dossier.kpi.activePatients')}</div>
             <div className="v">{counts.tous.toLocaleString('fr-FR')}</div>
-            <div className="d"><b>+{counts.nouveaux}</b> ce mois · 100% du fichier</div>
+            <div className="d">{t('dossier.kpi.thisMonthShare', { count: counts.nouveaux })}</div>
           </div>
           <div className="kpi">
-            <div className="k"><span className="dot" style={{ background: 'var(--ds2-navy, #1E4DAB)' }} />Nouveaux · 30 j</div>
+            <div className="k"><span className="dot" style={{ background: 'var(--ds2-navy, #1E4DAB)' }} />{t('dossier.kpi.new30')}</div>
             <div className="v">{counts.nouveaux.toLocaleString('fr-FR')}</div>
-            <div className="d">créés ces 30 derniers jours</div>
+            <div className="d">{t('dossier.kpi.createdLast30')}</div>
           </div>
           <div className="kpi">
-            <div className="k"><span className="dot" style={{ background: '#C2553A' }} />Sans RDV · 6 mois</div>
+            <div className="k"><span className="dot" style={{ background: '#C2553A' }} />{t('dossier.kpi.noRdv6m')}</div>
             <div className="v">{sansRdvCount.toLocaleString('fr-FR')}</div>
-            <div className="d">{sansRdvCount > 0 ? <b className="warn">Relance suggérée</b> : 'aucune relance'}</div>
+            <div className="d">{sansRdvCount > 0 ? <b className="warn">{t('dossier.kpi.followupSuggested')}</b> : t('dossier.kpi.noFollowup')}</div>
           </div>
           <div className="kpi">
-            <div className="k"><span className="dot" style={{ background: '#2F8F6B' }} />Mutuelle active</div>
+            <div className="k"><span className="dot" style={{ background: '#2F8F6B' }} />{t('dossier.kpi.activeMutuelle')}</div>
             <div className="v">{mutuelleCount}<span className="u">/ {counts.tous}</span></div>
-            <div className="d">CNOPS · CNSS · privée</div>
+            <div className="d">{t('dossier.kpi.mutuelleProviders')}</div>
           </div>
         </div>
 
@@ -1492,8 +1514,8 @@ export default function PatientsListPage() {
               type="search"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Nom, CIN, téléphone, n° dossier…"
-              aria-label="Rechercher un patient"
+              placeholder={t('dossier.filter.searchPlaceholder')}
+              aria-label={t('dossier.filter.searchAria')}
             />
           </div>
           {/* Statut chip (toggle) */}
@@ -1504,8 +1526,8 @@ export default function PatientsListPage() {
             aria-pressed={statusFilter === 'actif'}
           >
             {statusFilter === 'actif' && <span style={{ fontWeight: 700 }}>✓</span>}
-            <span className="dim">Statut</span>
-            <b>{statusFilter === 'actif' ? 'Actif' : statusFilter === 'inactif' ? 'Inactif' : '—'}</b>
+            <span className="dim">{t('dossier.filter.status')}</span>
+            <b>{statusFilter === 'actif' ? t('dossier.filter.active') : statusFilter === 'inactif' ? t('dossier.filter.inactive') : '—'}</b>
             {statusFilter === 'actif' && (
               <span
                 className="x"
@@ -1513,27 +1535,27 @@ export default function PatientsListPage() {
               >×</span>
             )}
           </button>
-          <FilterChip label="Pathologie" value="—" options={[{ value: '', label: '—' }]} muted />
-          <FilterChip label="Mutuelle" value="—" options={[{ value: '', label: '—' }]} muted />
+          <FilterChip label={t('dossier.filter.pathology')} value="—" options={[{ value: '', label: '—' }]} muted />
+          <FilterChip label={t('dossier.filter.mutuelle')} value="—" options={[{ value: '', label: '—' }]} muted />
           <FilterChip
-            label="Âge"
-            value={ageRange === 'CHILD' ? 'Enfant' : ageRange === 'ADULT' ? 'Adulte' : ageRange === 'SENIOR' ? 'Senior' : '—'}
+            label={t('dossier.filter.age')}
+            value={ageRange === 'CHILD' ? t('dossier.filter.ageChild') : ageRange === 'ADULT' ? t('dossier.filter.ageAdult') : ageRange === 'SENIOR' ? t('dossier.filter.ageSenior') : '—'}
             options={[
               { value: '', label: '—' },
-              { value: 'CHILD', label: 'Enfant (0-14)' },
-              { value: 'ADULT', label: 'Adulte (15-64)' },
-              { value: 'SENIOR', label: 'Senior (65+)' },
+              { value: 'CHILD', label: t('dossier.filter.ageChildRange') },
+              { value: 'ADULT', label: t('dossier.filter.ageAdultRange') },
+              { value: 'SENIOR', label: t('dossier.filter.ageSeniorRange') },
             ]}
             onChange={(v) => setAgeRange(v as '' | 'CHILD' | 'ADULT' | 'SENIOR')}
           />
           <FilterChip
-            label="Sexe"
-            value={genderFilter === 'M' ? 'H' : genderFilter === 'F' ? 'F' : genderFilter === 'O' ? 'A' : 'T.'}
+            label={t('dossier.filter.sex')}
+            value={genderFilter === 'M' ? t('dossier.filter.sexMaleShort') : genderFilter === 'F' ? t('dossier.filter.sexFemaleShort') : genderFilter === 'O' ? t('dossier.filter.sexOtherShort') : t('dossier.filter.sexAllShort')}
             options={[
-              { value: '', label: 'Tous' },
-              { value: 'M', label: 'Homme' },
-              { value: 'F', label: 'Femme' },
-              { value: 'O', label: 'Autre' },
+              { value: '', label: t('dossier.filter.sexAll') },
+              { value: 'M', label: t('dossier.filter.male') },
+              { value: 'F', label: t('dossier.filter.female') },
+              { value: 'O', label: t('dossier.filter.other') },
             ]}
             onChange={(v) => setGenderFilter(v as '' | 'M' | 'F' | 'O')}
           />
@@ -1542,16 +1564,16 @@ export default function PatientsListPage() {
               type="button"
               className="fpill"
               style={{ height: 30, padding: '0 9px', fontSize: 12 }}
-              onClick={() => alert('Filtres avancés : à venir')}
+              onClick={() => alert(t('dossier.list.advancedFiltersTodo'))}
             >
-              <FilterIcon /> Filtres avancés
+              <FilterIcon /> {t('dossier.filter.advancedFilters')}
             </button>
-            <div className="dens-tog" title="Densité">
+            <div className="dens-tog" title={t('dossier.filter.density')}>
               <button
                 type="button"
                 className={density === 'cozy' ? 'on' : ''}
                 onClick={() => setDensity('cozy')}
-                title="Confortable"
+                title={t('dossier.filter.cozy')}
               >
                 <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
                   <path d="M3 5h12M3 9h12M3 13h12" />
@@ -1561,7 +1583,7 @@ export default function PatientsListPage() {
                 type="button"
                 className={density === 'compact' ? 'on' : ''}
                 onClick={() => setDensity('compact')}
-                title="Compact"
+                title={t('dossier.filter.compact')}
               >
                 <svg viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round">
                   <path d="M3 4h12M3 7h12M3 10h12M3 13h12" />
@@ -1586,32 +1608,32 @@ export default function PatientsListPage() {
                   onClick={() => toggleAll(!allChecked)}
                   role="checkbox"
                   aria-checked={allChecked}
-                  aria-label="Tout sélectionner"
+                  aria-label={t('dossier.table.selectAll')}
                 >
                   {allChecked && '✓'}
                 </span>
               </div>
               <div className={`sortable ${sortBy === 'name' ? 'on' : ''}`} onClick={() => setSortBy('name')}>
-                Patient <ChevronDown />
+                {t('dossier.table.colPatient')} <ChevronDown />
               </div>
-              <div>Téléphone</div>
-              <div>Pathologies / alerts</div>
-              <div>Mutuelle</div>
+              <div>{t('dossier.table.colPhone')}</div>
+              <div>{t('dossier.table.colPathologies')}</div>
+              <div>{t('dossier.table.colMutuelle')}</div>
               <div className={`sortable ${sortBy === 'lastVisit' ? 'on' : ''}`} onClick={() => setSortBy('lastVisit')}>
-                Dernier RDV <ChevronDown />
+                {t('dossier.table.colLastRdv')} <ChevronDown />
               </div>
-              <div>Statut</div>
+              <div>{t('dossier.table.colStatus')}</div>
               <div />
             </div>
 
             <div className="ptbl-body">
               {isLoading ? (
-                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>Chargement…</div>
+                <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
               ) : error ? (
                 <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--danger)' }}>{error}</div>
               ) : patients.length === 0 ? (
                 <div style={{ padding: '24px 16px', fontSize: 13, color: 'var(--ink-3)' }}>
-                  Aucun patient ne correspond à ce filtre.
+                  {t('dossier.table.emptyFilter')}
                 </div>
               ) : (
                 patients.map((p) => (
@@ -1632,19 +1654,29 @@ export default function PatientsListPage() {
             {/* Pagination */}
             <div className="pager">
               <span>
-                Affichage <b>{page * pageSize + 1}</b> – <b>{page * pageSize + patients.length}</b> sur <b>{total.toLocaleString('fr-FR')}</b> patient{total !== 1 ? 's' : ''}
+                {total !== 1
+                  ? t('dossier.pager.showingPlural', {
+                      from: page * pageSize + 1,
+                      to: page * pageSize + patients.length,
+                      total: total.toLocaleString('fr-FR'),
+                    })
+                  : t('dossier.pager.showing', {
+                      from: page * pageSize + 1,
+                      to: page * pageSize + patients.length,
+                      total: total.toLocaleString('fr-FR'),
+                    })}
               </span>
               <div className="right">
-                <span>Par page</span>
+                <span>{t('dossier.pager.perPage')}</span>
                 <Select
                   value={String(pageSize)}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }}
-                  aria-label="Patients par page"
+                  aria-label={t('dossier.pager.perPageAria')}
                 >
                   {[10, 20, 50, 100].map((n) => (<option key={n} value={n}>{n}</option>))}
                 </Select>
                 <div className="pg">
-                  <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label="Page précédente">
+                  <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} aria-label={t('dossier.pager.prev')}>
                     <ChevronLeft />
                   </button>
                   {(() => {
@@ -1668,7 +1700,7 @@ export default function PatientsListPage() {
                       onClick={() => setPage(totalPagesEff - 1)}
                     >{totalPagesEff}</button>
                   )}
-                  <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPagesEff - 1} aria-label="Page suivante">
+                  <button type="button" onClick={() => setPage((p) => p + 1)} disabled={page >= totalPagesEff - 1} aria-label={t('dossier.pager.next')}>
                     <ChevronRight />
                   </button>
                 </div>

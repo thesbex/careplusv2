@@ -10,6 +10,7 @@
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface UploadedPhoto {
   id: string;
@@ -21,10 +22,11 @@ export interface UploadedPhoto {
 
 export function usePatientPhoto(patientId: string | undefined) {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   const upload = useMutation({
     mutationFn: async (file: File): Promise<UploadedPhoto> => {
-      if (!patientId) throw new Error('Patient introuvable.');
+      if (!patientId) throw new Error(t('dossier.hook.notFound'));
       const fd = new FormData();
       fd.append('file', file);
       const { data } = await api.put<UploadedPhoto>(
@@ -42,7 +44,7 @@ export function usePatientPhoto(patientId: string | undefined) {
 
   const remove = useMutation({
     mutationFn: async () => {
-      if (!patientId) throw new Error('Patient introuvable.');
+      if (!patientId) throw new Error(t('dossier.hook.notFound'));
       await api.delete(`/patients/${patientId}/photo`);
     },
     onSuccess: () => {
@@ -55,16 +57,23 @@ export function usePatientPhoto(patientId: string | undefined) {
     upload: upload.mutateAsync,
     isUploading: upload.isPending,
     uploadError: upload.error
-      ? extractMessage(upload.error)
+      ? extractMessage(upload.error, {
+          tooBig: t('dossier.photo.tooBig'),
+          badFormat: t('dossier.photo.uploadBadFormat'),
+          fallback: t('dossier.photo.uploadFailed'),
+        })
       : null,
     remove: remove.mutateAsync,
     isRemoving: remove.isPending,
   };
 }
 
-function extractMessage(err: unknown): string {
+function extractMessage(
+  err: unknown,
+  labels: { tooBig: string; badFormat: string; fallback: string },
+): string {
   const e = err as { response?: { status?: number; data?: { detail?: string; message?: string } } };
-  if (e?.response?.status === 413) return 'Photo trop volumineuse (max 2 Mo).';
-  if (e?.response?.status === 415) return "Format non supporté (JPEG, PNG, WebP, HEIC uniquement).";
-  return e?.response?.data?.detail ?? e?.response?.data?.message ?? 'Échec du téléversement.';
+  if (e?.response?.status === 413) return labels.tooBig;
+  if (e?.response?.status === 415) return labels.badFormat;
+  return e?.response?.data?.detail ?? e?.response?.data?.message ?? labels.fallback;
 }

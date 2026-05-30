@@ -14,6 +14,7 @@ import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface FollowUpDialogProps {
   open: boolean;
@@ -40,17 +41,10 @@ interface DayAppointment {
   status: string;
 }
 
-const STATUS_FR: Record<string, string> = {
-  PLANIFIE: 'Planifié',
-  CONFIRME: 'Confirmé',
-  ARRIVE: 'Arrivé',
-  EN_ATTENTE_CONSTANTES: 'Att. constantes',
-  CONSTANTES_PRISES: 'Constantes OK',
-  EN_CONSULTATION: 'En consult.',
-  TERMINE: 'Terminé',
-  CLOS: 'Clos',
-  ANNULE: 'Annulé',
-};
+const APT_STATUSES = new Set([
+  'PLANIFIE', 'CONFIRME', 'ARRIVE', 'EN_ATTENTE_CONSTANTES', 'CONSTANTES_PRISES',
+  'EN_CONSULTATION', 'TERMINE', 'CLOS', 'ANNULE',
+]);
 
 function fmtTime(iso: string): string {
   const d = new Date(iso);
@@ -60,6 +54,7 @@ function fmtTime(iso: string): string {
 }
 
 export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }: FollowUpDialogProps) {
+  const { t } = useT();
   const userId = useAuthStore((s) => s.user?.id);
   const queryClient = useQueryClient();
   const [date, setDate] = useState<string>('');
@@ -178,18 +173,18 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
 
   async function submit() {
     if (!date || !time) {
-      toast.error('Date et heure requises.');
+      toast.error(t('consult.followUp.dateTimeRequired'));
       return;
     }
     try {
       await mutation.mutateAsync();
-      toast.success('Prochain RDV créé.');
+      toast.success(t('consult.followUp.created'));
       onCreated?.();
       onOpenChange(false);
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        'Création du RDV refusée.';
+        t('consult.followUp.createRefused');
       toast.error(msg);
     }
   }
@@ -224,16 +219,16 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>
-              Programmer un prochain RDV
+              {t('consult.followUp.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
           <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 16 }}>
-            RDV de contrôle lié à cette consultation. Apparait dans l'agenda.
+            {t('consult.followUp.description')}
           </Dialog.Description>
 
           <div
@@ -246,7 +241,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', gap: 10 }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Date</label>
+                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('consult.followUp.date')}</label>
                   <input
                     type="date"
                     value={date}
@@ -264,7 +259,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                   />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Heure</label>
+                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('consult.followUp.time')}</label>
                   <input
                     type="time"
                     value={time}
@@ -283,7 +278,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                 </div>
               </div>
 
-              <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Motif</label>
+              <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('consult.followUp.reason')}</label>
               <Select
                 value={reasonId}
                 onChange={(e) => setReasonId(e.target.value)}
@@ -297,19 +292,19 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                   background: 'var(--surface)',
                 }}
               >
-                <option value="">— choisir —</option>
+                <option value="">{t('consult.followUp.reasonChoose')}</option>
                 {reasons.map((r) => (
                   <option key={r.id} value={r.id}>
-                    {r.label} ({r.durationMinutes} min)
+                    {t('consult.followUp.reasonMinutes', { label: r.label, min: r.durationMinutes })}
                   </option>
                 ))}
               </Select>
 
-              <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Notes (optionnel)</label>
+              <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('consult.followUp.notes')}</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ex. contrôle bilan biologique, retour résultats…"
+                placeholder={t('consult.followUp.notesPlaceholder')}
                 rows={3}
                 style={{
                   border: '1px solid var(--border)',
@@ -333,8 +328,11 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                     fontSize: 12,
                   }}
                 >
-                  ⚠️ Chevauchement avec « {overlap.patientFullName ?? '—'} » à {fmtTime(overlap.startAt)}–
-                  {fmtTime(overlap.endAt)}.
+                  {t('consult.followUp.overlap', {
+                    name: overlap.patientFullName ?? '—',
+                    start: fmtTime(overlap.startAt),
+                    end: fmtTime(overlap.endAt),
+                  })}
                 </div>
               )}
             </div>
@@ -354,20 +352,20 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
             >
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                 <strong style={{ fontSize: 12.5, color: 'var(--ink-1)' }}>
-                  Planning du {date || '—'}
+                  {t('consult.followUp.planningOf', { date: date || '—' })}
                 </strong>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-                  {sortedAppointments.length} RDV
+                  {t('consult.followUp.rdvCount', { n: sortedAppointments.length })}
                 </span>
               </div>
 
               {loadingDay && (
-                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
               )}
 
               {!loadingDay && sortedAppointments.length === 0 && (
                 <div style={{ fontSize: 12, color: 'var(--ink-3)', fontStyle: 'italic' }}>
-                  Aucun RDV ce jour — agenda libre.
+                  {t('consult.followUp.noRdvFree')}
                 </div>
               )}
 
@@ -412,7 +410,7 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                         ) : null}
                       </span>
                       <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>
-                        {STATUS_FR[a.status] ?? a.status}
+                        {APT_STATUSES.has(a.status) ? t(`consult.aptStatus.${a.status}`) : a.status}
                       </span>
                     </li>
                   );
@@ -438,9 +436,9 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
                       {fmtTime(candidate.start.toISOString())}–{fmtTime(candidate.end.toISOString())}
                     </span>
                     <span style={{ fontWeight: 600, color: 'var(--accent, #0891b2)' }}>
-                      Nouveau RDV (cette consultation)
+                      {t('consult.followUp.newRdv')}
                     </span>
-                    <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{candidateDuration} min</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{t('consult.followUp.minutes', { n: candidateDuration })}</span>
                   </li>
                 )}
               </ul>
@@ -449,14 +447,14 @@ export function FollowUpDialog({ open, onOpenChange, consultationId, onCreated }
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
             <Dialog.Close asChild>
-              <Button>Annuler</Button>
+              <Button>{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button
               variant="primary"
               onClick={() => void submit()}
               disabled={mutation.isPending}
             >
-              {mutation.isPending ? 'Création…' : 'Programmer'}
+              {mutation.isPending ? t('consult.followUp.scheduling') : t('consult.followUp.schedule')}
             </Button>
           </div>
         </Dialog.Content>

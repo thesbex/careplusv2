@@ -27,9 +27,11 @@ import { PregnancyTabMobile } from '@/features/grossesse/components/PregnancyTab
 import { StaysTab } from '@/features/hospitalisation/components/StaysTab';
 import { ConsentDialog } from '@/features/consent/components/ConsentDialog';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { MobileDossierTab } from './types';
 
 export default function DossierMobilePage() {
+  const { t: tr } = useT();
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { patient, raw, isLoading } = usePatient(id);
@@ -52,17 +54,17 @@ export default function DossierMobilePage() {
       const created = await startConsultation({ patientId: raw.id });
       void navigate(`/consultations/${created.id}`);
     } catch {
-      toast.error('Impossible de démarrer la consultation', {
-        description: 'Le rôle MEDECIN est requis pour cette action.',
+      toast.error(tr('dossier.startConsultError'), {
+        description: tr('dossier.startConsultErrorDesc'),
       });
     }
   }
 
   if (isLoading || !patient) {
     return (
-      <MScreen tab="patients" onTabChange={(t) => navigate({ agenda: '/agenda', salle: '/salle', patients: '/patients', factu: '/facturation', menu: '/parametres' }[t])} topbar={<MTopbar title="Dossier patient" />}>
+      <MScreen tab="patients" onTabChange={(t) => navigate({ agenda: '/agenda', salle: '/salle', patients: '/patients', factu: '/facturation', menu: '/parametres' }[t])} topbar={<MTopbar title={tr('dossier.recordTitle')} />}>
         <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-          {isLoading ? 'Chargement…' : 'Patient introuvable.'}
+          {isLoading ? tr('common.loading') : tr('dossier.recordNotFound')}
         </div>
       </MScreen>
     );
@@ -83,12 +85,12 @@ export default function DossierMobilePage() {
       }}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
-          title="Dossier patient"
+          left={<MIconBtn icon="ChevronLeft" label={tr('dossier.back')} onClick={() => navigate(-1)} />}
+          title={tr('dossier.recordTitle')}
           right={
             <MIconBtn
               icon="Edit"
-              label="Modifier le patient"
+              label={tr('dossier.mobile.editPatient')}
               onClick={() => setShowEdit(true)}
             />
           }
@@ -107,7 +109,7 @@ export default function DossierMobilePage() {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="m-phead-name">{patient.fullName}</div>
           <div className="m-phead-meta">
-            {[patient.sex, patient.age > 0 ? `${patient.age} ans` : null, patient.cin ? `CIN ${patient.cin}` : null]
+            {[patient.sex, patient.age > 0 ? `${patient.age} ${tr('dossier.years')}` : null, patient.cin ? tr('dossier.cin', { cin: patient.cin }) : null]
               .filter(Boolean)
               .join(' · ') || '—'}
           </div>
@@ -128,10 +130,10 @@ export default function DossierMobilePage() {
           fontWeight: 600,
         }}
         role="alert"
-        aria-label="Allergie connue"
+        aria-label={tr('dossier.allergyKnown')}
       >
         <Warn aria-hidden="true" />
-        <span>Allergie : {patient.allergies[0]}</span>
+        <span>{tr('dossier.mobile.allergyPrefix', { substance: patient.allergies[0] ?? '' })}</span>
       </div>
 
       <div className="mb-pad">
@@ -146,7 +148,7 @@ export default function DossierMobilePage() {
           }}
         >
           <Stetho aria-hidden="true" />{' '}
-          {isStartingConsult ? 'Démarrage…' : 'Démarrer consultation'}
+          {isStartingConsult ? tr('dossier.starting') : tr('dossier.mobile.startConsult')}
         </button>
 
         {/* Rx / Notes need a consultation context — omitted vs. prototype 4-grid. */}
@@ -180,20 +182,20 @@ export default function DossierMobilePage() {
             return (
               <>
                 {phoneHref ? (
-                  <a href={phoneHref} style={tileStyle} aria-label={`Appeler ${patient.fullName}`}>
+                  <a href={phoneHref} style={tileStyle} aria-label={tr('dossier.mobile.callPatient', { name: patient.fullName })}>
                     <Phone aria-hidden="true" />
-                    <span>Appeler</span>
+                    <span>{tr('dossier.mobile.call')}</span>
                   </a>
                 ) : (
-                  <button type="button" disabled style={{ ...tileStyle, opacity: 0.5, cursor: 'default' }} aria-label="Appeler (numéro indisponible)">
+                  <button type="button" disabled style={{ ...tileStyle, opacity: 0.5, cursor: 'default' }} aria-label={tr('dossier.mobile.callUnavailable')}>
                     <Phone aria-hidden="true" />
-                    <span>Appeler</span>
+                    <span>{tr('dossier.mobile.call')}</span>
                   </button>
                 )}
                 <button
                   type="button"
                   style={tileStyle}
-                  aria-label="Prendre un rendez-vous"
+                  aria-label={tr('dossier.mobile.bookRdv')}
                   onClick={() => {
                     if (!raw) return;
                     const params = new URLSearchParams({
@@ -204,7 +206,7 @@ export default function DossierMobilePage() {
                   }}
                 >
                   <Calendar aria-hidden="true" />
-                  <span>RDV</span>
+                  <span>{tr('dossier.mobile.rdv')}</span>
                 </button>
               </>
             );
@@ -224,7 +226,7 @@ export default function DossierMobilePage() {
               color: 'var(--ink-3)',
             }}
           >
-            Antécédents
+            {tr('dossier.mobile.antecedents')}
           </div>
           <div style={{ padding: '10px 14px', fontSize: 13, lineHeight: 1.55 }}>
             {patient.antecedents}
@@ -240,7 +242,7 @@ export default function DossierMobilePage() {
               color: 'var(--ink-3)',
             }}
           >
-            Traitement chronique
+            {tr('dossier.mobile.chronicTreatment')}
           </div>
           <div style={{ padding: '10px 14px', fontSize: 13, lineHeight: 1.6 }}>
             {patient.currentMedications.map((m) => (
@@ -254,7 +256,7 @@ export default function DossierMobilePage() {
         {/* Segmented tab control — horizontally scrollable to fit 5 tabs */}
         <div
           role="tablist"
-          aria-label="Sections"
+          aria-label={tr('dossier.mobile.sections')}
           style={{
             display: 'flex',
             gap: 6,
@@ -280,22 +282,22 @@ export default function DossierMobilePage() {
             (t) => {
               const label =
                 t === 'historique'
-                  ? 'Historique'
+                  ? tr('dossier.mobile.tabHistory')
                   : t === 'consults'
-                  ? `Consult. (${patientConsultations.length})`
+                  ? tr('dossier.mobile.tabConsults', { count: patientConsultations.length })
                   : t === 'vitals'
-                  ? 'Constantes'
+                  ? tr('dossier.mobile.tabVitals')
                   : t === 'rx'
-                  ? `Ordo. (${patientPrescriptions.length})`
+                  ? tr('dossier.mobile.tabRx', { count: patientPrescriptions.length })
                   : t === 'vaccination'
-                  ? 'Vaccination'
+                  ? tr('dossier.mobile.tabVaccination')
                   : t === 'grossesse'
-                  ? 'Grossesse'
+                  ? tr('dossier.mobile.tabGrossesse')
                   : t === 'sejours'
-                  ? 'Séjours'
+                  ? tr('dossier.mobile.tabSejours')
                   : t === 'factu'
-                  ? `Factures (${patientInvoices.length})`
-                  : 'Admin.';
+                  ? tr('dossier.mobile.tabFactu', { count: patientInvoices.length })
+                  : tr('dossier.mobile.tabAdmin');
               const on = tab === t;
               return (
                 <button
@@ -329,7 +331,7 @@ export default function DossierMobilePage() {
         {/* Timeline (visible in historique tab) — wired to patient.timeline. */}
         {tab === 'historique' && patient.timeline.length === 0 && (
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-            Aucun événement enregistré.
+            {tr('dossier.mobile.noEvent')}
           </div>
         )}
         {tab === 'historique' &&
@@ -388,7 +390,7 @@ export default function DossierMobilePage() {
           <>
             {patientConsultations.length === 0 ? (
               <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-                Aucune consultation enregistrée.
+                {tr('dossier.consults.emptyShort')}
               </div>
             ) : (
               <div className="m-card">
@@ -415,7 +417,7 @@ export default function DossierMobilePage() {
                     >
                       <div className="m-row-pri">
                         <div className="m-row-main">
-                          Consultation #{c.id.slice(0, 8).toUpperCase()}
+                          {tr('dossier.consultNumber', { ref: c.id.slice(0, 8).toUpperCase() })}
                         </div>
                         <div className="m-row-sub">
                           {new Date(c.startedAt).toLocaleDateString('fr-MA', {
@@ -432,10 +434,10 @@ export default function DossierMobilePage() {
                       >
                         {isSigned ? (
                           <>
-                            <Lock aria-hidden="true" /> Signée
+                            <Lock aria-hidden="true" /> {tr('dossier.status.signee')}
                           </>
                         ) : (
-                          'Brouillon'
+                          tr('dossier.status.brouillon')
                         )}
                       </span>
                     </button>
@@ -452,7 +454,7 @@ export default function DossierMobilePage() {
           <>
             {patientPrescriptions.length === 0 ? (
               <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-                Aucune ordonnance enregistrée.
+                {tr('dossier.prescr.emptyShort')}
               </div>
             ) : (
               <div className="m-card">
@@ -479,7 +481,7 @@ export default function DossierMobilePage() {
                       <div className="m-row-main">
                         {metaForPrescription(p).label}
                         {p.type !== 'CERT' && p.type !== 'SICK_LEAVE' && (
-                          <> · {p.lines.length} ligne{p.lines.length > 1 ? 's' : ''}</>
+                          <> · {p.lines.length} {p.lines.length > 1 ? tr('dossier.linePlural') : tr('dossier.line')}</>
                         )}
                       </div>
                       <div className="m-row-sub">
@@ -501,7 +503,7 @@ export default function DossierMobilePage() {
           <>
             {patientInvoices.length === 0 ? (
               <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '8px 0' }}>
-                Aucune facture enregistrée.
+                {tr('dossier.factu.emptyShort')}
               </div>
             ) : (
               <div className="m-card">
@@ -562,7 +564,7 @@ export default function DossierMobilePage() {
                               marginTop: 2,
                             }}
                           >
-                            {paid.toFixed(2).replace('.', ',')} payé
+                            {tr('dossier.paid', { amount: paid.toFixed(2).replace('.', ',') })}
                           </div>
                         )}
                       </div>
@@ -597,7 +599,7 @@ export default function DossierMobilePage() {
             style={{ height: 42, marginBottom: 12, width: '100%' }}
             onClick={() => setShowConsent(true)}
           >
-            Générer un consentement
+            {tr('dossier.generateConsent')}
           </button>
           <div className="m-card">
             {/* V044/coverage-fix — mutuelle was previously only editable, never
@@ -612,7 +614,7 @@ export default function DossierMobilePage() {
                 gap: 8,
               }}
             >
-              <span style={{ color: 'var(--ink-3)', flexShrink: 0 }}>Couverture</span>
+              <span style={{ color: 'var(--ink-3)', flexShrink: 0 }}>{tr('dossier.mobile.coverage')}</span>
               <span
                 style={{
                   fontWeight: 550,
@@ -620,7 +622,7 @@ export default function DossierMobilePage() {
                   color: patient.mutuelleInsuranceId ? 'var(--ink)' : 'var(--ink-3)',
                 }}
               >
-                {formatCoverage(patient, insurances)}
+                {formatCoverage(patient, insurances, tr)}
               </span>
             </div>
             {patient.tier === 'PREMIUM' && (
@@ -633,8 +635,8 @@ export default function DossierMobilePage() {
                   fontSize: 13,
                 }}
               >
-                <span style={{ color: 'var(--ink-3)' }}>Type</span>
-                <span style={{ fontWeight: 550 }}>🌟 Premium</span>
+                <span style={{ color: 'var(--ink-3)' }}>{tr('dossier.mobile.type')}</span>
+                <span style={{ fontWeight: 550 }}>{tr('dossier.form.premiumStar')}</span>
               </div>
             )}
             {patient.admin.map((a) => (

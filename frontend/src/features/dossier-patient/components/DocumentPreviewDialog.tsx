@@ -12,8 +12,9 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Button } from '@/components/ui/Button';
 import { Close, File as FileIcon, Print } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
-  DOCUMENT_TYPE_LABEL,
+  documentTypeKey,
   type PatientDocument,
 } from '../hooks/usePatientDocuments';
 
@@ -31,6 +32,7 @@ function isImage(mime: string): boolean {
 }
 
 export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDialogProps) {
+  const { t } = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,7 +63,7 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
           const head = String.fromCharCode(...bytes.slice(0, 5));
           if (head !== '%PDF-') {
             setError(
-              `Le serveur n'a pas renvoyé un PDF (${bytes.byteLength} octets, en-tête « ${head} »).`,
+              t('dossier.preview.notPdf', { bytes: bytes.byteLength, head }),
             );
             return;
           }
@@ -75,15 +77,12 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
         const e = err as { response?: { status?: number } };
         const status = e?.response?.status;
         if (status === 410) {
-          setError(
-            "Fichier physique introuvable. Cette pièce a probablement été uploadée avant un redémarrage qui a vidé le répertoire de stockage. " +
-              'Supprimez la ligne puis réimportez le document.',
-          );
+          setError(t('dossier.preview.fileMissing'));
         } else {
           setError(
             status
-              ? `Impossible de charger le document (HTTP ${status}).`
-              : 'Impossible de charger le document.',
+              ? t('dossier.preview.loadFailedStatus', { status })
+              : t('dossier.preview.loadFailed'),
           );
         }
       })
@@ -100,7 +99,7 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
         setTimeout(() => URL.revokeObjectURL(toRevoke), 60_000);
       }
     };
-  }, [doc]);
+  }, [doc, t]);
 
   function handleDownload() {
     if (!url || !doc) return;
@@ -156,27 +155,27 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}
               >
-                {doc?.originalFilename ?? 'Document'}
+                {doc?.originalFilename ?? t('dossier.preview.document')}
               </Dialog.Title>
               {doc && (
                 <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                  {DOCUMENT_TYPE_LABEL[doc.type]}
+                  {t(documentTypeKey(doc.type))}
                   {doc.notes ? ` · ${doc.notes}` : ''}
                 </div>
               )}
             </div>
             {doc && isPdf(doc.mimeType) && (
               <Button size="sm" type="button" onClick={handlePrint} disabled={!url}>
-                <Print /> Imprimer
+                <Print /> {t('dossier.print')}
               </Button>
             )}
             <Button size="sm" type="button" onClick={handleDownload} disabled={!url}>
-              <FileIcon /> Télécharger
+              <FileIcon /> {t('dossier.docs.download')}
             </Button>
             <Dialog.Close asChild>
               <button
                 type="button"
-                aria-label="Fermer"
+                aria-label={t('common.close')}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--ink-3)', padding: 6, borderRadius: 6, lineHeight: 0,
@@ -196,7 +195,7 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
             }}
           >
             {isLoading && (
-              <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+              <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
             )}
             {error && !isLoading && (
               <div style={{ color: 'var(--danger)', fontSize: 13, padding: 24 }}>
@@ -226,9 +225,9 @@ export function DocumentPreviewDialog({ doc, onOpenChange }: DocumentPreviewDial
             )}
             {!isLoading && !error && url && doc && !isPdf(doc.mimeType) && !isImage(doc.mimeType) && (
               <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-                Aperçu indisponible pour ce format.
+                {t('dossier.preview.noPreview')}
                 <br />
-                Utilisez « Télécharger » pour ouvrir le fichier.
+                {t('dossier.preview.useDownload')}
               </div>
             )}
           </div>

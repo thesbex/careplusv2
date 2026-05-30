@@ -14,6 +14,7 @@
  * renseigné que TA, on récupère quand-même le poids de la visite précédente).
  */
 import { Panel, PanelHeader } from '@/components/ui/Panel';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PatientSummary } from '../types';
 import { usePatientVitalsHistory } from '../hooks/usePatientVitalsHistory';
 import { useInsurances } from '../hooks/useInsurances';
@@ -30,12 +31,15 @@ const SEVERITY_BG: Record<string, { bg: string; color: string; border: string }>
   SEVERE: { bg: '#FFEBEE', color: 'var(--danger)', border: '#EF9A9A' },
 };
 
-const ANTECEDENT_LABELS: Record<string, string> = {
-  MEDICAL: 'Médical',
-  CHIRURGICAL: 'Chirurgical',
-  FAMILIAL: 'Familial',
-  GYNECO_OBSTETRIQUE: 'Gynéco',
-  HABITUS: 'Habitudes',
+// Court mapping clé i18n par type d'antécédent (libellés courts pour la
+// colonne droite). GYNECO/HABITUS ont une variante courte dédiée ; les autres
+// réutilisent le libellé long (identique).
+const ANTECEDENT_SHORT_KEY: Record<string, string> = {
+  MEDICAL: 'dossier.antecedent.MEDICAL',
+  CHIRURGICAL: 'dossier.antecedent.CHIRURGICAL',
+  FAMILIAL: 'dossier.antecedent.FAMILIAL',
+  GYNECO_OBSTETRIQUE: 'dossier.antecedent.short.GYNECO_OBSTETRIQUE',
+  HABITUS: 'dossier.antecedent.short.HABITUS',
 };
 
 /**
@@ -66,7 +70,10 @@ interface SummaryVitalRow {
  * même quand la dernière visite n'a saisi que la TA. Renvoie une liste vide
  * si aucune mesure n'existe pour ce patient.
  */
-function buildLastVitals(history: VitalsApi[]): {
+function buildLastVitals(
+  history: VitalsApi[],
+  t: (key: string, vars?: Record<string, string | number>) => string,
+): {
   rows: SummaryVitalRow[];
   asOf: string | null;
 } {
@@ -104,8 +111,8 @@ function buildLastVitals(history: VitalsApi[]): {
   if (fr != null) rows.push({ vital: 'fr', k: 'FR', v: `${fr} /min` });
   if (temp != null) rows.push({ vital: 'temp', k: 'T°', v: `${temp.toFixed(1).replace('.', ',')} °C` });
   if (spo2 != null) rows.push({ vital: 'spo2', k: 'SpO₂', v: `${spo2}%` });
-  if (weight != null) rows.push({ vital: 'poids', k: 'Poids', v: `${weight.toFixed(1).replace('.', ',')} kg` });
-  if (height != null) rows.push({ vital: 'taille', k: 'Taille', v: `${height} cm` });
+  if (weight != null) rows.push({ vital: 'poids', k: t('dossier.vitals.weight'), v: `${weight.toFixed(1).replace('.', ',')} kg` });
+  if (height != null) rows.push({ vital: 'taille', k: t('dossier.vitals.height'), v: `${height} cm` });
   if (bmi != null) {
     rows.push({
       vital: 'imc',
@@ -115,10 +122,10 @@ function buildLastVitals(history: VitalsApi[]): {
     });
   }
   if (glycemia != null) {
-    rows.push({ vital: 'glycemie', k: 'Glycémie', v: `${glycemia.toFixed(2).replace('.', ',')} g/L` });
+    rows.push({ vital: 'glycemie', k: t('dossier.vitals.glycemia'), v: `${glycemia.toFixed(2).replace('.', ',')} g/L` });
   }
-  if (abdo != null) rows.push({ vital: 'abdo', k: 'Périm. abdo.', v: `${abdo} cm` });
-  if (head != null) rows.push({ vital: 'cranien', k: 'Périm. crânien', v: `${head} cm` });
+  if (abdo != null) rows.push({ vital: 'abdo', k: t('dossier.vitals.abdoPerim'), v: `${abdo} cm` });
+  if (head != null) rows.push({ vital: 'cranien', k: t('dossier.vitals.headPerim'), v: `${head} cm` });
 
   // « as of » = la date du dernier enregistrement (peu importe ses champs non-null).
   const last = desc[0]!;
@@ -127,10 +134,11 @@ function buildLastVitals(history: VitalsApi[]): {
 }
 
 export function SummaryPanel({ patient }: SummaryPanelProps) {
+  const { t } = useT();
   const allergies = patient.allergyDetails ?? [];
   const antecedents = patient.antecedentDetails ?? [];
   const { history, isLoading: vitalsLoading } = usePatientVitalsHistory(patient.id);
-  const { rows: vitalsRows, asOf: vitalsAsOf } = buildLastVitals(history);
+  const { rows: vitalsRows, asOf: vitalsAsOf } = buildLastVitals(history, t);
   const { insurances } = useInsurances();
   const mutuelleName = patient.mutuelleInsuranceId
     ? insurances.find((i) => i.id === patient.mutuelleInsuranceId)?.name ?? null
@@ -147,10 +155,10 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
     >
       {/* Allergies */}
       <Panel style={{ marginBottom: 12 }}>
-        <PanelHeader>Allergies</PanelHeader>
+        <PanelHeader>{t('dossier.summary.allergies')}</PanelHeader>
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {allergies.length === 0 && (
-            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Aucune allergie connue.</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('dossier.summary.noAllergy')}</div>
           )}
           {allergies.map((a) => {
             const sev = SEVERITY_BG[a.severity] ?? SEVERITY_BG.MODEREE!;
@@ -180,10 +188,10 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
                   }}
                 >
                   {a.severity === 'LEGERE'
-                    ? 'Légère'
+                    ? t('dossier.severity.LEGERE')
                     : a.severity === 'SEVERE'
-                    ? 'Sévère'
-                    : 'Modérée'}
+                    ? t('dossier.severity.SEVERE')
+                    : t('dossier.severity.MODEREE')}
                 </span>
               </div>
             );
@@ -193,10 +201,10 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
 
       {/* Antécédents */}
       <Panel style={{ marginBottom: 12 }}>
-        <PanelHeader>Antécédents</PanelHeader>
+        <PanelHeader>{t('dossier.summary.antecedents')}</PanelHeader>
         <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
           {antecedents.length === 0 && (
-            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Aucun antécédent.</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('dossier.summary.noAntecedent')}</div>
           )}
           {antecedents.map((a) => (
             <div
@@ -218,7 +226,7 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
                   marginBottom: 2,
                 }}
               >
-                {ANTECEDENT_LABELS[a.type] ?? a.type}
+                {ANTECEDENT_SHORT_KEY[a.type] ? t(ANTECEDENT_SHORT_KEY[a.type]!) : a.type}
               </div>
               <div style={{ fontSize: 12.5 }}>{a.description}</div>
             </div>
@@ -230,18 +238,18 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
           mutuelle being set, so a patient with no coverage showed nothing at
           all and the user had to open the edit form to confirm. */}
       <Panel style={{ marginBottom: 12 }}>
-        <PanelHeader>Couverture</PanelHeader>
+        <PanelHeader>{t('dossier.summary.coverage')}</PanelHeader>
         <div style={{ padding: '10px 14px', fontSize: 12.5 }}>
           {patient.tier === 'PREMIUM' && (
-            <div style={{ marginBottom: 4 }}>🌟 Patient Premium (remise auto)</div>
+            <div style={{ marginBottom: 4 }}>{t('dossier.summary.premiumNote')}</div>
           )}
           {patient.mutuelleInsuranceId ? (
             <div style={{ color: 'var(--ink-2)' }}>
-              {mutuelleName ?? 'Mutuelle'}
+              {mutuelleName ?? t('dossier.coverageFallback')}
               {patient.mutuellePolicyNumber ? ` · N° ${patient.mutuellePolicyNumber}` : ''}
             </div>
           ) : (
-            <div style={{ color: 'var(--ink-3)' }}>Aucune mutuelle déclarée</div>
+            <div style={{ color: 'var(--ink-3)' }}>{t('dossier.summary.noCoverage')}</div>
           )}
         </div>
       </Panel>
@@ -249,7 +257,7 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
       {/* Constantes card — alimentée par usePatientVitalsHistory (B5 fix). */}
       <Panel style={{ marginBottom: 12 }}>
         <PanelHeader style={{ display: 'flex' }}>
-          <span>Constantes — dernière visite</span>
+          <span>{t('dossier.summary.lastVitals')}</span>
           <span
             style={{
               marginLeft: 'auto',
@@ -263,11 +271,11 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
         </PanelHeader>
         <div style={{ padding: '10px 14px' }}>
           {vitalsLoading && vitalsRows.length === 0 && (
-            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+            <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('common.loading')}</div>
           )}
           {!vitalsLoading && vitalsRows.length === 0 && (
             <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Aucune constante enregistrée.
+              {t('dossier.summary.noVitals')}
             </div>
           )}
           {vitalsRows.map((v) => (
@@ -309,7 +317,7 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
       {/* Traitement card */}
       <Panel style={{ marginBottom: 12 }}>
         <PanelHeader style={{ display: 'flex' }}>
-          <span>Traitement en cours</span>
+          <span>{t('dossier.summary.currentTreatment')}</span>
           <span
             style={{
               marginLeft: 'auto',
@@ -339,7 +347,7 @@ export function SummaryPanel({ patient }: SummaryPanelProps) {
 
       {/* Consentements card */}
       <Panel style={{ marginBottom: 12 }}>
-        <PanelHeader>Consentements &amp; administratif</PanelHeader>
+        <PanelHeader>{t('dossier.summary.consentsAdmin')}</PanelHeader>
         <div style={{ padding: '10px 14px' }}>
           {patient.admin.map((a) => (
             <div

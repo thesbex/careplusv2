@@ -12,6 +12,8 @@
  */
 import type { Dict, Lang } from './index';
 import { parametresMessages } from './messages.parametres';
+import { dossierMessages } from '../../features/dossier-patient/messages.dossier';
+import { consultMessages } from '../../features/consultation/messages.consult';
 
 const fr: Dict = {
   'common.save': 'Enregistrer',
@@ -793,8 +795,8 @@ const es: Dict = {
  * dans les 4 langues — le test de parité garantit qu'aucune langue ne dérive.
  */
 export const MESSAGES: Record<Lang, Dict> = {
-  fr: { ...fr, ...parametresMessages.fr },
-  en: { ...en, ...parametresMessages.en },
-  ar: { ...ar, ...parametresMessages.ar },
-  es: { ...es, ...parametresMessages.es },
+  fr: { ...fr, ...parametresMessages.fr, ...dossierMessages.fr, ...consultMessages.fr },
+  en: { ...en, ...parametresMessages.en, ...dossierMessages.en, ...consultMessages.en },
+  ar: { ...ar, ...parametresMessages.ar, ...dossierMessages.ar, ...consultMessages.ar },
+  es: { ...es, ...parametresMessages.es, ...dossierMessages.es, ...consultMessages.es },
 };

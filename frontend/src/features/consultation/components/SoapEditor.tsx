@@ -13,6 +13,7 @@ import type { ComponentType, SVGProps } from 'react';
 import type { UseFormRegister, FieldErrors } from 'react-hook-form';
 import * as Icons from '@/components/icons';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { ConsultationFormValues } from '../types';
 
 // ── Section block (reusable) ─────────────────────────────────────────────
@@ -121,39 +122,40 @@ interface SoapEditorProps {
 }
 
 export function SoapEditor({ register, errors, disabled, afterAnalyse }: SoapEditorProps) {
+  const { t } = useT();
   return (
     <>
-      <SoapBlock letter="S" title="Subjectif — anamnèse">
+      <SoapBlock letter="S" title={t('consult.soap.s.title')}>
         <SoapTextarea
           id="soap-subjectif"
-          label="Subjectif — anamnèse"
+          label={t('consult.soap.s.title')}
           register={register('subjectif')}
           disabled={disabled}
-          error={errors.subjectif?.message}
-          placeholder="Motif de consultation, plaintes, histoire de la maladie…"
+          error={errors.subjectif?.message ? t(errors.subjectif.message) : undefined}
+          placeholder={t('consult.soap.s.placeholder')}
         />
       </SoapBlock>
 
-      <SoapBlock letter="O" title="Objectif — examen">
+      <SoapBlock letter="O" title={t('consult.soap.o.title')}>
         <SoapTextarea
           id="soap-objectif"
-          label="Objectif — examen"
+          label={t('consult.soap.o.title')}
           register={register('objectif')}
           disabled={disabled}
-          error={errors.objectif?.message}
-          placeholder="Examen clinique, constantes, observations…"
+          error={errors.objectif?.message ? t(errors.objectif.message) : undefined}
+          placeholder={t('consult.soap.o.placeholder')}
         />
       </SoapBlock>
 
-      <SoapBlock letter="A" title="Appréciation — diagnostic">
+      <SoapBlock letter="A" title={t('consult.soap.a.title')}>
         <SoapTextarea
           id="soap-analyse"
-          label="Appréciation — diagnostic"
+          label={t('consult.soap.a.title')}
           register={register('analyse')}
           disabled={disabled}
-          error={errors.analyse?.message}
+          error={errors.analyse?.message ? t(errors.analyse.message) : undefined}
           rows={4}
-          placeholder="Diagnostic principal, diagnostics différentiels…"
+          placeholder={t('consult.soap.a.placeholder')}
         />
         {afterAnalyse && (
           <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
@@ -162,14 +164,14 @@ export function SoapEditor({ register, errors, disabled, afterAnalyse }: SoapEdi
         )}
       </SoapBlock>
 
-      <SoapBlock letter="P" title="Plan — conduite à tenir">
+      <SoapBlock letter="P" title={t('consult.soap.p.title')}>
         <SoapTextarea
           id="soap-plan"
-          label="Plan — conduite à tenir"
+          label={t('consult.soap.p.title')}
           register={register('plan')}
           disabled={disabled}
-          error={errors.plan?.message}
-          placeholder="Prescriptions, examens complémentaires, RDV de suivi…"
+          error={errors.plan?.message ? t(errors.plan.message) : undefined}
+          placeholder={t('consult.soap.p.placeholder')}
         />
       </SoapBlock>
     </>
@@ -236,6 +238,7 @@ interface DocRowProps {
 }
 
 export function DocRow({ title, meta, onClick, onDelete }: DocRowProps) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -253,7 +256,7 @@ export function DocRow({ title, meta, onClick, onDelete }: DocRowProps) {
         <div style={{ fontSize: 12.5, fontWeight: 550 }}>{title}</div>
         <div style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>{meta}</div>
       </div>
-      <Button variant="ghost" size="sm" iconOnly aria-label="Aperçu" onClick={onClick}>
+      <Button variant="ghost" size="sm" iconOnly aria-label={t('consult.docs.preview')} onClick={onClick}>
         <Icons.Eye />
       </Button>
       {onDelete && (
@@ -261,7 +264,7 @@ export function DocRow({ title, meta, onClick, onDelete }: DocRowProps) {
           variant="ghost"
           size="sm"
           iconOnly
-          aria-label="Supprimer l'ordonnance"
+          aria-label={t('consult.docs.deleteRx')}
           onClick={onDelete}
         >
           <Icons.Trash />
