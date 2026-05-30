@@ -25,6 +25,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useDashboardClinical } from './hooks/useDashboardClinical';
 import { useDashboardAgenda } from './hooks/useDashboardAgenda';
 import { useDashboardFinancial } from './hooks/useDashboardFinancial';
@@ -157,7 +158,8 @@ function Card({
 }
 
 function AreaTrend({ points }: { points: ActivityPoint[] }) {
-  if (points.length === 0) return <div className="dx-empty">Aucune activité.</div>;
+  const { t } = useT();
+  if (points.length === 0) return <div className="dx-empty">{t('dash.empty.activity')}</div>;
   return (
     <div className="dx-chart" style={{ height: 96 }}>
       <ResponsiveContainer width="100%" height="100%">
@@ -189,7 +191,8 @@ function AreaTrend({ points }: { points: ActivityPoint[] }) {
 }
 
 function HourlyChart({ points }: { points: HourlyLoadPoint[] }) {
-  if (points.length === 0) return <div className="dx-empty">Aucun rendez-vous prévu.</div>;
+  const { t } = useT();
+  if (points.length === 0) return <div className="dx-empty">{t('dash.empty.rdv')}</div>;
   const max = Math.max(...points.map((p) => p.count));
   const data = points.map((p) => ({ ...p, h: hourLabel(p.slotStart) }));
   return (
@@ -220,7 +223,8 @@ function HourlyChart({ points }: { points: HourlyLoadPoint[] }) {
 }
 
 function MonthlyChart({ points }: { points: MonthlyRevenuePoint[] }) {
-  if (points.length === 0) return <div className="dx-empty">Aucune donnée sur 12 mois.</div>;
+  const { t } = useT();
+  if (points.length === 0) return <div className="dx-empty">{t('dash.empty.data12')}</div>;
   const data = points.map((p, i) => ({ ...p, m: monthLabel(p.month), recent: i >= points.length - 3 }));
   return (
     <div className="dx-chart" style={{ height: 150 }}>
@@ -254,7 +258,8 @@ function RankedList({
 }: {
   rows: { label: string; value: string; pct?: string | undefined }[];
 }) {
-  if (rows.length === 0) return <div className="dx-empty">Aucune donnée.</div>;
+  const { t } = useT();
+  if (rows.length === 0) return <div className="dx-empty">{t('dash.empty.data')}</div>;
   return (
     <ol className="dx-rank">
       {rows.map((r, i) => (
@@ -273,6 +278,7 @@ function RankedList({
 
 export default function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const user = useAuthStore((s) => s.user);
   const showFinancial = !!user && FINANCIAL_ROLES.some((r) => user.roles.includes(r));
 
@@ -304,7 +310,7 @@ export default function DashboardPage() {
   return (
     <Screen
       active="dashboard"
-      title="Tableau de bord"
+      title={t('dash.title')}
       sub={todayLabel}
       onNavigate={(id) => {
         const path = NAV_MAP[id as keyof typeof NAV_MAP];
@@ -312,48 +318,48 @@ export default function DashboardPage() {
       }}
       topbarRight={
         <Button className="cp-ds2-primary" onClick={() => navigate('/agenda')}>
-          <Plus /> Nouveau RDV
+          <Plus /> {t('dash.newRdv')}
         </Button>
       }
     >
       <div className="dx dash-root">
         {/* ── AUJOURD'HUI ─────────────────────────────────────────────── */}
         <section data-testid="dash-section-today">
-          <h2 className="dx-section-h">Aujourd'hui</h2>
+          <h2 className="dx-section-h">{t('dash.today')}</h2>
           <div className="dx-grid" style={{ ['--cols' as string]: showFinancial ? 4 : 3 }}>
             <KpiCard
               testId="kpi-patients-actifs"
               dot="blue"
               accent
-              label="Patients actifs"
+              label={t('dash.kpi.activePatients')}
               value={formatNumber(clinical.data?.patientsActifsTotal)}
-              delta={clinical.data ? `${formatNumber(clinical.data.patientsActifs30j)} actifs sur 30 j` : undefined}
+              delta={clinical.data ? t('dash.kpi.activePatientsDelta', { n: formatNumber(clinical.data.patientsActifs30j) }) : undefined}
               loading={clinical.isLoading && clinical.isEnabled}
             />
             <KpiCard
               testId="kpi-consultations-jour"
               dot="indigo"
-              label="Consultations du jour"
+              label={t('dash.kpi.consultDay')}
               value={formatNumber(clinical.data?.consultationsAujourdhui)}
-              delta={clinical.data ? `${formatNumber(clinical.data.consultationsSemaine)} cette semaine` : undefined}
+              delta={clinical.data ? t('dash.kpi.consultWeekDelta', { n: formatNumber(clinical.data.consultationsSemaine) }) : undefined}
               loading={clinical.isLoading && clinical.isEnabled}
             />
             <KpiCard
               testId="kpi-rdv-jour"
               dot="amber"
-              label="RDV du jour"
+              label={t('dash.kpi.rdvDay')}
               value={formatNumber(agenda.data?.rdvAujourdhui)}
-              delta={agenda.data ? `Remplissage ${formatPct(agenda.data.tauxRemplissageJour)} %` : undefined}
+              delta={agenda.data ? t('dash.kpi.fillRate', { n: formatPct(agenda.data.tauxRemplissageJour) }) : undefined}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             {showFinancial && (
               <KpiCard
                 testId="kpi-ca-jour"
                 dot="green"
-                label="CA du jour"
+                label={t('dash.kpi.caDay')}
                 value={formatMoney(financial.data?.caJour)}
                 unit="MAD"
-                delta={financial.data ? `${formatMoney(financial.data.caMois)} MAD ce mois` : undefined}
+                delta={financial.data ? t('dash.kpi.caMonthDelta', { n: formatMoney(financial.data.caMois) }) : undefined}
                 deltaTone="pos"
                 loading={financial.isLoading && financial.isEnabled}
               />
@@ -365,10 +371,10 @@ export default function DashboardPage() {
         <div className={`dx-main${showFinancial ? '' : ' is-solo'}`}>
           {/* LEFT — Activité */}
           <section data-testid="dash-section-activity" className="dx-col">
-            <h2 className="dx-section-h">Activité</h2>
+            <h2 className="dx-section-h">{t('dash.activity')}</h2>
             <Card
-              title="Consultations · 30 derniers jours"
-              sub="Tendance hebdomadaire"
+              title={t('dash.card.consult30')}
+              sub={t('dash.card.weeklyTrend')}
               right={
                 <div className="dx-card-big">
                   <span className="dx-card-bignum">{clinical.data ? formatNumber(total30) : '—'}</span>
@@ -380,14 +386,14 @@ export default function DashboardPage() {
                 </div>
               }
             >
-              {clinical.data ? <AreaTrend points={act} /> : <div className="dx-empty">{clinical.isLoading ? 'Chargement…' : '—'}</div>}
+              {clinical.data ? <AreaTrend points={act} /> : <div className="dx-empty">{clinical.isLoading ? t('common.loading') : '—'}</div>}
             </Card>
 
-            <Card title="Charge horaire — aujourd'hui" sub="Patients par tranche d'heure">
-              {agenda.data ? <HourlyChart points={agenda.data.chargeHoraire} /> : <div className="dx-empty">{agenda.isLoading ? 'Chargement…' : '—'}</div>}
+            <Card title={t('dash.card.hourlyLoad')} sub={t('dash.card.hourlyLoadSub')}>
+              {agenda.data ? <HourlyChart points={agenda.data.chargeHoraire} /> : <div className="dx-empty">{agenda.isLoading ? t('common.loading') : '—'}</div>}
             </Card>
 
-            <Card title="Top pathologies · 30 jours" sub="Diagnostics les plus fréquents">
+            <Card title={t('dash.card.topPatho')} sub={t('dash.card.topPathoSub')}>
               {clinical.data ? (
                 <RankedList
                   rows={topPathologies.slice(0, 5).map((p) => ({
@@ -397,7 +403,7 @@ export default function DashboardPage() {
                   }))}
                 />
               ) : (
-                <div className="dx-empty">{clinical.isLoading ? 'Chargement…' : '—'}</div>
+                <div className="dx-empty">{clinical.isLoading ? t('common.loading') : '—'}</div>
               )}
             </Card>
           </section>
@@ -405,22 +411,22 @@ export default function DashboardPage() {
           {/* RIGHT — Performance financière */}
           {showFinancial && (
             <section data-testid="dash-section-financial" className="dx-col">
-              <h2 className="dx-section-h">Performance financière</h2>
+              <h2 className="dx-section-h">{t('dash.financial')}</h2>
               <div className="dx-grid" style={{ ['--cols' as string]: 2 }}>
                 <KpiCard
                   testId="kpi-ca-mois"
                   dot="green"
-                  label="CA du mois"
+                  label={t('dash.kpi.caMonth')}
                   value={formatMoney(financial.data?.caMois)}
                   unit="MAD"
-                  delta={caDeltaPct != null ? `${caDeltaPct >= 0 ? '+' : ''}${caDeltaPct}% vs n-1` : undefined}
+                  delta={caDeltaPct != null ? t('dash.kpi.caN1Delta', { sign: caDeltaPct >= 0 ? '+' : '', n: caDeltaPct }) : undefined}
                   deltaTone={caDeltaPct != null && caDeltaPct < 0 ? 'neg' : 'pos'}
                   loading={financial.isLoading && financial.isEnabled}
                 />
                 <KpiCard
                   testId="kpi-ca-ytd"
                   dot="indigo"
-                  label="CA YTD"
+                  label={t('dash.kpi.caYtd')}
                   value={formatMoney(financial.data?.caYTD)}
                   unit="MAD"
                   loading={financial.isLoading && financial.isEnabled}
@@ -428,29 +434,29 @@ export default function DashboardPage() {
                 <KpiCard
                   testId="kpi-impayes"
                   dot="amber"
-                  label="Impayés"
+                  label={t('dash.kpi.unpaid')}
                   value={formatMoney(financial.data?.impayesTotal)}
                   unit="MAD"
-                  delta={financial.data ? `${formatNumber(financial.data.impayesCount)} facture${(financial.data.impayesCount ?? 0) > 1 ? 's' : ''} en attente` : undefined}
+                  delta={financial.data ? t('dash.kpi.unpaidDelta', { n: formatNumber(financial.data.impayesCount) }) : undefined}
                   deltaTone="warn"
                   loading={financial.isLoading && financial.isEnabled}
                 />
                 <KpiCard
                   testId="kpi-encaissement"
                   dot="green"
-                  label="Taux encaissement"
+                  label={t('dash.kpi.collectRate')}
                   value={formatPct(financial.data?.tauxEncaissement)}
                   unit="%"
-                  delta="Moyenne 90 jours"
+                  delta={t('dash.kpi.collectRateDelta')}
                   loading={financial.isLoading && financial.isEnabled}
                 />
               </div>
 
-              <Card title="CA — 12 derniers mois" sub="En milliers de MAD">
-                {financial.data ? <MonthlyChart points={financial.data.ca12Mois} /> : <div className="dx-empty">{financial.isLoading ? 'Chargement…' : '—'}</div>}
+              <Card title={t('dash.card.ca12')} sub={t('dash.card.ca12Sub')}>
+                {financial.data ? <MonthlyChart points={financial.data.ca12Mois} /> : <div className="dx-empty">{financial.isLoading ? t('common.loading') : '—'}</div>}
               </Card>
 
-              <Card title="CA par acte · top 6" sub="Mois en cours">
+              <Card title={t('dash.card.caByActe')} sub={t('dash.card.caByActeSub')}>
                 {financial.data ? (
                   <RankedList
                     rows={caParActe.slice(0, 6).map((a) => ({
@@ -460,7 +466,7 @@ export default function DashboardPage() {
                     }))}
                   />
                 ) : (
-                  <div className="dx-empty">{financial.isLoading ? 'Chargement…' : '—'}</div>
+                  <div className="dx-empty">{financial.isLoading ? t('common.loading') : '—'}</div>
                 )}
               </Card>
             </section>
@@ -469,34 +475,34 @@ export default function DashboardPage() {
 
         {/* ── AGENDA — semaine (bandeau secondaire) ────────────────────── */}
         <section data-testid="dash-section-agenda">
-          <h2 className="dx-section-h">Agenda — semaine</h2>
+          <h2 className="dx-section-h">{t('dash.agendaWeek')}</h2>
           <div className="dx-grid" style={{ ['--cols' as string]: 4 }}>
             <KpiCard
               testId="kpi-rdv-semaine"
               dot="blue"
-              label="RDV semaine"
+              label={t('dash.kpi.rdvWeek')}
               value={formatNumber(agenda.data?.rdvSemaine)}
-              delta={agenda.data ? `Remplissage ${formatPct(agenda.data.tauxRemplissageSemaine)} %` : undefined}
+              delta={agenda.data ? t('dash.kpi.fillRate', { n: formatPct(agenda.data.tauxRemplissageSemaine) }) : undefined}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-no-shows"
               dot="amber"
-              label="No-shows"
+              label={t('dash.kpi.noShows')}
               value={formatNumber(agenda.data?.noShowsSemaine)}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-annulations"
               dot="amber"
-              label="Annulations"
+              label={t('dash.kpi.cancellations')}
               value={formatNumber(agenda.data?.annulationsSemaine)}
               loading={agenda.isLoading && agenda.isEnabled}
             />
             <KpiCard
               testId="kpi-nouveaux-patients"
               dot="green"
-              label="Nouveaux patients (mois)"
+              label={t('dash.kpi.newPatients')}
               value={formatNumber(agenda.data?.nouveauxPatientsMois)}
               loading={agenda.isLoading && agenda.isEnabled}
             />
