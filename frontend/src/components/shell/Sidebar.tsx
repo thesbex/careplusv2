@@ -18,6 +18,7 @@ import {
   Chat,
   Activity,
   Sparkles,
+  Search as SearchIcon,
 } from '@/components/icons';
 import { BrandMark, BrandWordmark } from '@/components/ui/BrandMark';
 import { Avatar } from '@/components/ui/Avatar';
@@ -113,6 +114,11 @@ export interface SidebarProps {
   onNavigate?: (id: NavScreen) => void;
 }
 
+/** Normalise pour la recherche de menus : minuscules + accents retirés (#123). */
+function normalizeText(s: string): string {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 const ROLE_LABELS: Record<string, string> = {
   MEDECIN: 'Médecin',
   ADMIN: 'Administrateur',
@@ -194,6 +200,16 @@ export function Sidebar({
   });
   const flux = visible.filter((i) => i.section === 'flux');
   const config = visible.filter((i) => i.section === 'config');
+
+  // #123 — zone de recherche des menus pour un accès rapide. Filtre les items
+  // visibles (insensible casse/accents) ; navigue sur clic ou Entrée. Quand une
+  // recherche est active on rend une liste plate « Résultats » à la place des
+  // deux sections, pour aller droit au but.
+  const [menuQuery, setMenuQuery] = useState('');
+  const normalizedQuery = normalizeText(menuQuery.trim());
+  const menuMatches = normalizedQuery
+    ? visible.filter((i) => normalizeText(i.label).includes(normalizedQuery))
+    : [];
   const resolvedUser =
     user ??
     (sessionUser
@@ -222,6 +238,44 @@ export function Sidebar({
         <div className="cp-brand-cab">{resolvedCabinet.city}</div>
       </div>
 
+      {/* #123 — recherche rapide des menus / fonctionnalités. */}
+      <div className="cp-nav-search">
+        <span className="cp-nav-search-ico" aria-hidden="true"><SearchIcon /></span>
+        <input
+          type="search"
+          className="cp-nav-search-input"
+          value={menuQuery}
+          onChange={(e) => setMenuQuery(e.target.value)}
+          placeholder="Rechercher un menu…"
+          aria-label="Rechercher un menu ou une fonctionnalité"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && menuMatches[0]) {
+              onNavigate?.(menuMatches[0].id);
+              setMenuQuery('');
+            } else if (e.key === 'Escape') {
+              setMenuQuery('');
+            }
+          }}
+        />
+      </div>
+
+      {normalizedQuery ? (
+        <>
+          <div className="cp-nav-section">Résultats</div>
+          {menuMatches.length === 0 && (
+            <div className="cp-nav-empty">Aucun menu correspondant.</div>
+          )}
+          {menuMatches.map((it) => (
+            <NavButton
+              key={it.id}
+              item={it}
+              active={active === it.id}
+              onClick={() => { onNavigate?.(it.id); setMenuQuery(''); }}
+            />
+          ))}
+        </>
+      ) : (
+      <>
       <div className="cp-nav-section">Flux patient</div>
       {flux.map((it) => (
         <NavButton
@@ -256,6 +310,8 @@ export function Sidebar({
           onClick={() => onNavigate?.(it.id)}
         />
       ))}
+      </>
+      )}
 
       <UserChip user={resolvedUser} />
     </nav>

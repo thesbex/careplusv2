@@ -109,4 +109,40 @@ describe('<Sidebar />', () => {
     const { container } = render(withProviders(<Sidebar />));
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  // #123 — zone de recherche des menus pour un accès rapide.
+  describe('menu search (#123)', () => {
+    it('filters nav items by query, case + accent insensitive', async () => {
+      const user = userEvent.setup();
+      render(withProviders(<Sidebar />));
+      const box = screen.getByLabelText('Rechercher un menu ou une fonctionnalité');
+
+      await user.type(box, 'FACT');
+      // Seule « Facturation » reste, et la liste passe en mode « Résultats ».
+      expect(screen.getByText('Résultats')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Facturation/ })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Agenda/ })).toBeNull();
+      // Les en-têtes de sections normales disparaissent pendant la recherche.
+      expect(screen.queryByText('Flux patient')).toBeNull();
+    });
+
+    it('shows an empty state when nothing matches', async () => {
+      const user = userEvent.setup();
+      render(withProviders(<Sidebar />));
+      await user.type(
+        screen.getByLabelText('Rechercher un menu ou une fonctionnalité'),
+        'zzzzz',
+      );
+      expect(screen.getByText('Aucun menu correspondant.')).toBeInTheDocument();
+    });
+
+    it('navigates to the first match on Enter', async () => {
+      const onNavigate = vi.fn();
+      const user = userEvent.setup();
+      render(withProviders(<Sidebar onNavigate={onNavigate} />));
+      const box = screen.getByLabelText('Rechercher un menu ou une fonctionnalité');
+      await user.type(box, 'consult{Enter}');
+      expect(onNavigate).toHaveBeenCalledWith('consult');
+    });
+  });
 });
