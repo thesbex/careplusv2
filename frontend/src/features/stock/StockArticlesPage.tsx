@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Plus, Edit, Eye, ChevronLeft, ChevronRight } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useStockArticles } from './hooks/useStockArticles';
 import { useStockSuppliers } from './hooks/useStockSuppliers';
 import { StockArticleFormDrawer } from './components/StockArticleFormDrawer';
@@ -39,6 +40,7 @@ const CATEGORIES: StockArticleCategory[] = [
 ];
 
 function ExpiryPill({ expiresOn }: { expiresOn: string | null }) {
+  const { t } = useT();
   if (!expiresOn) return null;
   const today = new Date();
   const exp = new Date(expiresOn + 'T00:00:00');
@@ -61,12 +63,13 @@ function ExpiryPill({ expiresOn }: { expiresOn: string | null }) {
         whiteSpace: 'nowrap',
       }}
     >
-      Périme dans {diffDays}j
+      {t('stock.expiryPill', { n: diffDays })}
     </span>
   );
 }
 
 function CategoryPill({ category }: { category: StockArticleCategory }) {
+  const { t } = useT();
   const colors: Record<StockArticleCategory, { bg: string; color: string }> = {
     MEDICAMENT_INTERNE: { bg: 'var(--primary-soft)', color: 'var(--primary)' },
     DOSSIER_PHYSIQUE: { bg: 'var(--surface-2)', color: 'var(--ink-2)' },
@@ -84,7 +87,7 @@ function CategoryPill({ category }: { category: StockArticleCategory }) {
         color,
       }}
     >
-      {CATEGORY_LABEL[category]}
+      {t(CATEGORY_LABEL[category])}
     </span>
   );
 }
@@ -113,6 +116,7 @@ function SkeletonRows({ cols }: { cols: number }) {
 }
 
 export default function StockArticlesPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
@@ -191,8 +195,8 @@ export default function StockArticlesPage() {
   return (
     <Screen
       active="stock"
-      title="Stock interne"
-      sub={`${totalElements} article${totalElements !== 1 ? 's' : ''}`}
+      title={t('stock.title')}
+      sub={t('stock.count', { n: totalElements, s: totalElements !== 1 ? 's' : '' })}
       onNavigate={(id) => {
         const path = NAV_MAP[id as keyof typeof NAV_MAP];
         if (path) navigate(path);
@@ -201,7 +205,7 @@ export default function StockArticlesPage() {
         canEdit ? (
           <Button variant="primary" size="sm" onClick={openCreate}>
             <Plus />
-            Ajouter article
+            {t('stock.addArticle')}
           </Button>
         ) : undefined
       }
@@ -226,7 +230,7 @@ export default function StockArticlesPage() {
                 cursor: 'pointer',
               }}
             >
-              Tous
+              {t('stock.filter.all')}
             </button>
             {CATEGORIES.map((cat) => (
               <button
@@ -245,7 +249,7 @@ export default function StockArticlesPage() {
                   cursor: 'pointer',
                 }}
               >
-                {CATEGORY_LABEL[cat]}
+                {t(CATEGORY_LABEL[cat])}
               </button>
             ))}
           </div>
@@ -254,7 +258,7 @@ export default function StockArticlesPage() {
           <select
             value={supplierIdParam}
             onChange={(e) => setFilter('supplierId', e.target.value)}
-            aria-label="Filtrer par fournisseur"
+            aria-label={t('stock.filter.bySupplierAria')}
             style={{
               height: 32,
               border: '1px solid var(--border)',
@@ -266,7 +270,7 @@ export default function StockArticlesPage() {
               color: 'var(--ink)',
             }}
           >
-            <option value="">Tous fournisseurs</option>
+            <option value="">{t('stock.filter.allSuppliers')}</option>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
@@ -281,7 +285,7 @@ export default function StockArticlesPage() {
               checked={belowThresholdParam}
               onChange={(e) => setFilter('belowThreshold', e.target.checked ? 'true' : '')}
             />
-            Seuil dépassé uniquement
+            {t('stock.filter.belowThreshold')}
           </label>
 
           {/* Search */}
@@ -289,8 +293,8 @@ export default function StockArticlesPage() {
             type="search"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="Rechercher code / libellé…"
-            aria-label="Recherche article"
+            placeholder={t('stock.filter.searchPlaceholder')}
+            aria-label={t('stock.filter.searchAria')}
             style={{
               height: 32,
               border: '1px solid var(--border)',
@@ -328,11 +332,19 @@ export default function StockArticlesPage() {
             <table
               style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
               role="table"
-              aria-label="Articles en stock"
+              aria-label={t('stock.tableAria')}
             >
               <thead>
                 <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                  {['Code', 'Libellé', 'Catégorie', 'Quantité', 'Seuil', 'Unité', 'Fournisseur'].map(
+                  {[
+                    t('stock.col.code'),
+                    t('stock.col.label'),
+                    t('stock.col.category'),
+                    t('stock.col.quantity'),
+                    t('stock.col.threshold'),
+                    t('stock.col.unit'),
+                    t('stock.col.supplier'),
+                  ].map(
                     (h) => (
                       <th
                         key={h}
@@ -361,7 +373,7 @@ export default function StockArticlesPage() {
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{t('stock.actions')}</span>
                   </th>
                 </tr>
               </thead>
@@ -378,7 +390,7 @@ export default function StockArticlesPage() {
                         fontSize: 13,
                       }}
                     >
-                      Aucun article trouvé
+                      {t('stock.empty')}
                     </td>
                   </tr>
                 )}
@@ -420,17 +432,17 @@ export default function StockArticlesPage() {
                             size="sm"
                             variant="ghost"
                             onClick={() => navigate(`/stock/articles/${a.id}`)}
-                            aria-label={`Voir ${a.label}`}
+                            aria-label={t('stock.viewAria', { label: a.label })}
                           >
                             <Eye />
-                            Voir
+                            {t('stock.view')}
                           </Button>
                           {canEdit && (
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => openEdit(a)}
-                              aria-label={`Modifier ${a.label}`}
+                              aria-label={t('stock.editAria', { label: a.label })}
                             >
                               <Edit />
                             </Button>
@@ -452,22 +464,22 @@ export default function StockArticlesPage() {
               variant="ghost"
               disabled={currentPage === 0}
               onClick={() => setPage(currentPage - 1)}
-              aria-label="Page précédente"
+              aria-label={t('stock.prevAria')}
             >
               <ChevronLeft />
-              Précédent
+              {t('stock.prev')}
             </Button>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Page {currentPage + 1} / {totalPages}
+              {t('stock.pageOf', { current: currentPage + 1, total: totalPages })}
             </span>
             <Button
               size="sm"
               variant="ghost"
               disabled={currentPage >= totalPages - 1}
               onClick={() => setPage(currentPage + 1)}
-              aria-label="Page suivante"
+              aria-label={t('stock.nextAria')}
             >
-              Suivant
+              {t('stock.next')}
               <ChevronRight />
             </Button>
           </div>

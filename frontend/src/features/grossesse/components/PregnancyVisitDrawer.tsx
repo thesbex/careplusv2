@@ -17,9 +17,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { RecordVisitSchema, type RecordVisitValues } from '../schemas';
 import { useRecordVisit } from '../hooks/useRecordVisit';
-import { PRESENTATION_LABEL, type Presentation, type Pregnancy } from '../types';
+import { PRESENTATION_LABEL_KEY, type Presentation, type Pregnancy } from '../types';
 
 interface PregnancyVisitDrawerProps {
   pregnancy: Pregnancy;
@@ -52,6 +53,7 @@ export function PregnancyVisitDrawer({
   open,
   onOpenChange,
 }: PregnancyVisitDrawerProps) {
+  const { t } = useT();
   const sa = pregnancy.saWeeks ?? 0;
 
   const showBcf = sa >= 12;
@@ -94,11 +96,11 @@ export function PregnancyVisitDrawer({
         ...(values.presentation ? { presentation: values.presentation } : {}),
         ...(values.notes ? { notes: values.notes } : {}),
       });
-      toast.success('Visite enregistrée.');
+      toast.success(t('gross.visit.success'));
       form.reset();
       onOpenChange(false);
     } catch {
-      toast.error('Impossible d\'enregistrer la visite.');
+      toast.error(t('gross.visit.error'));
     }
   }
 
@@ -112,13 +114,13 @@ export function PregnancyVisitDrawer({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="gr-overlay" />
-        <Dialog.Content className="gr-drawer" aria-label="Saisir une visite">
+        <Dialog.Content className="gr-drawer" aria-label={t('gross.action.recordVisitMobile')}>
           <div className="gr-drawer-header">
             <Dialog.Title className="gr-drawer-title">
-              Saisir une visite — SA {sa} sem
+              {t('gross.visit.title', { sa })}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -133,7 +135,7 @@ export function PregnancyVisitDrawer({
           >
             <div className="gr-field">
               <label htmlFor="grv-recordedAt" className="gr-label">
-                Date et heure *
+                {t('gross.visit.dateTimeLabel')}
               </label>
               <Input
                 id="grv-recordedAt"
@@ -142,7 +144,7 @@ export function PregnancyVisitDrawer({
               />
               {form.formState.errors.recordedAt && (
                 <div className="gr-error">
-                  {form.formState.errors.recordedAt.message}
+                  {t(form.formState.errors.recordedAt.message ?? '')}
                 </div>
               )}
             </div>
@@ -150,7 +152,7 @@ export function PregnancyVisitDrawer({
             <div className="gr-grid-2">
               <div className="gr-field">
                 <label htmlFor="grv-weightKg" className="gr-label">
-                  Poids (kg)
+                  {t('gross.visit.weightLabel')}
                 </label>
                 <Input
                   id="grv-weightKg"
@@ -163,7 +165,7 @@ export function PregnancyVisitDrawer({
                 />
                 {form.formState.errors.weightKg && (
                   <div className="gr-error">
-                    {form.formState.errors.weightKg.message}
+                    {t(form.formState.errors.weightKg.message ?? '')}
                   </div>
                 )}
               </div>
@@ -171,52 +173,55 @@ export function PregnancyVisitDrawer({
             </div>
 
             <div className="gr-field">
-              <span className="gr-label">Tension artérielle (mmHg)</span>
+              <span className="gr-label">{t('gross.visit.taLabel')}</span>
               <div className="gr-grid-2">
                 <Input
                   type="number"
                   min={60}
                   max={220}
-                  placeholder="Syst. (60-220)"
-                  aria-label="TA systolique"
+                  placeholder={t('gross.visit.taSysPlaceholder')}
+                  aria-label={t('gross.visit.taSysAria')}
                   {...form.register('bpSystolic', { valueAsNumber: true })}
                 />
                 <Input
                   type="number"
                   min={30}
                   max={140}
-                  placeholder="Diast. (30-140)"
-                  aria-label="TA diastolique"
+                  placeholder={t('gross.visit.taDiaPlaceholder')}
+                  aria-label={t('gross.visit.taDiaAria')}
                   {...form.register('bpDiastolic', { valueAsNumber: true })}
                 />
               </div>
               {(form.formState.errors.bpSystolic ?? form.formState.errors.bpDiastolic) && (
                 <div className="gr-error">
-                  {form.formState.errors.bpSystolic?.message ??
-                    form.formState.errors.bpDiastolic?.message}
+                  {t(
+                    form.formState.errors.bpSystolic?.message ??
+                      form.formState.errors.bpDiastolic?.message ??
+                      '',
+                  )}
                 </div>
               )}
             </div>
 
             <fieldset className="gr-field" style={{ border: 'none', padding: 0, margin: 0 }}>
-              <legend className="gr-label">Bandelette urinaire</legend>
+              <legend className="gr-label">{t('gross.visit.urineDip')}</legend>
               <div className="gr-checkbox-row" data-testid="urine-dip-row">
                 {(
                   [
-                    ['glucose', 'Glucose'],
-                    ['protein', 'Protéines'],
-                    ['leuco', 'Leucocytes'],
-                    ['nitrites', 'Nitrites'],
-                    ['ketones', 'Cétones'],
-                    ['blood', 'Sang'],
+                    ['glucose', 'gross.visit.urine.glucose'],
+                    ['protein', 'gross.visit.urine.protein'],
+                    ['leuco', 'gross.visit.urine.leuco'],
+                    ['nitrites', 'gross.visit.urine.nitrites'],
+                    ['ketones', 'gross.visit.urine.ketones'],
+                    ['blood', 'gross.visit.urine.blood'],
                   ] as const
-                ).map(([key, label]) => (
+                ).map(([key, labelKey]) => (
                   <label key={key}>
                     <input
                       type="checkbox"
                       {...form.register(`urineDip.${key}` as const)}
                     />
-                    {label}
+                    {t(labelKey)}
                   </label>
                 ))}
               </div>
@@ -225,7 +230,7 @@ export function PregnancyVisitDrawer({
             {showBcf && (
               <div className="gr-field">
                 <label htmlFor="grv-bcf" className="gr-label">
-                  BCF — Bruits du cœur fœtal (bpm)
+                  {t('gross.visit.bcfLabel')}
                 </label>
                 <Input
                   id="grv-bcf"
@@ -235,10 +240,10 @@ export function PregnancyVisitDrawer({
                   placeholder="140"
                   {...form.register('fetalHeartRateBpm', { valueAsNumber: true })}
                 />
-                <span className="gr-help">Plage normale : 110-160 bpm.</span>
+                <span className="gr-help">{t('gross.visit.bcfHelp')}</span>
                 {form.formState.errors.fetalHeartRateBpm && (
                   <div className="gr-error">
-                    {form.formState.errors.fetalHeartRateBpm.message}
+                    {t(form.formState.errors.fetalHeartRateBpm.message ?? '')}
                   </div>
                 )}
               </div>
@@ -247,7 +252,7 @@ export function PregnancyVisitDrawer({
             {showHu && (
               <div className="gr-field">
                 <label htmlFor="grv-hu" className="gr-label">
-                  HU — Hauteur utérine (cm)
+                  {t('gross.visit.huLabel')}
                 </label>
                 <Input
                   id="grv-hu"
@@ -255,12 +260,12 @@ export function PregnancyVisitDrawer({
                   step="0.1"
                   min={5}
                   max={50}
-                  placeholder={`~ ${Math.max(0, sa - 4)} cm attendu`}
+                  placeholder={t('gross.visit.huPlaceholder', { n: Math.max(0, sa - 4) })}
                   {...form.register('fundalHeightCm', { valueAsNumber: true })}
                 />
                 {form.formState.errors.fundalHeightCm && (
                   <div className="gr-error">
-                    {form.formState.errors.fundalHeightCm.message}
+                    {t(form.formState.errors.fundalHeightCm.message ?? '')}
                   </div>
                 )}
               </div>
@@ -268,14 +273,14 @@ export function PregnancyVisitDrawer({
 
             {showMaf && (
               <div className="gr-field">
-                <span className="gr-label">MAF — Mouvements actifs fœtaux</span>
+                <span className="gr-label">{t('gross.visit.mafLabel')}</span>
                 <div className="gr-checkbox-row">
                   <label>
                     <input
                       type="checkbox"
                       {...form.register('fetalMovementsPerceived')}
                     />
-                    Perçus par la patiente
+                    {t('gross.visit.mafPerceived')}
                   </label>
                 </div>
               </div>
@@ -284,13 +289,13 @@ export function PregnancyVisitDrawer({
             {showPresentation && (
               <div className="gr-field">
                 <label htmlFor="grv-presentation" className="gr-label">
-                  Présentation
+                  {t('gross.visit.presentationLabel')}
                 </label>
                 <Select id="grv-presentation" {...form.register('presentation')}>
                   <option value="">—</option>
                   {PRESENTATIONS.map((p) => (
                     <option key={p} value={p}>
-                      {PRESENTATION_LABEL[p]}
+                      {t(PRESENTATION_LABEL_KEY[p])}
                     </option>
                   ))}
                 </Select>
@@ -299,7 +304,7 @@ export function PregnancyVisitDrawer({
 
             <div className="gr-field">
               <label htmlFor="grv-notes" className="gr-label">
-                Notes
+                {t('gross.visit.notesLabel')}
               </label>
               <Textarea id="grv-notes" rows={3} {...form.register('notes')} />
             </div>
@@ -313,11 +318,11 @@ export function PregnancyVisitDrawer({
               disabled={recordVisit.isPending}
               style={{ flex: 1 }}
             >
-              {recordVisit.isPending ? 'Enregistrement…' : 'Enregistrer la visite'}
+              {recordVisit.isPending ? t('gross.visit.submitting') : t('gross.visit.submit')}
             </Button>
             <Dialog.Close asChild>
               <Button type="button" variant="ghost">
-                Annuler
+                {t('common.cancel')}
               </Button>
             </Dialog.Close>
           </div>

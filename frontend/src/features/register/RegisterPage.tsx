@@ -13,24 +13,26 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { BrandMark } from '@/components/ui/BrandMark';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useRegister } from './hooks/useRegister';
 import { registerSchema, type RegisterValues } from './schema';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import './register.css';
 
-const ROLES: Array<{ key: 'MEDECIN' | 'SECRETAIRE' | 'GESTIONNAIRE'; label: string }> = [
-  { key: 'MEDECIN', label: 'Médecin' },
-  { key: 'SECRETAIRE', label: 'Secrétaire' },
-  { key: 'GESTIONNAIRE', label: 'Gestionnaire' },
+const ROLES: Array<{ key: 'MEDECIN' | 'SECRETAIRE' | 'GESTIONNAIRE'; labelKey: string }> = [
+  { key: 'MEDECIN', labelKey: 'register.role.medecin' },
+  { key: 'SECRETAIRE', labelKey: 'register.role.secretaire' },
+  { key: 'GESTIONNAIRE', labelKey: 'register.role.gestionnaire' },
 ];
 
-const BULLETS: Array<{ icon: 'check' | 'clock' | 'lock'; text: string }> = [
-  { icon: 'check', text: 'Conforme à la loi 09-08 / CNDP. Hébergement au Maroc.' },
-  { icon: 'clock', text: 'Mise en route guidée en 7 étapes — moins de 15 minutes.' },
-  { icon: 'lock', text: 'Vos données patient sont chiffrées et strictement privées.' },
+const BULLETS: Array<{ icon: 'check' | 'clock' | 'lock'; textKey: string }> = [
+  { icon: 'check', textKey: 'register.bullet.compliance' },
+  { icon: 'clock', textKey: 'register.bullet.setup' },
+  { icon: 'lock', textKey: 'register.bullet.privacy' },
 ];
 
 export default function RegisterPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const registerMutation = useRegister();
   const [showPassword] = useState(false);
@@ -62,16 +64,16 @@ export default function RegisterPage() {
         firstName: values.firstName,
         lastName: values.lastName,
       });
-      toast.success('Compte créé. Bienvenue !', {
-        description: 'Configurons votre cabinet.',
+      toast.success(t('register.toast.success.title'), {
+        description: t('register.toast.success.desc'),
       });
       navigate('/onboarding', { replace: true });
     } catch (err) {
       const problem = toProblemDetail(err);
       // BOOTSTRAP_LOCKED — DB already has a user, so this install is claimed.
       if (problem.status === 409) {
-        toast.error('Cet espace careplus a déjà un administrateur.', {
-          description: "Connectez-vous, ou contactez l'administrateur du cabinet pour être invité.",
+        toast.error(t('register.toast.claimed.title'), {
+          description: t('register.toast.claimed.desc'),
           duration: 8000,
         });
         navigate('/login', { replace: true });
@@ -100,14 +102,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="register-hero-bottom">
-          <div className="register-hero-pill">Demande d&apos;accès praticien</div>
+          <div className="register-hero-pill">{t('register.hero.pill')}</div>
           <h1 className="register-hero-title">
-            Votre cabinet, en <em>quelques minutes.</em>
+            {t('register.hero.title1')} <em>{t('register.hero.title2')}</em>
           </h1>
-          <p className="register-hero-tagline">
-            Créez votre compte praticien. Vous configurerez ensuite votre cabinet, vos médecins,
-            vos horaires et vos tarifs — étape par étape.
-          </p>
+          <p className="register-hero-tagline">{t('register.hero.tagline')}</p>
 
           <div className="register-bullets">
             {BULLETS.map((b) => (
@@ -115,7 +114,7 @@ export default function RegisterPage() {
                 <span className="register-bullet-icon" aria-hidden="true">
                   <BulletIcon icon={b.icon} />
                 </span>
-                <span>{b.text}</span>
+                <span>{t(b.textKey)}</span>
               </div>
             ))}
           </div>
@@ -123,15 +122,15 @@ export default function RegisterPage() {
           <div className="register-hero-stats">
             <div>
               <div className="register-hero-stat-v tnum">184</div>
-              <div className="register-hero-stat-l">Cabinets au Maroc</div>
+              <div className="register-hero-stat-l">{t('register.hero.stat.cabinets')}</div>
             </div>
             <div>
               <div className="register-hero-stat-v tnum">62k</div>
-              <div className="register-hero-stat-l">Consultations / mois</div>
+              <div className="register-hero-stat-l">{t('register.hero.stat.consults')}</div>
             </div>
             <div>
               <div className="register-hero-stat-v tnum">99,98%</div>
-              <div className="register-hero-stat-l">Disponibilité</div>
+              <div className="register-hero-stat-l">{t('register.hero.stat.uptime')}</div>
             </div>
           </div>
         </div>
@@ -139,36 +138,36 @@ export default function RegisterPage() {
 
       <div className="register-form-wrap">
         <div className="register-form-topnav">
-          <span>Déjà inscrit&nbsp;?</span>
-          <Link to="/login">Se connecter</Link>
+          <span>{t('register.topnav.already')}</span>
+          <Link to="/login">{t('register.topnav.login')}</Link>
           <span style={{ color: 'var(--ink-4)' }}>·</span>
           <span>FR · عر</span>
         </div>
 
         <form className="register-form" onSubmit={onSubmit} noValidate>
-          <h2 className="register-form-title">Créer un compte</h2>
-          <p className="register-form-sub">Quelques informations pour commencer.</p>
+          <h2 className="register-form-title">{t('register.title')}</h2>
+          <p className="register-form-sub">{t('register.sub')}</p>
 
           <div className="register-form-grid-2">
             <div className="register-form-field" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-firstName">Prénom</label>
+              <label htmlFor="reg-firstName">{t('register.field.firstName')}</label>
               <input id="reg-firstName" type="text" autoComplete="given-name" {...rhfRegister('firstName')} />
-              {errors.firstName && <div className="register-form-field-err">{errors.firstName.message}</div>}
+              {errors.firstName && <div className="register-form-field-err">{t(errors.firstName.message ?? '')}</div>}
             </div>
             <div className="register-form-field" style={{ marginBottom: 0 }}>
-              <label htmlFor="reg-lastName">Nom</label>
+              <label htmlFor="reg-lastName">{t('register.field.lastName')}</label>
               <input id="reg-lastName" type="text" autoComplete="family-name" {...rhfRegister('lastName')} />
-              {errors.lastName && <div className="register-form-field-err">{errors.lastName.message}</div>}
+              {errors.lastName && <div className="register-form-field-err">{t(errors.lastName.message ?? '')}</div>}
             </div>
           </div>
 
           <div className="register-form-field">
-            <label>Rôle</label>
+            <label>{t('register.field.role')}</label>
             <Controller
               control={control}
               name="role"
               render={({ field }) => (
-                <div className="register-form-roles" role="radiogroup" aria-label="Rôle">
+                <div className="register-form-roles" role="radiogroup" aria-label={t('register.field.role')}>
                   {ROLES.map((r) => (
                     <button
                       key={r.key}
@@ -179,7 +178,7 @@ export default function RegisterPage() {
                       className="register-form-role-chip"
                       onClick={() => field.onChange(r.key)}
                     >
-                      {r.label}
+                      {t(r.labelKey)}
                     </button>
                   ))}
                 </div>
@@ -188,7 +187,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="register-form-field">
-            <label htmlFor="reg-email">E-mail professionnel</label>
+            <label htmlFor="reg-email">{t('register.field.email')}</label>
             <input
               id="reg-email"
               type="email"
@@ -196,42 +195,42 @@ export default function RegisterPage() {
               placeholder="vous@cabinet.ma"
               {...rhfRegister('email')}
             />
-            {errors.email && <div className="register-form-field-err">{errors.email.message}</div>}
+            {errors.email && <div className="register-form-field-err">{t(errors.email.message ?? '')}</div>}
           </div>
 
           <div className="register-form-field">
-            <label htmlFor="reg-phone">Téléphone</label>
+            <label htmlFor="reg-phone">{t('register.field.phone')}</label>
             <div className="register-form-phone">
               <span className="register-form-phone-prefix" aria-hidden="true">+212</span>
               <input id="reg-phone" type="tel" autoComplete="tel" {...rhfRegister('phone')} placeholder="6 12 34 56 78" />
             </div>
-            {errors.phone && <div className="register-form-field-err">{errors.phone.message}</div>}
+            {errors.phone && <div className="register-form-field-err">{t(errors.phone.message ?? '')}</div>}
           </div>
 
           <div className="register-form-field" style={{ marginBottom: 0 }}>
-            <label htmlFor="reg-password">Mot de passe</label>
+            <label htmlFor="reg-password">{t('register.field.password')}</label>
             <input
               id="reg-password"
               type={showPassword ? 'text' : 'password'}
               autoComplete="new-password"
               {...rhfRegister('password')}
             />
-            {errors.password && <div className="register-form-field-err">{errors.password.message}</div>}
+            {errors.password && <div className="register-form-field-err">{t(errors.password.message ?? '')}</div>}
           </div>
           <div className="register-form-password-help">
-            Minimum 12 caractères, dont une majuscule et un chiffre.
+            {t('register.password.help')}
           </div>
 
           <label className="register-form-terms">
             <input type="checkbox" {...rhfRegister('acceptTerms')} />
             <span>
-              J&apos;accepte les <a href="#cgu">conditions d&apos;utilisation</a> et la{' '}
-              <a href="#privacy">politique de confidentialité</a>.
+              {t('register.terms.pre')} <a href="#cgu">{t('register.terms.cgu')}</a> {t('register.terms.and')}{' '}
+              <a href="#privacy">{t('register.terms.privacy')}</a>.
             </span>
           </label>
           {errors.acceptTerms && (
             <div className="register-form-field-err" style={{ marginTop: -16, marginBottom: 12 }}>
-              {errors.acceptTerms.message}
+              {t(errors.acceptTerms.message ?? '')}
             </div>
           )}
 
@@ -240,11 +239,11 @@ export default function RegisterPage() {
             className="register-form-submit"
             disabled={isSubmitting || registerMutation.isPending}
           >
-            {isSubmitting || registerMutation.isPending ? 'Création…' : 'Créer mon compte →'}
+            {isSubmitting || registerMutation.isPending ? t('register.submitting') : t('register.submit')}
           </button>
 
           <div className="register-form-footer-note">
-            Un conseiller pourra prendre contact avec vous sous 24 h pour finaliser votre accès.
+            {t('register.footerNote')}
           </div>
         </form>
       </div>

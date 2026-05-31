@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useReferralContacts } from '@/features/profil/hooks/useReferralContacts';
 import { useGenerateConfrereLetter } from '../hooks/useConfrereLetters';
 import { useLetterTemplates } from '../hooks/useLetterTemplates';
@@ -51,6 +52,7 @@ export function ConfrereLetterDialog({
   onOpenChange,
   consultationId,
 }: ConfrereLetterDialogProps) {
+  const { t } = useT();
   const { contacts } = useReferralContacts();
   const { templates } = useLetterTemplates();
   const { generate, isPending } = useGenerateConfrereLetter(consultationId);
@@ -94,11 +96,11 @@ export function ConfrereLetterDialog({
 
   async function submit() {
     if (!recipientName.trim()) {
-      toast.error('Le nom du destinataire est requis.');
+      toast.error(t('confrere.err.recipientRequired'));
       return;
     }
     if (body.trim().length < 10) {
-      toast.error('Le corps du courrier doit faire au moins 10 caractères.');
+      toast.error(t('confrere.err.bodyMin'));
       return;
     }
     const specialty = recipientSpecialty.trim();
@@ -112,7 +114,7 @@ export function ConfrereLetterDialog({
     setDownloading(true);
     try {
       const { documentId } = await generate(payload);
-      toast.success('Courrier généré et rattaché à la consultation.');
+      toast.success(t('confrere.toast.generated'));
       // Téléchargement immédiat du PDF. On évite `window.open` : appelé après
       // un `await`, il sort du geste utilisateur et se fait bloquer par le
       // bloqueur de pop-ups (« rien ne se passe »). Un <a download> cliqué
@@ -126,20 +128,20 @@ export function ConfrereLetterDialog({
         const a = document.createElement('a');
         a.href = url;
         const slug = recipientName.trim().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
-        a.download = `courrier-confrere-${slug || 'destinataire'}.pdf`;
+        a.download = `courrier-confrere-${slug || t('confrere.download.fallbackName')}.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
         // Defer revoke: Safari a besoin que l'URL reste vivante le temps du clic.
         setTimeout(() => URL.revokeObjectURL(url), 1_000);
       } catch {
-        toast.error('Téléchargement PDF impossible (courrier enregistré dans le dossier).');
+        toast.error(t('confrere.err.pdfDownload'));
       }
       onOpenChange(false);
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        'Génération du courrier refusée.';
+        t('confrere.err.generateRefused');
       toast.error(msg);
     } finally {
       setDownloading(false);
@@ -173,28 +175,27 @@ export function ConfrereLetterDialog({
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>
-              Courrier au confrère
+              {t('confrere.dialog.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('confrere.dialog.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
           <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>
-            Le courrier est généré en PDF avec l'en-tête du cabinet et le corps
-            ci-dessous, puis rattaché au dossier du patient.
+            {t('confrere.dialog.description')}
           </Dialog.Description>
 
           <label style={labelStyle}>
-            <span style={labelTitleStyle}>Confrère (carnet)</span>
+            <span style={labelTitleStyle}>{t('confrere.dialog.contactLabel')}</span>
             <Select
               value={contactId}
               onChange={(e) => pickContact(e.target.value)}
-              aria-label="Confrère du carnet"
+              aria-label={t('confrere.dialog.contactAria')}
               style={inputStyle}
             >
-              <option value="">— Saisie libre —</option>
+              <option value="">{t('confrere.dialog.contactFree')}</option>
               {contacts.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.fullName}
@@ -207,14 +208,14 @@ export function ConfrereLetterDialog({
 
           {templates.length > 0 && (
             <label style={labelStyle}>
-              <span style={labelTitleStyle}>Modèle de courrier</span>
+              <span style={labelTitleStyle}>{t('confrere.dialog.templateLabel')}</span>
               <Select
                 value={templateId}
                 onChange={(e) => pickTemplate(e.target.value)}
-                aria-label="Modèle de courrier"
+                aria-label={t('confrere.dialog.templateAria')}
                 style={inputStyle}
               >
-                <option value="">— Rédaction libre —</option>
+                <option value="">{t('confrere.dialog.templateFree')}</option>
                 {templates.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.title}
@@ -225,37 +226,37 @@ export function ConfrereLetterDialog({
           )}
 
           <label style={labelStyle}>
-            <span style={labelTitleStyle}>Destinataire *</span>
+            <span style={labelTitleStyle}>{t('confrere.dialog.recipient')}</span>
             <input
               type="text"
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
-              placeholder="ex. Dr. Amine Bennani"
-              aria-label="Nom du destinataire"
+              placeholder={t('confrere.dialog.recipientPlaceholder')}
+              aria-label={t('confrere.dialog.recipientAria')}
               style={inputStyle}
             />
           </label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <label style={labelStyle}>
-              <span style={labelTitleStyle}>Spécialité</span>
+              <span style={labelTitleStyle}>{t('confrere.dialog.specialty')}</span>
               <input
                 type="text"
                 value={recipientSpecialty}
                 onChange={(e) => setRecipientSpecialty(e.target.value)}
-                placeholder="ex. Cardiologie"
-                aria-label="Spécialité du destinataire"
+                placeholder={t('confrere.dialog.specialtyPlaceholder')}
+                aria-label={t('confrere.dialog.specialtyAria')}
                 style={inputStyle}
               />
             </label>
             <label style={labelStyle}>
-              <span style={labelTitleStyle}>Ville</span>
+              <span style={labelTitleStyle}>{t('confrere.dialog.city')}</span>
               <input
                 type="text"
                 value={recipientCity}
                 onChange={(e) => setRecipientCity(e.target.value)}
-                placeholder="ex. Casablanca"
-                aria-label="Ville du destinataire"
+                placeholder={t('confrere.dialog.cityPlaceholder')}
+                aria-label={t('confrere.dialog.cityAria')}
                 style={inputStyle}
               />
             </label>
@@ -264,9 +265,9 @@ export function ConfrereLetterDialog({
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Cher confrère,\nJe vous adresse ce patient pour…"
+            placeholder={t('confrere.dialog.bodyPlaceholder')}
             rows={10}
-            aria-label="Corps du courrier"
+            aria-label={t('confrere.dialog.bodyAria')}
             style={{
               width: '100%',
               border: '1px solid var(--border)',
@@ -281,10 +282,10 @@ export function ConfrereLetterDialog({
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
             <Dialog.Close asChild>
-              <Button>Annuler</Button>
+              <Button>{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button variant="primary" onClick={() => { void submit(); }} disabled={busy}>
-              {busy ? 'Génération…' : 'Générer & imprimer'}
+              {busy ? t('confrere.dialog.generating') : t('confrere.dialog.generate')}
             </Button>
           </div>
         </Dialog.Content>

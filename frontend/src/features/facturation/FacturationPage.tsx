@@ -9,6 +9,7 @@ import { Screen } from '@/components/shell/Screen';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Input';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
 import { useInvoiceSearch } from './hooks/useInvoiceSearch';
@@ -18,7 +19,7 @@ import { AdvancedFiltersPopover } from './AdvancedFiltersPopover';
 import { ExportButton } from './ExportButton';
 import {
   EMPTY_FILTERS,
-  STATUS_LABEL,
+  invoiceStatusKey,
   type InvoiceSearchFilters,
   type InvoiceStatus,
 } from './types';
@@ -41,13 +42,13 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-const STATUS_FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
-  { key: 'ALL', label: 'Toutes' },
-  { key: 'BROUILLON', label: 'Brouillons' },
-  { key: 'EMISE', label: 'Émises' },
-  { key: 'PAYEE_PARTIELLE', label: 'Partielles' },
-  { key: 'PAYEE_TOTALE', label: 'Payées' },
-  { key: 'ANNULEE', label: 'Annulées' },
+const STATUS_FILTERS: { key: InvoiceStatus | 'ALL'; labelKey: string }[] = [
+  { key: 'ALL', labelKey: 'factu.filter.all' },
+  { key: 'BROUILLON', labelKey: 'factu.filter.drafts' },
+  { key: 'EMISE', labelKey: 'factu.filter.issued' },
+  { key: 'PAYEE_PARTIELLE', labelKey: 'factu.filter.partial' },
+  { key: 'PAYEE_TOTALE', labelKey: 'factu.filter.paid' },
+  { key: 'ANNULEE', labelKey: 'factu.filter.cancelled' },
 ];
 
 const STATUS_CLASS: Record<InvoiceStatus, string> = {
@@ -96,6 +97,7 @@ function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
 
 export default function FacturationPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [urlParams, setUrlParams] = useSearchParams();
   const [filters, setFilters] = useState<InvoiceSearchFilters>(() => filtersFromUrl(urlParams));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -149,15 +151,15 @@ export default function FacturationPage() {
   return (
     <Screen
       active="factu"
-      title="Facturation"
-      sub={`${totalCount} facture${totalCount > 1 ? 's' : ''}`}
+      title={t('factu.title')}
+      sub={t('factu.count', { n: totalCount, s: totalCount > 1 ? 's' : '' })}
       onNavigate={(navId) => navigate(NAV_MAP[navId])}
     >
       <div className="fa-scroll scroll">
         <CaisseTodayPanel />
 
         <div className="fa-toolbar">
-          <div className="fa-filters" role="tablist" aria-label="Filtres statut">
+          <div className="fa-filters" role="tablist" aria-label={t('factu.filtersAria')}>
             {STATUS_FILTERS.map((f) => (
               <button
                 key={f.key}
@@ -167,7 +169,7 @@ export default function FacturationPage() {
                 className={`fa-filter-btn${statusChip === f.key ? ' active' : ''}`}
                 onClick={() => setStatusChip(f.key)}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             ))}
           </div>
@@ -182,9 +184,9 @@ export default function FacturationPage() {
                   color: 'var(--ink-2)',
                 }}
               >
-                Médecin
+                {t('factu.doctor')}
                 <Select
-                  aria-label="Filtrer par médecin"
+                  aria-label={t('factu.doctor.filterAria')}
                   value={filters.medecinId ?? 'ALL'}
                   onChange={(e) =>
                     setMedecinFilter(e.target.value === 'ALL' ? null : e.target.value)
@@ -199,7 +201,7 @@ export default function FacturationPage() {
                     background: 'var(--surface)',
                   }}
                 >
-                  <option value="ALL">Tous les médecins</option>
+                  <option value="ALL">{t('factu.doctor.all')}</option>
                   {activePractitioners.map((p) => (
                     <option key={p.id} value={p.id}>
                       Dr {p.lastName} {p.firstName}
@@ -225,7 +227,7 @@ export default function FacturationPage() {
           <Panel>
             <div style={{ padding: '10px 14px' }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase' }}>
-                Total net
+                {t('factu.kpi.totalNet')}
               </div>
               <div className="tnum" style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>
                 {formatMad(totalNet)}
@@ -235,7 +237,7 @@ export default function FacturationPage() {
           <Panel>
             <div style={{ padding: '10px 14px' }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase' }}>
-                Encaissé
+                {t('factu.kpi.collected')}
               </div>
               <div
                 className="tnum"
@@ -248,7 +250,7 @@ export default function FacturationPage() {
           <Panel>
             <div style={{ padding: '10px 14px' }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase' }}>
-                À encaisser
+                {t('factu.kpi.toCollect')}
               </div>
               <div
                 className="tnum"
@@ -262,11 +264,13 @@ export default function FacturationPage() {
 
         <Panel style={{ padding: 0 }}>
           <PanelHeader>
-            <span>Liste des factures</span>
+            <span>{t('factu.list.title')}</span>
           </PanelHeader>
 
           {isLoading && (
-            <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13 }}>
+              {t('common.loading')}
+            </div>
           )}
           {error && (
             <div style={{ padding: 20, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
@@ -281,7 +285,7 @@ export default function FacturationPage() {
                 fontSize: 13,
               }}
             >
-              Aucune facture pour ces filtres.
+              {t('factu.list.empty')}
             </div>
           )}
 
@@ -289,12 +293,12 @@ export default function FacturationPage() {
             <table className="fa-table" style={{ borderRadius: 0, border: 'none' }}>
               <thead>
                 <tr>
-                  <th>Numéro</th>
-                  <th>Patient</th>
-                  <th>Date</th>
-                  <th>Statut</th>
-                  <th style={{ textAlign: 'right' }}>Total net</th>
-                  <th style={{ textAlign: 'right' }}>Encaissé</th>
+                  <th>{t('factu.col.number')}</th>
+                  <th>{t('factu.col.patient')}</th>
+                  <th>{t('factu.col.date')}</th>
+                  <th>{t('factu.col.status')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('factu.col.totalNet')}</th>
+                  <th style={{ textAlign: 'right' }}>{t('factu.col.collected')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -317,7 +321,7 @@ export default function FacturationPage() {
                       </td>
                       <td>
                         <span className={`fa-status-pill ${STATUS_CLASS[inv.status]}`}>
-                          {STATUS_LABEL[inv.status]}
+                          {t(invoiceStatusKey(inv.status))}
                         </span>
                       </td>
                       <td className="tnum" style={{ textAlign: 'right' }}>

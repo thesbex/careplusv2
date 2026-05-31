@@ -28,7 +28,7 @@ export function useStaffList(filters: StaffFilters = {}) {
   return {
     staff: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger le personnel.' : null,
+    error: error ? 'staff.err.loadList' : null,
     refetch,
   };
 }
@@ -44,7 +44,7 @@ export function useStaffMember(id: string | null) {
   return {
     member: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger le membre.' : null,
+    error: error ? 'staff.err.loadMember' : null,
   };
 }
 
@@ -59,7 +59,7 @@ export function useStaffSummary(id: string | null) {
   return {
     summary: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger le récapitulatif.' : null,
+    error: error ? 'staff.err.loadSummary' : null,
   };
 }
 
@@ -74,7 +74,7 @@ export function useLeaveEntries(id: string | null) {
   return {
     entries: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les congés.' : null,
+    error: error ? 'staff.err.loadLeave' : null,
   };
 }
 
@@ -90,7 +90,7 @@ export function useSalaryPayments(id: string | null) {
   return {
     payments: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les paiements.' : null,
+    error: error ? 'staff.err.loadPayments' : null,
   };
 }
 

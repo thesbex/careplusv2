@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { PrescriptionLineResultButton } from './PrescriptionLineResultButton';
 import {
   useResultValues,
@@ -40,6 +41,7 @@ interface DraftRow {
 const EMPTY_ROW: DraftRow = { analyte: '', value: '', unit: '' };
 
 export function PrescriptionResultsPanel({ prescription, readOnly = false }: Props) {
+  const { t } = useT();
   const isResultable = prescription.type === 'LAB' || prescription.type === 'IMAGING';
   const lines = prescription.lines;
 
@@ -94,16 +96,16 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
       const rawValue = r.value.trim().replace(',', '.');
       if (!analyte && !rawValue) continue;
       if (!analyte) {
-        toast.error("L'analyte est requis pour chaque ligne.");
+        toast.error(t('presc.results.err.analyteRequired'));
         return;
       }
       if (!rawValue) {
-        toast.error(`La valeur est requise pour « ${analyte} ».`);
+        toast.error(t('presc.results.err.valueRequired', { analyte }));
         return;
       }
       const n = Number(rawValue);
       if (!Number.isFinite(n)) {
-        toast.error(`Valeur invalide pour « ${analyte} » : ${rawValue}.`);
+        toast.error(t('presc.results.err.valueInvalid', { analyte, value: rawValue }));
         return;
       }
       cleaned.push({ analyte, value: n, unit: r.unit.trim() || null });
@@ -112,10 +114,11 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
       await save(anchor.id, cleaned);
       toast.success(
         cleaned.length === 0
-          ? 'Résultats effacés.'
-          : `${cleaned.length} valeur${cleaned.length > 1 ? 's' : ''} enregistrée${
-              cleaned.length > 1 ? 's' : ''
-            }.`,
+          ? t('presc.results.ok.cleared')
+          : t(
+              cleaned.length > 1 ? 'presc.results.ok.saved.many' : 'presc.results.ok.saved.one',
+              { n: cleaned.length },
+            ),
       );
     } catch (err) {
       const status =
@@ -123,9 +126,9 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
           ? (err as { response?: { status?: number } }).response?.status
           : undefined;
       if (status === 400) {
-        toast.error('Données invalides — vérifiez les champs.');
+        toast.error(t('presc.results.err.invalid'));
       } else {
-        toast.error("Échec de l'enregistrement.");
+        toast.error(t('presc.results.err.saveFailed'));
       }
     }
   }
@@ -173,7 +176,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', fontWeight: 600 }}>
-          Résultats — saisie structurée (utilisée pour le suivi d'évolution)
+          {t('presc.results.structuredTitle')}
         </div>
         <div
           style={{
@@ -185,9 +188,9 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
             padding: '0 4px',
           }}
         >
-          <div>Analyte</div>
-          <div>Valeur</div>
-          <div>Unité</div>
+          <div>{t('presc.results.col.analyte')}</div>
+          <div>{t('presc.results.col.value')}</div>
+          <div>{t('presc.results.col.unit')}</div>
           <div></div>
         </div>
         {rows.map((row, idx) => (
@@ -207,7 +210,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
               value={row.analyte}
               onChange={(e) => updateRow(idx, { analyte: e.target.value })}
               disabled={readOnly || isPending}
-              placeholder="Hb"
+              placeholder={t('presc.results.ph.analyte')}
               style={{
                 border: '1px solid var(--border)',
                 borderRadius: 6,
@@ -224,7 +227,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
               value={row.value}
               onChange={(e) => updateRow(idx, { value: e.target.value })}
               disabled={readOnly || isPending}
-              placeholder="14.2"
+              placeholder={t('presc.results.ph.value')}
               style={{
                 border: '1px solid var(--border)',
                 borderRadius: 6,
@@ -240,7 +243,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
               value={row.unit}
               onChange={(e) => updateRow(idx, { unit: e.target.value })}
               disabled={readOnly || isPending}
-              placeholder="g/dL"
+              placeholder={t('presc.results.ph.unit')}
               style={{
                 border: '1px solid var(--border)',
                 borderRadius: 6,
@@ -255,7 +258,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
               variant="ghost"
               size="sm"
               iconOnly
-              aria-label={`Supprimer la ligne ${idx + 1}`}
+              aria-label={t('presc.results.removeRowAria', { n: idx + 1 })}
               disabled={readOnly || isPending}
               onClick={() => removeRow(idx)}
             >
@@ -271,7 +274,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
             disabled={readOnly || isPending}
             onClick={addRow}
           >
-            + Ajouter une ligne
+            + {t('presc.results.addRow')}
           </Button>
           <Button
             type="button"
@@ -280,7 +283,7 @@ export function PrescriptionResultsPanel({ prescription, readOnly = false }: Pro
             disabled={readOnly || isPending || !dirty}
             onClick={() => void onSave()}
           >
-            {isPending ? 'Enregistrement…' : 'Enregistrer'}
+            {isPending ? t('presc.results.saving') : t('presc.results.save')}
           </Button>
         </div>
       </div>

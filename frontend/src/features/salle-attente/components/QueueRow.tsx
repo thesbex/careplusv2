@@ -7,14 +7,15 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Pill } from '@/components/ui/Pill';
 import { MoreH, Warn } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { QueueEntry, WaitingPatientStatus } from '../types';
 
-const STATUS_LABEL: Record<WaitingPatientStatus, string> = {
-  consult: 'En consultation',
-  vitals: 'En constantes',
-  waiting: 'En attente',
-  arrived: 'Arrivé',
-  done: 'Terminé',
+const STATUS_KEY: Record<WaitingPatientStatus, string> = {
+  consult: 'salle.status.consult',
+  vitals: 'salle.status.vitals',
+  waiting: 'salle.status.waiting',
+  arrived: 'salle.status.arrived',
+  done: 'salle.status.done',
 };
 
 function initials(name: string): string {
@@ -45,6 +46,7 @@ export function QueueRow({
   busy,
   canRecordVitals = true,
 }: QueueRowProps) {
+  const { t } = useT();
   const waitedAmber = p.waited.includes('25');
 
   return (
@@ -55,7 +57,11 @@ export function QueueRow({
           <div>
             <div className="sa-patient-name">
               {p.isPremium && (
-                <span title="Patient Premium" aria-label="Patient Premium" style={{ marginRight: 4 }}>
+                <span
+                  title={t('salle.premiumTitle')}
+                  aria-label={t('salle.premiumTitle')}
+                  style={{ marginRight: 4 }}
+                >
                   🌟
                 </span>
               )}
@@ -67,7 +73,7 @@ export function QueueRow({
               )}
             </div>
             <div className="sa-patient-meta">
-              {p.age > 0 ? `${p.age} ans` : ''}
+              {p.age > 0 ? t('salle.years', { n: p.age }) : ''}
               {p.age > 0 && p.reason ? ' · ' : ''}
               {p.reason}
               {!p.age && !p.reason && '—'}
@@ -100,7 +106,7 @@ export function QueueRow({
 
       <td className="sa-td">
         <Pill status={p.status} dot>
-          {STATUS_LABEL[p.status]}
+          {t(STATUS_KEY[p.status])}
         </Pill>
       </td>
 
@@ -115,7 +121,7 @@ export function QueueRow({
               disabled={busy}
               onClick={() => onTakeVitals?.(p.appointmentId!)}
             >
-              Prendre constantes →
+              {t('salle.takeVitals')}
             </Button>
           )}
           {p.status === 'arrived' && p.patientId && (
@@ -124,35 +130,35 @@ export function QueueRow({
               variant={canRecordVitals ? 'ghost' : 'primary'}
               disabled={busy}
               onClick={() => onStartConsult?.(p)}
-              title="Démarrer la consultation sans saisir de constantes"
+              title={t('salle.sendToConsultTitle')}
             >
-              Envoyer en consult. →
+              {t('salle.sendToConsult')}
             </Button>
           )}
           {p.status === 'vitals' && p.patientId && (
             <Button size="sm" disabled={busy} onClick={() => onStartConsult?.(p)}>
-              Envoyer en consult. →
+              {t('salle.sendToConsult')}
             </Button>
           )}
           {p.status === 'consult' && (
             <Button size="sm" onClick={() => onOpenConsult?.(p)}>
-              Ouvrir
+              {t('salle.open')}
             </Button>
           )}
-          {p.status === 'waiting' && <Button size="sm">Appeler</Button>}
+          {p.status === 'waiting' && <Button size="sm">{t('salle.call')}</Button>}
           {p.appointmentId && p.status !== 'consult' && p.status !== 'done' && (
             <Button
               size="sm"
               variant="ghost"
               disabled={busy}
               onClick={() => onCancel?.(p)}
-              aria-label={`Retirer ${p.name} de la liste d'attente`}
+              aria-label={t('salle.removeFromList', { name: p.name })}
               style={{ color: 'var(--danger, #b91c1c)' }}
             >
-              Retirer
+              {t('salle.remove')}
             </Button>
           )}
-          <Button size="sm" variant="ghost" iconOnly aria-label="Plus d'options">
+          <Button size="sm" variant="ghost" iconOnly aria-label={t('salle.moreOptions')}>
             <MoreH />
           </Button>
         </div>

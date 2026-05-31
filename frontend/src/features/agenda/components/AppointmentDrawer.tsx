@@ -16,6 +16,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { Close, Warn } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
+import type { I18nContextValue } from '@/lib/i18n/I18nProvider';
 import { useCheckIn } from '@/features/salle-attente/hooks/useCheckIn';
 import {
   useMoveAppointment,
@@ -58,24 +60,24 @@ function formatPractitioner(p: {
   return p.specialty ? `${base} — ${p.specialty}` : base;
 }
 
-/** Friendly label for backend appointment statuses — keeps the subtitle readable
+/** i18n keys for backend appointment statuses — keeps the subtitle readable
  *  instead of leaking SCREAMING_SNAKE enums into the UI. */
-const RAW_STATUS_LABELS: Record<string, string> = {
-  PLANIFIE: 'Planifié',
-  CONFIRME: 'Confirmé',
-  ARRIVE: 'Arrivé',
-  EN_ATTENTE_CONSTANTES: 'En attente constantes',
-  CONSTANTES_PRISES: 'Constantes prises',
-  EN_CONSULTATION: 'En consultation',
-  CONSULTATION_TERMINEE: 'Consultation terminée',
-  TERMINE: 'Terminé',
-  CLOS: 'Clos',
-  ANNULE: 'Annulé',
+const RAW_STATUS_KEYS: Record<string, string> = {
+  PLANIFIE: 'agenda.drawer.status.PLANIFIE',
+  CONFIRME: 'agenda.drawer.status.CONFIRME',
+  ARRIVE: 'agenda.drawer.status.ARRIVE',
+  EN_ATTENTE_CONSTANTES: 'agenda.drawer.status.EN_ATTENTE_CONSTANTES',
+  CONSTANTES_PRISES: 'agenda.drawer.status.CONSTANTES_PRISES',
+  EN_CONSULTATION: 'agenda.drawer.status.EN_CONSULTATION',
+  CONSULTATION_TERMINEE: 'agenda.drawer.status.CONSULTATION_TERMINEE',
+  TERMINE: 'agenda.drawer.status.TERMINE',
+  CLOS: 'agenda.drawer.status.CLOS',
+  ANNULE: 'agenda.drawer.status.ANNULE',
 };
 
-function statusLabel(raw?: string): string | undefined {
+function statusLabel(raw: string | undefined, t: I18nContextValue['t']): string | undefined {
   if (!raw) return undefined;
-  return RAW_STATUS_LABELS[raw] ?? raw.replace(/_/g, ' ').toLowerCase();
+  return RAW_STATUS_KEYS[raw] ? t(RAW_STATUS_KEYS[raw]!) : raw.replace(/_/g, ' ').toLowerCase();
 }
 
 function formatConflictTime(start: string, end: string): string {
@@ -99,6 +101,7 @@ export function AppointmentDrawer({
   onOpenChange,
   onChanged,
 }: AppointmentDrawerProps) {
+  const { t } = useT();
   const navigate = useNavigate();
   const { moveAppointment, isPending: isMoving } = useMoveAppointment();
   const { cancelAppointment, isPending: isCancelling } = useCancelAppointment();
@@ -171,7 +174,7 @@ export function AppointmentDrawer({
         // visible — otherwise leave it untouched server-side.
         ...(showRoomField ? { roomId: roomId || null } : {}),
       });
-      toast.success('RDV déplacé.');
+      toast.success(t('agenda.toast.movedShort'));
       // Trigger conflict probe only when a room is now assigned.
       if (roomId) {
         setConflictAppointmentId(id);
@@ -184,23 +187,23 @@ export function AppointmentDrawer({
     } catch (err) {
       const msg = extractConflictMessage(err);
       if (msg) toast.error(msg);
-      else toast.error('Déplacement refusé.');
+      else toast.error(t('agenda.toast.moveDenied'));
     }
   }
 
   async function handleCancel() {
     if (!id) return;
     if (cancelReason.trim().length < 3) {
-      toast.error('Raison requise (3 caractères min).');
+      toast.error(t('agenda.toast.cancelReasonRequired'));
       return;
     }
     try {
       await cancelAppointment({ id, reason: cancelReason });
-      toast.success('RDV annulé.');
+      toast.success(t('agenda.toast.cancelled'));
       onChanged?.();
       onOpenChange(false);
     } catch {
-      toast.error('Annulation refusée.');
+      toast.error(t('agenda.toast.cancelDenied'));
     }
   }
 
@@ -216,12 +219,12 @@ export function AppointmentDrawer({
           ? { appointmentId: id, roomId }
           : { appointmentId: id };
       await checkIn(args);
-      toast.success('Arrivée déclarée.');
+      toast.success(t('agenda.toast.checkedIn'));
       onChanged?.();
       onOpenChange(false);
       void navigate('/salle');
     } catch {
-      toast.error('Check-in refusé.');
+      toast.error(t('agenda.toast.checkInDenied'));
     }
   }
 
@@ -232,7 +235,7 @@ export function AppointmentDrawer({
           style={{ position: 'fixed', inset: 0, background: 'rgba(20,18,12,0.25)', zIndex: 100 }}
         />
         <Dialog.Content
-          aria-label="Détails du rendez-vous"
+          aria-label={t('agenda.drawer.aria')}
           style={{
             position: 'fixed',
             top: 0,
@@ -265,11 +268,11 @@ export function AppointmentDrawer({
                 style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: 0, marginTop: 2 }}
               >
                 {a.reason} · {a.start} ({a.dur}min)
-                {statusLabel(a.rawStatus) ? ` · ${statusLabel(a.rawStatus)}` : ''}
+                {statusLabel(a.rawStatus, t) ? ` · ${statusLabel(a.rawStatus, t)}` : ''}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -288,7 +291,7 @@ export function AppointmentDrawer({
                   marginBottom: 16,
                 }}
               >
-                Cet élément vient d&apos;une fixture — actions désactivées.
+                {t('agenda.drawer.fixtureWarn')}
               </div>
             )}
 
@@ -296,7 +299,7 @@ export function AppointmentDrawer({
             {conflicts && conflicts.length > 0 && (
               <div
                 role="alert"
-                aria-label="Conflit salle"
+                aria-label={t('agenda.drawer.roomConflictAria')}
                 style={{
                   padding: 12,
                   background: 'var(--amber-soft)',
@@ -313,9 +316,9 @@ export function AppointmentDrawer({
                 <Warn />
                 <div>
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                    Conflit salle : {conflicts.length} autre
-                    {conflicts.length > 1 ? 's ' : ' '}
-                    RDV partagent cette salle au même créneau.
+                    {conflicts.length > 1
+                      ? t('agenda.drawer.roomConflictPlural', { n: conflicts.length })
+                      : t('agenda.drawer.roomConflict', { n: conflicts.length })}
                   </div>
                   <ul style={{ margin: 0, paddingLeft: 16 }}>
                     {conflicts.map((c) => (
@@ -326,10 +329,10 @@ export function AppointmentDrawer({
               </div>
             )}
 
-            <div className="ag-drawer-section">Déplacer</div>
+            <div className="ag-drawer-section">{t('agenda.drawer.move')}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
               <div className="field">
-                <label htmlFor="ag-drawer-date">Date</label>
+                <label htmlFor="ag-drawer-date">{t('agenda.drawer.date')}</label>
                 <input
                   id="ag-drawer-date"
                   className="input tnum"
@@ -340,7 +343,7 @@ export function AppointmentDrawer({
                 />
               </div>
               <div className="field">
-                <label htmlFor="ag-drawer-time">Heure</label>
+                <label htmlFor="ag-drawer-time">{t('agenda.drawer.time')}</label>
                 <input
                   id="ag-drawer-time"
                   className="input tnum"
@@ -352,7 +355,7 @@ export function AppointmentDrawer({
                 />
               </div>
               <div className="field">
-                <label htmlFor="ag-drawer-dur">Durée (min)</label>
+                <label htmlFor="ag-drawer-dur">{t('agenda.drawer.duration')}</label>
                 <input
                   id="ag-drawer-dur"
                   className="input tnum"
@@ -368,17 +371,17 @@ export function AppointmentDrawer({
 
             {showPractitionerField && (
               <div className="field" style={{ marginTop: 12 }}>
-                <label htmlFor="ag-drawer-practitioner">Médecin</label>
+                <label htmlFor="ag-drawer-practitioner">{t('agenda.drawer.doctor')}</label>
                 <Select
                   id="ag-drawer-practitioner"
                   className="select"
                   value={practitionerId}
                   disabled={!canMutate}
-                  aria-label="Médecin"
+                  aria-label={t('agenda.drawer.doctor')}
                   onChange={(e) => setPractitionerId(e.target.value)}
                 >
                   <option value="" disabled>
-                    Choisir un médecin…
+                    {t('agenda.drawer.chooseDoctor')}
                   </option>
                   {activePractitioners.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -391,16 +394,16 @@ export function AppointmentDrawer({
 
             {showRoomField && (
               <div className="field" style={{ marginTop: 12 }}>
-                <label htmlFor="ag-drawer-room">Salle</label>
+                <label htmlFor="ag-drawer-room">{t('agenda.drawer.room')}</label>
                 <Select
                   id="ag-drawer-room"
                   className="select"
                   value={roomId}
                   disabled={!canMutate}
-                  aria-label="Salle"
+                  aria-label={t('agenda.drawer.room')}
                   onChange={(e) => setRoomId(e.target.value)}
                 >
-                  <option value="">Aucune</option>
+                  <option value="">{t('agenda.drawer.noRoom')}</option>
                   {activeRooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -417,12 +420,12 @@ export function AppointmentDrawer({
                 disabled={!canMutate || isMoving}
                 onClick={() => void handleMove()}
               >
-                {isMoving ? 'Déplacement…' : 'Déplacer le RDV'}
+                {isMoving ? t('agenda.drawer.moving') : t('agenda.drawer.moveRdv')}
               </Button>
 
               {a.patientId && (
                 <Button onClick={() => navigate(`/patients/${a.patientId}`)}>
-                  Voir dossier patient
+                  {t('agenda.drawer.viewPatient')}
                 </Button>
               )}
             </div>
@@ -430,24 +433,24 @@ export function AppointmentDrawer({
             {showCancel && (
               <>
                 <div className="ag-drawer-section ag-drawer-section--danger">
-                  Annuler ce RDV
+                  {t('agenda.drawer.cancelSection')}
                 </div>
                 <textarea
                   className="textarea"
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Raison de l&apos;annulation…"
+                  placeholder={t('agenda.drawer.cancelReasonPlaceholder')}
                   style={{ borderColor: 'var(--danger)' }}
                 />
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                  <Button onClick={() => setShowCancel(false)}>Retour</Button>
+                  <Button onClick={() => setShowCancel(false)}>{t('agenda.drawer.back')}</Button>
                   <Button
                     variant="primary"
                     style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}
                     disabled={isCancelling || cancelReason.trim().length < 3}
                     onClick={() => void handleCancel()}
                   >
-                    {isCancelling ? 'Annulation…' : "Confirmer l'annulation"}
+                    {isCancelling ? t('agenda.drawer.cancelling') : t('agenda.drawer.confirmCancel')}
                   </Button>
                 </div>
               </>
@@ -471,7 +474,7 @@ export function AppointmentDrawer({
                 disabled={isCheckingIn}
                 onClick={() => void handleCheckIn()}
               >
-                {isCheckingIn ? 'Check-in…' : 'Déclarer arrivée'}
+                {isCheckingIn ? t('agenda.drawer.checkingIn') : t('agenda.drawer.declareArrival')}
               </Button>
             )}
             <Button
@@ -480,7 +483,7 @@ export function AppointmentDrawer({
               onClick={() => setShowCancel(true)}
               style={{ marginLeft: 'auto' }}
             >
-              Annuler le RDV
+              {t('agenda.drawer.cancelRdv')}
             </Button>
           </div>
         </Dialog.Content>

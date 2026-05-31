@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { Drawer } from 'vaul';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Select } from '@/components/ui/Input';
 import { useVaccinationCatalog } from '../hooks/useVaccinationCatalog';
 import { useRecordDose } from '../hooks/useRecordDose';
@@ -24,12 +25,7 @@ interface RecordDoseDrawerMobileProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const ROUTE_LABELS: Record<RouteAdmin, string> = {
-  IM: 'IM — Intramusculaire',
-  SC: 'SC — Sous-cutané',
-  PO: 'PO — Per os (oral)',
-  ID: 'ID — Intradermique',
-};
+const ROUTE_ORDER: RouteAdmin[] = ['IM', 'SC', 'PO', 'ID'];
 
 function nowLocal(): string {
   const d = new Date();
@@ -74,6 +70,7 @@ export function RecordDoseDrawerMobile({
   open,
   onOpenChange,
 }: RecordDoseDrawerMobileProps) {
+  const { t } = useT();
   const { catalog } = useVaccinationCatalog();
   const recordMutation = useRecordDose(patientId);
   const updateMutation = useUpdateDose(patientId);
@@ -161,10 +158,10 @@ export function RecordDoseDrawerMobile({
         ...(values.site !== undefined ? { site: values.site } : {}),
         ...(values.notes !== undefined ? { notes: values.notes } : {}),
       });
-      toast.success('Dose enregistrée.');
+      toast.success(t('vacc.drawer.recordSuccess'));
       onOpenChange(false);
     } catch {
-      toast.error('Erreur lors de l\'enregistrement de la dose.');
+      toast.error(t('vacc.drawer.recordError'));
     }
   }
 
@@ -187,19 +184,20 @@ export function RecordDoseDrawerMobile({
           version: values.version,
         },
       });
-      toast.success('Dose modifiée.');
+      toast.success(t('vacc.drawer.editSuccess'));
       onOpenChange(false);
     } catch {
       // 409 handled in useUpdateDose
     }
   }
 
+  const vaccineName = dose?.vaccineName ?? '';
   const title =
     mode === 'record'
-      ? `Saisir dose — ${dose?.vaccineName ?? ''}`
+      ? t('vacc.drawer.recordTitle', { vaccine: vaccineName })
       : mode === 'edit'
-      ? `Modifier dose — ${dose?.vaccineName ?? ''}`
-      : `Dose — ${dose?.vaccineName ?? ''}`;
+      ? t('vacc.drawer.editTitle', { vaccine: vaccineName })
+      : t('vacc.drawer.viewTitle', { vaccine: vaccineName });
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -275,10 +273,10 @@ export function RecordDoseDrawerMobile({
             {/* VIEW MODE */}
             {isView && dose && (
               <div>
-                <MViewRow label="Vaccin" value={dose.vaccineName} />
-                <MViewRow label="Dose" value={dose.doseLabel} />
+                <MViewRow label={t('vacc.view.vaccine')} value={dose.vaccineName} />
+                <MViewRow label={t('vacc.view.dose')} value={dose.doseLabel} />
                 <MViewRow
-                  label="Date"
+                  label={t('vacc.view.date')}
                   value={
                     dose.administeredAt
                       ? new Date(dose.administeredAt).toLocaleString('fr-MA', {
@@ -291,11 +289,11 @@ export function RecordDoseDrawerMobile({
                       : null
                   }
                 />
-                <MViewRow label="Lot" value={dose.lotNumber} />
-                <MViewRow label="Voie" value={dose.route} />
-                <MViewRow label="Site" value={dose.site} />
-                <MViewRow label="Par" value={dose.administeredByName} />
-                <MViewRow label="Notes" value={dose.notes} />
+                <MViewRow label={t('vacc.view.lot')} value={dose.lotNumber} />
+                <MViewRow label={t('vacc.view.route')} value={dose.route} />
+                <MViewRow label={t('vacc.view.site')} value={dose.site} />
+                <MViewRow label={t('vacc.view.by')} value={dose.administeredByName} />
+                <MViewRow label={t('vacc.view.notes')} value={dose.notes} />
               </div>
             )}
 
@@ -307,9 +305,9 @@ export function RecordDoseDrawerMobile({
                 style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
               >
                 <div>
-                  <MLbl>Vaccin</MLbl>
+                  <MLbl>{t('vacc.field.vaccine')}</MLbl>
                   <Select {...recordForm.register('vaccineId')} style={selectStyle}>
-                    <option value="">Sélectionner un vaccin…</option>
+                    <option value="">{t('vacc.field.selectVaccine')}</option>
                     {catalog.filter((v) => v.active).map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.nameFr} ({v.code})
@@ -324,7 +322,7 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Date et heure *</MLbl>
+                  <MLbl>{t('vacc.field.dateTime')}</MLbl>
                   <input
                     type="datetime-local"
                     {...recordForm.register('administeredAt')}
@@ -338,10 +336,10 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Numéro de lot *</MLbl>
+                  <MLbl>{t('vacc.field.lot')}</MLbl>
                   <input
                     type="text"
-                    placeholder="Ex. ABC123"
+                    placeholder={t('vacc.field.lotPlaceholder')}
                     {...recordForm.register('lotNumber')}
                     style={inputStyle}
                   />
@@ -353,21 +351,21 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Voie d&apos;administration</MLbl>
+                  <MLbl>{t('vacc.field.route')}</MLbl>
                   <Select {...recordForm.register('route')} style={selectStyle}>
                     <option value="">—</option>
-                    {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
+                    {ROUTE_ORDER.map((k) => (
+                      <option key={k} value={k}>{t(`vacc.route.${k}`)}</option>
                     ))}
                   </Select>
                 </div>
 
                 <div>
-                  <MLbl>Site d&apos;injection</MLbl>
+                  <MLbl>{t('vacc.field.site')}</MLbl>
                   <div style={{ position: 'relative' }}>
                     <input
                       type="text"
-                      placeholder="Ex. Deltoïde G"
+                      placeholder={t('vacc.field.sitePlaceholder')}
                       {...recordForm.register('site')}
                       style={inputStyle}
                       onFocus={() => setShowSuggestions(true)}
@@ -418,10 +416,10 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Notes</MLbl>
+                  <MLbl>{t('vacc.field.notes')}</MLbl>
                   <textarea
                     {...recordForm.register('notes')}
-                    placeholder="Observations, réactions…"
+                    placeholder={t('vacc.field.notesPlaceholder')}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -448,7 +446,7 @@ export function RecordDoseDrawerMobile({
                 style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
               >
                 <div>
-                  <MLbl>Date et heure</MLbl>
+                  <MLbl>{t('vacc.field.dateTimeOpt')}</MLbl>
                   <input
                     type="datetime-local"
                     {...editForm.register('administeredAt')}
@@ -457,10 +455,10 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Numéro de lot</MLbl>
+                  <MLbl>{t('vacc.field.lotOpt')}</MLbl>
                   <input
                     type="text"
-                    placeholder="Ex. ABC123"
+                    placeholder={t('vacc.field.lotPlaceholder')}
                     {...editForm.register('lotNumber')}
                     style={inputStyle}
                   />
@@ -472,30 +470,30 @@ export function RecordDoseDrawerMobile({
                 </div>
 
                 <div>
-                  <MLbl>Voie d&apos;administration</MLbl>
+                  <MLbl>{t('vacc.field.route')}</MLbl>
                   <Select {...editForm.register('route')} style={selectStyle}>
                     <option value="">—</option>
-                    {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
-                      <option key={k} value={k}>{v}</option>
+                    {ROUTE_ORDER.map((k) => (
+                      <option key={k} value={k}>{t(`vacc.route.${k}`)}</option>
                     ))}
                   </Select>
                 </div>
 
                 <div>
-                  <MLbl>Site d&apos;injection</MLbl>
+                  <MLbl>{t('vacc.field.site')}</MLbl>
                   <input
                     type="text"
-                    placeholder="Ex. Deltoïde G"
+                    placeholder={t('vacc.field.sitePlaceholder')}
                     {...editForm.register('site')}
                     style={inputStyle}
                   />
                 </div>
 
                 <div>
-                  <MLbl>Notes</MLbl>
+                  <MLbl>{t('vacc.field.notes')}</MLbl>
                   <textarea
                     {...editForm.register('notes')}
-                    placeholder="Observations, réactions…"
+                    placeholder={t('vacc.field.notesPlaceholder')}
                     style={{
                       width: '100%',
                       boxSizing: 'border-box',
@@ -545,7 +543,7 @@ export function RecordDoseDrawerMobile({
                   cursor: 'pointer',
                 }}
               >
-                {recordMutation.isPending ? 'Enregistrement…' : 'Enregistrer la dose'}
+                {recordMutation.isPending ? t('vacc.drawer.saving') : t('vacc.drawer.saveDose')}
               </button>
             )}
             {isEdit && (
@@ -566,7 +564,7 @@ export function RecordDoseDrawerMobile({
                   cursor: 'pointer',
                 }}
               >
-                {updateMutation.isPending ? 'Enregistrement…' : 'Enregistrer les modifications'}
+                {updateMutation.isPending ? t('vacc.drawer.saving') : t('vacc.drawer.saveChanges')}
               </button>
             )}
             <button
@@ -585,7 +583,7 @@ export function RecordDoseDrawerMobile({
                 cursor: 'pointer',
               }}
             >
-              {isView ? 'Fermer' : 'Annuler'}
+              {isView ? t('vacc.drawer.close') : t('vacc.drawer.cancel')}
             </button>
           </div>
         </Drawer.Content>

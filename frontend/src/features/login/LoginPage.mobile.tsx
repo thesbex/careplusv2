@@ -11,9 +11,11 @@ import { toast } from 'sonner';
 import { Lock } from '@/components/icons';
 import { useLogin } from '@/lib/auth/useAuth';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { loginSchema, type LoginValues } from './schema';
 
 export default function LoginMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const location = useLocation();
   const loginMutation = useLogin();
@@ -48,9 +50,9 @@ export default function LoginMobilePage() {
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 401) {
-        setError('password', { type: 'server', message: 'Identifiants incorrects' });
+        setError('password', { type: 'server', message: 'login.err.invalidCredentials' });
       } else if (problem.status === 429) {
-        toast.error('Trop de tentatives. Réessayez dans 15 minutes.', { duration: 6000 });
+        toast.error(t('login.err.tooManyAttempts'), { duration: 6000 });
       } else if (problem.violations?.length) {
         problem.violations.forEach((v) =>
           setError(v.field as keyof LoginValues, { type: 'server', message: v.message }),
@@ -117,9 +119,9 @@ export default function LoginMobilePage() {
             letterSpacing: '-0.025em',
           }}
         >
-          Bon retour,
+          {t('login.mobile.title1')}
           <br />
-          <span style={{ color: '#A8C5E8', fontWeight: 500 }}>docteur.</span>
+          <span style={{ color: '#A8C5E8', fontWeight: 500 }}>{t('login.mobile.title2')}</span>
         </div>
         <div
           style={{
@@ -129,7 +131,7 @@ export default function LoginMobilePage() {
             lineHeight: 1.5,
           }}
         >
-          Connectez-vous à votre cabinet
+          {t('login.mobile.sub')}
         </div>
       </div>
 
@@ -139,7 +141,7 @@ export default function LoginMobilePage() {
         style={{ padding: '28px 22px', flex: 1, overflowY: 'auto' }}
       >
         <div className="m-field">
-          <label htmlFor="m-login-email">Adresse e-mail</label>
+          <label htmlFor="m-login-email">{t('login.field.emailMobile')}</label>
           <input
             id="m-login-email"
             className="m-input"
@@ -151,13 +153,13 @@ export default function LoginMobilePage() {
           />
           {errors.email && (
             <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>
-              {errors.email.message}
+              {t(errors.email.message ?? '')}
             </div>
           )}
         </div>
 
         <div className="m-field">
-          <label htmlFor="m-login-password">Mot de passe</label>
+          <label htmlFor="m-login-password">{t('login.field.password')}</label>
           <div style={{ position: 'relative' }}>
             <input
               id="m-login-password"
@@ -185,14 +187,14 @@ export default function LoginMobilePage() {
                 cursor: 'pointer',
                 padding: '4px 8px',
               }}
-              aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              aria-label={showPassword ? t('login.password.hide') : t('login.password.show')}
             >
-              {showPassword ? 'Masquer' : 'Afficher'}
+              {showPassword ? t('login.password.hideShort') : t('login.password.showShort')}
             </button>
           </div>
           {errors.password && (
             <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>
-              {errors.password.message}
+              {t(errors.password.message ?? '')}
             </div>
           )}
         </div>
@@ -214,10 +216,10 @@ export default function LoginMobilePage() {
               color: 'var(--ink-2)',
             }}
           >
-            <input type="checkbox" defaultChecked /> Garder ma session
+            <input type="checkbox" defaultChecked /> {t('login.remember')}
           </label>
           <a href="#forgot" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-            Mot de passe oublié ?
+            {t('login.forgot')}
           </a>
         </div>
 
@@ -228,7 +230,7 @@ export default function LoginMobilePage() {
           disabled={isSubmitting || loginMutation.isPending}
         >
           <Lock aria-hidden="true" />{' '}
-          {isSubmitting || loginMutation.isPending ? 'Connexion…' : 'Se connecter'}
+          {isSubmitting || loginMutation.isPending ? t('login.submitting') : t('login.submit')}
         </button>
 
         <div
@@ -248,9 +250,9 @@ export default function LoginMobilePage() {
             <Lock aria-hidden="true" />
           </span>
           <div>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>Connexion sécurisée</div>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>{t('login.security.title')}</div>
             <div style={{ color: 'var(--ink-3)', fontSize: 11.5, lineHeight: 1.4 }}>
-              Chiffrement TLS · données hébergées au Maroc · conforme loi 09-08
+              {t('login.security.bodyShort')}
             </div>
           </div>
         </div>

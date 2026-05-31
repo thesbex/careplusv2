@@ -17,6 +17,7 @@ const TAB_MAP: Record<MobileTab, string> = {
   menu: '/parametres',
 };
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useStockArticles } from './hooks/useStockArticles';
 import { useStockSuppliers } from './hooks/useStockSuppliers';
 import { StockArticleFormDrawer } from './components/StockArticleFormDrawer';
@@ -30,6 +31,7 @@ const CATEGORIES: StockArticleCategory[] = [
 ];
 
 function ExpiryBadge({ expiresOn }: { expiresOn: string | null }) {
+  const { t } = useT();
   if (!expiresOn) return null;
   const today = new Date();
   const exp = new Date(expiresOn + 'T00:00:00');
@@ -39,12 +41,13 @@ function ExpiryBadge({ expiresOn }: { expiresOn: string | null }) {
   const bg = diffDays <= 7 ? 'var(--danger-soft, #fef2f2)' : 'var(--amber-soft, #fffbeb)';
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 999, background: bg, color }}>
-      Périme dans {diffDays}j
+      {t('stock.expiryPill', { n: diffDays })}
     </span>
   );
 }
 
 export default function StockArticlesPageMobile() {
+  const { t } = useT();
   const navigate = useNavigate();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
   const canEdit = userRoles.includes('MEDECIN') || userRoles.includes('ADMIN');
@@ -86,15 +89,15 @@ export default function StockArticlesPageMobile() {
       onTabChange={(t) => navigate(TAB_MAP[t])}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-          title="Stock interne"
-          sub={`${totalElements} article${totalElements !== 1 ? 's' : ''}`}
+          left={<MIconBtn icon="ChevronLeft" label={t('stock.back')} onClick={() => navigate('/parametres')} />}
+          title={t('stock.title')}
+          sub={t('stock.count', { n: totalElements, s: totalElements !== 1 ? 's' : '' })}
           right={
             canEdit ? (
               <button
                 type="button"
                 onClick={openCreate}
-                aria-label="Ajouter article"
+                aria-label={t('stock.addArticle')}
                 style={{
                   background: 'var(--primary)',
                   border: 'none',
@@ -107,7 +110,7 @@ export default function StockArticlesPageMobile() {
                   cursor: 'pointer',
                 }}
               >
-                + Ajouter
+                {t('stock.addShort')}
               </button>
             ) : undefined
           }
@@ -133,7 +136,7 @@ export default function StockArticlesPageMobile() {
               whiteSpace: 'nowrap',
             }}
           >
-            Tous
+            {t('stock.filter.all')}
           </button>
           {CATEGORIES.map((cat) => (
             <button
@@ -153,7 +156,7 @@ export default function StockArticlesPageMobile() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {CATEGORY_LABEL[cat]}
+              {t(CATEGORY_LABEL[cat])}
             </button>
           ))}
         </div>
@@ -163,8 +166,8 @@ export default function StockArticlesPageMobile() {
           type="search"
           value={qInput}
           onChange={(e) => { setQInput(e.target.value); setPage(0); }}
-          placeholder="Rechercher code / libellé…"
-          aria-label="Recherche article"
+          placeholder={t('stock.filter.searchPlaceholder')}
+          aria-label={t('stock.filter.searchAria')}
           style={{
             height: 40,
             border: '1px solid var(--border)',
@@ -181,7 +184,7 @@ export default function StockArticlesPageMobile() {
           <Select
             value={supplierFilter}
             onChange={(e) => { setSupplierFilter(e.target.value); setPage(0); }}
-            aria-label="Filtrer par fournisseur"
+            aria-label={t('stock.filter.bySupplierAria')}
             style={{
               height: 36,
               border: '1px solid var(--border)',
@@ -194,7 +197,7 @@ export default function StockArticlesPageMobile() {
               flex: 1,
             }}
           >
-            <option value="">Tous fournisseurs</option>
+            <option value="">{t('stock.filter.allSuppliers')}</option>
             {suppliers.map((s) => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -205,7 +208,7 @@ export default function StockArticlesPageMobile() {
               checked={belowThreshold}
               onChange={(e) => { setBelowThreshold(e.target.checked); setPage(0); }}
             />
-            Seuil dépassé
+            {t('stock.filter.belowThresholdShort')}
           </label>
         </div>
 
@@ -235,7 +238,7 @@ export default function StockArticlesPageMobile() {
         {/* Empty state */}
         {!isLoading && articles.length === 0 && (
           <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-            Aucun article trouvé
+            {t('stock.empty')}
           </div>
         )}
 
@@ -272,19 +275,19 @@ export default function StockArticlesPageMobile() {
                   color: a.category === 'MEDICAMENT_INTERNE' ? 'var(--primary)' : a.category === 'CONSOMMABLE' ? 'var(--amber, #d97706)' : 'var(--ink-2)',
                 }}
               >
-                {CATEGORY_LABEL[a.category]}
+                {t(CATEGORY_LABEL[a.category])}
               </span>
             </div>
 
             <div style={{ display: 'flex', gap: 12, fontSize: 12.5, color: 'var(--ink-2)' }}>
               <span>
-                Qté :{' '}
+                {t('stock.detail.qty')} :{' '}
                 <strong style={{ color: a.currentQuantity <= a.minThreshold ? 'var(--danger)' : 'var(--ink)', fontSize: 14 }}>
                   {a.currentQuantity}
                 </strong>{' '}
                 {a.unit}
               </span>
-              <span style={{ color: 'var(--ink-3)' }}>Seuil : {a.minThreshold}</span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('stock.detail.threshold', { n: a.minThreshold })}</span>
             </div>
 
             {a.category === 'MEDICAMENT_INTERNE' && a.nearestExpiry && (
@@ -314,13 +317,13 @@ export default function StockArticlesPageMobile() {
                   cursor: 'pointer',
                 }}
               >
-                Voir la fiche
+                {t('stock.viewSheet')}
               </button>
               {canEdit && (
                 <button
                   type="button"
                   onClick={() => { setEditArticle(a); setFormOpen(true); }}
-                  aria-label={`Modifier ${a.label}`}
+                  aria-label={t('stock.editAria', { label: a.label })}
                   style={{
                     height: 36,
                     width: 36,
@@ -361,10 +364,10 @@ export default function StockArticlesPageMobile() {
                 cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
               }}
             >
-              ‹ Précédent
+              {t('stock.prevShort')}
             </button>
             <span style={{ fontSize: 12, color: 'var(--ink-3)', alignSelf: 'center' }}>
-              {currentPage + 1} / {totalPages}
+              {t('stock.pageShort', { current: currentPage + 1, total: totalPages })}
             </span>
             <button
               type="button"
@@ -381,7 +384,7 @@ export default function StockArticlesPageMobile() {
                 cursor: currentPage >= totalPages - 1 ? 'not-allowed' : 'pointer',
               }}
             >
-              Suivant ›
+              {t('stock.nextShort')}
             </button>
           </div>
         )}

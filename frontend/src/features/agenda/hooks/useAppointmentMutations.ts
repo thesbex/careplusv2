@@ -72,10 +72,16 @@ export function useCancelAppointment() {
   };
 }
 
+/**
+ * Surface a backend-provided 409 conflict message (server text, not
+ * translated here). Returns `null` when there is no conflict OR the 409 body
+ * carries no message — callers then fall back to their own translated toast
+ * (e.g. `t('agenda.toast.moveErr')`), so no French is hardcoded here.
+ */
 export function extractConflictMessage(err: unknown): string | null {
   if (err instanceof AxiosError && err.response?.status === 409) {
     const data = err.response.data as { detail?: string; title?: string; message?: string };
-    return data.detail ?? data.message ?? data.title ?? 'Conflit horaire détecté.';
+    return data.detail ?? data.message ?? data.title ?? null;
   }
   return null;
 }

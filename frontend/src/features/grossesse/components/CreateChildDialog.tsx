@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { CreateChildSchema, type CreateChildValues } from '../schemas';
 import { useCreateChildFromPregnancy } from '../hooks/useCreateChildFromPregnancy';
 
@@ -35,6 +36,7 @@ export function CreateChildDialog({
   onOpenChange,
 }: CreateChildDialogProps) {
   const navigate = useNavigate();
+  const { t } = useT();
   const createChild = useCreateChildFromPregnancy(pregnancyId, patientId);
   const form = useForm<CreateChildValues>({
     resolver: zodResolver(CreateChildSchema),
@@ -47,12 +49,12 @@ export function CreateChildDialog({
         firstName: values.firstName,
         sex: values.sex,
       });
-      toast.success('Fiche enfant créée + calendrier vaccination généré.');
+      toast.success(t('gross.child.success'));
       form.reset();
       onOpenChange(false);
       void navigate(`/patients/${res.childPatientId}`);
     } catch {
-      toast.error('Impossible de créer la fiche enfant.');
+      toast.error(t('gross.child.error'));
     }
   }
 
@@ -66,7 +68,7 @@ export function CreateChildDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="gr-overlay" />
-        <Dialog.Content className="gr-dialog" aria-label="Créer la fiche enfant">
+        <Dialog.Content className="gr-dialog" aria-label={t('gross.child.title')}>
           <div
             style={{
               display: 'flex',
@@ -76,10 +78,10 @@ export function CreateChildDialog({
             }}
           >
             <Dialog.Title style={{ fontSize: 14.5, fontWeight: 600, flex: 1, margin: 0 }}>
-              Créer la fiche enfant
+              {t('gross.child.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -87,9 +89,7 @@ export function CreateChildDialog({
           <Dialog.Description
             style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}
           >
-            Le nom de famille est repris automatiquement depuis la mère. La date
-            de naissance correspond à la date de fin de grossesse. Le calendrier
-            vaccinal PNI marocain sera généré dès la création.
+            {t('gross.child.desc')}
           </Dialog.Description>
 
           <form
@@ -100,31 +100,31 @@ export function CreateChildDialog({
           >
             <div className="gr-field">
               <label htmlFor="grcc-firstName" className="gr-label">
-                Prénom *
+                {t('gross.child.firstNameLabel')}
               </label>
               <Input
                 id="grcc-firstName"
-                placeholder="Prénom de l'enfant"
+                placeholder={t('gross.child.firstNamePlaceholder')}
                 {...form.register('firstName')}
                 autoFocus
               />
               {form.formState.errors.firstName && (
-                <div className="gr-error">{form.formState.errors.firstName.message}</div>
+                <div className="gr-error">{t(form.formState.errors.firstName.message ?? '')}</div>
               )}
             </div>
 
             <div className="gr-field">
               <label htmlFor="grcc-sex" className="gr-label">
-                Sexe *
+                {t('gross.child.sexLabel')}
               </label>
               <Select id="grcc-sex" {...form.register('sex')}>
-                <option value="">Sélectionner…</option>
-                <option value="M">Garçon</option>
-                <option value="F">Fille</option>
+                <option value="">{t('gross.child.sexPlaceholder')}</option>
+                <option value="M">{t('gross.child.sexM')}</option>
+                <option value="F">{t('gross.child.sexF')}</option>
               </Select>
               {form.formState.errors.sex && (
                 <div className="gr-error">
-                  {form.formState.errors.sex.message ?? 'Sexe requis'}
+                  {t(form.formState.errors.sex.message ?? 'gross.child.sexRequired')}
                 </div>
               )}
             </div>
@@ -132,7 +132,7 @@ export function CreateChildDialog({
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Dialog.Close asChild>
                 <Button type="button" variant="ghost">
-                  Annuler
+                  {t('common.cancel')}
                 </Button>
               </Dialog.Close>
               <Button
@@ -140,7 +140,7 @@ export function CreateChildDialog({
                 variant="primary"
                 disabled={createChild.isPending}
               >
-                {createChild.isPending ? 'Création…' : 'Créer la fiche enfant'}
+                {createChild.isPending ? t('gross.child.submitting') : t('gross.child.submit')}
               </Button>
             </div>
           </form>

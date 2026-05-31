@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockAlertsView } from '../types';
 
 /**
@@ -7,6 +8,7 @@ import type { StockAlertsView } from '../types';
  * GET /api/stock/alerts
  */
 export function useStockAlerts() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['stock', 'alerts'],
     queryFn: () =>
@@ -19,6 +21,6 @@ export function useStockAlerts() {
     lowStockArticles: data?.lowStockArticles ?? [],
     expiringSoonLots: data?.expiringSoonLots ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les alertes.' : null,
+    error: error ? t('stock.err.loadAlerts') : null,
   };
 }

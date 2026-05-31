@@ -15,26 +15,19 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { File as FileIcon, Print, Warn } from '@/components/icons';
+import { useT, type I18nContextValue } from '@/lib/i18n/I18nProvider';
 import { usePrescription } from './hooks/usePrescriptions';
 import { useDocumentPdfBlob, metaForPrescription } from './components/DocumentPdfViewer';
 import { PdfCanvasViewer } from './components/PdfCanvasViewer';
 import type { PrescriptionLineApi } from './types';
 import './prescription.css';
 
-const TYPE_LABEL: Record<string, string> = {
-  DRUG: 'Médicaments',
-  LAB: 'Analyses',
-  IMAGING: 'Imagerie',
-  CERT: 'Certificat',
-  SICK_LEAVE: 'Arrêt de travail',
-};
-
-function lineTitle(l: PrescriptionLineApi): string {
+function lineTitle(l: PrescriptionLineApi, t: I18nContextValue['t']): string {
   if (l.freeText && l.freeText.trim()) return l.freeText.trim();
-  if (l.medicationId) return `Médicament · ${l.medicationId.slice(0, 8).toUpperCase()}`;
-  if (l.labTestId) return `Analyse · ${l.labTestId.slice(0, 8).toUpperCase()}`;
-  if (l.imagingExamId) return `Imagerie · ${l.imagingExamId.slice(0, 8).toUpperCase()}`;
-  return 'Ligne sans description';
+  if (l.medicationId) return t('presc.mobile.line.med', { code: l.medicationId.slice(0, 8).toUpperCase() });
+  if (l.labTestId) return t('presc.mobile.line.lab', { code: l.labTestId.slice(0, 8).toUpperCase() });
+  if (l.imagingExamId) return t('presc.mobile.line.imaging', { code: l.imagingExamId.slice(0, 8).toUpperCase() });
+  return t('presc.mobile.line.empty');
 }
 
 function lineMeta(l: PrescriptionLineApi): string {
@@ -44,15 +37,17 @@ function lineMeta(l: PrescriptionLineApi): string {
 }
 
 export default function OrdonnancePdfMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { prescription, isLoading, error } = usePrescription(id);
   const { url, isLoading: pdfLoading } = useDocumentPdfBlob(id);
 
   const docMeta = metaForPrescription(prescription);
+  const docLabel = t(docMeta.labelKey);
   const shortId = id ? id.slice(0, 8).toUpperCase() : '—';
   const typeLabel = prescription?.type
-    ? TYPE_LABEL[prescription.type] ?? prescription.type
+    ? t(`presc.typeLabel.${prescription.type}`)
     : '—';
 
   function openPdf() {
@@ -77,16 +72,16 @@ export default function OrdonnancePdfMobilePage() {
       onTabChange={() => undefined}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
+          left={<MIconBtn icon="ChevronLeft" label={t('presc.preview.back')} onClick={() => navigate(-1)} />}
           title={`${docMeta.prefix}-${shortId}`}
-          sub={prescription ? typeLabel : 'Aperçu'}
+          sub={prescription ? typeLabel : t('presc.preview.sub')}
         />
       }
     >
       <div className="mb-pad">
         {isLoading && (
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>
-            Chargement…
+            {t('presc.preview.loading')}
           </div>
         )}
         {error && (
@@ -107,17 +102,19 @@ export default function OrdonnancePdfMobilePage() {
                   letterSpacing: '0.06em',
                 }}
               >
-                {docMeta.label}
+                {docLabel}
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
                 {docMeta.prefix}-{shortId}
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8 }}>
-                {typeLabel} · émis le{' '}
-                {new Date(prescription.issuedAt).toLocaleDateString('fr-MA', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric',
+                {t('presc.mobile.issuedOn', {
+                  type: typeLabel,
+                  date: new Date(prescription.issuedAt).toLocaleDateString('fr-MA', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric',
+                  }),
                 })}
               </div>
               {prescription.allergyOverride && (
@@ -135,20 +132,20 @@ export default function OrdonnancePdfMobilePage() {
                     gap: 6,
                   }}
                 >
-                  <Warn aria-hidden="true" /> Override allergie validé par le médecin
+                  <Warn aria-hidden="true" /> {t('presc.mobile.overrideValidated')}
                 </div>
               )}
             </div>
 
             {/* Lines */}
             <div className="m-section-h">
-              <h3>Lignes</h3>
+              <h3>{t('presc.mobile.linesTitle')}</h3>
               <span className="more">{prescription.lines.length}</span>
             </div>
             <div className="m-card" style={{ marginBottom: 14 }}>
               {prescription.lines.length === 0 ? (
                 <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune ligne.
+                  {t('presc.mobile.noLine')}
                 </div>
               ) : (
                 prescription.lines
@@ -166,7 +163,7 @@ export default function OrdonnancePdfMobilePage() {
                         }}
                       >
                         <div className="m-row-pri">
-                          <div className="m-row-main">{lineTitle(l)}</div>
+                          <div className="m-row-main">{lineTitle(l, t)}</div>
                           {meta && (
                             <div className="m-row-sub" style={{ marginTop: 4 }}>
                               {meta}
@@ -232,7 +229,7 @@ export default function OrdonnancePdfMobilePage() {
                 disabled={!url || pdfLoading}
                 onClick={openPdf}
               >
-                <Print aria-hidden="true" /> Aperçu PDF
+                <Print aria-hidden="true" /> {t('presc.preview.previewPdf')}
               </button>
               <button
                 type="button"
@@ -241,7 +238,7 @@ export default function OrdonnancePdfMobilePage() {
                 disabled={!url || pdfLoading}
                 onClick={downloadPdf}
               >
-                <FileIcon aria-hidden="true" /> Télécharger
+                <FileIcon aria-hidden="true" /> {t('presc.preview.download')}
               </button>
             </div>
 
@@ -254,7 +251,7 @@ export default function OrdonnancePdfMobilePage() {
                   textAlign: 'center',
                 }}
               >
-                Préparation du PDF…
+                {t('presc.preview.preparingPdf')}
               </div>
             )}
           </>

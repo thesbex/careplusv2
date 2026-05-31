@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Print } from '@/components/icons';
 import { useVaccinationCalendar } from '../hooks/useVaccinationCalendar';
 import { useDeferDose } from '../hooks/useDeferDose';
@@ -13,7 +14,6 @@ import { useDeleteDose } from '../hooks/useDeleteDose';
 import { useDownloadBooklet } from '../hooks/useDownloadBooklet';
 import { RecordDoseDrawerMobile } from './RecordDoseDrawer.mobile';
 import type { VaccinationCalendarEntry, AgeGroup, DrawerMode, DoseStatus } from '../types';
-import { AGE_GROUP_LABEL } from '../types';
 import { useAuthStore } from '@/lib/auth/authStore';
 
 // ── Age-group classification ─────────────────────────────────────────────────
@@ -61,13 +61,13 @@ const STATUS_BG: Record<DoseStatus, string> = {
   DEFERRED: 'var(--bg-alt)',
 };
 
-const STATUS_LABEL: Record<DoseStatus, string> = {
-  ADMINISTERED: 'Administrée',
-  DUE_SOON: 'Prochaine',
-  OVERDUE: 'En retard',
-  UPCOMING: 'Planifiée',
-  SKIPPED: 'Non administrée',
-  DEFERRED: 'Reportée',
+const STATUS_LABEL_KEY: Record<DoseStatus, string> = {
+  ADMINISTERED: 'vacc.status.administered',
+  DUE_SOON: 'vacc.status.dueSoon',
+  OVERDUE: 'vacc.status.overdue',
+  UPCOMING: 'vacc.status.upcoming',
+  SKIPPED: 'vacc.status.skipped',
+  DEFERRED: 'vacc.status.deferred',
 };
 
 function formatDateFR(iso: string): string {
@@ -91,6 +91,7 @@ interface MDoseCardProps {
 }
 
 function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete }: MDoseCardProps) {
+  const { t } = useT();
   const isActionable = dose.status === 'UPCOMING' || dose.status === 'DUE_SOON' || dose.status === 'OVERDUE';
   const isAdministered = dose.status === 'ADMINISTERED';
   const isSkipped = dose.status === 'SKIPPED';
@@ -148,12 +149,12 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
           </div>
           {isAdministered && dose.lotNumber && (
             <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-              Lot <span className="mono">{dose.lotNumber}</span>
+              {t('vacc.dose.lot')}<span className="mono">{dose.lotNumber}</span>
             </div>
           )}
           {dose.status === 'DEFERRED' && dose.deferralReason && (
             <div style={{ fontSize: 12, color: 'var(--amber)', marginTop: 4 }}>
-              Motif : {dose.deferralReason}
+              {t('vacc.dose.reason', { reason: dose.deferralReason })}
             </div>
           )}
         </div>
@@ -171,7 +172,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
             whiteSpace: 'nowrap',
           }}
         >
-          {STATUS_LABEL[dose.status]}
+          {t(STATUS_LABEL_KEY[dose.status])}
         </span>
       </button>
 
@@ -205,7 +206,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
                 cursor: 'pointer',
               }}
             >
-              Saisir dose
+              {t('vacc.action.record')}
             </button>
           )}
           {isActionable && canRecord && (
@@ -226,7 +227,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
                 cursor: 'pointer',
               }}
             >
-              Reporter
+              {t('vacc.dose.defer')}
             </button>
           )}
           {isActionable && canAdmin && (
@@ -247,7 +248,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
                 cursor: 'pointer',
               }}
             >
-              Non administrée
+              {t('vacc.dose.skip')}
             </button>
           )}
           {isAdministered && canAdmin && (
@@ -269,7 +270,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
                   cursor: 'pointer',
                 }}
               >
-                Modifier
+                {t('vacc.dose.edit')}
               </button>
               <button
                 type="button"
@@ -288,7 +289,7 @@ function MDoseCard({ dose, canRecord, canAdmin, onTap, onDefer, onSkip, onDelete
                   cursor: 'pointer',
                 }}
               >
-                Supprimer
+                {t('vacc.dose.delete')}
               </button>
             </>
           )}
@@ -315,6 +316,7 @@ interface DeferSheetProps {
 }
 
 function DeferSheet({ dose, open, onConfirm, onCancel, isPending }: DeferSheetProps) {
+  const { t } = useT();
   const form = useForm<DeferDoseValues>({
     resolver: zodResolver(DeferDoseSchema),
     defaultValues: { reason: '' },
@@ -341,10 +343,10 @@ function DeferSheet({ dose, open, onConfirm, onCancel, isPending }: DeferSheetPr
             padding: 20,
             paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
           }}
-          aria-label="Reporter la dose"
+          aria-label={t('vacc.defer.title')}
         >
           <div style={{ width: 36, height: 4, background: 'var(--border-strong)', borderRadius: 2, margin: '0 auto 16px' }} />
-          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>Reporter la dose</div>
+          <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>{t('vacc.defer.title')}</div>
           <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 16 }}>
             {dose.vaccineName} — {dose.doseLabel}
           </div>
@@ -353,12 +355,12 @@ function DeferSheet({ dose, open, onConfirm, onCancel, isPending }: DeferSheetPr
               htmlFor="m-defer-reason"
               style={{ fontSize: 13, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 8 }}
             >
-              Motif de report *
+              {t('vacc.defer.reasonLabel')}
             </label>
             <textarea
               id="m-defer-reason"
               {...form.register('reason')}
-              placeholder="Ex. Fièvre, contre-indication temporaire…"
+              placeholder={t('vacc.defer.reasonPlaceholder')}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -396,7 +398,7 @@ function DeferSheet({ dose, open, onConfirm, onCancel, isPending }: DeferSheetPr
                   cursor: 'pointer',
                 }}
               >
-                {isPending ? 'Report…' : 'Reporter'}
+                {isPending ? t('vacc.defer.submitting') : t('vacc.defer.submit')}
               </button>
               <button
                 type="button"
@@ -414,7 +416,7 @@ function DeferSheet({ dose, open, onConfirm, onCancel, isPending }: DeferSheetPr
                   cursor: 'pointer',
                 }}
               >
-                Annuler
+                {t('vacc.defer.cancel')}
               </button>
             </div>
           </form>
@@ -431,6 +433,7 @@ interface VaccinationCalendarTabMobileProps {
 }
 
 export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarTabMobileProps) {
+  const { t } = useT();
   const { calendar, isLoading, error } = useVaccinationCalendar(patientId);
   const { download: downloadBooklet, isLoading: isBookletLoading } = useDownloadBooklet(patientId);
   const deferMutation = useDeferDose(patientId);
@@ -463,33 +466,33 @@ export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarT
     if (!deferDose?.id) return;
     try {
       await deferMutation.mutateAsync({ doseId: deferDose.id, body: { reason } });
-      toast.success('Dose reportée.');
+      toast.success(t('vacc.defer.success'));
       setDeferOpen(false);
       setDeferDose(null);
     } catch {
-      toast.error('Erreur lors du report.');
+      toast.error(t('vacc.defer.errorShort'));
     }
   }
 
   async function handleSkip(dose: VaccinationCalendarEntry) {
     if (!dose.id) return;
-    if (!confirm(`Marquer "${dose.vaccineName}" comme non administrée ?`)) return;
+    if (!confirm(t('vacc.confirm.skipShort', { vaccine: dose.vaccineName }))) return;
     try {
       await skipMutation.mutateAsync(dose.id);
-      toast.success('Dose marquée comme non administrée.');
+      toast.success(t('vacc.toast.skipped'));
     } catch {
-      toast.error('Erreur lors de l\'opération.');
+      toast.error(t('vacc.toast.skipError'));
     }
   }
 
   async function handleDelete(dose: VaccinationCalendarEntry) {
     if (!dose.id) return;
-    if (!confirm(`Supprimer la dose "${dose.vaccineName}" ?`)) return;
+    if (!confirm(t('vacc.confirm.deleteShort', { vaccine: dose.vaccineName }))) return;
     try {
       await deleteMutation.mutateAsync(dose.id);
-      toast.success('Dose supprimée.');
+      toast.success(t('vacc.toast.deleted'));
     } catch {
-      toast.error('Erreur lors de la suppression.');
+      toast.error(t('vacc.toast.deleteError'));
     }
   }
 
@@ -504,7 +507,7 @@ export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarT
             borderRadius: 'var(--r-lg)',
             marginBottom: 10,
           }}
-          aria-label="Chargement…"
+          aria-label={t('vacc.loading')}
         />
         <div style={{ height: 80, background: 'var(--bg-alt)', borderRadius: 'var(--r-lg)' }} />
       </div>
@@ -532,16 +535,16 @@ export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarT
           background: 'var(--surface)',
         }}
       >
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>Vaccination</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{t('vacc.cal.title')}</div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-          Carnet PNI marocain
+          {t('vacc.cal.pniBooklet')}
         </div>
       </div>
 
       {/* Empty state */}
       {!hasAny && (
         <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--ink-3)', fontSize: 14 }}>
-          Patient hors plage pédiatrique — pas de calendrier vaccinal applicable.
+          {t('vacc.cal.empty')}
         </div>
       )}
 
@@ -563,7 +566,7 @@ export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarT
                     paddingLeft: 2,
                   }}
                 >
-                  {AGE_GROUP_LABEL[group]}
+                  {t(`vacc.ageGroup.${group}`)}
                 </div>
                 {doses.map((dose, idx) => (
                   <MDoseCard
@@ -618,7 +621,7 @@ export function VaccinationCalendarTabMobile({ patientId }: VaccinationCalendarT
           }}
         >
           <Print style={{ width: 14, height: 14 }} />
-          {isBookletLoading ? 'Chargement…' : 'Imprimer carnet'}
+          {isBookletLoading ? t('vacc.loading') : t('vacc.cal.print')}
         </button>
       </div>
 

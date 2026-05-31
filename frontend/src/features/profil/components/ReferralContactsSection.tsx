@@ -16,6 +16,7 @@ import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { Trash } from '@/components/icons';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { MEDICAL_SPECIALTIES, SPECIALTY_OTHER } from '@/lib/catalogs/medicalSpecialties';
 import {
   useCreateReferralContact,
@@ -37,6 +38,7 @@ const emptyDraft: ReferralContactInput = {
 };
 
 export function ReferralContactsSection() {
+  const { t } = useT();
   const isMobile = useIsMobile();
   const { contacts, isLoading, error } = useReferralContacts();
   const { create, isPending: isCreating } = useCreateReferralContact();
@@ -85,11 +87,11 @@ export function ReferralContactsSection() {
 
   async function handleSubmit() {
     if (!draft.fullName.trim()) {
-      toast.error('Nom complet requis.');
+      toast.error(t('profil.referrals.errNameRequired'));
       return;
     }
     if (!draft.specialty.trim()) {
-      toast.error('Spécialité requise.');
+      toast.error(t('profil.referrals.errSpecialtyRequired'));
       return;
     }
     const payload: ReferralContactInput = {
@@ -102,24 +104,24 @@ export function ReferralContactsSection() {
     try {
       if (editing) {
         await update(editing.id, payload);
-        toast.success('Confrère mis à jour.');
+        toast.success(t('profil.referrals.updated'));
       } else {
         await create(payload);
-        toast.success('Confrère ajouté.');
+        toast.success(t('profil.referrals.added'));
       }
       closeForm();
     } catch {
-      toast.error("Échec de l'enregistrement.");
+      toast.error(t('profil.referrals.saveFailed'));
     }
   }
 
   async function handleDelete(c: ReferralContact) {
-    if (!window.confirm(`Supprimer ${c.fullName} de votre carnet ?`)) return;
+    if (!window.confirm(t('profil.referrals.confirmDelete', { name: c.fullName }))) return;
     try {
       await remove(c.id);
-      toast.success('Confrère supprimé.');
+      toast.success(t('profil.referrals.deleted'));
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('profil.referrals.deleteFailed'));
     }
   }
 
@@ -143,9 +145,9 @@ export function ReferralContactsSection() {
         }}
       >
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>Mes confrères</div>
+          <div style={{ fontWeight: 600, fontSize: 14 }}>{t('profil.referrals.title')}</div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-            Carnet personnel pour orienter vos patients vers d'autres spécialistes.
+            {t('profil.referrals.hint')}
           </div>
         </div>
         <Button
@@ -153,7 +155,7 @@ export function ReferralContactsSection() {
           size="sm"
           onClick={() => (showForm ? closeForm() : openCreate())}
         >
-          {showForm ? 'Fermer' : 'Nouveau confrère'}
+          {showForm ? t('profil.referrals.close') : t('profil.referrals.new')}
         </Button>
       </div>
 
@@ -172,13 +174,13 @@ export function ReferralContactsSection() {
           }}
         >
           <Field>
-            <FieldLabel htmlFor="ref-fullname">Nom complet *</FieldLabel>
+            <FieldLabel htmlFor="ref-fullname">{t('profil.referrals.fullName')}</FieldLabel>
             <Input
               id="ref-fullname"
               value={draft.fullName}
               onChange={(e) => setDraft({ ...draft, fullName: e.target.value })}
               maxLength={160}
-              placeholder="Dr Hassan Cherkaoui"
+              placeholder={t('profil.referrals.fullNamePlaceholder')}
             />
           </Field>
           <SpecialtyPicker
@@ -187,34 +189,34 @@ export function ReferralContactsSection() {
             extraOptions={specialties}
           />
           <Field>
-            <FieldLabel htmlFor="ref-phone">Téléphone</FieldLabel>
+            <FieldLabel htmlFor="ref-phone">{t('profil.referrals.phone')}</FieldLabel>
             <Input
               id="ref-phone"
               value={draft.phone}
               onChange={(e) => setDraft({ ...draft, phone: e.target.value })}
               maxLength={40}
-              placeholder="+212 5 22 ..."
+              placeholder={t('profil.referrals.phonePlaceholder')}
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="ref-city">Ville</FieldLabel>
+            <FieldLabel htmlFor="ref-city">{t('profil.referrals.city')}</FieldLabel>
             <Input
               id="ref-city"
               value={draft.city}
               onChange={(e) => setDraft({ ...draft, city: e.target.value })}
               maxLength={120}
-              placeholder="Casablanca"
+              placeholder={t('profil.referrals.cityPlaceholder')}
             />
           </Field>
           <Field style={{ gridColumn: '1 / -1' }}>
-            <FieldLabel htmlFor="ref-notes">Notes</FieldLabel>
+            <FieldLabel htmlFor="ref-notes">{t('profil.referrals.notes')}</FieldLabel>
             <textarea
               id="ref-notes"
               value={draft.notes ?? ''}
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
               rows={2}
               maxLength={4000}
-              placeholder="Pratique privée, accepte CNOPS, joignable matin uniquement…"
+              placeholder={t('profil.referrals.notesPlaceholder')}
               style={{
                 width: '100%',
                 border: '1px solid var(--border)',
@@ -236,7 +238,7 @@ export function ReferralContactsSection() {
             }}
           >
             <Button onClick={closeForm} disabled={isCreating || isUpdating}>
-              Annuler
+              {t('profil.referrals.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -245,11 +247,11 @@ export function ReferralContactsSection() {
             >
               {editing
                 ? isUpdating
-                  ? 'Enregistrement…'
-                  : 'Enregistrer'
+                  ? t('profil.referrals.saving')
+                  : t('profil.referrals.save')
                 : isCreating
-                ? 'Création…'
-                : 'Créer'}
+                ? t('profil.referrals.creating')
+                : t('profil.referrals.create')}
             </Button>
           </div>
         </div>
@@ -266,9 +268,9 @@ export function ReferralContactsSection() {
             fontSize: 12,
           }}
         >
-          <span style={{ color: 'var(--ink-3)' }}>Spécialité :</span>
+          <span style={{ color: 'var(--ink-3)' }}>{t('profil.referrals.specialtyLabel')}</span>
           <select
-            aria-label="Filtrer par spécialité"
+            aria-label={t('profil.referrals.filterBySpecialty')}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             style={{
@@ -281,7 +283,7 @@ export function ReferralContactsSection() {
               background: 'var(--surface)',
             }}
           >
-            <option value={ALL}>Toutes ({contacts.length})</option>
+            <option value={ALL}>{t('profil.referrals.allSpecialties', { n: contacts.length })}</option>
             {specialties.map((s) => (
               <option key={s} value={s}>
                 {s} ({contacts.filter((c) => c.specialty === s).length})
@@ -292,10 +294,10 @@ export function ReferralContactsSection() {
       )}
 
       {isLoading && (
-        <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+        <div style={{ color: 'var(--ink-3)', fontSize: 12 }}>{t('profil.referrals.loading')}</div>
       )}
       {error && (
-        <div style={{ color: 'var(--danger)', fontSize: 12 }}>{error}</div>
+        <div style={{ color: 'var(--danger)', fontSize: 12 }}>{t(error)}</div>
       )}
       {!isLoading && visible.length === 0 && (
         <div
@@ -309,8 +311,8 @@ export function ReferralContactsSection() {
           }}
         >
           {contacts.length === 0
-            ? 'Aucun confrère encore enregistré. Commencez par « Nouveau confrère ».'
-            : 'Aucun confrère pour cette spécialité.'}
+            ? t('profil.referrals.emptyAll')
+            : t('profil.referrals.emptySpecialty')}
         </div>
       )}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -350,16 +352,16 @@ export function ReferralContactsSection() {
             <Button
               variant="ghost"
               size="sm"
-              aria-label={`Modifier ${c.fullName}`}
+              aria-label={t('profil.referrals.editAria', { name: c.fullName })}
               onClick={() => openEdit(c)}
             >
-              Modifier
+              {t('profil.referrals.edit')}
             </Button>
             <Button
               variant="ghost"
               size="sm"
               iconOnly
-              aria-label={`Supprimer ${c.fullName}`}
+              aria-label={t('profil.referrals.deleteAria', { name: c.fullName })}
               disabled={isDeleting}
               onClick={() => void handleDelete(c)}
             >
@@ -391,6 +393,7 @@ function SpecialtyPicker({
   onChange: (v: string) => void;
   extraOptions: readonly string[];
 }) {
+  const { t } = useT();
   // Catalogue final = MEDICAL_SPECIALTIES ∪ saisies historiques du médecin.
   const allOptions = useMemo(() => {
     const set = new Set<string>(MEDICAL_SPECIALTIES);
@@ -413,7 +416,7 @@ function SpecialtyPicker({
 
   return (
     <Field>
-      <FieldLabel htmlFor="ref-specialty">Spécialité *</FieldLabel>
+      <FieldLabel htmlFor="ref-specialty">{t('profil.referrals.specialty')}</FieldLabel>
       {mode === 'select' ? (
         <select
           id="ref-specialty"
@@ -438,13 +441,13 @@ function SpecialtyPicker({
             color: 'var(--ink)',
           }}
         >
-          <option value="">— Sélectionner —</option>
+          <option value="">{t('profil.referrals.specialtySelect')}</option>
           {allOptions.map((s) => (
             <option key={s} value={s}>
               {s}
             </option>
           ))}
-          <option value={SPECIALTY_OTHER}>Autre… (saisir)</option>
+          <option value={SPECIALTY_OTHER}>{t('profil.referrals.specialtyOther')}</option>
         </select>
       ) : (
         <div style={{ display: 'flex', gap: 6 }}>
@@ -453,11 +456,11 @@ function SpecialtyPicker({
             value={value}
             onChange={(e) => onChange(e.target.value)}
             maxLength={120}
-            placeholder="Saisir la spécialité"
+            placeholder={t('profil.referrals.specialtyFreePlaceholder')}
             autoFocus
           />
           <Button variant="ghost" size="sm" onClick={() => { setMode('select'); onChange(''); }}>
-            ↩ Liste
+            {t('profil.referrals.backToList')}
           </Button>
         </div>
       )}

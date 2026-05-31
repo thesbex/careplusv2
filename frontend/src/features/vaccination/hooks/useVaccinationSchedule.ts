@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Mirrors backend VaccineScheduleDoseDto.
@@ -21,6 +22,7 @@ export interface VaccineScheduleDose {
  * Sorted by targetAgeDays ASC on the server; if not, we sort client-side.
  */
 export function useVaccinationSchedule() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['vaccination', 'schedule'],
     queryFn: () =>
@@ -33,6 +35,6 @@ export function useVaccinationSchedule() {
   return {
     schedule: sorted,
     isLoading,
-    error: error ? 'Impossible de charger le calendrier vaccinal.' : null,
+    error: error ? t('vacc.param.schedule.loadError') : null,
   };
 }

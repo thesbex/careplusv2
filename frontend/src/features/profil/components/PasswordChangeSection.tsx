@@ -16,8 +16,10 @@ import { Input } from '@/components/ui/Input';
 import { Lock } from '@/components/icons';
 import { useChangeOwnPassword } from '@/features/parametres/hooks/useUsers';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export function PasswordChangeSection() {
+  const { t } = useT();
   const { changePassword, isPending } = useChangeOwnPassword();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -35,31 +37,31 @@ export function PasswordChangeSection() {
     e.preventDefault();
     setError(null);
     if (!current) {
-      setError('Le mot de passe actuel est requis.');
+      setError(t('profil.password.errCurrentRequired'));
       return;
     }
     if (next.length < 12) {
-      setError('Le nouveau mot de passe doit faire au moins 12 caractères.');
+      setError(t('profil.password.errTooShort'));
       return;
     }
     if (next !== confirm) {
-      setError('Les deux mots de passe ne correspondent pas.');
+      setError(t('profil.password.errMismatch'));
       return;
     }
     if (next === current) {
-      setError("Le nouveau mot de passe doit être différent de l'actuel.");
+      setError(t('profil.password.errSameAsCurrent'));
       return;
     }
     try {
       await changePassword({ currentPassword: current, newPassword: next });
-      toast.success('Mot de passe mis à jour.');
+      toast.success(t('profil.password.updated'));
       reset();
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.code === 'INVALID_CURRENT_PASSWORD') {
-        setError('Le mot de passe actuel est incorrect.');
+        setError(t('profil.password.errInvalidCurrent'));
       } else if (problem.code === 'PASSWORD_REUSED') {
-        setError("Le nouveau mot de passe doit être différent de l'actuel.");
+        setError(t('profil.password.errSameAsCurrent'));
       } else {
         setError(problem.detail ?? problem.title);
       }
@@ -81,14 +83,13 @@ export function PasswordChangeSection() {
         gap: 12,
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 14 }}>Mot de passe</div>
+      <div style={{ fontWeight: 600, fontSize: 14 }}>{t('profil.password.title')}</div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>
-        Modifiez votre mot de passe à tout moment. Vous resterez connecté à
-        cette session.
+        {t('profil.password.hint')}
       </div>
 
       <Field>
-        <FieldLabel htmlFor="pwd-current">Mot de passe actuel</FieldLabel>
+        <FieldLabel htmlFor="pwd-current">{t('profil.password.current')}</FieldLabel>
         <Input
           id="pwd-current"
           type="password"
@@ -99,7 +100,7 @@ export function PasswordChangeSection() {
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="pwd-new">Nouveau mot de passe</FieldLabel>
+        <FieldLabel htmlFor="pwd-new">{t('profil.password.new')}</FieldLabel>
         <Input
           id="pwd-new"
           type="password"
@@ -108,12 +109,12 @@ export function PasswordChangeSection() {
           onChange={(e) => setNext(e.target.value)}
         />
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-          12 caractères minimum.
+          {t('profil.password.minHint')}
         </div>
       </Field>
 
       <Field>
-        <FieldLabel htmlFor="pwd-confirm">Confirmer</FieldLabel>
+        <FieldLabel htmlFor="pwd-confirm">{t('profil.password.confirm')}</FieldLabel>
         <Input
           id="pwd-confirm"
           type="password"
@@ -140,7 +141,7 @@ export function PasswordChangeSection() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <Button type="submit" variant="primary" disabled={isPending}>
-          <Lock /> {isPending ? 'Enregistrement…' : 'Mettre à jour'}
+          <Lock /> {isPending ? t('profil.password.saving') : t('profil.password.submit')}
         </Button>
       </div>
     </form>

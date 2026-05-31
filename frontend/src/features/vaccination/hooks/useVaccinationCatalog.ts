@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { VaccineCatalogEntry } from '../types';
 
 /**
@@ -8,6 +9,7 @@ import type { VaccineCatalogEntry } from '../types';
  * staleTime is long (5 min) — the catalog changes rarely.
  */
 export function useVaccinationCatalog() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['vaccination', 'catalog'],
     queryFn: () =>
@@ -18,6 +20,6 @@ export function useVaccinationCatalog() {
   return {
     catalog: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger le catalogue de vaccins.' : null,
+    error: error ? t('vacc.param.catalog.loadError') : null,
   };
 }

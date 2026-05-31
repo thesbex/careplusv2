@@ -10,9 +10,10 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { ClosePregnancySchema, type ClosePregnancyValues } from '../schemas';
 import { useClosePregnancy } from '../hooks/useClosePregnancy';
-import { OUTCOME_LABEL, toLocalDate, type PregnancyOutcome } from '../types';
+import { OUTCOME_LABEL_KEY, toLocalDate, type PregnancyOutcome } from '../types';
 
 interface PregnancyCloseDialogProps {
   pregnancyId: string;
@@ -37,6 +38,7 @@ export function PregnancyCloseDialog({
   open,
   onOpenChange,
 }: PregnancyCloseDialogProps) {
+  const { t } = useT();
   const close = useClosePregnancy(pregnancyId, patientId);
   const form = useForm<ClosePregnancyValues>({
     resolver: zodResolver(ClosePregnancySchema),
@@ -50,11 +52,11 @@ export function PregnancyCloseDialog({
         outcome: values.outcome,
         ...(values.notes ? { notes: values.notes } : {}),
       });
-      toast.success('Grossesse clôturée.');
+      toast.success(t('gross.close.success'));
       form.reset();
       onOpenChange(false);
     } catch {
-      toast.error('Impossible de clôturer la grossesse.');
+      toast.error(t('gross.close.error'));
     }
   }
 
@@ -68,7 +70,7 @@ export function PregnancyCloseDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="gr-overlay" />
-        <Dialog.Content className="gr-dialog" aria-label="Clôturer la grossesse">
+        <Dialog.Content className="gr-dialog" aria-label={t('gross.close.title')}>
           <div
             style={{
               display: 'flex',
@@ -78,10 +80,10 @@ export function PregnancyCloseDialog({
             }}
           >
             <Dialog.Title style={{ fontSize: 14.5, fontWeight: 600, flex: 1, margin: 0 }}>
-              Clôturer la grossesse
+              {t('gross.close.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -95,7 +97,7 @@ export function PregnancyCloseDialog({
           >
             <div className="gr-field">
               <label htmlFor="grc-endedAt" className="gr-label">
-                Date de fin *
+                {t('gross.close.endedAtLabel')}
               </label>
               <Input
                 id="grc-endedAt"
@@ -103,32 +105,32 @@ export function PregnancyCloseDialog({
                 {...form.register('endedAt')}
               />
               {form.formState.errors.endedAt && (
-                <div className="gr-error">{form.formState.errors.endedAt.message}</div>
+                <div className="gr-error">{t(form.formState.errors.endedAt.message ?? '')}</div>
               )}
             </div>
 
             <div className="gr-field">
               <label htmlFor="grc-outcome" className="gr-label">
-                Issue *
+                {t('gross.close.outcomeLabel')}
               </label>
               <Select id="grc-outcome" {...form.register('outcome')}>
-                <option value="">Sélectionner…</option>
+                <option value="">{t('gross.close.outcomePlaceholder')}</option>
                 {OUTCOMES.map((o) => (
                   <option key={o} value={o}>
-                    {OUTCOME_LABEL[o]}
+                    {t(OUTCOME_LABEL_KEY[o])}
                   </option>
                 ))}
               </Select>
               {form.formState.errors.outcome && (
                 <div className="gr-error">
-                  {form.formState.errors.outcome.message ?? 'Issue requise'}
+                  {t(form.formState.errors.outcome.message ?? 'gross.close.outcomeRequired')}
                 </div>
               )}
             </div>
 
             <div className="gr-field">
               <label htmlFor="grc-notes" className="gr-label">
-                Notes
+                {t('gross.close.notesLabel')}
               </label>
               <Textarea id="grc-notes" rows={3} {...form.register('notes')} />
             </div>
@@ -136,7 +138,7 @@ export function PregnancyCloseDialog({
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Dialog.Close asChild>
                 <Button type="button" variant="ghost">
-                  Annuler
+                  {t('common.cancel')}
                 </Button>
               </Dialog.Close>
               <Button
@@ -144,7 +146,7 @@ export function PregnancyCloseDialog({
                 variant="primary"
                 disabled={close.isPending}
               >
-                {close.isPending ? 'Clôture…' : 'Clôturer'}
+                {close.isPending ? t('gross.close.submitting') : t('gross.close.submit')}
               </Button>
             </div>
           </form>

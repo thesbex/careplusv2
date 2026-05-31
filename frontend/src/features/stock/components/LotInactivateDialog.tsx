@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { useInactivateLot } from '../hooks/useInactivateLot';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface LotInactivateDialogProps {
   articleId: string;
@@ -21,6 +22,7 @@ export function LotInactivateDialog({
   open,
   onClose,
 }: LotInactivateDialogProps) {
+  const { t } = useT();
   const { inactivate, isPending } = useInactivateLot(articleId);
   const [confirming, setConfirming] = useState(false);
 
@@ -28,10 +30,10 @@ export function LotInactivateDialog({
     setConfirming(true);
     try {
       await inactivate(lotId);
-      toast.success(`Lot ${lotNumber} marqué inactif`);
+      toast.success(t('stock.lotDialog.toast.success', { lot: lotNumber }));
       onClose();
     } catch {
-      toast.error("Impossible d'inactiver ce lot");
+      toast.error(t('stock.lotDialog.toast.error'));
     } finally {
       setConfirming(false);
     }
@@ -76,16 +78,16 @@ export function LotInactivateDialog({
           id="lot-inact-title"
           style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}
         >
-          Inactiver le lot
+          {t('stock.lotDialog.title')}
         </h2>
         <p style={{ margin: '0 0 20px', fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.55 }}>
-          Marquer le lot{' '}
-          <strong style={{ color: 'var(--ink)' }}>{lotNumber}</strong>{' '}
-          comme inactif (rappel fournisseur) ? Ce lot sera exclu du FIFO et de la consommation.
+          {t('stock.lotDialog.bodyPrefix')}{' '}
+          <strong style={{ color: 'var(--ink)' }}>{lotNumber}</strong>
+          {t('stock.lotDialog.bodySuffix')}
         </p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <Button type="button" variant="ghost" onClick={onClose} disabled={isPending || confirming}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -93,7 +95,7 @@ export function LotInactivateDialog({
             onClick={() => void handleConfirm()}
             disabled={isPending || confirming}
           >
-            {isPending || confirming ? 'Inactivation…' : 'Inactiver'}
+            {isPending || confirming ? t('stock.lotDialog.inactivating') : t('stock.lotDialog.confirm')}
           </Button>
         </div>
       </div>

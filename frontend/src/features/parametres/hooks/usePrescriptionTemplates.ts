@@ -4,6 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type TemplateType = 'DRUG' | 'LAB' | 'IMAGING';
 
@@ -47,6 +48,7 @@ export interface TemplateWriteBody {
 const QK = (type: TemplateType) => ['prescription-templates', type] as const;
 
 export function usePrescriptionTemplates(type: TemplateType) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: QK(type),
     queryFn: () =>
@@ -58,7 +60,7 @@ export function usePrescriptionTemplates(type: TemplateType) {
   return {
     templates: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les modèles.' : null,
+    error: error ? t('settings.errors.loadTemplates') : null,
   };
 }
 

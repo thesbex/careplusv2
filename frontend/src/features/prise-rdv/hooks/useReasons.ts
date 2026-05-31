@@ -24,6 +24,8 @@ export function useReasons(): {
   return {
     reasons: (data ?? []).map((r) => ({ id: r.id, label: r.label })),
     isLoading,
-    error: error ? 'Impossible de charger les motifs.' : null,
+    // i18n (#122) : clé de traduction (les hooks ne peuvent pas appeler useT) ;
+    // le consommateur passe la valeur à t().
+    error: error ? 'rdv.err.loadReasons' : null,
   };
 }

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
@@ -54,14 +55,10 @@ function nowLocal(): string {
   return d.toISOString().slice(0, 16);
 }
 
-const ROUTE_LABELS: Record<RouteAdmin, string> = {
-  IM: 'IM — Intramusculaire',
-  SC: 'SC — Sous-cutané',
-  PO: 'PO — Per os (oral)',
-  ID: 'ID — Intradermique',
-};
+const ROUTE_ORDER: RouteAdmin[] = ['IM', 'SC', 'PO', 'ID'];
 
 export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseDrawerProps) {
+  const { t } = useT();
   const { catalog } = useVaccinationCatalog();
   const recordMutation = useRecordDose(patientId);
   const updateMutation = useUpdateDose(patientId);
@@ -153,10 +150,10 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
         ...(values.administeredBy !== undefined ? { administeredBy: values.administeredBy } : {}),
         ...(values.notes !== undefined ? { notes: values.notes } : {}),
       });
-      toast.success('Dose enregistrée.');
+      toast.success(t('vacc.drawer.recordSuccess'));
       onClose();
     } catch {
-      toast.error('Erreur lors de l\'enregistrement de la dose.');
+      toast.error(t('vacc.drawer.recordError'));
     }
   }
 
@@ -179,19 +176,20 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
           version: values.version,
         },
       });
-      toast.success('Dose modifiée.');
+      toast.success(t('vacc.drawer.editSuccess'));
       onClose();
     } catch {
       // 409 is handled inside useUpdateDose with toast
     }
   }
 
+  const vaccineName = dose?.vaccineName ?? '';
   const title =
     mode === 'record'
-      ? `Saisir dose — ${dose?.vaccineName ?? ''}`
+      ? t('vacc.drawer.recordTitle', { vaccine: vaccineName })
       : mode === 'edit'
-      ? `Modifier dose — ${dose?.vaccineName ?? ''}`
-      : `Dose — ${dose?.vaccineName ?? ''}`;
+      ? t('vacc.drawer.editTitle', { vaccine: vaccineName })
+      : t('vacc.drawer.viewTitle', { vaccine: vaccineName });
 
   return (
     <Panel
@@ -222,7 +220,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
         }}
       >
         <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{title}</span>
-        <Button variant="ghost" size="sm" iconOnly aria-label="Fermer" onClick={onClose}>
+        <Button variant="ghost" size="sm" iconOnly aria-label={t('vacc.drawer.close')} onClick={onClose}>
           <Close />
         </Button>
       </div>
@@ -231,10 +229,10 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
         {/* ── VIEW MODE ──────────────────────────────────────────────────────── */}
         {isView && dose && (
           <div>
-            <ViewRow label="Vaccin" value={dose.vaccineName} />
-            <ViewRow label="Dose" value={dose.doseLabel} />
+            <ViewRow label={t('vacc.view.vaccine')} value={dose.vaccineName} />
+            <ViewRow label={t('vacc.view.dose')} value={dose.doseLabel} />
             <ViewRow
-              label="Date administrée"
+              label={t('vacc.view.dateAdministered')}
               value={
                 dose.administeredAt
                   ? new Date(dose.administeredAt).toLocaleString('fr-MA', {
@@ -247,11 +245,11 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                   : null
               }
             />
-            <ViewRow label="Lot" value={dose.lotNumber} />
-            <ViewRow label="Voie" value={dose.route ?? null} />
-            <ViewRow label="Site" value={dose.site ?? null} />
-            <ViewRow label="Administré par" value={dose.administeredByName} />
-            <ViewRow label="Notes" value={dose.notes} />
+            <ViewRow label={t('vacc.view.lot')} value={dose.lotNumber} />
+            <ViewRow label={t('vacc.view.route')} value={dose.route ?? null} />
+            <ViewRow label={t('vacc.view.site')} value={dose.site ?? null} />
+            <ViewRow label={t('vacc.view.administeredBy')} value={dose.administeredByName} />
+            <ViewRow label={t('vacc.view.notes')} value={dose.notes} />
           </div>
         )}
 
@@ -269,7 +267,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-vaccineId"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Vaccin
+                {t('vacc.field.vaccine')}
               </label>
               <Select
                 id="rd-vaccineId"
@@ -286,7 +284,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                   color: 'var(--ink)',
                 }}
               >
-                <option value="">Sélectionner un vaccin…</option>
+                <option value="">{t('vacc.field.selectVaccine')}</option>
                 {catalog.filter((v) => v.active).map((v) => (
                   <option key={v.id} value={v.id}>
                     {v.nameFr} ({v.code})
@@ -305,7 +303,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-doseNumber"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Numéro de dose
+                {t('vacc.field.doseNumber')}
               </label>
               <Input
                 id="rd-doseNumber"
@@ -325,7 +323,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-administeredAt"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Date et heure *
+                {t('vacc.field.dateTime')}
               </label>
               <Input
                 id="rd-administeredAt"
@@ -344,11 +342,11 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-lotNumber"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Numéro de lot *
+                {t('vacc.field.lot')}
               </label>
               <Input
                 id="rd-lotNumber"
-                placeholder="Ex. ABC123"
+                placeholder={t('vacc.field.lotPlaceholder')}
                 {...recordForm.register('lotNumber')}
               />
               {recordForm.formState.errors.lotNumber && (
@@ -363,7 +361,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-route"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Voie d&apos;administration
+                {t('vacc.field.route')}
               </label>
               <Select
                 id="rd-route"
@@ -381,9 +379,9 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 }}
               >
                 <option value="">—</option>
-                {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
+                {ROUTE_ORDER.map((k) => (
                   <option key={k} value={k}>
-                    {v}
+                    {t(`vacc.route.${k}`)}
                   </option>
                 ))}
               </Select>
@@ -394,12 +392,12 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-site"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Site d&apos;injection
+                {t('vacc.field.site')}
               </label>
               <div style={{ position: 'relative' }}>
                 <Input
                   id="rd-site"
-                  placeholder="Ex. Deltoïde G"
+                  placeholder={t('vacc.field.sitePlaceholder')}
                   {...recordForm.register('site')}
                   onFocus={() => setShowSiteSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSiteSuggestions(false), 150)}
@@ -453,12 +451,12 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="rd-notes"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Notes
+                {t('vacc.field.notes')}
               </label>
               <textarea
                 id="rd-notes"
                 {...recordForm.register('notes')}
-                placeholder="Observations, réactions…"
+                placeholder={t('vacc.field.notesPlaceholder')}
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
@@ -491,7 +489,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="ed-administeredAt"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Date et heure
+                {t('vacc.field.dateTimeOpt')}
               </label>
               <Input
                 id="ed-administeredAt"
@@ -505,11 +503,11 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="ed-lotNumber"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Numéro de lot
+                {t('vacc.field.lotOpt')}
               </label>
               <Input
                 id="ed-lotNumber"
-                placeholder="Ex. ABC123"
+                placeholder={t('vacc.field.lotPlaceholder')}
                 {...editForm.register('lotNumber')}
               />
               {editForm.formState.errors.lotNumber && (
@@ -524,7 +522,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="ed-route"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Voie d&apos;administration
+                {t('vacc.field.route')}
               </label>
               <Select
                 id="ed-route"
@@ -542,9 +540,9 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 }}
               >
                 <option value="">—</option>
-                {(Object.entries(ROUTE_LABELS) as [RouteAdmin, string][]).map(([k, v]) => (
+                {ROUTE_ORDER.map((k) => (
                   <option key={k} value={k}>
-                    {v}
+                    {t(`vacc.route.${k}`)}
                   </option>
                 ))}
               </Select>
@@ -555,11 +553,11 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="ed-site"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Site d&apos;injection
+                {t('vacc.field.site')}
               </label>
               <Input
                 id="ed-site"
-                placeholder="Ex. Deltoïde G"
+                placeholder={t('vacc.field.sitePlaceholder')}
                 {...editForm.register('site')}
               />
             </div>
@@ -569,12 +567,12 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
                 htmlFor="ed-notes"
                 style={{ fontSize: 11.5, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
               >
-                Notes
+                {t('vacc.field.notes')}
               </label>
               <textarea
                 id="ed-notes"
                 {...editForm.register('notes')}
-                placeholder="Observations, réactions…"
+                placeholder={t('vacc.field.notesPlaceholder')}
                 style={{
                   width: '100%',
                   boxSizing: 'border-box',
@@ -615,13 +613,13 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
             style={{ flex: 1 }}
           >
             {recordMutation.isPending || updateMutation.isPending
-              ? 'Enregistrement…'
+              ? t('vacc.drawer.saving')
               : isRecord
-              ? 'Enregistrer la dose'
-              : 'Enregistrer les modifications'}
+              ? t('vacc.drawer.saveDose')
+              : t('vacc.drawer.saveChanges')}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {t('vacc.drawer.cancel')}
           </Button>
         </div>
       )}
@@ -634,7 +632,7 @@ export function RecordDoseDrawer({ patientId, dose, mode, onClose }: RecordDoseD
           }}
         >
           <Button variant="ghost" onClick={onClose} style={{ width: '100%' }}>
-            Fermer
+            {t('vacc.drawer.close')}
           </Button>
         </div>
       )}

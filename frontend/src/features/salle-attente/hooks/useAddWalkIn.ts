@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * useAddWalkIn (QA9-12) — add a patient who showed up without an appointment
@@ -23,6 +24,7 @@ export interface AddWalkInArgs {
 }
 
 export function useAddWalkIn() {
+  const { t } = useT();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -59,7 +61,7 @@ export function useAddWalkIn() {
           .response?.data?.detail ??
         (mutation.error as { response?: { data?: { message?: string } } })
           .response?.data?.message ??
-        "Impossible d'ajouter le patient à la salle."
+        t('salle.walkIn.err')
       : null,
   };
 }

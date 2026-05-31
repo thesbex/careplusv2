@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useLunchBreak,
   useSetLunchBreak,
@@ -13,6 +14,7 @@ import {
 } from '@/features/agenda/hooks/useLunchBreak';
 
 export function LunchBreakSection({ practitionerId }: { practitionerId: string }) {
+  const { t } = useT();
   const { lunchBreak, isLoading } = useLunchBreak(practitionerId);
   const { setLunchBreak, isPending: saving } = useSetLunchBreak(practitionerId);
   const { clearLunchBreak, isPending: clearing } = useClearLunchBreak(practitionerId);
@@ -28,23 +30,23 @@ export function LunchBreakSection({ practitionerId }: { practitionerId: string }
 
   async function save() {
     if (end <= start) {
-      toast.error("L'heure de fin doit être après l'heure de début.");
+      toast.error(t('profil.lunch.errEndAfterStart'));
       return;
     }
     try {
       await setLunchBreak({ startTime: start, endTime: end });
-      toast.success('Pause déjeuner enregistrée.');
+      toast.success(t('profil.lunch.saved'));
     } catch {
-      toast.error("Échec de l'enregistrement.");
+      toast.error(t('profil.lunch.saveFailed'));
     }
   }
 
   async function clear() {
     try {
       await clearLunchBreak();
-      toast.success('Pause déjeuner retirée.');
+      toast.success(t('profil.lunch.removed'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('profil.lunch.removeFailed'));
     }
   }
 
@@ -57,18 +59,18 @@ export function LunchBreakSection({ practitionerId }: { practitionerId: string }
         padding: 18,
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Ma pause déjeuner</div>
+      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t('profil.lunch.title')}</div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
-        Pendant cette plage, aucun rendez-vous ne peut être pris sur votre agenda (tous les jours travaillés).
+        {t('profil.lunch.hint')}
       </div>
 
       {isLoading ? (
-        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>Chargement…</div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-3)' }}>{t('profil.lunch.loading')}</div>
       ) : (
         <>
           <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-              <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Début</span>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('profil.lunch.start')}</span>
               <input
                 type="time"
                 value={start}
@@ -77,7 +79,7 @@ export function LunchBreakSection({ practitionerId }: { practitionerId: string }
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-              <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Fin</span>
+              <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('profil.lunch.end')}</span>
               <input
                 type="time"
                 value={end}
@@ -86,18 +88,18 @@ export function LunchBreakSection({ practitionerId }: { practitionerId: string }
               />
             </label>
             <Button variant="primary" disabled={saving} onClick={() => void save()}>
-              {saving ? 'Enregistrement…' : 'Enregistrer'}
+              {saving ? t('profil.lunch.saving') : t('profil.lunch.save')}
             </Button>
             {lunchBreak && (
               <Button disabled={clearing} onClick={() => void clear()}>
-                Retirer
+                {t('profil.lunch.remove')}
               </Button>
             )}
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 10 }}>
             {lunchBreak
-              ? `Pause active : ${lunchBreak.startTime.slice(0, 5)} – ${lunchBreak.endTime.slice(0, 5)}.`
-              : 'Aucune pause configurée — les rendez-vous sont autorisés toute la journée.'}
+              ? t('profil.lunch.active', { start: lunchBreak.startTime.slice(0, 5), end: lunchBreak.endTime.slice(0, 5) })
+              : t('profil.lunch.none')}
           </div>
         </>
       )}

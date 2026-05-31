@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Send, Plus, Chat, Trash, Sparkles } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAiConfig,
   useAssistantConversations,
@@ -19,6 +20,7 @@ import { MessageThread } from './components/MessageThread';
 import './assistant.css';
 
 export default function AssistantPageMobile() {
+  const { t } = useT();
   const [params, setParams] = useSearchParams();
   const patientId = params.get('patient');
   const patientName = params.get('patientName');
@@ -33,7 +35,7 @@ export default function AssistantPageMobile() {
   const [draft, setDraft] = useState('');
   const [listOpen, setListOpen] = useState(false);
   const [pendingPatient, setPendingPatient] = useState<{ id: string; name: string } | null>(
-    patientId ? { id: patientId, name: patientName ?? 'ce patient' } : null,
+    patientId ? { id: patientId, name: patientName ?? t('ai.thisPatient') } : null,
   );
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -70,22 +72,22 @@ export default function AssistantPageMobile() {
   }
 
   return (
-    <Screen active="assistant" title="Assistant IA" sub={config ? config.model : ''}>
+    <Screen active="assistant" title={t('ai.title')} sub={config ? config.model : ''}>
       <div className="cp-ai-mobile">
         <div className="cp-ai-mobile-actions">
           <button type="button" className="cp-ai-new" onClick={startNew}>
             <Plus />
-            <span>Nouvelle</span>
+            <span>{t('ai.new')}</span>
           </button>
           <button type="button" className="cp-ai-new is-ghost" onClick={() => setListOpen((v) => !v)}>
             <Chat />
-            <span>Conversations ({conversations.length})</span>
+            <span>{t('ai.conversationsList', { n: conversations.length })}</span>
           </button>
         </div>
 
         {listOpen && (
           <div className="cp-ai-mobile-list" role="list">
-            {conversations.length === 0 && <p className="cp-ai-empty-rail">Aucune conversation.</p>}
+            {conversations.length === 0 && <p className="cp-ai-empty-rail">{t('ai.empty')}</p>}
             {conversations.map((c) => (
               <div key={c.id} role="listitem" className="cp-ai-conv">
                 <button
@@ -104,7 +106,7 @@ export default function AssistantPageMobile() {
                 <button
                   type="button"
                   className="cp-ai-conv-del"
-                  aria-label="Supprimer"
+                  aria-label={t('ai.delete')}
                   onClick={() => void del.mutateAsync(c.id).then(() => selectedId === c.id && startNew())}
                 >
                   <Trash />
@@ -116,15 +118,15 @@ export default function AssistantPageMobile() {
 
         {!configured && (
           <div className="cp-ai-banner" role="status">
-            <strong>Assistant non configuré.</strong> Clé API manquante côté serveur.
+            <strong>{t('ai.notConfigured')}</strong> {t('ai.notConfiguredShort')}
           </div>
         )}
 
         {!selectedId && pendingPatient && (
           <div className="cp-ai-context-note" role="status">
-            Contexte joint : dossier de <strong>{pendingPatient.name}</strong>.
+            {t('ai.contextNoteShort', { name: pendingPatient.name })}
             <button type="button" className="cp-ai-context-clear" onClick={() => setPendingPatient(null)}>
-              Retirer
+              {t('ai.contextClear')}
             </button>
           </div>
         )}
@@ -133,7 +135,7 @@ export default function AssistantPageMobile() {
           {!conversation && !ask.isPending && (
             <div className="cp-ai-welcome">
               <Sparkles />
-              <h2>Comment puis-je vous aider ?</h2>
+              <h2>{t('ai.welcomeTitle')}</h2>
             </div>
           )}
           {conversation && <MessageThread messages={conversation.messages} pending={ask.isPending} />}
@@ -143,14 +145,14 @@ export default function AssistantPageMobile() {
 
         {ask.isError && (
           <p className="cp-ai-error" role="alert">
-            L'assistant n'a pas pu répondre.
+            {t('ai.errorShort')}
           </p>
         )}
 
         <div className="cp-ai-composer">
           <textarea
             className="cp-ai-input"
-            placeholder={configured ? 'Votre question…' : 'Indisponible'}
+            placeholder={configured ? t('ai.placeholderShort') : t('ai.placeholderUnavailableShort')}
             value={draft}
             disabled={!configured || ask.isPending}
             rows={2}
@@ -161,7 +163,7 @@ export default function AssistantPageMobile() {
             className="cp-ai-send"
             disabled={!canSend}
             onClick={() => void send()}
-            aria-label="Envoyer"
+            aria-label={t('ai.send')}
           >
             <Send />
           </button>

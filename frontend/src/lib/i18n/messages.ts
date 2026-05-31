@@ -14,6 +14,25 @@ import type { Dict, Lang } from './index';
 import { parametresMessages } from './messages.parametres';
 import { dossierMessages } from '../../features/dossier-patient/messages.dossier';
 import { consultMessages } from '../../features/consultation/messages.consult';
+import { salleMessages } from '../../features/salle-attente/messages.salle';
+import { chargesMessages } from '../../features/charges/messages.charges';
+import { agendaMessages } from '../../features/agenda/messages.agenda';
+import { catMessages } from '../../features/catalogue/messages.cat';
+import { factuMessages } from '../../features/facturation/messages.factu';
+import { grossMessages } from '../../features/grossesse/messages.gross';
+import { hospitMessages } from '../../features/hospitalisation/messages.hospit';
+import { vaccMessages } from '../../features/vaccination/messages.vacc';
+import { prescMessages } from '../../features/prescription/messages.presc';
+import { chatMessages } from '../../features/messages/messages.chat';
+import { confrereMessages } from '../../features/confrere/messages.confrere';
+import { consentMessages } from '../../features/consent/messages.consent';
+import { rdvMessages } from '../../features/prise-rdv/messages.rdv';
+import { accountMessages } from '../../features/login/messages.account';
+import { stockMessages } from '../../features/stock/messages.stock';
+import { staffMessages } from '../../features/personnel/messages.staff';
+import { profilMessages } from '../../features/profil/messages.profil';
+import { aiMessages } from '../../features/assistant/messages.ai';
+import { shellMessages } from '../../components/messages.shell';
 
 const fr: Dict = {
   'common.save': 'Enregistrer',
@@ -125,6 +144,7 @@ const fr: Dict = {
   'settings.backup.confirmDo': 'Restaurer définitivement',
 
   'dash.title': 'Tableau de bord',
+  'dash.back': 'Retour',
   'dash.newRdv': 'Nouveau RDV',
   'dash.today': "Aujourd'hui",
   'dash.activity': 'Activité',
@@ -319,6 +339,7 @@ const en: Dict = {
   'settings.backup.confirmDo': 'Restore permanently',
 
   'dash.title': 'Dashboard',
+  'dash.back': 'Back',
   'dash.newRdv': 'New appointment',
   'dash.today': 'Today',
   'dash.activity': 'Activity',
@@ -511,6 +532,7 @@ const ar: Dict = {
   'settings.backup.confirmDo': 'استعادة نهائية',
 
   'dash.title': 'لوحة التحكم',
+  'dash.back': 'رجوع',
   'dash.newRdv': 'موعد جديد',
   'dash.today': 'اليوم',
   'dash.activity': 'النشاط',
@@ -705,6 +727,7 @@ const es: Dict = {
   'settings.backup.confirmDo': 'Restaurar definitivamente',
 
   'dash.title': 'Panel de control',
+  'dash.back': 'Atrás',
   'dash.newRdv': 'Nueva cita',
   'dash.today': 'Hoy',
   'dash.activity': 'Actividad',
@@ -795,8 +818,8 @@ const es: Dict = {
  * dans les 4 langues — le test de parité garantit qu'aucune langue ne dérive.
  */
 export const MESSAGES: Record<Lang, Dict> = {
-  fr: { ...fr, ...parametresMessages.fr, ...dossierMessages.fr, ...consultMessages.fr },
-  en: { ...en, ...parametresMessages.en, ...dossierMessages.en, ...consultMessages.en },
-  ar: { ...ar, ...parametresMessages.ar, ...dossierMessages.ar, ...consultMessages.ar },
-  es: { ...es, ...parametresMessages.es, ...dossierMessages.es, ...consultMessages.es },
+  fr: { ...fr, ...parametresMessages.fr, ...dossierMessages.fr, ...consultMessages.fr, ...salleMessages.fr, ...chargesMessages.fr, ...agendaMessages.fr, ...catMessages.fr, ...factuMessages.fr, ...grossMessages.fr, ...hospitMessages.fr, ...vaccMessages.fr, ...prescMessages.fr, ...chatMessages.fr, ...confrereMessages.fr, ...consentMessages.fr, ...rdvMessages.fr, ...accountMessages.fr, ...stockMessages.fr, ...staffMessages.fr, ...profilMessages.fr, ...aiMessages.fr, ...shellMessages.fr },
+  en: { ...en, ...parametresMessages.en, ...dossierMessages.en, ...consultMessages.en, ...salleMessages.en, ...chargesMessages.en, ...agendaMessages.en, ...catMessages.en, ...factuMessages.en, ...grossMessages.en, ...hospitMessages.en, ...vaccMessages.en, ...prescMessages.en, ...chatMessages.en, ...confrereMessages.en, ...consentMessages.en, ...rdvMessages.en, ...accountMessages.en, ...stockMessages.en, ...staffMessages.en, ...profilMessages.en, ...aiMessages.en, ...shellMessages.en },
+  ar: { ...ar, ...parametresMessages.ar, ...dossierMessages.ar, ...consultMessages.ar, ...salleMessages.ar, ...chargesMessages.ar, ...agendaMessages.ar, ...catMessages.ar, ...factuMessages.ar, ...grossMessages.ar, ...hospitMessages.ar, ...vaccMessages.ar, ...prescMessages.ar, ...chatMessages.ar, ...confrereMessages.ar, ...consentMessages.ar, ...rdvMessages.ar, ...accountMessages.ar, ...stockMessages.ar, ...staffMessages.ar, ...profilMessages.ar, ...aiMessages.ar, ...shellMessages.ar },
+  es: { ...es, ...parametresMessages.es, ...dossierMessages.es, ...consultMessages.es, ...salleMessages.es, ...chargesMessages.es, ...agendaMessages.es, ...catMessages.es, ...factuMessages.es, ...grossMessages.es, ...hospitMessages.es, ...vaccMessages.es, ...prescMessages.es, ...chatMessages.es, ...confrereMessages.es, ...consentMessages.es, ...rdvMessages.es, ...accountMessages.es, ...stockMessages.es, ...staffMessages.es, ...profilMessages.es, ...aiMessages.es, ...shellMessages.es },
 };

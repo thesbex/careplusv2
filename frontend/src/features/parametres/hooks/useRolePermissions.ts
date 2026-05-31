@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type RoleCode =
   | 'SECRETAIRE'
@@ -20,6 +21,7 @@ export interface PermissionFlag {
 }
 
 export function useRolePermissions() {
+  const { t } = useT();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['settings-role-permissions'],
     queryFn: () =>
@@ -31,7 +33,7 @@ export function useRolePermissions() {
   return {
     rows: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger la matrice des droits.' : null,
+    error: error ? t('settings.errors.loadPermissions') : null,
     refetch,
   };
 }

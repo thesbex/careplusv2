@@ -18,6 +18,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAddPrestation,
   useConsultationPrestations,
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export function ConsultationPrestationsPanel({ consultationId, readOnly = false }: Props) {
+  const { t } = useT();
   const { items, isLoading } = useConsultationPrestations(consultationId);
   const { prestations: catalog } = usePrestationCatalog(false);
   const { add, isPending: adding } = useAddPrestation(consultationId);
@@ -68,23 +70,23 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
       setPickedId('');
       setUnitPriceOverride('');
       setQty(1);
-      toast.success(`${picked.label} ajoutée.`);
+      toast.success(t('prest.ok.added', { label: picked.label }));
     } catch (err) {
       const status = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { status?: number } }).response?.status
         : undefined;
-      if (status === 409) toast.error('Consultation signée : modification impossible.');
-      else if (status === 400) toast.error('Prestation invalide ou désactivée.');
-      else toast.error('Échec de l\'ajout.');
+      if (status === 409) toast.error(t('prest.err.locked'));
+      else if (status === 400) toast.error(t('prest.err.invalid'));
+      else toast.error(t('prest.err.addFailed'));
     }
   }
 
   async function onRemove(linkId: string, label: string) {
     try {
       await remove(linkId);
-      toast.success(`${label} retirée.`);
+      toast.success(t('prest.ok.removed', { label }));
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('prest.err.removeFailed'));
     }
   }
 
@@ -93,7 +95,7 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
   return (
     <div data-testid="consultation-prestations-panel" className="cs-prestations">
       <div className="cs-section-h" style={{ marginTop: 18 }}>
-        Prestations réalisées
+        {t('prest.title')}
       </div>
 
       {!readOnly && (
@@ -110,33 +112,33 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
           }}
         >
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 2, minWidth: 220 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Prestation</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>{t('prest.pick')}</span>
             <Select
               value={pickedId}
               onChange={(e) => onPick(e.target.value)}
-              aria-label="Choisir une prestation"
+              aria-label={t('prest.pickAria')}
             >
-              <option value="">— choisir —</option>
+              <option value="">{t('prest.pick.placeholder')}</option>
               {catalog.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label} ({p.defaultPrice} MAD)
+                  {t('prest.option', { label: p.label, price: p.defaultPrice })}
                 </option>
               ))}
             </Select>
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 90 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Qté</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>{t('prest.qty')}</span>
             <Input
               type="number"
               min={1}
               value={qty}
               onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-              aria-label="Quantité"
+              aria-label={t('prest.qtyAria')}
               className="tnum"
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 130 }}>
-            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>Prix unitaire (MAD)</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 500 }}>{t('prest.unitPrice')}</span>
             <Input
               type="number"
               min={0}
@@ -144,7 +146,7 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
               value={unitPriceOverride}
               placeholder={picked ? String(picked.defaultPrice) : ''}
               onChange={(e) => setUnitPriceOverride(e.target.value)}
-              aria-label="Prix unitaire"
+              aria-label={t('prest.unitPriceAria')}
               className="tnum"
             />
           </label>
@@ -155,16 +157,16 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
             disabled={!picked || adding}
             onClick={onAdd}
           >
-            Ajouter
+            {t('prest.add')}
           </Button>
         </div>
       )}
 
       {isLoading ? (
-        <div style={{ padding: 8, color: 'var(--ink-3)' }}>Chargement…</div>
+        <div style={{ padding: 8, color: 'var(--ink-3)' }}>{t('prest.loading')}</div>
       ) : items.length === 0 ? (
         <div style={{ padding: 8, color: 'var(--ink-3)', fontSize: 13 }}>
-          Aucune prestation pour le moment.
+          {t('prest.empty')}
         </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -193,7 +195,7 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
                   variant="ghost"
                   size="sm"
                   onClick={() => onRemove(item.id, item.prestationLabel)}
-                  aria-label={`Retirer ${item.prestationLabel}`}
+                  aria-label={t('prest.removeAria', { label: item.prestationLabel })}
                 >
                   <Trash style={{ width: 12, height: 12 }} />
                 </Button>
@@ -213,7 +215,7 @@ export function ConsultationPrestationsPanel({ consultationId, readOnly = false 
             fontSize: 13,
           }}
         >
-          <span style={{ color: 'var(--ink-3)' }}>Total prestations :</span>
+          <span style={{ color: 'var(--ink-3)' }}>{t('prest.total')}</span>
           <strong data-testid="prestations-total">{total.toFixed(2)} MAD</strong>
         </div>
       )}

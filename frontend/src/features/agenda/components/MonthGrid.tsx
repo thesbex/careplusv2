@@ -10,6 +10,7 @@
  *
  * La grille rend 5 ou 6 semaines dynamiquement.
  */
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { AppointmentApi } from '../hooks/useAppointments';
 import type { Leave } from '@/features/parametres/types';
 
@@ -38,7 +39,15 @@ const STATUS_TO_BG: Record<string, string> = {
   NO_SHOW: '#F8DDD2',
 };
 
-const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const WEEKDAY_KEYS = [
+  'agenda.month.weekday.mon',
+  'agenda.month.weekday.tue',
+  'agenda.month.weekday.wed',
+  'agenda.month.weekday.thu',
+  'agenda.month.weekday.fri',
+  'agenda.month.weekday.sat',
+  'agenda.month.weekday.sun',
+];
 
 interface MonthGridProps {
   /** Year of the month being displayed. */
@@ -64,6 +73,7 @@ function aptIso(a: AppointmentApi): string {
 }
 
 export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: MonthGridProps) {
+  const { t } = useT();
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
   const todayIso = isoOfDay(todayDate.getFullYear(), todayDate.getMonth(), todayDate.getDate());
@@ -110,13 +120,13 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
   return (
     <div className="ag-month">
       <div className="ag-month-head">
-        {WEEKDAYS.map((w) => (
-          <div key={w} className="ag-month-head-cell">
-            {w}
+        {WEEKDAY_KEYS.map((wk) => (
+          <div key={wk} className="ag-month-head-cell">
+            {t(wk)}
           </div>
         ))}
       </div>
-      <div className="ag-month-grid scroll" role="grid" aria-label="Agenda mensuel">
+      <div className="ag-month-grid scroll" role="grid" aria-label={t('agenda.month.gridAria')}>
         {cells.map((cell) => {
           if (cell.outside) {
             return <div key={cell.iso} className="ag-month-cell ag-month-blank" aria-hidden="true" />;
@@ -144,10 +154,14 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
               role="gridcell"
               className={cls}
               onClick={() => onSelectDay(cell.iso)}
-              aria-label={`${cell.iso}${onLeave ? ' (congé)' : ''}, ${count} rendez-vous`}
+              aria-label={
+                onLeave
+                  ? t('agenda.month.cellAriaLeave', { iso: cell.iso, n: count })
+                  : t('agenda.month.cellAria', { iso: cell.iso, n: count })
+              }
             >
               <span className="ag-month-date tnum">{cell.day}</span>
-              {onLeave && <span className="ag-month-leave-tag">Congé</span>}
+              {onLeave && <span className="ag-month-leave-tag">{t('agenda.month.leaveTag')}</span>}
               {count > 0 && (
                 <div className="ag-month-events">
                   {visible.map((a) => {
@@ -180,7 +194,7 @@ export function MonthGrid({ year, month, appointments, leaves, onSelectDay }: Mo
                     );
                   })}
                   {overflow > 0 && (
-                    <span className="ag-month-overflow tnum">+{overflow} autres</span>
+                    <span className="ag-month-overflow tnum">{t('agenda.month.overflow', { n: overflow })}</span>
                   )}
                 </div>
               )}

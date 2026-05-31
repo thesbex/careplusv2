@@ -25,12 +25,12 @@ import { usePractitioners } from '../hooks/usePractitioners';
 
 const ROLE_CODES: OrphanRole[] = ['MEDECIN', 'ADMIN', 'SECRETAIRE', 'ASSISTANT'];
 
-/** Sous-libellés (variante calm) — contexte hospitalisation (séjours). */
-const SUBLABEL: Record<OrphanRole, string> = {
-  MEDECIN: 'Voit tous les séjours',
-  ADMIN: 'Accès complet · supervision',
-  SECRETAIRE: 'Limité au médecin référent',
-  ASSISTANT: 'Limité au médecin référent',
+/** Clés i18n des sous-libellés (variante calm) — contexte hospitalisation (séjours). */
+const SUBLABEL_KEY: Record<OrphanRole, string> = {
+  MEDECIN: 'settings.orphan.sublabel.MEDECIN',
+  ADMIN: 'settings.orphan.sublabel.ADMIN',
+  SECRETAIRE: 'settings.orphan.sublabel.SECRETAIRE',
+  ASSISTANT: 'settings.orphan.sublabel.ASSISTANT',
 };
 
 /** module → (préfixe de clé i18n, data-testid). */
@@ -111,7 +111,7 @@ export function OrphanRolesPanel({ module, calm = false, sectionNumber = '06' }:
         <div className="cl-panel-h">
           <span className="ix">{sectionNumber}</span>
           <h3>{t(`${meta.prefix}.title`)}</h3>
-          <span className="meta">· cloisonnement</span>
+          <span className="meta">· {t('settings.orphan.metaTag')}</span>
         </div>
         <div className="cl-panel-b">
           <p className="cl-help" style={{ margin: 0, maxWidth: 620 }}>{t(`${meta.prefix}.desc`)}</p>
@@ -130,12 +130,12 @@ export function OrphanRolesPanel({ module, calm = false, sectionNumber = '06' }:
                   <span className="box">
                     <svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7.5 5.5 11 12 3.5" /></svg>
                   </span>
-                  <span className="lab"><b>{label}</b><span>{SUBLABEL[code]}</span></span>
+                  <span className="lab"><b>{label}</b><span>{t(SUBLABEL_KEY[code])}</span></span>
                 </label>
               );
             })}
           </div>
-          <div className="cl-save-hint"><span className="d" />Enregistré automatiquement</div>
+          <div className="cl-save-hint"><span className="d" />{t('settings.orphan.savedAuto')}</div>
         </div>
       </section>
     );

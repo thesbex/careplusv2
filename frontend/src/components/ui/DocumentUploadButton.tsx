@@ -15,13 +15,14 @@ import { useRef, useState } from 'react';
 import { Button } from './Button';
 import { Camera, Upload } from '@/components/icons';
 import { WebcamCaptureModal } from './WebcamCaptureModal';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface DocumentUploadButtonProps {
   /** MIME accept pour le bouton « Téléverser ». */
   accept?: string;
-  /** Étiquette du bouton « Téléverser ». Défaut : « Téléverser ». */
+  /** Étiquette du bouton « Téléverser ». Défaut : traduction `ui.upload.upload`. */
   uploadLabel?: string;
-  /** Étiquette du bouton « Photographier ». Défaut : « Photographier ». */
+  /** Étiquette du bouton « Photographier ». Défaut : traduction `ui.upload.camera`. */
   cameraLabel?: string;
   /** Désactive les deux boutons (ex. en cours d'upload). */
   disabled?: boolean;
@@ -60,8 +61,8 @@ function isMobileLike(): boolean {
 
 export function DocumentUploadButton({
   accept = DEFAULT_ACCEPT,
-  uploadLabel = 'Téléverser',
-  cameraLabel = 'Photographier',
+  uploadLabel,
+  cameraLabel,
   disabled = false,
   variant = 'primary',
   size = 'sm',
@@ -69,9 +70,12 @@ export function DocumentUploadButton({
   uploadOnly = false,
   onFile,
 }: DocumentUploadButtonProps) {
+  const { t } = useT();
   const fileRef = useRef<HTMLInputElement | null>(null);
   const camRef = useRef<HTMLInputElement | null>(null);
   const [webcamOpen, setWebcamOpen] = useState(false);
+  const resolvedUploadLabel = uploadLabel ?? t('ui.upload.upload');
+  const resolvedCameraLabel = cameraLabel ?? t('ui.upload.camera');
 
   function pick(ref: React.RefObject<HTMLInputElement | null>) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +114,7 @@ export function DocumentUploadButton({
             onClick={() => fileRef.current?.click()}
           >
             <Upload style={{ width: 12, height: 12 }} />
-            {uploadLabel}
+            {resolvedUploadLabel}
           </Button>
         </>
       )}
@@ -137,7 +141,7 @@ export function DocumentUploadButton({
             onClick={onCameraClick}
           >
             <Camera style={{ width: 12, height: 12 }} />
-            {cameraLabel}
+            {resolvedCameraLabel}
           </Button>
           <WebcamCaptureModal
             open={webcamOpen}

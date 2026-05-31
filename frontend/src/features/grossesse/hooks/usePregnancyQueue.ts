@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PregnancyAlert, Trimester } from '../types';
 
 /**
@@ -48,6 +49,7 @@ export function usePregnancyQueue(
   page: number,
   size: number,
 ) {
+  const { t } = useT();
   const params: Record<string, string | number | boolean> = {
     page,
     size,
@@ -72,6 +74,6 @@ export function usePregnancyQueue(
     totalPages: data?.totalPages ?? 0,
     currentPage: data?.number ?? 0,
     isLoading,
-    error: error ? 'Impossible de charger la liste des grossesses.' : null,
+    error: error ? t('gross.err.loadQueue') : null,
   };
 }

@@ -194,7 +194,7 @@ export function PrestationsTab() {
           <Field>
             <FieldLabel htmlFor="new-label">{t('settings.prest.label')}</FieldLabel>
             <Input id="new-label" value={draft.label}
-              onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Électrocardiogramme" />
+              onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder={t('settings.prest.labelPlaceholder')} />
           </Field>
           <Field>
             <FieldLabel htmlFor="new-price">{t('settings.prest.price')}</FieldLabel>

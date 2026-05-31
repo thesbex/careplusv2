@@ -4,7 +4,8 @@
  * en TZ Africa/Casablanca, donc à minuit la caisse repart naturellement à zéro.
  */
 import { Panel, PanelHeader } from '@/components/ui/Panel';
-import { PAYMENT_MODE_LABEL, type PaymentMode } from '../facturation/types';
+import { useT } from '@/lib/i18n/I18nProvider';
+import { paymentModeKey, type PaymentMode } from '../facturation/types';
 import { useCaisseToday } from './hooks/useCaisseToday';
 
 function formatMad(n: number): string {
@@ -14,6 +15,7 @@ function formatMad(n: number): string {
 const MODE_ORDER: PaymentMode[] = ['ESPECES', 'CHEQUE', 'CB', 'VIREMENT', 'TIERS_PAYANT'];
 
 export function CaisseTodayPanel() {
+  const { t } = useT();
   const { caisse, isLoading, error } = useCaisseToday();
 
   const dateLabel = caisse
@@ -30,10 +32,10 @@ export function CaisseTodayPanel() {
   return (
     <Panel style={{ padding: 0, marginBottom: 14 }}>
       <PanelHeader>
-        <span>Caisse du jour {dateLabel ? `· ${dateLabel}` : ''}</span>
+        <span>{dateLabel ? t('factu.caisse.titleDate', { date: dateLabel }) : t('factu.caisse.title')}</span>
       </PanelHeader>
       {isLoading && (
-        <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+        <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
       )}
       {error && (
         <div style={{ padding: 16, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
@@ -63,7 +65,7 @@ export function CaisseTodayPanel() {
                   letterSpacing: '0.06em',
                 }}
               >
-                Encaissé aujourd'hui
+                {t('factu.caisse.collectedToday')}
               </div>
               <div
                 className="tnum"
@@ -72,7 +74,7 @@ export function CaisseTodayPanel() {
                 {formatMad(caisse.total)}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                {caisse.count} paiement{caisse.count > 1 ? 's' : ''}
+                {t('factu.caisse.payments', { n: caisse.count, s: caisse.count > 1 ? 's' : '' })}
               </div>
             </div>
             <div
@@ -90,14 +92,16 @@ export function CaisseTodayPanel() {
                   letterSpacing: '0.06em',
                 }}
               >
-                Factures émises
+                {t('factu.caisse.invoicesIssued')}
               </div>
               <div className="tnum" style={{ fontSize: 22, fontWeight: 700, marginTop: 4 }}>
                 {formatMad(caisse.invoicesIssuedTotal)}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                {caisse.invoicesIssuedCount} facture
-                {caisse.invoicesIssuedCount > 1 ? 's' : ''}
+                {t('factu.caisse.invoicesCount', {
+                  n: caisse.invoicesIssuedCount,
+                  s: caisse.invoicesIssuedCount > 1 ? 's' : '',
+                })}
               </div>
             </div>
           </div>
@@ -112,7 +116,7 @@ export function CaisseTodayPanel() {
               marginBottom: 8,
             }}
           >
-            Par mode de paiement
+            {t('factu.caisse.byMode')}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8 }}>
             {MODE_ORDER.map((m) => {
@@ -136,7 +140,7 @@ export function CaisseTodayPanel() {
                       letterSpacing: '0.04em',
                     }}
                   >
-                    {PAYMENT_MODE_LABEL[m]}
+                    {t(paymentModeKey(m))}
                   </div>
                   <div
                     className="tnum"
@@ -145,7 +149,7 @@ export function CaisseTodayPanel() {
                     {formatMad(amount)}
                   </div>
                   <div style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>
-                    {cnt} encaissement{cnt > 1 ? 's' : ''}
+                    {t('factu.caisse.collections', { n: cnt, s: cnt > 1 ? 's' : '' })}
                   </div>
                 </div>
               );

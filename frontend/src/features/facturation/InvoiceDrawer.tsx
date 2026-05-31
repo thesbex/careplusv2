@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { Close, Plus, Trash, Eye } from '@/components/icons';
 import { useNavigate } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useUpdateInvoice,
   useIssueInvoice,
@@ -21,7 +22,8 @@ import {
   useCreditNote,
 } from './hooks/useInvoiceMutations';
 import {
-  STATUS_LABEL,
+  invoiceStatusKey,
+  paymentModeKey,
   PAYMENT_MODE_LABEL,
   type InvoiceApi,
   type InvoiceLineDraft,
@@ -45,6 +47,7 @@ function emptyLine(): InvoiceLineDraft {
 
 export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProps) {
   const navigate = useNavigate();
+  const { t } = useT();
   const [lines, setLines] = useState<InvoiceLineDraft[]>([emptyLine()]);
   const [discount, setDiscount] = useState<number>(0);
 
@@ -104,29 +107,29 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
   async function handleSaveDraft() {
     const valid = lines.filter((l) => l.description.trim().length > 0 && l.unitPrice > 0);
     if (valid.length === 0) {
-      toast.error('Ajoutez au moins une ligne valide.');
+      toast.error(t('factu.toast.lineRequired'));
       return;
     }
     try {
       await updateInvoice({ id: inv.id, lines: valid, discountAmount: discount });
-      toast.success('Brouillon enregistré.');
+      toast.success(t('factu.toast.draftSaved'));
     } catch {
-      toast.error('Échec de la sauvegarde.');
+      toast.error(t('factu.toast.saveFailed'));
     }
   }
 
   async function handleIssue() {
     try {
       const res = await issueInvoice(inv.id);
-      toast.success(`Facture émise · n° ${res.number}`);
+      toast.success(t('factu.toast.issued', { number: res.number }));
     } catch {
-      toast.error('Émission impossible.');
+      toast.error(t('factu.toast.issueFailed'));
     }
   }
 
   async function handlePay() {
     if (paymentAmount <= 0) {
-      toast.error('Montant invalide.');
+      toast.error(t('factu.toast.amountInvalid'));
       return;
     }
     try {
@@ -137,26 +140,26 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
       };
       if (paymentRef) payload.reference = paymentRef;
       await recordPayment(payload);
-      toast.success('Paiement enregistré.');
+      toast.success(t('factu.toast.paymentSaved'));
       setPaymentOpen(false);
       setPaymentRef('');
     } catch {
-      toast.error('Paiement refusé.');
+      toast.error(t('factu.toast.paymentRefused'));
     }
   }
 
   async function handleCredit() {
     if (creditReason.trim().length < 3) {
-      toast.error('Raison requise (3 caractères min).');
+      toast.error(t('factu.toast.reasonRequired'));
       return;
     }
     try {
       await issueCreditNote({ id: inv.id, reason: creditReason });
-      toast.success('Avoir émis.');
+      toast.success(t('factu.toast.creditIssued'));
       setCreditOpen(false);
       setCreditReason('');
     } catch {
-      toast.error('Avoir refusé.');
+      toast.error(t('factu.toast.creditRefused'));
     }
   }
 
@@ -164,14 +167,16 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fa-overlay" />
-        <Dialog.Content className="fa-drawer" aria-label="Facture">
+        <Dialog.Content className="fa-drawer" aria-label={t('factu.drawer.aria')}>
           <div className="fa-header">
             <div style={{ flex: 1 }}>
               <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-                Facture {invoice.number ?? `(brouillon ${invoice.id.slice(0, 8)})`}
+                {invoice.number
+                  ? t('factu.drawer.title', { number: invoice.number })
+                  : t('factu.drawer.titleDraft', { id: invoice.id.slice(0, 8) })}
               </Dialog.Title>
               <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', margin: 0 }}>
-                {STATUS_LABEL[invoice.status]} ·{' '}
+                {t(invoiceStatusKey(invoice.status))} ·{' '}
                 {invoice.issuedAt
                   ? new Date(invoice.issuedAt).toLocaleString('fr-MA')
                   : new Date(invoice.createdAt).toLocaleString('fr-MA')}
@@ -182,10 +187,10 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
               onClick={() => navigate(`/facturation/${invoice.id}/apercu`)}
               disabled={isDraft}
             >
-              <Eye /> Aperçu
+              <Eye /> {t('factu.drawer.preview')}
             </Button>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('factu.drawer.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -206,9 +211,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                   lineHeight: 1.45,
                 }}
               >
-                <strong>Patient hospitalisé.</strong> Cette facture de consultation sera
-                englobée dans la facture du séjour et réglée à la sortie. Émission et
-                encaissement séparés désactivés.
+                <strong>{t('factu.drawer.deferredStrong')}</strong> {t('factu.drawer.deferredBody')}
               </div>
             )}
             <div
@@ -221,17 +224,17 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 marginBottom: 8,
               }}
             >
-              Lignes
+              {t('factu.drawer.lines')}
             </div>
 
             <div
               className="fa-line"
               style={{ borderBottom: '1px solid var(--border)', fontSize: 11, fontWeight: 600, color: 'var(--ink-3)', textTransform: 'uppercase' }}
             >
-              <div>Description</div>
-              <div>Quantité</div>
-              <div>Prix unitaire</div>
-              <div>Total</div>
+              <div>{t('factu.drawer.col.description')}</div>
+              <div>{t('factu.drawer.col.quantity')}</div>
+              <div>{t('factu.drawer.col.unitPrice')}</div>
+              <div>{t('factu.drawer.col.total')}</div>
               <div />
             </div>
 
@@ -240,7 +243,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
               return (
                 <div key={i} className="fa-line">
                   <input
-                    placeholder="Consultation, acte…"
+                    placeholder={t('factu.drawer.linePlaceholder')}
                     value={l.description}
                     disabled={!isDraft}
                     onChange={(e) => updateLine(i, { description: e.target.value })}
@@ -265,7 +268,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                     {formatMad(lineTotal)}
                   </div>
                   {isDraft && (
-                    <Button variant="ghost" size="sm" iconOnly aria-label="Supprimer ligne" onClick={() => removeLine(i)}>
+                    <Button variant="ghost" size="sm" iconOnly aria-label={t('factu.drawer.removeLine')} onClick={() => removeLine(i)}>
                       <Trash />
                     </Button>
                   )}
@@ -278,17 +281,17 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 style={{ width: '100%', marginTop: 10, justifyContent: 'center' }}
                 onClick={() => setLines((ls) => [...ls, emptyLine()])}
               >
-                <Plus /> Ajouter une ligne
+                <Plus /> {t('factu.drawer.addLine')}
               </Button>
             )}
 
             <div className="fa-totals">
               <div className="fa-totals-row">
-                <span>Sous-total</span>
+                <span>{t('factu.drawer.subtotal')}</span>
                 <span className="tnum">{formatMad(isDraft ? totalAmount : invoice.totalAmount)}</span>
               </div>
               <div className="fa-totals-row">
-                <span>Remise</span>
+                <span>{t('factu.drawer.discount')}</span>
                 {isDraft ? (
                   <input
                     type="number"
@@ -311,18 +314,18 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 )}
               </div>
               <div className="fa-totals-row fa-totals-net">
-                <span>Net à payer</span>
+                <span>{t('factu.drawer.netDue')}</span>
                 <span className="tnum">{formatMad(isDraft ? netAmount : invoice.netAmount)}</span>
               </div>
               {!isDraft && paidSum > 0 && (
                 <div className="fa-totals-row" style={{ color: 'var(--ink-3)' }}>
-                  <span>Déjà encaissé</span>
+                  <span>{t('factu.drawer.alreadyPaid')}</span>
                   <span className="tnum">{formatMad(paidSum)}</span>
                 </div>
               )}
               {!isDraft && remainingDue > 0 && (
                 <div className="fa-totals-row" style={{ color: 'var(--amber)', fontWeight: 600 }}>
-                  <span>Reste à régler</span>
+                  <span>{t('factu.drawer.remainingDue')}</span>
                   <span className="tnum">{formatMad(remainingDue)}</span>
                 </div>
               )}
@@ -340,7 +343,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                     margin: '18px 0 8px',
                   }}
                 >
-                  Paiements
+                  {t('factu.drawer.payments')}
                 </div>
                 <div style={{ fontSize: 12.5 }}>
                   {invoice.payments.map((p) => (
@@ -354,7 +357,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                       }}
                     >
                       <span>
-                        {new Date(p.paidAt).toLocaleString('fr-MA')} · {PAYMENT_MODE_LABEL[p.mode]}
+                        {new Date(p.paidAt).toLocaleString('fr-MA')} · {t(paymentModeKey(p.mode))}
                         {p.reference ? ` · ${p.reference}` : ''}
                       </span>
                       <span className="tnum">{formatMad(p.amount)}</span>
@@ -367,32 +370,32 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
 
           <div className="fa-footer">
             <Dialog.Close asChild>
-              <Button>Fermer</Button>
+              <Button>{t('factu.drawer.close')}</Button>
             </Dialog.Close>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               {isDraft && (
                 <>
                   <Button onClick={() => void handleSaveDraft()} disabled={isSaving}>
-                    {isSaving ? 'Enregistrement…' : 'Enregistrer brouillon'}
+                    {isSaving ? t('factu.drawer.saving') : t('factu.drawer.saveDraft')}
                   </Button>
                   <Button variant="primary" onClick={() => void handleIssue()} disabled={isIssuing || deferred}>
-                    {isIssuing ? 'Émission…' : 'Émettre →'}
+                    {isIssuing ? t('factu.drawer.issuing') : t('factu.drawer.issue')}
                   </Button>
                 </>
               )}
               {isIssued && (
                 <>
-                  <Button onClick={() => setCreditOpen(true)}>Avoir</Button>
+                  <Button onClick={() => setCreditOpen(true)}>{t('factu.drawer.creditNote')}</Button>
                   <Button variant="primary" onClick={() => setPaymentOpen(true)} disabled={deferred}>
-                    Encaisser
+                    {t('factu.drawer.collect')}
                   </Button>
                 </>
               )}
               {isPaid && (
-                <Button onClick={() => setCreditOpen(true)}>Avoir</Button>
+                <Button onClick={() => setCreditOpen(true)}>{t('factu.drawer.creditNote')}</Button>
               )}
               {isCancelled && (
-                <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Facture annulée.</span>
+                <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('factu.drawer.cancelledNote')}</span>
               )}
             </div>
           </div>
@@ -419,10 +422,10 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 }}
               >
                 <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, marginBottom: 12 }}>
-                  Encaisser un paiement
+                  {t('factu.pay.title')}
                 </Dialog.Title>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Montant (MAD)</label>
+                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('factu.pay.amount')}</label>
                   <input
                     type="number"
                     min={0.01}
@@ -437,7 +440,7 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                       fontSize: 14,
                     }}
                   />
-                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Mode</label>
+                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('factu.pay.mode')}</label>
                   <Select
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
@@ -451,17 +454,17 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                       background: 'var(--surface)',
                     }}
                   >
-                    {(Object.entries(PAYMENT_MODE_LABEL) as [PaymentMode, string][]).map(([v, l]) => (
+                    {(Object.keys(PAYMENT_MODE_LABEL) as PaymentMode[]).map((v) => (
                       <option key={v} value={v}>
-                        {l}
+                        {t(paymentModeKey(v))}
                       </option>
                     ))}
                   </Select>
-                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>Référence (optionnel)</label>
+                  <label style={{ fontSize: 11.5, color: 'var(--ink-2)' }}>{t('factu.pay.reference')}</label>
                   <input
                     value={paymentRef}
                     onChange={(e) => setPaymentRef(e.target.value)}
-                    placeholder="N° chèque, dernière transaction…"
+                    placeholder={t('factu.pay.refPlaceholder')}
                     style={{
                       height: 36,
                       border: '1px solid var(--border)',
@@ -473,14 +476,14 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 </div>
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 18 }}>
                   <Dialog.Close asChild>
-                    <Button>Annuler</Button>
+                    <Button>{t('common.cancel')}</Button>
                   </Dialog.Close>
                   <Button
                     variant="primary"
                     onClick={() => void handlePay()}
                     disabled={isPaying || paymentAmount <= 0}
                   >
-                    {isPaying ? 'Paiement…' : 'Encaisser'}
+                    {isPaying ? t('factu.pay.submitting') : t('factu.pay.submit')}
                   </Button>
                 </div>
               </Dialog.Content>
@@ -509,15 +512,15 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 }}
               >
                 <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, marginBottom: 6 }}>
-                  Émettre un avoir
+                  {t('factu.credit.title')}
                 </Dialog.Title>
                 <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>
-                  Cette action annule la facture originale et génère un avoir avec un numéro AYYYY-NNNNNN.
+                  {t('factu.credit.desc')}
                 </Dialog.Description>
                 <textarea
                   value={creditReason}
                   onChange={(e) => setCreditReason(e.target.value)}
-                  placeholder="Raison de l'avoir…"
+                  placeholder={t('factu.credit.reasonPlaceholder')}
                   style={{
                     width: '100%',
                     minHeight: 80,
@@ -530,14 +533,14 @@ export function InvoiceDrawer({ invoice, open, onOpenChange }: InvoiceDrawerProp
                 />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
                   <Dialog.Close asChild>
-                    <Button>Annuler</Button>
+                    <Button>{t('common.cancel')}</Button>
                   </Dialog.Close>
                   <Button
                     variant="primary"
                     onClick={() => void handleCredit()}
                     disabled={isCrediting || creditReason.trim().length < 3}
                   >
-                    {isCrediting ? 'Émission…' : 'Émettre avoir'}
+                    {isCrediting ? t('factu.credit.submitting') : t('factu.credit.submit')}
                   </Button>
                 </div>
               </Dialog.Content>

@@ -61,25 +61,12 @@ export interface MonthlyTotal {
   total: number;
 }
 
-export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
-  EAU_ELECTRICITE: 'Eau / Électricité',
-  INTERNET: 'Internet',
-  LOYER: 'Loyer',
-  SYNDIC: 'Frais de syndic',
-  REPARATION: 'Réparation',
-  FOURNITURES: 'Fournitures',
-  ASSURANCE: 'Assurance',
-  IMPOTS: 'Impôts',
-  SALAIRE: 'Salaire',
-  AUTRE: 'Autre',
-};
-
-export const PERIODICITY_LABELS: Record<ExpensePeriodicity, string> = {
-  PONCTUELLE: 'Ponctuelle',
-  MENSUELLE: 'Mensuelle',
-  ANNUELLE: 'Annuelle',
-};
-
+/**
+ * i18n (#122) : les libellés FR des catégories / périodicités / mois vivent
+ * désormais dans messages.charges.ts (clés `charges.cat.*`, `charges.per.*`,
+ * `charges.month.*`) et sont résolus via `t()` dans les composants. On ne
+ * conserve ici que l'ordre d'affichage (codes), indépendant de la langue.
+ */
 export const CATEGORY_ORDER: ExpenseCategory[] = [
   'EAU_ELECTRICITE',
   'INTERNET',
@@ -94,11 +81,6 @@ export const CATEGORY_ORDER: ExpenseCategory[] = [
 ];
 
 export const PERIODICITY_ORDER: ExpensePeriodicity[] = ['PONCTUELLE', 'MENSUELLE', 'ANNUELLE'];
-
-export const MONTH_LABELS_SHORT = [
-  'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin',
-  'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc',
-];
 
 /** Format MAD comme le reste de l'app (FacturationPage / InvoiceDrawer). */
 export function formatMad(n: number): string {

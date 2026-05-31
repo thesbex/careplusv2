@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { UpdateDoseRequest, VaccinationCalendarEntry } from '../types';
 
 /**
@@ -11,6 +12,7 @@ import type { UpdateDoseRequest, VaccinationCalendarEntry } from '../types';
  */
 export function useUpdateDose(patientId: string) {
   const queryClient = useQueryClient();
+  const { t } = useT();
 
   return useMutation({
     mutationFn: ({ doseId, body }: { doseId: string; body: UpdateDoseRequest }) =>
@@ -25,7 +27,7 @@ export function useUpdateDose(patientId: string) {
     },
     onError: (err) => {
       if (isAxiosError(err) && err.response?.status === 409) {
-        toast.error('Une autre personne a modifié cette dose. Rechargez.');
+        toast.error(t('vacc.drawer.concurrentEdit'));
       }
     },
   });

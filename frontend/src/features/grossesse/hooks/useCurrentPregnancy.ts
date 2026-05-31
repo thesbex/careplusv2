@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { Pregnancy } from '../types';
 
 /** Backend returns fetusesJson as a String — parse to typed array on read. */
@@ -29,6 +30,7 @@ export function parsePregnancy(wire: PregnancyWire): Pregnancy {
  * or null when none. Backend answers 404 in that case ; we map it to null.
  */
 export function useCurrentPregnancy(patientId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['pregnancies', 'current', patientId],
     queryFn: async (): Promise<Pregnancy | null> => {
@@ -51,6 +53,6 @@ export function useCurrentPregnancy(patientId?: string) {
   return {
     pregnancy: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger la grossesse en cours.' : null,
+    error: error ? t('gross.err.loadCurrent') : null,
   };
 }

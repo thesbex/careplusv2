@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockMovement, PageView } from '../types';
 
 export interface StockMovementsFilters {
@@ -15,6 +16,7 @@ export interface StockMovementsFilters {
  * GET /api/stock/articles/:id/movements
  */
 export function useStockMovements(articleId: string | undefined, filters: StockMovementsFilters = {}) {
+  const { t } = useT();
   const params: Record<string, string | number> = {
     page: filters.page ?? 0,
     size: filters.size ?? 50,
@@ -40,6 +42,6 @@ export function useStockMovements(articleId: string | undefined, filters: StockM
     totalPages: data?.totalPages ?? 0,
     currentPage: data?.number ?? 0,
     isLoading,
-    error: error ? 'Impossible de charger les mouvements.' : null,
+    error: error ? t('stock.err.loadMovements') : null,
   };
 }

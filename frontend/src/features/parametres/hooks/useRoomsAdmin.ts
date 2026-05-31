@@ -7,6 +7,7 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface RoomView {
   id: string;
@@ -29,6 +30,7 @@ export interface UpdateRoomPayload {
 const STABLE_EMPTY: RoomView[] = [];
 
 export function useRoomsList() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['rooms', { includeInactive: true }],
     queryFn: () =>
@@ -40,7 +42,7 @@ export function useRoomsList() {
   return {
     rooms: data ?? STABLE_EMPTY,
     isLoading,
-    error: error ? 'Impossible de charger la liste des salles.' : null,
+    error: error ? t('settings.errors.loadRooms') : null,
   };
 }
 

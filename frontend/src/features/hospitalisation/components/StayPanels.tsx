@@ -11,10 +11,11 @@ import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePrestationCatalog } from '@/features/prestation/hooks/usePrestations';
 import { useBedBoard } from '../hooks/useHospitalization';
 import {
-  DISCHARGE_TYPE_LABELS,
+  DISCHARGE_TYPE_KEYS,
   useAddStayPrestation,
   useAdmit,
   useCancelStay,
@@ -61,6 +62,7 @@ export function useFreeBeds() {
 }
 
 export function AdmissionForm({ onDone }: { onDone: () => void }) {
+  const { t } = useT();
   const { admit, isPending } = useAdmit();
   const freeBeds = useFreeBeds();
   const [q, setQ] = useState('');
@@ -81,29 +83,29 @@ export function AdmissionForm({ onDone }: { onDone: () => void }) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!selected || !bedId) { toast.error('Patient et lit requis.'); return; }
+    if (!selected || !bedId) { toast.error(t('hospit.admission.errRequired')); return; }
     try {
       await admit({ patientId: selected.id, bedId, ...(reason.trim() ? { admissionReason: reason.trim() } : {}) });
-      toast.success(`${selected.firstName} ${selected.lastName} admis(e).`);
+      toast.success(t('hospit.admission.success', { name: `${selected.firstName} ${selected.lastName}` }));
       onDone();
     } catch (err) { reportError(err); }
   }
 
   return (
     <Panel data-testid="admission-form">
-      <PanelHeader>Nouvelle admission</PanelHeader>
+      <PanelHeader>{t('hospit.admission.title')}</PanelHeader>
       <form onSubmit={(e) => void submit(e)} style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
         <Field>
-          <FieldLabel htmlFor="adm-patient">Patient *</FieldLabel>
+          <FieldLabel htmlFor="adm-patient">{t('hospit.admission.patient')}</FieldLabel>
           {selected ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{selected.firstName} {selected.lastName}</span>
-              <Button size="sm" variant="ghost" type="button" onClick={() => { setSelected(null); setQ(''); }}>Changer</Button>
+              <Button size="sm" variant="ghost" type="button" onClick={() => { setSelected(null); setQ(''); }}>{t('hospit.admission.change')}</Button>
             </div>
           ) : (
             <>
               <Input id="adm-patient" value={q} onChange={(e) => void search(e.target.value)}
-                placeholder="Rechercher par nom, téléphone, CIN…" />
+                placeholder={t('hospit.admission.patientPlaceholder')} />
               {hits.length > 0 && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 6, marginTop: 4, maxHeight: 200, overflow: 'auto' }}>
                   {hits.map((h) => (
@@ -120,22 +122,22 @@ export function AdmissionForm({ onDone }: { onDone: () => void }) {
           )}
         </Field>
         <Field>
-          <FieldLabel htmlFor="adm-bed">Lit *</FieldLabel>
-          <Select id="adm-bed" aria-label="Lit" value={bedId} onChange={(e) => setBedId(e.target.value)} style={SELECT_STYLE}>
-            <option value="">— Choisir un lit libre —</option>
+          <FieldLabel htmlFor="adm-bed">{t('hospit.admission.bed')}</FieldLabel>
+          <Select id="adm-bed" aria-label={t('hospit.admission.bedAria')} value={bedId} onChange={(e) => setBedId(e.target.value)} style={SELECT_STYLE}>
+            <option value="">{t('hospit.admission.chooseFreeBed')}</option>
             {freeBeds.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </Select>
           {freeBeds.length === 0 && (
-            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Aucun lit libre. Configurez/libérez un lit d'abord.</span>
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{t('hospit.admission.noFreeBed')}</span>
           )}
         </Field>
         <Field>
-          <FieldLabel htmlFor="adm-reason">Motif d'admission</FieldLabel>
-          <Input id="adm-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Surveillance post-opératoire…" />
+          <FieldLabel htmlFor="adm-reason">{t('hospit.admission.reason')}</FieldLabel>
+          <Input id="adm-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t('hospit.admission.reasonPlaceholder')} />
         </Field>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <Button type="button" onClick={onDone}>Annuler</Button>
-          <Button type="submit" variant="primary" disabled={isPending}>{isPending ? 'Admission…' : 'Admettre'}</Button>
+          <Button type="button" onClick={onDone}>{t('hospit.admission.cancel')}</Button>
+          <Button type="submit" variant="primary" disabled={isPending}>{isPending ? t('hospit.admission.admitting') : t('hospit.admission.admit')}</Button>
         </div>
       </form>
     </Panel>
@@ -148,6 +150,7 @@ export function AdmissionForm({ onDone }: { onDone: () => void }) {
  * Réutilisée par desktop + mobile via StayDetailPanel (parité 390 px).
  */
 export function StayPrestationsSection({ stayId, editable }: { stayId: string; editable: boolean }) {
+  const { t } = useT();
   const { prestations } = useStayPrestations(stayId);
   const { prestations: catalog } = usePrestationCatalog(false);
   const { addPrestation, isPending: adding } = useAddStayPrestation(stayId);
@@ -172,8 +175,8 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
     const trimmed = label.trim();
     const priceNum = Number(price);
     const qtyNum = Number(qty);
-    if (!trimmed) { toast.error('Libellé requis.'); return; }
-    if (!price || Number.isNaN(priceNum) || priceNum < 0) { toast.error('Prix unitaire invalide.'); return; }
+    if (!trimmed) { toast.error(t('hospit.prest.errLabel')); return; }
+    if (!price || Number.isNaN(priceNum) || priceNum < 0) { toast.error(t('hospit.prest.errPrice')); return; }
     const payload = {
       label: trimmed,
       unitPrice: priceNum,
@@ -182,7 +185,7 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
     };
     try {
       await addPrestation(payload);
-      toast.success('Prestation ajoutée.');
+      toast.success(t('hospit.prest.addedToast'));
       setActId(''); setLabel(''); setPrice(''); setQty('1');
     } catch (err) { reportError(err); }
   }
@@ -190,28 +193,28 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
   async function remove(id: string) {
     try {
       await deletePrestation(id);
-      toast.success('Prestation retirée.');
+      toast.success(t('hospit.prest.removedToast'));
     } catch (err) {
       const p = toProblemDetail(err);
-      if (p.code === 'STAY_ALREADY_INVOICED') { toast.error('Séjour déjà facturé.'); return; }
+      if (p.code === 'STAY_ALREADY_INVOICED') { toast.error(t('hospit.prest.alreadyInvoiced')); return; }
       reportError(err);
     }
   }
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }} data-testid="stay-prestations">
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Prestations</div>
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{t('hospit.prest.title')}</div>
       {prestations.length === 0 && (
-        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Aucune prestation.</div>
+        <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('hospit.prest.empty')}</div>
       )}
       {prestations.map((p) => (
         <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           fontSize: 12.5, padding: '5px 0', borderBottom: '1px solid var(--border)' }}>
-          <span>{p.label} ({p.quantity} × {p.unitPrice.toLocaleString('fr-MA')})</span>
+          <span>{t('hospit.prest.line', { label: p.label, qty: p.quantity, unitPrice: p.unitPrice.toLocaleString('fr-MA') })}</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 600 }}>{p.lineTotal.toLocaleString('fr-MA')} MAD</span>
             {editable && (
-              <button type="button" aria-label={`Retirer ${p.label}`} onClick={() => void remove(p.id)}
+              <button type="button" aria-label={t('hospit.prest.removeAria', { label: p.label })} onClick={() => void remove(p.id)}
                 style={{ border: 'none', background: 'none', cursor: 'pointer', color: 'var(--danger, #c0392b)',
                   fontSize: 15, lineHeight: 1, padding: '0 4px' }}>×</button>
             )}
@@ -220,43 +223,43 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
       ))}
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6,
         borderTop: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}>
-        <span>Total prestations</span>
+        <span>{t('hospit.prest.total')}</span>
         <span data-testid="stay-prestations-total">{total.toLocaleString('fr-MA')} MAD</span>
       </div>
 
       {editable && (
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600 }}>Ajouter une prestation</div>
+          <div style={{ fontSize: 12, fontWeight: 600 }}>{t('hospit.prest.add')}</div>
           <Field>
-            <FieldLabel htmlFor="pr-act">Acte du catalogue</FieldLabel>
-            <Select id="pr-act" aria-label="Choisir une prestation" value={actId}
+            <FieldLabel htmlFor="pr-act">{t('hospit.prest.act')}</FieldLabel>
+            <Select id="pr-act" aria-label={t('hospit.prest.actAria')} value={actId}
               onChange={(e) => pickAct(e.target.value)} style={SELECT_STYLE}>
-              <option value="">— Saisie libre —</option>
+              <option value="">{t('hospit.prest.freeEntry')}</option>
               {catalog.map((c) => (
-                <option key={c.id} value={c.id}>{c.label} ({c.defaultPrice} MAD)</option>
+                <option key={c.id} value={c.id}>{t('hospit.prest.actOption', { label: c.label, price: c.defaultPrice })}</option>
               ))}
             </Select>
           </Field>
           <Field>
-            <FieldLabel htmlFor="pr-label">Libellé</FieldLabel>
+            <FieldLabel htmlFor="pr-label">{t('hospit.prest.label')}</FieldLabel>
             <Input id="pr-label" value={label} onChange={(e) => setLabel(e.target.value)}
-              placeholder="Oxygène, repas…" />
+              placeholder={t('hospit.prest.labelPlaceholder')} />
           </Field>
           <div style={{ display: 'flex', gap: 8 }}>
             <Field style={{ flex: 1 }}>
-              <FieldLabel htmlFor="pr-price">Prix unitaire (MAD)</FieldLabel>
+              <FieldLabel htmlFor="pr-price">{t('hospit.prest.unitPrice')}</FieldLabel>
               <Input id="pr-price" type="number" min="0" step="0.01" value={price}
                 onChange={(e) => setPrice(e.target.value)} placeholder="50" />
             </Field>
             <Field style={{ width: 90 }}>
-              <FieldLabel htmlFor="pr-qty">Quantité</FieldLabel>
+              <FieldLabel htmlFor="pr-qty">{t('hospit.prest.qty')}</FieldLabel>
               <Input id="pr-qty" type="number" min="1" step="1" value={qty}
                 onChange={(e) => setQty(e.target.value)} />
             </Field>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button type="button" variant="primary" disabled={adding} onClick={() => void add()}>
-              {adding ? 'Ajout…' : 'Ajouter'}
+              {adding ? t('hospit.prest.adding') : t('hospit.prest.addBtn')}
             </Button>
           </div>
         </div>
@@ -266,6 +269,7 @@ export function StayPrestationsSection({ stayId, editable }: { stayId: string; e
 }
 
 export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: () => void }) {
+  const { t } = useT();
   const navigate = useNavigate();
   const { stay, isLoading } = useStayDetail(stayId);
   const freeBeds = useFreeBeds();
@@ -282,27 +286,27 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
   const [tab, setTab] = useState<'apercu' | 'prestations' | 'constantes' | 'sortie'>('apercu');
 
   if (isLoading || !stay) {
-    return <Panel><div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div></Panel>;
+    return <Panel><div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>{t('hospit.detail.loading')}</div></Panel>;
   }
 
   async function doTransfer() {
-    if (!transferBed) { toast.error('Choisir un lit.'); return; }
-    try { await transfer({ stayId, bedId: transferBed }); toast.success('Patient transféré.'); setTransferBed(''); }
+    if (!transferBed) { toast.error(t('hospit.transfer.errBed')); return; }
+    try { await transfer({ stayId, bedId: transferBed }); toast.success(t('hospit.transfer.success')); setTransferBed(''); }
     catch (err) { reportError(err); }
   }
   async function doDischarge() {
     try { await discharge({ stayId, dischargeType, ...(summary.trim() ? { dischargeSummary: summary.trim() } : {}) });
-      toast.success('Sortie préparée — facture de séjour émise.', {
-        description: 'Encaissez la facture, puis confirmez la sortie.' }); }
+      toast.success(t('hospit.discharge.successTitle'), {
+        description: t('hospit.discharge.successDesc') }); }
     catch (err) { reportError(err); }
   }
   async function doConfirmDischarge() {
-    try { await confirmDischarge(stayId); toast.success('Sortie confirmée — séjour clôturé.'); }
+    try { await confirmDischarge(stayId); toast.success(t('hospit.discharge.confirmedTitle')); }
     catch (err) { reportError(err); }
   }
   async function doCancel() {
-    if (!confirm('Annuler cette admission ? Le lit sera libéré.')) return;
-    try { await cancelStay(stayId); toast.success('Admission annulée.'); onClose(); }
+    if (!confirm(t('hospit.cancel.confirm'))) return;
+    try { await cancelStay(stayId); toast.success(t('hospit.cancel.success')); onClose(); }
     catch (err) { reportError(err); }
   }
   function num(k: string): number | undefined {
@@ -318,8 +322,8 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
     const spo2 = num('spo2'); if (spo2 !== undefined) payload.spo2Percent = spo2;
     const gly = num('gly'); if (gly !== undefined) payload.glycemiaGPerL = gly;
     if (vit.notes?.trim()) payload.notes = vit.notes.trim();
-    if (Object.keys(payload).length === 0) { toast.error('Saisir au moins une constante.'); return; }
-    try { await recordVitals({ stayId, payload }); toast.success('Constantes enregistrées.'); setVit({}); }
+    if (Object.keys(payload).length === 0) { toast.error(t('hospit.vitals.errMin')); return; }
+    try { await recordVitals({ stayId, payload }); toast.success(t('hospit.vitals.savedToast')); setVit({}); }
     catch (err) { reportError(err); }
   }
   async function doPdf() {
@@ -341,32 +345,32 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
   return (
     <Panel data-testid="stay-detail">
       <PanelHeader>
-        <span>{stay.patientFirstName} {stay.patientLastName} — séjour</span>
+        <span>{stay.patientFirstName} {stay.patientLastName} — {t('hospit.detail.headerSuffix')}</span>
         <span style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 10px', borderRadius: 999,
-          background: 'var(--bg-alt)', color: 'var(--ink-2)' }}>{stay.status}</span>
+          background: 'var(--bg-alt)', color: 'var(--ink-2)' }}>{t(`hospit.status.${stay.status}`)}</span>
       </PanelHeader>
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* Onglets — réorganisation ergonomie (backlog 2026-05-29) : éviter le
             mur d'informations en empilant les sections sous des onglets. */}
         <div
           role="tablist"
-          aria-label="Sections du séjour"
+          aria-label={t('hospit.detail.tabsAria')}
           style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 6, flexWrap: 'wrap' }}
         >
           {([
-            { id: 'apercu', label: 'Aperçu & facturation' },
-            { id: 'prestations', label: 'Prestations' },
-            { id: 'constantes', label: 'Constantes' },
-            ...(stay.status === 'EN_COURS' ? [{ id: 'sortie', label: 'Mouvements & sortie' }] : []),
-          ] as const).map((t) => {
-            const on = tab === t.id;
+            { id: 'apercu', label: t('hospit.detail.tab.apercu') },
+            { id: 'prestations', label: t('hospit.detail.tab.prestations') },
+            { id: 'constantes', label: t('hospit.detail.tab.constantes') },
+            ...(stay.status === 'EN_COURS' ? [{ id: 'sortie', label: t('hospit.detail.tab.sortie') }] : []),
+          ] as const).map((tb) => {
+            const on = tab === tb.id;
             return (
               <button
-                key={t.id}
+                key={tb.id}
                 type="button"
                 role="tab"
                 aria-selected={on}
-                onClick={() => setTab(t.id as typeof tab)}
+                onClick={() => setTab(tb.id as typeof tab)}
                 style={{
                   flex: 1, minWidth: 110, padding: '6px 10px', border: 'none', borderRadius: 4,
                   cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: on ? 600 : 500,
@@ -374,7 +378,7 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
                   boxShadow: on ? '0 0 0 1px var(--border)' : 'none',
                 }}
               >
-                {t.label}
+                {tb.label}
               </button>
             );
           })}
@@ -383,16 +387,16 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
         {tab === 'apercu' && (
           <>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Affectations (ADT)</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{t('hospit.detail.assignments')}</div>
               {stay.assignments.map((a) => (
                 <div key={a.id} style={{ fontSize: 12.5, padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                  {a.bedLabel} · {a.dailyRate.toLocaleString('fr-MA')} MAD/j · {a.nights} nuit(s)
-                  {a.toAt ? '' : ' · (courant)'}
+                  {t('hospit.detail.assignmentLine', { bed: a.bedLabel ?? '—', rate: a.dailyRate.toLocaleString('fr-MA'), nights: a.nights })}
+                  {a.toAt ? '' : t('hospit.detail.current')}
                 </div>
               ))}
             </div>
             <div style={{ background: 'var(--surface-2)', borderRadius: 6, padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Aperçu facturation — coût quotidien</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>{t('hospit.detail.billingPreview')}</div>
               {stay.chargePreview.map((c, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
                   <span>{c.description} ({c.quantity} × {c.unitPrice.toLocaleString('fr-MA')})</span>
@@ -401,18 +405,18 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, paddingTop: 6,
                 borderTop: '1px solid var(--border)', fontSize: 13, fontWeight: 700 }}>
-                <span>Total hébergement</span><span>{stay.chargeTotal.toLocaleString('fr-MA')} MAD</span>
+                <span>{t('hospit.detail.lodgingTotal')}</span><span>{stay.chargeTotal.toLocaleString('fr-MA')} MAD</span>
               </div>
             </div>
             {(stay.pendingConsultationInvoices?.length ?? 0) > 0 && (
               <div style={{ background: 'var(--surface-2)', borderRadius: 6, padding: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-                  Consultations du séjour (englobées dans la facture à la sortie)
+                  {t('hospit.detail.consultsOfStay')}
                 </div>
                 {stay.pendingConsultationInvoices!.map((pc) => (
                   <div key={pc.invoiceId} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
                     <span>
-                      {pc.number ?? 'Consultation (brouillon)'}
+                      {pc.number ?? t('hospit.detail.consultDraft')}
                       {pc.consultDate ? ` · ${new Date(pc.consultDate).toLocaleDateString('fr-MA')}` : ''}
                     </span>
                     <span style={{ fontWeight: 600 }}>{pc.netAmount.toLocaleString('fr-MA')} MAD</span>
@@ -427,29 +431,29 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
               <>
                 {stay.invoiceId && (
                   <Button type="button" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
-                    Voir / encaisser la facture de séjour
+                    {t('hospit.detail.viewCollectInvoice')}
                   </Button>
                 )}
                 <Button type="button" variant="primary" disabled={confirming}
                   onClick={() => void doConfirmDischarge()}>
-                  {confirming ? 'Confirmation…' : 'Confirmer la sortie (facture réglée)'}
+                  {confirming ? t('hospit.detail.confirming') : t('hospit.detail.confirmDischarge')}
                 </Button>
               </>
             )}
             {stay.status === 'FACTURE' && (
               <>
                 <div style={{ fontSize: 12.5, color: 'var(--success, #0e5b3e)', fontWeight: 600 }}>
-                  Séjour clôturé — facture réglée.
+                  {t('hospit.detail.closedPaid')}
                 </div>
                 {stay.invoiceId && (
                   <Button type="button" onClick={() => navigate(`/facturation?invoice=${stay.invoiceId}`)}>
-                    Voir la facture
+                    {t('hospit.detail.viewInvoice')}
                   </Button>
                 )}
               </>
             )}
             {(stay.status === 'SORTI' || stay.status === 'FACTURE') && (
-              <Button type="button" onClick={() => void doPdf()}>Télécharger le compte-rendu (PDF)</Button>
+              <Button type="button" onClick={() => void doPdf()}>{t('hospit.detail.downloadPdf')}</Button>
             )}
           </>
         )}
@@ -460,26 +464,26 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
 
         {tab === 'constantes' && (
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Constantes au lit</div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{t('hospit.vitals.title')}</div>
             {stay.status === 'EN_COURS' && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  <Field><FieldLabel htmlFor="v-sys">TA syst.</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-sys">{t('hospit.vitals.sys')}</FieldLabel>
                     <Input id="v-sys" type="number" value={vit.sys ?? ''} onChange={(e) => setVit({ ...vit, sys: e.target.value })} placeholder="120" /></Field>
-                  <Field><FieldLabel htmlFor="v-dia">TA diast.</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-dia">{t('hospit.vitals.dia')}</FieldLabel>
                     <Input id="v-dia" type="number" value={vit.dia ?? ''} onChange={(e) => setVit({ ...vit, dia: e.target.value })} placeholder="80" /></Field>
-                  <Field><FieldLabel htmlFor="v-temp">T° (°C)</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-temp">{t('hospit.vitals.temp')}</FieldLabel>
                     <Input id="v-temp" type="number" step="0.1" value={vit.temp ?? ''} onChange={(e) => setVit({ ...vit, temp: e.target.value })} placeholder="37.0" /></Field>
-                  <Field><FieldLabel htmlFor="v-fc">FC (bpm)</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-fc">{t('hospit.vitals.fc')}</FieldLabel>
                     <Input id="v-fc" type="number" value={vit.fc ?? ''} onChange={(e) => setVit({ ...vit, fc: e.target.value })} placeholder="72" /></Field>
-                  <Field><FieldLabel htmlFor="v-spo2">SpO₂ (%)</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-spo2">{t('hospit.vitals.spo2')}</FieldLabel>
                     <Input id="v-spo2" type="number" value={vit.spo2 ?? ''} onChange={(e) => setVit({ ...vit, spo2: e.target.value })} placeholder="98" /></Field>
-                  <Field><FieldLabel htmlFor="v-gly">Glycémie</FieldLabel>
+                  <Field><FieldLabel htmlFor="v-gly">{t('hospit.vitals.gly')}</FieldLabel>
                     <Input id="v-gly" type="number" step="0.01" value={vit.gly ?? ''} onChange={(e) => setVit({ ...vit, gly: e.target.value })} placeholder="1.0" /></Field>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
                   <Button type="button" variant="primary" disabled={recVit} onClick={() => void doVitals()}>
-                    {recVit ? 'Enregistrement…' : 'Enregistrer les constantes'}
+                    {recVit ? t('hospit.vitals.recording') : t('hospit.vitals.record')}
                   </Button>
                 </div>
               </>
@@ -497,7 +501,7 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
                 ))}
               </div>
             ) : (
-              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-3)' }}>Aucune constante enregistrée.</div>
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ink-3)' }}>{t('hospit.vitals.empty')}</div>
             )}
           </div>
         )}
@@ -506,44 +510,42 @@ export function StayDetailPanel({ stayId, onClose }: { stayId: string; onClose: 
           <>
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <Field style={{ flex: 1 }}>
-                <FieldLabel htmlFor="tr-bed">Transférer vers</FieldLabel>
-                <Select id="tr-bed" aria-label="Lit de transfert" value={transferBed}
+                <FieldLabel htmlFor="tr-bed">{t('hospit.sortie.transferTo')}</FieldLabel>
+                <Select id="tr-bed" aria-label={t('hospit.sortie.transferBedAria')} value={transferBed}
                   onChange={(e) => setTransferBed(e.target.value)} style={SELECT_STYLE}>
-                  <option value="">— Lit libre —</option>
+                  <option value="">{t('hospit.sortie.freeBed')}</option>
                   {freeBeds.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
                 </Select>
               </Field>
-              <Button type="button" disabled={transferring} onClick={() => void doTransfer()}>Transférer</Button>
+              <Button type="button" disabled={transferring} onClick={() => void doTransfer()}>{t('hospit.sortie.transfer')}</Button>
             </div>
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>Sortie médicale</div>
+              <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>{t('hospit.sortie.medicalTitle')}</div>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 8, lineHeight: 1.45 }}>
-                « Préparer la sortie » génère et émet la facture de séjour (hébergement +
-                prestations + consultations du séjour). La sortie est confirmée ensuite,
-                une fois la facture réglée, depuis l'onglet « Aperçu & facturation ».
+                {t('hospit.sortie.medicalHint')}
               </div>
               <Field>
-                <FieldLabel htmlFor="dis-type">Type de sortie</FieldLabel>
-                <Select id="dis-type" aria-label="Type de sortie" value={dischargeType}
+                <FieldLabel htmlFor="dis-type">{t('hospit.sortie.type')}</FieldLabel>
+                <Select id="dis-type" aria-label={t('hospit.sortie.typeAria')} value={dischargeType}
                   onChange={(e) => setDischargeType(e.target.value as DischargeType)} style={SELECT_STYLE}>
-                  {Object.entries(DISCHARGE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {Object.entries(DISCHARGE_TYPE_KEYS).map(([k, keyStr]) => <option key={k} value={k}>{t(keyStr)}</option>)}
                 </Select>
               </Field>
               <Field>
-                <FieldLabel htmlFor="dis-sum">Compte-rendu (optionnel)</FieldLabel>
-                <Input id="dis-sum" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Évolution favorable…" />
+                <FieldLabel htmlFor="dis-sum">{t('hospit.sortie.summary')}</FieldLabel>
+                <Input id="dis-sum" value={summary} onChange={(e) => setSummary(e.target.value)} placeholder={t('hospit.sortie.summaryPlaceholder')} />
               </Field>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                <Button type="button" variant="ghost" onClick={() => void doCancel()}>Annuler l'admission</Button>
+                <Button type="button" variant="ghost" onClick={() => void doCancel()}>{t('hospit.sortie.cancelAdmission')}</Button>
                 <Button type="button" variant="primary" disabled={discharging} onClick={() => void doDischarge()}>
-                  {discharging ? 'Préparation…' : 'Préparer la sortie'}
+                  {discharging ? t('hospit.sortie.preparing') : t('hospit.sortie.prepare')}
                 </Button>
               </div>
             </div>
           </>
         )}
 
-        <Button type="button" onClick={onClose}>Fermer</Button>
+        <Button type="button" onClick={onClose}>{t('hospit.detail.close')}</Button>
       </div>
     </Panel>
   );

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Queue entry returned by GET /api/vaccinations/queue.
@@ -47,6 +48,7 @@ export interface VaccinationsQueueFilters {
  * staleTime: 30 s (aligned with sidebar polling interval).
  */
 export function useVaccinationsQueue(filters: VaccinationsQueueFilters) {
+  const { t } = useT();
   const params: Record<string, string | number> = {
     status: filters.status,
     page: filters.page ?? 0,
@@ -73,6 +75,6 @@ export function useVaccinationsQueue(filters: VaccinationsQueueFilters) {
     totalPages: data?.totalPages ?? 0,
     currentPage: data?.number ?? 0,
     isLoading,
-    error: error ? 'Impossible de charger la liste des vaccinations.' : null,
+    error: error ? t('vacc.queue.loadError') : null,
   };
 }

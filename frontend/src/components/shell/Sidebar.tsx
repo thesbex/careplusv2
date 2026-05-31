@@ -229,7 +229,7 @@ export function Sidebar({
       : { name: '—', role: t('role.notConnected'), initials: '?' });
 
   return (
-    <nav className="cp-sidebar" aria-label="Navigation principale">
+    <nav className="cp-sidebar" aria-label={t('ui.nav.main')}>
       <div className="cp-brand">
         <ConfigurableBrandMark />
         <div className="cp-brand-name">
@@ -251,7 +251,7 @@ export function Sidebar({
           value={menuQuery}
           onChange={(e) => setMenuQuery(e.target.value)}
           placeholder={t('nav.search.placeholder')}
-          aria-label="Rechercher un menu ou une fonctionnalité"
+          aria-label={t('ui.nav.searchMenu')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && menuMatches[0]) {
               onNavigate?.(menuMatches[0].id);
@@ -329,6 +329,7 @@ function UserChip({ user }: { user: { id?: string; name: string; role: string; i
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { t } = useT();
 
   useEffect(() => {
     if (!open) return;
@@ -391,7 +392,7 @@ function UserChip({ user }: { user: { id?: string; name: string; role: string; i
             }}
           >
             <Eye />
-            Mon profil
+            {t('mnav.profile')}
           </button>
           <button
             type="button"
@@ -400,7 +401,7 @@ function UserChip({ user }: { user: { id?: string; name: string; role: string; i
             onClick={handleLogout}
           >
             <Logout />
-            Se déconnecter
+            {t('mnav.logout')}
           </button>
         </div>
       )}
@@ -423,6 +424,7 @@ function NavButton({
   label?: string;
 }) {
   const { Icon } = item;
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -435,7 +437,7 @@ function NavButton({
       </span>
       <span>{label ?? item.label}</span>
       {typeof badge === 'number' && badge > 0 && (
-        <span className="cp-nav-badge" aria-label={`${badge} en attente`}>
+        <span className="cp-nav-badge" aria-label={t('ui.nav.badge', { n: badge })}>
           {badge}
         </span>
       )}

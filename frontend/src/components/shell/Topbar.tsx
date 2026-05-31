@@ -37,7 +37,7 @@ export function Topbar({
           type="button"
           className="cp-search"
           onClick={onSearchOpen}
-          aria-label="Rechercher un patient"
+          aria-label={t('ui.topbar.searchPatient')}
         >
           <Search />
           <span>{t('topbar.searchPatient')}</span>

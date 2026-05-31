@@ -27,13 +27,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PrescriptionApi } from '../types';
 
 export interface DocumentTypeMeta {
   /** Préfixe court affiché en sous-titre (ex. ORD-XXXX, CERT-XXXX). */
   prefix: string;
-  /** Libellé long pour le titre Aperçu (ex. "Ordonnance", "Certificat"). */
+  /**
+   * Libellé long FR pour le titre Aperçu (ex. "Ordonnance", "Certificat").
+   * Conservé pour les consommateurs qui n'ont pas encore migré vers i18n
+   * (consultation, dossier-patient). Pour l'affichage traduit, préférer
+   * `t(labelKey)`.
+   */
   label: string;
+  /** Clé i18n du libellé long (`presc.docLabel.*`). */
+  labelKey: string;
   /** Variante téléchargée (ex. "ordonnance", "certificat"). Sert de slug fichier. */
   fileSlug: string;
 }
@@ -41,22 +49,25 @@ export interface DocumentTypeMeta {
 /**
  * Mapping type prescription → libellés UI. Étend ce switch quand un nouveau
  * type est ajouté côté backend (`PrescriptionType` enum).
+ *
+ * `label` reste la chaîne FR de référence (slug fichier + consommateurs non
+ * encore i18n) ; `labelKey` pointe vers la traduction `presc.docLabel.*`.
  */
 export function metaForPrescription(p: PrescriptionApi | null | undefined): DocumentTypeMeta {
   switch (p?.type) {
     case 'DRUG':
-      return { prefix: 'ORD', label: 'Ordonnance', fileSlug: 'ordonnance' };
+      return { prefix: 'ORD', label: 'Ordonnance', labelKey: 'presc.docLabel.DRUG', fileSlug: 'ordonnance' };
     case 'LAB':
-      return { prefix: 'BON', label: "Bon d'analyses", fileSlug: 'bon-analyses' };
+      return { prefix: 'BON', label: "Bon d'analyses", labelKey: 'presc.docLabel.LAB', fileSlug: 'bon-analyses' };
     case 'IMAGING':
-      return { prefix: 'BON', label: "Bon d'imagerie", fileSlug: 'bon-imagerie' };
+      return { prefix: 'BON', label: "Bon d'imagerie", labelKey: 'presc.docLabel.IMAGING', fileSlug: 'bon-imagerie' };
     case 'CERT':
-      return { prefix: 'CERT', label: 'Certificat', fileSlug: 'certificat' };
+      return { prefix: 'CERT', label: 'Certificat', labelKey: 'presc.docLabel.CERT', fileSlug: 'certificat' };
     case 'SICK_LEAVE':
-      return { prefix: 'AT', label: 'Arrêt de travail', fileSlug: 'arret-travail' };
+      return { prefix: 'AT', label: 'Arrêt de travail', labelKey: 'presc.docLabel.SICK_LEAVE', fileSlug: 'arret-travail' };
     default:
       // Fallback : on n'invente pas un label, on reste neutre.
-      return { prefix: 'DOC', label: 'Document', fileSlug: 'document' };
+      return { prefix: 'DOC', label: 'Document', labelKey: 'presc.docLabel.default', fileSlug: 'document' };
   }
 }
 
@@ -86,6 +97,7 @@ interface UsePrescriptionPdfBlobResult {
  * into actionable messages.
  */
 export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
+  const { t } = useT();
   const [url, setUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +132,7 @@ export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
         if (cancelled) return;
         // eslint-disable-next-line no-console
         console.error('[useDocumentPdfBlob] PDF fetch failed', err);
-        setError(messageForPdfError(err));
+        setError(messageForPdfError(err, t));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -135,27 +147,29 @@ export function useDocumentPdfBlob(id?: string): UsePrescriptionPdfBlobResult {
   return { url, isLoading, error, retry };
 }
 
+type Translator = (key: string, vars?: Record<string, string | number>) => string;
+
 /**
- * Map a fetch error to a French sentence the praticien can act on. We
- * intentionally keep the technical status visible at the end of the
- * message so support can correlate with backend logs.
+ * Map a fetch error to a sentence the praticien can act on. We intentionally
+ * keep the technical status visible at the end of the message so support can
+ * correlate with backend logs.
  */
-function messageForPdfError(err: unknown): string {
+function messageForPdfError(err: unknown, t: Translator): string {
   if (isAxiosError(err)) {
     if (err.code === 'ECONNABORTED' || err.message.toLowerCase().includes('timeout')) {
-      return "Le serveur met trop de temps à générer le PDF. Réessayez dans quelques secondes.";
+      return t('presc.pdf.err.timeout');
     }
     const status = err.response?.status;
-    if (status === 401) return 'Session expirée. Reconnectez-vous puis rouvrez le document.';
-    if (status === 403) return "Vous n'avez pas les droits pour consulter ce document.";
-    if (status === 404) return 'Document introuvable.';
+    if (status === 401) return t('presc.pdf.err.401');
+    if (status === 403) return t('presc.pdf.err.403');
+    if (status === 404) return t('presc.pdf.err.404');
     if (status && status >= 500) {
-      return `Erreur serveur lors de la génération du PDF (HTTP ${status}). Réessayez.`;
+      return t('presc.pdf.err.500', { status });
     }
-    if (status) return `Impossible de charger le PDF (HTTP ${status}).`;
-    return 'Connexion interrompue. Vérifiez votre réseau puis réessayez.';
+    if (status) return t('presc.pdf.err.http', { status });
+    return t('presc.pdf.err.network');
   }
-  return 'Impossible de charger le PDF.';
+  return t('presc.pdf.err.generic');
 }
 
 interface DocumentPdfViewerProps {
@@ -189,6 +203,7 @@ export function DocumentPdfViewer({
   height = '100%',
   iframeClassName = 'pr-pdf-viewer',
 }: DocumentPdfViewerProps) {
+  const { t } = useT();
   const { url, isLoading, error, retry } = useDocumentPdfBlob(documentId);
   const iframeId = `doc-pdf-frame-${documentId ?? 'pending'}`;
   const filename = `${meta.fileSlug}-${shortId ?? documentId ?? 'document'}.pdf`;
@@ -197,7 +212,7 @@ export function DocumentPdfViewer({
     <div style={{ height, background: 'var(--bg-alt)' }}>
       {isLoading && (
         <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-          Chargement du PDF…
+          {t('presc.preview.loadingPdf')}
         </div>
       )}
       {error && (
@@ -226,7 +241,7 @@ export function DocumentPdfViewer({
               cursor: 'pointer',
             }}
           >
-            Réessayer
+            {t('presc.preview.retry')}
           </button>
         </div>
       )}
@@ -234,7 +249,7 @@ export function DocumentPdfViewer({
         <iframe
           id={iframeId}
           className={iframeClassName}
-          title={`Aperçu ${meta.label}`}
+          title={t('presc.preview.frameTitle', { label: t(meta.labelKey) })}
           src={url}
           data-pdf-filename={filename}
         />

@@ -102,14 +102,42 @@
 }
 
 /* ── Sous-onglets « Calm Premium » (underline + pill accent actif) ──────────── */
+/* Bande défilable + flèches ‹ › conditionnelles (au lieu d'une scrollbar). */
+.params-tabs-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
 .params-tabs {
   display: flex;
   gap: 4px;
-  padding: 8px 24px 0;
-  border-bottom: 1px solid var(--border);
+  padding: 8px 12px 0;
   background: var(--surface);
   overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  flex: 1;
+  min-width: 0;
 }
+.params-tabs::-webkit-scrollbar { display: none; }
+.params-tabs-arrow {
+  flex-shrink: 0;
+  width: 34px;
+  border: none;
+  background: var(--surface);
+  color: var(--ink-3);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  z-index: 1;
+}
+.params-tabs-arrow svg { width: 16px; height: 16px; }
+.params-tabs-arrow:hover { color: var(--ink); background: var(--surface-2); }
+.params-tabs-arrow.left { box-shadow: 10px 0 12px -8px rgba(20, 30, 50, 0.18); }
+.params-tabs-arrow.right { box-shadow: -10px 0 12px -8px rgba(20, 30, 50, 0.18); }
+.params-tabs-arrow.hidden { visibility: hidden; box-shadow: none; pointer-events: none; }
 .params-tab {
   background: none;
   border: none;

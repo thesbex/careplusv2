@@ -9,6 +9,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Plus, Warn, ChevronRight } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useSpotlight } from '@/components/shell/spotlightContext';
 import { toMin } from './fixtures';
 import {
@@ -35,12 +36,12 @@ function todayKey(): DayKey {
   return dow === 0 ? 'lun' : (DAY_KEYS[dow - 1] ?? 'lun');
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  confirmed: 'Confirmé',
-  arrived: 'Arrivé',
-  vitals: 'Constantes',
-  consult: 'En consult.',
-  done: 'Terminé',
+const STATUS_KEY: Record<string, string> = {
+  confirmed: 'agenda.mobile.status.confirmed',
+  arrived: 'agenda.mobile.status.arrived',
+  vitals: 'agenda.mobile.status.vitals',
+  consult: 'agenda.mobile.status.consult',
+  done: 'agenda.mobile.status.done',
 };
 
 const MONTHS_FR = [
@@ -50,6 +51,7 @@ const MONTHS_FR = [
 
 export default function AgendaMobilePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { openSpotlight } = useSpotlight();
   const [weekOffset, setWeekOffset] = useState(0);
   // Iso maquette mobile : le rail filtres est caché par défaut, révélé par
@@ -180,16 +182,16 @@ export default function AgendaMobilePage() {
       tab="agenda"
       topbar={
         <MTopbar
-          title="Agenda"
+          title={t('nav.agenda')}
           sub={subDate}
           right={
             <>
               <MIconBtn
                 icon="Filter"
-                label={filtersVisible ? 'Masquer les filtres' : 'Afficher les filtres'}
+                label={filtersVisible ? t('agenda.mobile.hideFilters') : t('agenda.mobile.showFilters')}
                 onClick={() => setShowFilters((v) => !v)}
               />
-              <MIconBtn icon="Search" label="Rechercher un patient" onClick={openSpotlight} />
+              <MIconBtn icon="Search" label={t('agenda.mobile.searchPatient')} onClick={openSpotlight} />
             </>
           }
         />
@@ -208,7 +210,7 @@ export default function AgendaMobilePage() {
         <button
           className="m-fab"
           type="button"
-          aria-label="Nouveau RDV"
+          aria-label={t('agenda.newRdv')}
           style={{ border: 0, cursor: 'pointer' }}
           onClick={() => navigate('/rdv/new')}
         >
@@ -231,7 +233,7 @@ export default function AgendaMobilePage() {
         <button
           type="button"
           onClick={() => setWeekOffset((o) => o - 1)}
-          aria-label="Semaine précédente"
+          aria-label={t('agenda.mobile.prevWeek')}
           style={{
             background: 'transparent',
             border: '1px solid var(--border)',
@@ -243,7 +245,7 @@ export default function AgendaMobilePage() {
             fontSize: 12,
           }}
         >
-          ‹ Préc.
+          {t('agenda.mobile.prevShort')}
         </button>
         <div
           style={{
@@ -273,13 +275,13 @@ export default function AgendaMobilePage() {
                 fontWeight: 600,
               }}
             >
-              Auj.
+              {t('agenda.mobile.todayShort')}
             </button>
           )}
           <button
             type="button"
             onClick={() => setWeekOffset((o) => o + 1)}
-            aria-label="Semaine suivante"
+            aria-label={t('agenda.mobile.nextWeek')}
             style={{
               background: 'transparent',
               border: '1px solid var(--border)',
@@ -291,7 +293,7 @@ export default function AgendaMobilePage() {
               fontSize: 12,
             }}
           >
-            Suiv. ›
+            {t('agenda.mobile.nextShort')}
           </button>
         </div>
       </div>
@@ -310,7 +312,7 @@ export default function AgendaMobilePage() {
         >
           {showPractitionerSelector && (
             <Select
-              aria-label="Filtrer par médecin"
+              aria-label={t('agenda.filter.doctorAria')}
               value={practitionerFilter}
               onChange={(e) =>
                 changePractitionerFilter(e.target.value as PractitionerIdFilter)
@@ -327,7 +329,7 @@ export default function AgendaMobilePage() {
                 background: 'var(--surface)',
               }}
             >
-              <option value={ALL_PRACTITIONERS}>Tous les médecins</option>
+              <option value={ALL_PRACTITIONERS}>{t('agenda.filter.allDoctors')}</option>
               {activePractitioners.map((p) => (
                 <option key={p.id} value={p.id}>
                   Dr {p.lastName} {p.firstName}
@@ -337,7 +339,7 @@ export default function AgendaMobilePage() {
           )}
           {showRoomSelector && (
             <Select
-              aria-label="Filtrer par salle"
+              aria-label={t('agenda.filter.roomAria')}
               value={roomFilter}
               onChange={(e) => setRoomFilter(e.target.value)}
               style={{
@@ -352,7 +354,7 @@ export default function AgendaMobilePage() {
                 background: 'var(--surface)',
               }}
             >
-              <option value="ALL">Toutes les salles</option>
+              <option value="ALL">{t('agenda.filter.allRooms')}</option>
               {activeRooms.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -362,7 +364,7 @@ export default function AgendaMobilePage() {
           )}
           {reasons.length > 0 && (
             <Select
-              aria-label="Filtrer par motif de prestation"
+              aria-label={t('agenda.filter.reasonAria')}
               value={reasonFilter}
               onChange={(e) => setReasonFilter(e.target.value)}
               style={{
@@ -377,7 +379,7 @@ export default function AgendaMobilePage() {
                 background: 'var(--surface)',
               }}
             >
-              <option value="ALL">Tous les motifs</option>
+              <option value="ALL">{t('agenda.filter.allReasons')}</option>
               {reasons.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.label}
@@ -388,7 +390,7 @@ export default function AgendaMobilePage() {
         </div>
       )}
 
-      <div className="m-daytabs" role="tablist" aria-label="Jour">
+      <div className="m-daytabs" role="tablist" aria-label={t('agenda.mobile.dayTablistAria')}>
         {days.map((d) => (
           <button
             key={d.key}
@@ -411,7 +413,7 @@ export default function AgendaMobilePage() {
 
       <div className="mb-pad" style={{ paddingTop: 14, paddingBottom: 24 }}>
         {isLoading ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>{t('common.loading')}</div>
         ) : (
           <>
             {/* Iso maquette mobile : « N RDV · M en cours » + « Voir tout » lien
@@ -419,12 +421,12 @@ export default function AgendaMobilePage() {
                 M > 0 — sinon "Voir tout" pointe nulle part d'utile. */}
             <div className="m-section-h">
               <h3 className="tnum">
-                {dayAppointments.length} RDV
+                {t('agenda.mobile.rdvCount', { n: dayAppointments.length })}
                 {inProgressCount > 0 && (
                   <>
                     {' · '}
                     <span style={{ color: 'var(--ds2-navy, var(--primary))', fontWeight: 600 }}>
-                      {inProgressCount} EN COURS
+                      {t('agenda.mobile.inProgress', { n: inProgressCount })}
                     </span>
                   </>
                 )}
@@ -447,9 +449,9 @@ export default function AgendaMobilePage() {
                     alignItems: 'center',
                     gap: 2,
                   }}
-                  aria-label="Voir tous les patients en cours"
+                  aria-label={t('agenda.mobile.seeAllAria')}
                 >
-                  Voir tout
+                  {t('agenda.mobile.seeAll')}
                   <ChevronRight />
                 </button>
               )}
@@ -458,7 +460,7 @@ export default function AgendaMobilePage() {
             <div className="m-tl">
               {dayAppointments.length === 0 ? (
                 <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>
-                  Aucun rendez-vous ce jour.
+                  {t('agenda.mobile.noRdvToday')}
                 </div>
               ) : (
                 dayAppointments.map((r, i) => {
@@ -486,14 +488,14 @@ export default function AgendaMobilePage() {
                           // qui code le statut (consult / arrived / done).
                           ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}` } : {}),
                         }}
-                        aria-label={`Ouvrir le dossier de ${r.patient}`}
+                        aria-label={t('agenda.mobile.openDossierAria', { patient: r.patient })}
                       >
                         <div className="m-tl-block-h">
                           <span className="m-tl-block-time">
                             {r.start} · {r.dur} min
                           </span>
                           <span className={`m-pill ${isLateMobile(r) ? 'late' : r.status}`} style={{ marginLeft: 'auto' }}>
-                            {isLateMobile(r) ? 'En retard' : (STATUS_LABEL[r.status] ?? r.status)}
+                            {isLateMobile(r) ? t('agenda.status.late') : (STATUS_KEY[r.status] ? t(STATUS_KEY[r.status]!) : r.status)}
                           </span>
                         </div>
                         <div className="m-tl-block-name">{r.patient}</div>

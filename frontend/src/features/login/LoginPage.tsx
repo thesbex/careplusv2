@@ -19,10 +19,12 @@ import { useAuthStore } from '@/lib/auth/authStore';
 import { isPureTech, defaultLandingForTech } from '@/lib/auth/roleHelpers';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { loginSchema, type LoginValues } from './schema';
 import './login.css';
 
 export default function LoginPage() {
+  const { t } = useT();
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,9 +71,9 @@ export default function LoginPage() {
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 401) {
-        setError('password', { type: 'server', message: 'Identifiants incorrects' });
+        setError('password', { type: 'server', message: 'login.err.invalidCredentials' });
       } else if (problem.status === 429) {
-        toast.error('Trop de tentatives. Réessayez dans 15 minutes.', { duration: 6000 });
+        toast.error(t('login.err.tooManyAttempts'), { duration: 6000 });
       } else if (problem.violations?.length) {
         problem.violations.forEach((v) =>
           setError(v.field as keyof LoginValues, { type: 'server', message: v.message }),
@@ -94,36 +96,33 @@ export default function LoginPage() {
 
         <div className="login-hero-bottom">
           <h1 className="login-hero-title">
-            La gestion de votre cabinet,
+            {t('login.hero.title1')}
             <br />
-            <span className="login-hero-title-accent">simplement.</span>
+            <span className="login-hero-title-accent">{t('login.hero.title2')}</span>
           </h1>
-          <p className="login-hero-tagline">
-            careplus accompagne les médecins généralistes marocains, de la prise de rendez-vous
-            à l'édition des ordonnances et des factures conformes.
-          </p>
+          <p className="login-hero-tagline">{t('login.hero.tagline')}</p>
 
           <div className="login-hero-stats">
             <div>
               <div className="login-hero-stat-v tnum">184</div>
-              <div className="login-hero-stat-k">Cabinets au Maroc</div>
+              <div className="login-hero-stat-k">{t('login.hero.stat.cabinets')}</div>
             </div>
             <div>
               <div className="login-hero-stat-v tnum">62k</div>
-              <div className="login-hero-stat-k">Consultations / mois</div>
+              <div className="login-hero-stat-k">{t('login.hero.stat.consults')}</div>
             </div>
             <div>
               <div className="login-hero-stat-v tnum">99,98%</div>
-              <div className="login-hero-stat-k">Disponibilité</div>
+              <div className="login-hero-stat-k">{t('login.hero.stat.uptime')}</div>
             </div>
           </div>
 
           <div className="login-hero-footer">
             <span>© 2026 careplus SARL</span>
             <span>·</span>
-            <span>Hébergement HDS — Casablanca</span>
+            <span>{t('login.hero.footer.hosting')}</span>
             <span>·</span>
-            <span>Conforme loi 09-08</span>
+            <span>{t('login.hero.footer.law')}</span>
           </div>
         </div>
       </div>
@@ -131,14 +130,12 @@ export default function LoginPage() {
       {/* Right: form */}
       <div className="login-form-wrap">
         <form className="login-form" onSubmit={onSubmit} noValidate>
-          <div className="login-form-eyebrow">Connexion professionnelle</div>
-          <h2 className="login-form-title">Bon retour, docteur.</h2>
-          <p className="login-form-sub">
-            Accédez à votre cabinet. Vos identifiants sont strictement personnels.
-          </p>
+          <div className="login-form-eyebrow">{t('login.eyebrow')}</div>
+          <h2 className="login-form-title">{t('login.title')}</h2>
+          <p className="login-form-sub">{t('login.sub')}</p>
 
           <Field className="login-form-field">
-            <label htmlFor="login-email">Adresse email</label>
+            <label htmlFor="login-email">{t('login.field.email')}</label>
             <Input
               id="login-email"
               type="email"
@@ -151,13 +148,13 @@ export default function LoginPage() {
             />
             {errors.email && (
               <div id="login-email-err" className="help" style={{ color: 'var(--danger)' }}>
-                {errors.email.message}
+                {t(errors.email.message ?? '')}
               </div>
             )}
           </Field>
 
           <Field className="login-form-field-tight">
-            <label htmlFor="login-password">Mot de passe</label>
+            <label htmlFor="login-password">{t('login.field.password')}</label>
             <div style={{ position: 'relative' }}>
               <Input
                 id="login-password"
@@ -174,24 +171,24 @@ export default function LoginPage() {
                 iconOnly
                 style={{ position: 'absolute', right: 4, top: 4 }}
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                aria-label={showPassword ? t('login.password.hide') : t('login.password.show')}
               >
                 <Eye />
               </Button>
             </div>
             {errors.password && (
               <div id="login-password-err" className="help" style={{ color: 'var(--danger)' }}>
-                {errors.password.message}
+                {t(errors.password.message ?? '')}
               </div>
             )}
           </Field>
 
           <div className="login-form-row">
             <label className="login-form-remember">
-              <input type="checkbox" defaultChecked /> Garder ma session
+              <input type="checkbox" defaultChecked /> {t('login.remember')}
             </label>
             <a href="#forgot" className="login-form-forgot">
-              Mot de passe oublié ?
+              {t('login.forgot')}
             </a>
           </div>
 
@@ -202,17 +199,17 @@ export default function LoginPage() {
             disabled={isSubmitting || loginMutation.isPending}
             style={{ width: '100%', justifyContent: 'center', height: 44, fontSize: 14 }}
           >
-            <Lock /> {isSubmitting || loginMutation.isPending ? 'Connexion…' : 'Se connecter'}
+            <Lock /> {isSubmitting || loginMutation.isPending ? t('login.submitting') : t('login.submit')}
           </Button>
 
           <div className="login-form-separator">
             <div />
-            <span>OU</span>
+            <span>{t('login.or')}</span>
             <div />
           </div>
 
           <Button style={{ width: '100%', justifyContent: 'center', height: 40 }}>
-            Connexion par code SMS envoyé au cabinet
+            {t('login.smsCode')}
           </Button>
 
           <div className="login-form-security">
@@ -220,11 +217,8 @@ export default function LoginPage() {
               <Lock />
             </span>
             <div>
-              <div className="login-form-security-title">Connexion sécurisée</div>
-              <div className="login-form-security-body">
-                Vos données patient sont chiffrées et hébergées au Maroc, conformément à la loi
-                09-08 sur la protection des données personnelles.
-              </div>
+              <div className="login-form-security-title">{t('login.security.title')}</div>
+              <div className="login-form-security-body">{t('login.security.body')}</div>
             </div>
           </div>
 
@@ -236,12 +230,12 @@ export default function LoginPage() {
               color: 'var(--ink-3)',
             }}
           >
-            Pas encore de compte ?{' '}
+            {t('login.noAccount')}{' '}
             <Link
               to="/register"
               style={{ color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}
             >
-              Créer mon cabinet
+              {t('login.createCabinet')}
             </Link>
           </div>
         </form>

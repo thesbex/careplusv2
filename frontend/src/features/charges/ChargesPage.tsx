@@ -12,6 +12,7 @@
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -25,11 +26,8 @@ import {
   useDeleteExpense,
 } from './hooks/useExpenses';
 import {
-  CATEGORY_LABELS,
-  PERIODICITY_LABELS,
   CATEGORY_ORDER,
   PERIODICITY_ORDER,
-  MONTH_LABELS_SHORT,
   formatMad,
   type ExpenseResponse,
   type ExpenseCategory,
@@ -68,6 +66,9 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function ChargesPage() {
+  const { t } = useT();
+  const catLabel = (c: ExpenseCategory) => t(`charges.cat.${c}`);
+  const perLabel = (p: ExpensePeriodicity) => t(`charges.per.${p}`);
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | ''>('');
   const [periodicityFilter, setPeriodicityFilter] = useState<ExpensePeriodicity | ''>('');
   const [fromDate, setFromDate] = useState('');
@@ -133,13 +134,21 @@ export default function ChargesPage() {
 
   /** Génère un CSV des charges actuellement filtrées + déclenche le download. */
   function exportCsv() {
-    const headers = ['Date', 'Catégorie', 'Libellé', 'Montant (MAD)', 'Périodicité', 'Fournisseur', 'Notes'];
+    const headers = [
+      t('charges.csv.date'),
+      t('charges.csv.category'),
+      t('charges.csv.label'),
+      t('charges.csv.amount'),
+      t('charges.csv.periodicity'),
+      t('charges.csv.supplier'),
+      t('charges.csv.notes'),
+    ];
     const rows = expenses.map((e) => [
       e.expenseDate,
-      CATEGORY_LABELS[e.category] ?? e.category,
+      catLabel(e.category),
       e.label,
       String(e.amount),
-      PERIODICITY_LABELS[e.periodicity] ?? e.periodicity,
+      perLabel(e.periodicity),
       e.supplier ?? '',
       (e.notes ?? '').replace(/\s+/g, ' '),
     ]);
@@ -201,16 +210,16 @@ export default function ChargesPage() {
 
   async function handleSave() {
     if (!form.label.trim()) {
-      toast.error('Le libellé est requis.');
+      toast.error(t('charges.err.labelRequired'));
       return;
     }
     const amount = Number(form.amount);
     if (!form.amount.trim() || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Le montant doit être un nombre positif.');
+      toast.error(t('charges.err.amountPositive'));
       return;
     }
     if (!form.expenseDate) {
-      toast.error('La date est requise.');
+      toast.error(t('charges.err.dateRequired'));
       return;
     }
     // exactOptionalPropertyTypes: n'inclure supplier/notes que s'ils sont définis.
@@ -226,10 +235,10 @@ export default function ChargesPage() {
     try {
       if (editingId) {
         await updateExpense({ id: editingId, body });
-        toast.success('Charge mise à jour.');
+        toast.success(t('charges.toast.updated'));
       } else {
         await createExpense(body);
-        toast.success('Charge ajoutée.');
+        toast.success(t('charges.toast.added'));
       }
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
@@ -238,39 +247,39 @@ export default function ChargesPage() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
-          : "Échec de l'enregistrement.",
+          ? t('charges.err.forbidden')
+          : t('charges.err.saveFailed'),
       );
     }
   }
 
   async function handleDelete(e: ExpenseResponse) {
-    if (!confirm(`Supprimer la charge « ${e.label} » ?`)) return;
+    if (!confirm(t('charges.confirmDelete', { label: e.label }))) return;
     try {
       await deleteExpense(e.id);
-      toast.success('Charge supprimée.');
+      toast.success(t('charges.toast.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('charges.err.deleteFailed'));
     }
   }
 
   return (
     <Screen
       active="charges"
-      title="Charges"
-      sub={`${expenses.length} charge${expenses.length > 1 ? 's' : ''}`}
+      title={t('charges.title')}
+      sub={t('charges.count', { n: expenses.length, s: expenses.length > 1 ? 's' : '' })}
       topbarRight={
         <>
           <Button
             type="button"
             onClick={exportCsv}
             disabled={expenses.length === 0}
-            title={expenses.length === 0 ? 'Aucune ligne à exporter avec les filtres actuels' : 'Exporter en CSV'}
+            title={expenses.length === 0 ? t('charges.exportNothing') : t('charges.exportHint')}
           >
-            <InvoiceIcon /> Exporter CSV
+            <InvoiceIcon /> {t('charges.exportCsv')}
           </Button>
           <Button variant="primary" onClick={openCreate}>
-            <Plus /> Ajouter une charge
+            <Plus /> {t('charges.add')}
           </Button>
         </>
       }
@@ -280,10 +289,10 @@ export default function ChargesPage() {
         <Panel style={{ padding: 16 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
             <h2 style={{ fontSize: 13, fontWeight: 650, margin: 0 }}>
-              Récapitulatif {year}
+              {t('charges.recap', { year })}
             </h2>
             <div style={{ fontSize: 14, fontWeight: 700 }} className="tnum">
-              Total {year} : {formatMad(yearTotal)}
+              {t('charges.yearTotal', { year, amount: formatMad(yearTotal) })}
             </div>
           </div>
           <div
@@ -294,17 +303,18 @@ export default function ChargesPage() {
               alignItems: 'end',
               height: 96,
             }}
-            aria-label="Totaux mensuels"
+            aria-label={t('charges.monthlyTotalsAria')}
           >
-            {MONTH_LABELS_SHORT.map((lbl, idx) => {
+            {Array.from({ length: 12 }, (_, idx) => {
               const month = idx + 1;
+              const lbl = t(`charges.month.${month}`);
               const total = byMonth.get(month) ?? 0;
               const h = maxMonth > 0 ? Math.round((total / maxMonth) * 72) : 0;
               return (
                 <div
                   key={month}
                   style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: '100%', justifyContent: 'flex-end' }}
-                  title={`${lbl} : ${formatMad(total)}`}
+                  title={t('charges.monthAmount', { month: lbl, amount: formatMad(total) })}
                 >
                   <div
                     style={{
@@ -329,79 +339,79 @@ export default function ChargesPage() {
             Min/Max montant + recherche fournisseur côté client. */}
         <Panel style={{ padding: '12px 16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, alignItems: 'end' }}>
-            <FilterField label="Catégorie">
+            <FilterField label={t('charges.filter.category')}>
               <Select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
-                aria-label="Filtrer par catégorie"
+                aria-label={t('charges.filter.byCategoryAria')}
                 style={filterCtl}
               >
-                <option value="">Toutes</option>
+                <option value="">{t('charges.filter.all')}</option>
                 {CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                  <option key={c} value={c}>{catLabel(c)}</option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Périodicité">
+            <FilterField label={t('charges.filter.periodicity')}>
               <Select
                 value={periodicityFilter}
                 onChange={(e) => setPeriodicityFilter(e.target.value as ExpensePeriodicity | '')}
-                aria-label="Filtrer par périodicité"
+                aria-label={t('charges.filter.byPeriodicityAria')}
                 style={filterCtl}
               >
-                <option value="">Toutes</option>
+                <option value="">{t('charges.filter.all')}</option>
                 {PERIODICITY_ORDER.map((p) => (
-                  <option key={p} value={p}>{PERIODICITY_LABELS[p]}</option>
+                  <option key={p} value={p}>{perLabel(p)}</option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Date du">
+            <FilterField label={t('charges.filter.dateFrom')}>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                aria-label="Date début"
+                aria-label={t('charges.filter.startDateAria')}
                 style={filterCtl}
               />
             </FilterField>
-            <FilterField label="Date au">
+            <FilterField label={t('charges.filter.dateTo')}>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                aria-label="Date fin"
+                aria-label={t('charges.filter.endDateAria')}
                 style={filterCtl}
               />
             </FilterField>
-            <FilterField label="Montant min">
+            <FilterField label={t('charges.filter.amountMin')}>
               <input
                 type="number"
                 inputMode="decimal"
                 value={amountMin}
                 onChange={(e) => setAmountMin(e.target.value)}
                 placeholder="0"
-                aria-label="Montant minimum"
+                aria-label={t('charges.filter.amountMinAria')}
                 style={filterCtl}
               />
             </FilterField>
-            <FilterField label="Montant max">
+            <FilterField label={t('charges.filter.amountMax')}>
               <input
                 type="number"
                 inputMode="decimal"
                 value={amountMax}
                 onChange={(e) => setAmountMax(e.target.value)}
                 placeholder="∞"
-                aria-label="Montant maximum"
+                aria-label={t('charges.filter.amountMaxAria')}
                 style={filterCtl}
               />
             </FilterField>
-            <FilterField label="Fournisseur / libellé">
+            <FilterField label={t('charges.filter.supplierLabel')}>
               <input
                 type="search"
                 value={supplierSearch}
                 onChange={(e) => setSupplierSearch(e.target.value)}
-                placeholder="ex. Lydec, IAM…"
-                aria-label="Rechercher fournisseur ou libellé"
+                placeholder={t('charges.filter.supplierPlaceholder')}
+                aria-label={t('charges.filter.supplierAria')}
                 style={filterCtl}
               />
             </FilterField>
@@ -409,8 +419,8 @@ export default function ChargesPage() {
           {hasActiveFilter && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11.5, color: 'var(--ink-3)' }}>
               <span>
-                {expenses.length} résultat{expenses.length > 1 ? 's' : ''} après filtres
-                {rawExpenses.length !== expenses.length && ` (sur ${rawExpenses.length})`}
+                {t('charges.filter.results', { n: expenses.length, s: expenses.length > 1 ? 's' : '' })}
+                {rawExpenses.length !== expenses.length && ` ${t('charges.filter.resultsOf', { total: rawExpenses.length })}`}
               </span>
               <button
                 type="button"
@@ -421,7 +431,7 @@ export default function ChargesPage() {
                   color: 'var(--primary)',
                 }}
               >
-                Réinitialiser les filtres
+                {t('charges.filter.reset')}
               </button>
             </div>
           )}
@@ -430,23 +440,23 @@ export default function ChargesPage() {
         {/* Tableau */}
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {isLoading && (
-            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('charges.loading')}</div>
           )}
           {!isLoading && expenses.length === 0 && (
             <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucune charge enregistrée.
+              {t('charges.empty')}
             </div>
           )}
           {!isLoading && expenses.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-2)', zIndex: 1 }}>
                 <tr>
-                  <Th style={{ width: 110 }}>Date</Th>
-                  <Th>Catégorie</Th>
-                  <Th>Libellé</Th>
-                  <Th style={{ textAlign: 'right', width: 130 }}>Montant</Th>
-                  <Th style={{ width: 110 }}>Périodicité</Th>
-                  <Th>Fournisseur</Th>
+                  <Th style={{ width: 110 }}>{t('charges.col.date')}</Th>
+                  <Th>{t('charges.col.category')}</Th>
+                  <Th>{t('charges.col.label')}</Th>
+                  <Th style={{ textAlign: 'right', width: 130 }}>{t('charges.col.amount')}</Th>
+                  <Th style={{ width: 110 }}>{t('charges.col.periodicity')}</Th>
+                  <Th>{t('charges.col.supplier')}</Th>
                   <Th style={{ width: 110 }}> </Th>
                 </tr>
               </thead>
@@ -462,7 +472,7 @@ export default function ChargesPage() {
                           background: 'var(--surface-2)', color: 'var(--ink-2)',
                         }}
                       >
-                        {CATEGORY_LABELS[e.category]}
+                        {catLabel(e.category)}
                       </span>
                     </Td>
                     <Td>
@@ -472,29 +482,29 @@ export default function ChargesPage() {
                       )}
                     </Td>
                     <Td className="tnum" style={{ textAlign: 'right' }}>{formatMad(e.amount)}</Td>
-                    <Td>{PERIODICITY_LABELS[e.periodicity]}</Td>
+                    <Td>{perLabel(e.periodicity)}</Td>
                     <Td>{e.supplier ?? ''}</Td>
                     <Td>
                       {e.source === 'HR' ? (
                         <span
-                          title="Paiement de salaire — se gère dans la page Personnel"
+                          title={t('charges.hrBadgeTitle')}
                           style={{
                             fontSize: 11, padding: '2px 8px', borderRadius: 12,
                             border: '1px solid var(--border)', background: 'var(--surface-2)',
                             color: 'var(--ink-3)',
                           }}
                         >
-                          RH · Personnel
+                          {t('charges.hrBadge')}
                         </span>
                       ) : (
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button type="button" onClick={() => openEdit(e)} style={btnLink}>
-                            Modifier
+                            {t('charges.edit')}
                           </button>
                           <button
                             type="button"
                             onClick={() => { void handleDelete(e); }}
-                            aria-label={`Supprimer ${e.label}`}
+                            aria-label={t('charges.deleteAria', { label: e.label })}
                             style={{
                               background: 'none', border: 'none', cursor: 'pointer',
                               color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -536,38 +546,38 @@ export default function ChargesPage() {
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <InvoiceIcon />
               <h2 style={{ fontSize: 14, fontWeight: 650, margin: 0, flex: 1 }}>
-                {editingId ? 'Modifier la charge' : 'Nouvelle charge'}
+                {editingId ? t('charges.editTitle') : t('charges.newTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--ink-3)' }}
-                aria-label="Fermer"
+                aria-label={t('charges.close')}
               >
                 ×
               </button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'auto' }}>
               <SelectField
-                label="Catégorie *"
+                label={t('charges.form.category')}
                 value={form.category}
                 onChange={(v) => setForm({ ...form, category: v as ExpenseCategory })}
-                options={CATEGORY_ORDER.map((c) => ({ value: c, label: CATEGORY_LABELS[c] }))}
+                options={CATEGORY_ORDER.map((c) => ({ value: c, label: catLabel(c) }))}
               />
               <Field
-                label="Libellé *"
+                label={t('charges.form.label')}
                 value={form.label}
                 onChange={(v) => setForm({ ...form, label: v })}
-                placeholder="ex. Facture Lydec avril"
+                placeholder={t('charges.form.labelPlaceholder')}
               />
               <Field
-                label="Montant (MAD) *"
+                label={t('charges.form.amount')}
                 value={form.amount}
                 onChange={(v) => setForm({ ...form, amount: v.replace(/[^0-9.]/g, '') })}
-                placeholder="ex. 1250.00"
+                placeholder={t('charges.form.amountPlaceholder')}
               />
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Date *</span>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('charges.form.date')}</span>
                 <input
                   type="date"
                   value={form.expenseDate}
@@ -580,24 +590,24 @@ export default function ChargesPage() {
                 />
               </label>
               <SelectField
-                label="Périodicité *"
+                label={t('charges.form.periodicity')}
                 value={form.periodicity}
                 onChange={(v) => setForm({ ...form, periodicity: v as ExpensePeriodicity })}
-                options={PERIODICITY_ORDER.map((p) => ({ value: p, label: PERIODICITY_LABELS[p] }))}
+                options={PERIODICITY_ORDER.map((p) => ({ value: p, label: perLabel(p) }))}
               />
               <Field
-                label="Fournisseur"
+                label={t('charges.form.supplier')}
                 value={form.supplier}
                 onChange={(v) => setForm({ ...form, supplier: v })}
-                placeholder="ex. Lydec, Maroc Telecom…"
+                placeholder={t('charges.form.supplierPlaceholder')}
               />
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Notes</span>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('charges.form.notes')}</span>
                 <textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={3}
-                  placeholder="Remarque interne (optionnel)"
+                  placeholder={t('charges.form.notesPlaceholder')}
                   style={{
                     padding: '8px 10px',
                     border: '1px solid var(--border)', borderRadius: 6,
@@ -607,14 +617,14 @@ export default function ChargesPage() {
               </label>
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>
+              <Button type="button" onClick={() => setDrawerOpen(false)}>{t('common.cancel')}</Button>
               <Button
                 type="button"
                 variant="primary"
                 disabled={creating || updating}
                 onClick={() => { void handleSave(); }}
               >
-                {editingId ? 'Enregistrer' : 'Ajouter la charge'}
+                {editingId ? t('charges.form.save') : t('charges.form.create')}
               </Button>
             </div>
           </div>

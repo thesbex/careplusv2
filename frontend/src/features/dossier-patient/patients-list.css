@@ -406,6 +406,9 @@
   background: var(--ds2-surface, var(--surface));
 }
 .ws-patients .ptr:first-child { border-top: none; }
+/* Densité « compact » (toggle ≡) — lignes plus serrées. */
+.ws-patients .ptbl.compact .ptr { padding-top: 8px; padding-bottom: 8px; }
+.ws-patients .ptbl.compact .ptbl-head { padding-top: 10px; padding-bottom: 10px; }
 .ws-patients .ptr:hover { background: var(--ds2-surface-2, var(--surface-2)); }
 .ws-patients .ptr.preview {
   background: var(--accent-tint, var(--ds2-navy-soft, var(--primary-soft)));

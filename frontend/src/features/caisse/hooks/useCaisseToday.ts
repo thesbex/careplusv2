@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { CaisseSummaryApi } from '../types';
 
 /**
@@ -8,6 +9,7 @@ import type { CaisseSummaryApi } from '../types';
  * refléter les nouveaux encaissements en quasi-temps-réel.
  */
 export function useCaisseToday(date?: string) {
+  const { t } = useT();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['caisse', date ?? 'today'],
     queryFn: () =>
@@ -21,7 +23,7 @@ export function useCaisseToday(date?: string) {
   return {
     caisse: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger la caisse.' : null,
+    error: error ? t('factu.error.loadCaisse') : null,
     refetch,
   };
 }

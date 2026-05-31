@@ -57,10 +57,34 @@ export const ARRIVALS: Arrival[] = [
  * 104 = 13×8 = 6.5×16, garde les multiples 30min lisibles. */
 export const ROW_PX = 104;
 
+/**
+ * Fenêtre horaire affichée par défaut : 08:00 → 20:00 (libellés 08..19, soit
+ * 12 lignes). AgendaGrid l'élargit dynamiquement pour englober tout RDV planifié
+ * en dehors (tôt le matin ou en soirée) — sinon ces blocs étaient positionnés
+ * dans le vide sous/au-dessus de l'axe des heures (bug user Image #5 : des RDV
+ * à 20h–23h50 s'affichaient loin sous une grille qui s'arrêtait à 19h).
+ */
+export const DEFAULT_FIRST_HOUR = 8;
+export const DEFAULT_LAST_HOUR = 20; // borne haute exclusive (dernier libellé = 19:00)
+
 /** "hh:mm" → minutes from 08:00. */
 export const toMin = (t: string): number => {
   const [h, m] = t.split(':').map(Number) as [number, number];
   return (h - 8) * 60 + m;
 };
 
+/** "hh:mm" → minutes absolues depuis minuit. */
+export const absMin = (t: string): number => {
+  const [h, m] = t.split(':').map(Number) as [number, number];
+  return h * 60 + m;
+};
+
 export const pxFromMin = (m: number): number => (m / 60) * ROW_PX;
+
+/**
+ * Décalage vertical (px) d'une heure absolue, relatif à la première heure
+ * affichée par la grille. Remplace l'ancien `pxFromMin(toMin(t))` qui figeait
+ * l'origine à 08:00 et renvoyait les RDV du soir hors de la grille.
+ */
+export const topPxAt = (t: string, firstHour: number): number =>
+  ((absMin(t) - firstHour * 60) / 60) * ROW_PX;

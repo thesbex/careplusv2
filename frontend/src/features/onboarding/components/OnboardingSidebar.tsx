@@ -10,6 +10,7 @@
  */
 import type { WorkingHoursView } from '../hooks/useOnboardingApi';
 import type { ReactNode } from 'react';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 type StepKey = 'cabinet' | 'medecin' | 'horaires' | 'equipe' | 'tarifs' | 'documents' | 'recap';
 
@@ -44,26 +45,15 @@ export function OnboardingSidebar({
 // ── Cabinet ─────────────────────────────────────────────────────────────────
 
 function CabinetSidebar() {
+  const { t } = useT();
   const points = [
-    {
-      title: 'En-tête des documents',
-      body: "La raison sociale, l'ICE et l'adresse apparaîtront automatiquement sur ordonnances, factures et certificats.",
-    },
-    {
-      title: 'Conformité fiscale',
-      body: "L'ICE et l'IF sont obligatoires sur toute facture émise au Maroc.",
-    },
-    {
-      title: 'Référencement local',
-      body: 'Les patients vous trouveront via la recherche par ville et par quartier.',
-    },
-    {
-      title: 'Données protégées',
-      body: 'Hébergement souverain au Maroc, chiffrement bout-en-bout, conforme CNDP.',
-    },
+    { title: t('onboarding.side.cabinet.docs.t'), body: t('onboarding.side.cabinet.docs.b') },
+    { title: t('onboarding.side.cabinet.fiscal.t'), body: t('onboarding.side.cabinet.fiscal.b') },
+    { title: t('onboarding.side.cabinet.local.t'), body: t('onboarding.side.cabinet.local.b') },
+    { title: t('onboarding.side.cabinet.data.t'), body: t('onboarding.side.cabinet.data.b') },
   ];
   return (
-    <SidebarFrame label="Pourquoi ces informations ?">
+    <SidebarFrame label={t('onboarding.side.cabinet.label')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {points.map((p) => (
           <SidebarCard key={p.title} title={p.title} body={p.body} />
@@ -76,21 +66,22 @@ function CabinetSidebar() {
 // ── Médecin ─────────────────────────────────────────────────────────────────
 
 function MedecinSidebar({ hasSignature }: { hasSignature: boolean }) {
+  const { t } = useT();
   return (
-    <SidebarFrame label="Comment ça marche">
+    <SidebarFrame label={t('onboarding.side.medecin.label')}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <SidebarCard
-          title="Chaque médecin = un compte"
-          body="Les médecins associés ont leur propre identifiant, agenda, et signature numérique. Les ordonnances et certificats sont automatiquement signés au nom du médecin connecté."
+          title={t('onboarding.side.medecin.account.t')}
+          body={t('onboarding.side.medecin.account.b')}
         />
         <SidebarCard
-          title="Dossiers patients partagés"
-          body="Tous les médecins du cabinet voient les mêmes dossiers, mais l'historique trace qui a fait quoi."
+          title={t('onboarding.side.medecin.shared.t')}
+          body={t('onboarding.side.medecin.shared.b')}
         />
         <SidebarTip>
           {hasSignature
-            ? '✓ Votre signature est enregistrée. Elle apparaîtra sur chaque PDF signé.'
-            : 'Astuce : téléversez une signature scannée pour que vos ordonnances soient signées automatiquement.'}
+            ? t('onboarding.side.medecin.tipSaved')
+            : t('onboarding.side.medecin.tipTodo')}
         </SidebarTip>
       </div>
     </SidebarFrame>
@@ -100,6 +91,7 @@ function MedecinSidebar({ hasSignature }: { hasSignature: boolean }) {
 // ── Horaires ────────────────────────────────────────────────────────────────
 
 function HorairesSidebar({ hours }: { hours: WorkingHoursView }) {
+  const { t } = useT();
   // Mini week preview — first 6 columns, hours 8h-19h. Each cell shaded as
   // "closed" when no slot of that day covers that hour (lunch breaks + closed
   // days are striped). Updates live as the user edits the form.
@@ -116,7 +108,7 @@ function HorairesSidebar({ hours }: { hours: WorkingHoursView }) {
   }
 
   return (
-    <SidebarFrame label="Aperçu agenda">
+    <SidebarFrame label={t('onboarding.side.horaires.label')}>
       <div
         className="panel"
         style={{ padding: 0, overflow: 'hidden', border: '1px solid var(--border)', borderRadius: 6, background: '#fff' }}
@@ -173,14 +165,14 @@ function HorairesSidebar({ hours }: { hours: WorkingHoursView }) {
       </div>
       <div className="ob-preview-legend" style={{ marginTop: 10 }}>
         <div>
-          <span className="ob-preview-legend-open" /> Disponible
+          <span className="ob-preview-legend-open" /> {t('onboarding.side.horaires.legendOpen')}
         </div>
         <div>
-          <span className="ob-preview-legend-closed" /> Fermé / pause
+          <span className="ob-preview-legend-closed" /> {t('onboarding.side.horaires.legendClosed')}
         </div>
       </div>
       <SidebarTip>
-        Des créneaux courts (15 min) conviennent aux suivis. Les premières consultations gagnent à être réservées sur 30 min.
+        {t('onboarding.side.horaires.tip')}
       </SidebarTip>
     </SidebarFrame>
   );
@@ -189,37 +181,38 @@ function HorairesSidebar({ hours }: { hours: WorkingHoursView }) {
 // ── Équipe ──────────────────────────────────────────────────────────────────
 
 function EquipeSidebar({ invitedCount }: { invitedCount: number }) {
+  const { t } = useT();
   // Cap soft à 5 utilisateurs comme dans le prototype "careplus Cabinet — 5 utilisateurs inclus".
   // L'admin courant + les invités composent l'effectif. On approxime "2 utilisés" en local.
   const used = 1 + invitedCount;
   const cap = 5;
   const pct = Math.min(100, (used / cap) * 100);
   return (
-    <SidebarFrame label="Votre forfait">
+    <SidebarFrame label={t('onboarding.side.equipe.label')}>
       <div className="panel" style={{ padding: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>careplus Cabinet</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{t('onboarding.side.equipe.plan')}</div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 14 }}>
-          {cap} utilisateurs inclus · {used} utilisé{used > 1 ? 's' : ''}
+          {t('onboarding.side.equipe.included', { cap, used, s: used > 1 ? 's' : '' })}
         </div>
         <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden' }}>
           <div style={{ width: `${pct}%`, height: '100%', background: 'var(--primary)' }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, color: 'var(--ink-3)' }}>
           <span>{used} / {cap}</span>
-          <span>{cap - used} places restantes</span>
+          <span>{t('onboarding.side.equipe.remaining', { n: cap - used })}</span>
         </div>
       </div>
       <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 0 }}>
-        <SidebarLabel>Bonnes pratiques</SidebarLabel>
+        <SidebarLabel>{t('onboarding.side.equipe.bestPractices')}</SidebarLabel>
         <div style={{ fontSize: 12, color: 'var(--ink-2)', lineHeight: 1.55 }}>
           <div style={{ padding: '10px 0', borderBottom: '1px dashed var(--border)' }}>
-            <strong style={{ color: 'var(--ink)' }}>Au moins 2 admins.</strong> Désignez un second médecin titulaire pour conserver l’accès en cas d’absence.
+            <strong style={{ color: 'var(--ink)' }}>{t('onboarding.side.equipe.bp1.strong')}</strong> {t('onboarding.side.equipe.bp1.rest')}
           </div>
           <div style={{ padding: '10px 0', borderBottom: '1px dashed var(--border)' }}>
-            <strong style={{ color: 'var(--ink)' }}>Le strict nécessaire.</strong> Une infirmière n’a pas besoin d’accéder à la facturation.
+            <strong style={{ color: 'var(--ink)' }}>{t('onboarding.side.equipe.bp2.strong')}</strong> {t('onboarding.side.equipe.bp2.rest')}
           </div>
           <div style={{ padding: '10px 0' }}>
-            <strong style={{ color: 'var(--ink)' }}>Conformité 09-08.</strong> Chaque accès est journalisé.
+            <strong style={{ color: 'var(--ink)' }}>{t('onboarding.side.equipe.bp3.strong')}</strong> {t('onboarding.side.equipe.bp3.rest')}
           </div>
         </div>
       </div>
@@ -230,45 +223,46 @@ function EquipeSidebar({ invitedCount }: { invitedCount: number }) {
 // ── Tarifs ──────────────────────────────────────────────────────────────────
 
 function TarifsSidebar({ premiumDiscount }: { premiumDiscount: number }) {
+  const { t } = useT();
   const cons = 200;
   const ecg = 180;
   const subtotal = cons + ecg;
   const discount = (subtotal * premiumDiscount) / 100;
   const total = subtotal - discount;
   return (
-    <SidebarFrame label="Aperçu facture Premium">
+    <SidebarFrame label={t('onboarding.side.tarifs.label')}>
       <div className="panel" style={{ padding: 16, fontSize: 12, color: 'var(--ink-2)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border)', paddingBottom: 8, marginBottom: 8 }}>
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--ink-3)' }}>FAC-2026-00482</span>
           <span style={{ fontSize: 10.5, color: 'var(--ink-3)' }}>14/05/2026</span>
         </div>
-        <div style={{ fontSize: 11.5, marginBottom: 12, color: 'var(--ink-3)' }}>M. Mohamed Alami · Premium</div>
+        <div style={{ fontSize: 11.5, marginBottom: 12, color: 'var(--ink-3)' }}>{t('onboarding.side.tarifs.client')}</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-          <span>Consultation de suivi</span>
+          <span>{t('onboarding.side.tarifs.line1')}</span>
           <span className="tnum" style={{ fontWeight: 600 }}>200,00 DH</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px dashed var(--border)' }}>
-          <span>ECG au cabinet</span>
+          <span>{t('onboarding.side.tarifs.line2')}</span>
           <span className="tnum" style={{ fontWeight: 600 }}>180,00 DH</span>
         </div>
         {premiumDiscount > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px dashed var(--border)', color: 'var(--primary)' }}>
-            <span>Remise Premium (−{premiumDiscount}%)</span>
+            <span>{t('onboarding.side.tarifs.discount', { n: premiumDiscount })}</span>
             <span className="tnum" style={{ fontWeight: 600 }}>−{discount.toFixed(2)} DH</span>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0 4px', fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>
-          <span>Total</span>
+          <span>{t('onboarding.side.tarifs.total')}</span>
           <span className="tnum">{total.toFixed(2)} DH</span>
         </div>
         <div style={{ fontSize: 10, color: 'var(--ink-3)', marginTop: 6, fontStyle: 'italic' }}>
-          TVA exonérée — art. 91 CGI
+          {t('onboarding.side.tarifs.tva')}
         </div>
       </div>
       <SidebarTip>
-        <strong>Conformité loi 09-08</strong>
+        <strong>{t('onboarding.side.tarifs.tipStrong')}</strong>
         <br />
-        Les factures incluent automatiquement votre ICE, RC et IF.
+        {t('onboarding.side.tarifs.tipRest')}
       </SidebarTip>
     </SidebarFrame>
   );
@@ -277,8 +271,9 @@ function TarifsSidebar({ premiumDiscount }: { premiumDiscount: number }) {
 // ── Documents ───────────────────────────────────────────────────────────────
 
 function DocumentsSidebar() {
+  const { t } = useT();
   return (
-    <SidebarFrame label="Aperçu ordonnance">
+    <SidebarFrame label={t('onboarding.side.documents.label')}>
       <div
         style={{
           background: '#fff',
@@ -293,18 +288,18 @@ function DocumentsSidebar() {
         }}
       >
         <div style={{ borderBottom: '1px solid var(--border-soft)', paddingBottom: 6, marginBottom: 6 }}>
-          <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 10 }}>Cabinet Médical</div>
-          <div style={{ color: 'var(--ink-3)', fontSize: 8 }}>Adresse · Téléphone · INPE</div>
+          <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 10 }}>{t('onboarding.side.documents.cabinet')}</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 8 }}>{t('onboarding.side.documents.headerLine')}</div>
         </div>
-        <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 11, marginBottom: 6 }}>ORDONNANCE</div>
-        <div style={{ marginBottom: 6 }}>Date : 14/05/2026</div>
-        <div style={{ marginBottom: 8 }}>Patient : M. ──────── · Âge : 42 ans</div>
+        <div style={{ fontWeight: 600, color: 'var(--ink)', fontSize: 11, marginBottom: 6 }}>{t('onboarding.side.documents.ordonnance')}</div>
+        <div style={{ marginBottom: 6 }}>{t('onboarding.side.documents.date')}</div>
+        <div style={{ marginBottom: 8 }}>{t('onboarding.side.documents.patient')}</div>
         <div style={{ borderBottom: '1px dashed var(--border)', padding: '3px 0' }}>•&nbsp;&nbsp;Paracétamol 1g — 3×/jour, 5j</div>
         <div style={{ borderBottom: '1px dashed var(--border)', padding: '3px 0' }}>•&nbsp;&nbsp;Amoxicilline 500mg — 2×/jour, 7j</div>
-        <div style={{ marginTop: 24, textAlign: 'right', fontSize: 8 }}>Dr. ──────── (signature)</div>
+        <div style={{ marginTop: 24, textAlign: 'right', fontSize: 8 }}>{t('onboarding.side.documents.sign')}</div>
       </div>
       <SidebarTip>
-        L’en-tête de cabinet (étape 1) et votre signature (étape 2) sont injectés automatiquement.
+        {t('onboarding.side.documents.tip')}
       </SidebarTip>
     </SidebarFrame>
   );
@@ -313,9 +308,10 @@ function DocumentsSidebar() {
 // ── Récap ───────────────────────────────────────────────────────────────────
 
 function RecapSidebar() {
+  const { t } = useT();
   return (
     <>
-      <SidebarLabel>Votre abonnement</SidebarLabel>
+      <SidebarLabel>{t('onboarding.side.recap.subscription')}</SidebarLabel>
       <div
         className="panel"
         style={{
@@ -327,20 +323,20 @@ function RecapSidebar() {
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--primary)' }}>
-          careplus Cabinet
+          {t('onboarding.side.recap.plan')}
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginBottom: 14, lineHeight: 1.5 }}>
-          Essai gratuit — 14 jours restants. Aucune carte requise.
+          {t('onboarding.side.recap.trial')}
         </div>
         <div style={{ height: 4, background: 'var(--bg)', borderRadius: 2, overflow: 'hidden', marginBottom: 8 }}>
           <div style={{ width: '0%', height: '100%', background: 'var(--primary)' }} />
         </div>
         <div className="tnum" style={{ fontSize: 11, color: 'var(--ink-3)', textAlign: 'right' }}>
-          Jour 0 sur 14
+          {t('onboarding.side.recap.day')}
         </div>
       </div>
 
-      <SidebarLabel>Besoin d’aide&nbsp;?</SidebarLabel>
+      <SidebarLabel>{t('onboarding.side.recap.help')}</SidebarLabel>
       <div style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.6 }}>
         <a
           style={{
@@ -354,8 +350,8 @@ function RecapSidebar() {
         >
           <span style={{ color: 'var(--primary)' }}>📚</span>
           <div>
-            <div style={{ fontWeight: 600 }}>Centre d’aide</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Guides pas à pas en français et arabe</div>
+            <div style={{ fontWeight: 600 }}>{t('onboarding.side.recap.helpCenter')}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{t('onboarding.side.recap.helpCenterSub')}</div>
           </div>
         </a>
         <a
@@ -370,15 +366,15 @@ function RecapSidebar() {
         >
           <span style={{ color: 'var(--primary)' }}>💬</span>
           <div>
-            <div style={{ fontWeight: 600 }}>Chat avec un expert</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Lun–Ven 9h–19h · réponse &lt; 5 min</div>
+            <div style={{ fontWeight: 600 }}>{t('onboarding.side.recap.chat')}</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{t('onboarding.side.recap.chatSub')}</div>
           </div>
         </a>
         <a style={{ display: 'flex', gap: 10, padding: '10px 0', color: 'inherit', textDecoration: 'none' }}>
           <span style={{ color: 'var(--primary)' }}>📞</span>
           <div>
             <div style={{ fontWeight: 600 }}>+212 522 00 11 22</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>Hotline dédiée aux nouveaux cabinets</div>
+            <div style={{ fontSize: 11, color: 'var(--ink-3)' }}>{t('onboarding.side.recap.phoneSub')}</div>
           </div>
         </a>
       </div>
@@ -395,9 +391,9 @@ function RecapSidebar() {
           textAlign: 'center',
         }}
       >
-        🇲🇦 Hébergé au Maroc
+        {t('onboarding.side.recap.hosted')}
         <br />
-        Conforme loi 09-08 · CNDP
+        {t('onboarding.side.recap.compliance')}
       </div>
     </>
   );

@@ -5,6 +5,7 @@
  */
 import { useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
@@ -37,32 +38,33 @@ const NAV_MAP = {
 } as const;
 
 type TabStatus = 'OVERDUE' | 'DUE_SOON' | 'UPCOMING';
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
-const TABS: { id: TabStatus; label: string }[] = [
-  { id: 'OVERDUE', label: 'En retard' },
-  { id: 'DUE_SOON', label: 'Dues cette semaine' },
-  { id: 'UPCOMING', label: 'Dues ce mois' },
+const TABS: { id: TabStatus; labelKey: string }[] = [
+  { id: 'OVERDUE', labelKey: 'vacc.tab.overdue' },
+  { id: 'DUE_SOON', labelKey: 'vacc.tab.dueWeek' },
+  { id: 'UPCOMING', labelKey: 'vacc.tab.dueMonth' },
 ];
 
-const AGE_PRESETS: { label: string; min?: number; max?: number }[] = [
-  { label: 'Tout' },
-  { label: '0-12 mois', min: 0, max: 12 },
-  { label: '12-36 mois', min: 12, max: 36 },
-  { label: '3-5 ans', min: 36, max: 60 },
+const AGE_PRESETS: { labelKey: string; min?: number; max?: number }[] = [
+  { labelKey: 'vacc.filter.age.all' },
+  { labelKey: 'vacc.filter.age.0_12', min: 0, max: 12 },
+  { labelKey: 'vacc.filter.age.12_36', min: 12, max: 36 },
+  { labelKey: 'vacc.filter.age.3_5', min: 36, max: 60 },
 ];
 
-function formatAge(birthDateIso: string): string {
+function formatAge(birthDateIso: string, t: Tr): string {
   const birth = new Date(birthDateIso);
   const now = new Date();
   const diffMs = now.getTime() - birth.getTime();
   const totalMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
   if (totalMonths < 24) {
-    return `${totalMonths} mois`;
+    return t('vacc.param.age.months', { n: totalMonths });
   }
   const years = Math.floor(totalMonths / 12);
   const remainingMonths = totalMonths % 12;
-  if (remainingMonths === 0) return `${years} ans`;
-  return `${years} ans ${remainingMonths} mois`;
+  if (remainingMonths === 0) return t('vacc.param.age.years', { n: years });
+  return t('vacc.param.age.yearsMonths', { years, months: remainingMonths });
 }
 
 function formatDate(isoDate: string): string {
@@ -70,7 +72,7 @@ function formatDate(isoDate: string): string {
   return d.toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function DaysOverduePill({ days }: { days: number }) {
+function DaysOverduePill({ days, t }: { days: number; t: Tr }) {
   if (days > 0) {
     return (
       <span
@@ -83,7 +85,7 @@ function DaysOverduePill({ days }: { days: number }) {
           color: 'var(--danger)',
         }}
       >
-        +{days} j
+        {t('vacc.overdue.plusDays', { n: days })}
       </span>
     );
   }
@@ -99,13 +101,13 @@ function DaysOverduePill({ days }: { days: number }) {
           color: 'var(--amber, #d97706)',
         }}
       >
-        Aujourd&apos;hui
+        {t('vacc.overdue.today')}
       </span>
     );
   }
   return (
     <span style={{ fontSize: 12, color: 'var(--ink-3)', padding: '2px 8px' }}>
-      {Math.abs(days)} j
+      {t('vacc.overdue.days', { n: Math.abs(days) })}
     </span>
   );
 }
@@ -159,6 +161,7 @@ function queueEntryToCalendarEntry(e: VaccinationQueueEntry): VaccinationCalenda
 
 export default function VaccinationsQueuePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── URL-synced state ──────────────────────────────────────────────────────
@@ -242,8 +245,8 @@ export default function VaccinationsQueuePage() {
   return (
     <Screen
       active="vaccinations"
-      title="Vaccinations"
-      sub="Suivi PNI marocain — patients pédiatriques"
+      title={t('vacc.queue.title')}
+      sub={t('vacc.queue.sub')}
       onNavigate={(id) => {
         const path = NAV_MAP[id as keyof typeof NAV_MAP];
         if (path) navigate(path);
@@ -258,17 +261,17 @@ export default function VaccinationsQueuePage() {
             gap: 6,
           }}
           role="tablist"
-          aria-label="Statut de vaccination"
+          aria-label={t('vacc.queue.statusAria')}
         >
-          {TABS.map((t) => {
-            const isActive = statusParam === t.id;
+          {TABS.map((tab) => {
+            const isActive = statusParam === tab.id;
             return (
               <button
-                key={t.id}
+                key={tab.id}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                onClick={() => setStatus(t.id)}
+                onClick={() => setStatus(tab.id)}
                 style={{
                   padding: '6px 14px',
                   border: '1px solid var(--border)',
@@ -284,8 +287,8 @@ export default function VaccinationsQueuePage() {
                   gap: 6,
                 }}
               >
-                {t.label}
-                {t.id === 'OVERDUE' && overdueTabCount !== undefined && overdueTabCount > 0 && (
+                {t(tab.labelKey)}
+                {tab.id === 'OVERDUE' && overdueTabCount !== undefined && overdueTabCount > 0 && (
                   <span
                     style={{
                       minWidth: 18,
@@ -316,7 +319,7 @@ export default function VaccinationsQueuePage() {
               htmlFor="vq-vaccine"
               style={{ fontSize: 11.5, color: 'var(--ink-3)', marginRight: 6 }}
             >
-              Vaccin
+              {t('vacc.filter.vaccine')}
             </label>
             <select
               id="vq-vaccine"
@@ -333,7 +336,7 @@ export default function VaccinationsQueuePage() {
                 color: 'var(--ink)',
               }}
             >
-              <option value="">Tous les vaccins</option>
+              <option value="">{t('vacc.filter.allVaccines')}</option>
               {catalog.map((v) => (
                 <option key={v.code} value={v.code}>
                   {v.nameFr} ({v.code})
@@ -343,7 +346,7 @@ export default function VaccinationsQueuePage() {
           </div>
 
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>Tranche d&apos;âge</span>
+            <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>{t('vacc.filter.ageRange')}</span>
             {AGE_PRESETS.map((p, i) => (
               <button
                 key={i}
@@ -361,7 +364,7 @@ export default function VaccinationsQueuePage() {
                   cursor: 'pointer',
                 }}
               >
-                {p.label}
+                {t(p.labelKey)}
               </button>
             ))}
           </div>
@@ -373,7 +376,10 @@ export default function VaccinationsQueuePage() {
               color: 'var(--ink-3)',
             }}
           >
-            {!isLoading && `${totalElements} résultat${totalElements !== 1 ? 's' : ''}`}
+            {!isLoading &&
+              t(totalElements === 1 ? 'vacc.filter.resultsOne' : 'vacc.filter.resultsMany', {
+                n: totalElements,
+              })}
           </span>
         </div>
 
@@ -399,7 +405,9 @@ export default function VaccinationsQueuePage() {
             <table
               style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
               role="table"
-              aria-label={`Vaccinations ${TABS.find((t) => t.id === statusParam)?.label ?? ''}`}
+              aria-label={t('vacc.tableAria', {
+                status: t(TABS.find((tab) => tab.id === statusParam)?.labelKey ?? ''),
+              })}
             >
               <thead>
                 <tr
@@ -417,7 +425,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Patient
+                    {t('vacc.col.patient')}
                   </th>
                   <th
                     style={{
@@ -428,7 +436,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Nom
+                    {t('vacc.col.name')}
                   </th>
                   <th
                     style={{
@@ -439,7 +447,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Age
+                    {t('vacc.col.age')}
                   </th>
                   <th
                     style={{
@@ -450,7 +458,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Vaccin
+                    {t('vacc.col.vaccine')}
                   </th>
                   <th
                     style={{
@@ -461,7 +469,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Dose
+                    {t('vacc.col.dose')}
                   </th>
                   <th
                     style={{
@@ -472,7 +480,7 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Date prévue
+                    {t('vacc.col.targetDate')}
                   </th>
                   <th
                     style={{
@@ -483,11 +491,11 @@ export default function VaccinationsQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Retard
+                    {t('vacc.col.overdue')}
                   </th>
                   <th scope="col" style={{ padding: '10px 12px' }}>
                     <span style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
-                      Actions
+                      {t('vacc.col.actions')}
                     </span>
                   </th>
                 </tr>
@@ -506,10 +514,10 @@ export default function VaccinationsQueuePage() {
                       }}
                     >
                       {statusParam === 'OVERDUE'
-                        ? 'Aucune dose en retard'
+                        ? t('vacc.empty.overdue')
                         : statusParam === 'DUE_SOON'
-                        ? 'Aucune dose due cette semaine'
-                        : 'Aucune dose due ce mois'}
+                        ? t('vacc.empty.dueWeek')
+                        : t('vacc.empty.dueMonth')}
                     </td>
                   </tr>
                 )}
@@ -544,7 +552,7 @@ export default function VaccinationsQueuePage() {
                           </a>
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--ink-2)' }}>
-                          {formatAge(entry.patientBirthDate)}
+                          {formatAge(entry.patientBirthDate, t)}
                         </td>
                         <td style={{ padding: '10px 12px', fontWeight: 550 }}>
                           {entry.vaccineName}
@@ -566,7 +574,7 @@ export default function VaccinationsQueuePage() {
                           {formatDate(entry.targetDate)}
                         </td>
                         <td style={{ padding: '10px 12px' }}>
-                          <DaysOverduePill days={entry.daysOverdue} />
+                          <DaysOverduePill days={entry.daysOverdue} t={t} />
                         </td>
                         <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                           <Button
@@ -574,7 +582,7 @@ export default function VaccinationsQueuePage() {
                             variant="primary"
                             onClick={() => handleRecord(entry)}
                           >
-                            Saisir dose
+                            {t('vacc.action.record')}
                           </Button>
                         </td>
                       </tr>
@@ -600,22 +608,22 @@ export default function VaccinationsQueuePage() {
               variant="ghost"
               disabled={currentPage === 0}
               onClick={() => setPage(currentPage - 1)}
-              aria-label="Page précédente"
+              aria-label={t('vacc.page.prevAria')}
             >
               <ChevronLeft />
-              Précédent
+              {t('vacc.page.prev')}
             </Button>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Page {currentPage + 1} / {totalPages}
+              {t('vacc.page.indicator', { current: currentPage + 1, total: totalPages })}
             </span>
             <Button
               size="sm"
               variant="ghost"
               disabled={currentPage >= totalPages - 1}
               onClick={() => setPage(currentPage + 1)}
-              aria-label="Page suivante"
+              aria-label={t('vacc.page.nextAria')}
             >
-              Suivant
+              {t('vacc.page.next')}
               <ChevronRight />
             </Button>
           </div>

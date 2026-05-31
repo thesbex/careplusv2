@@ -70,11 +70,12 @@ export interface StayDetail {
   pendingConsultationInvoices?: PendingConsultationInvoice[];
 }
 
-export const DISCHARGE_TYPE_LABELS: Record<DischargeType, string> = {
-  DOMICILE: 'Retour à domicile',
-  TRANSFERT_EXT: 'Transfert externe',
-  CONTRE_AVIS: 'Sortie contre avis médical',
-  DECES: 'Décès',
+/** Clés i18n des types de sortie (résolues via `t()` au rendu). */
+export const DISCHARGE_TYPE_KEYS: Record<DischargeType, string> = {
+  DOMICILE: 'hospit.dischargeType.DOMICILE',
+  TRANSFERT_EXT: 'hospit.dischargeType.TRANSFERT_EXT',
+  CONTRE_AVIS: 'hospit.dischargeType.CONTRE_AVIS',
+  DECES: 'hospit.dischargeType.DECES',
 };
 
 const EMPTY: StayQueueEntry[] = [];
@@ -93,7 +94,7 @@ export function useStayQueue(statuses?: string) {
     refetchInterval: 30_000,
     staleTime: 15_000,
   });
-  return { stays: data ?? EMPTY, isLoading, error: error ? 'Impossible de charger les séjours.' : null };
+  return { stays: data ?? EMPTY, isLoading, error: error ? 'hospit.error.stays' : null };
 }
 
 export function useActiveStayCount(enabled = true) {
@@ -113,7 +114,7 @@ export function usePatientStays(patientId: string | null) {
     queryFn: () => api.get<StayDetail[]>(`/hospitalization/stays?patientId=${patientId}`).then((r) => r.data),
     enabled: !!patientId,
   });
-  return { stays: data ?? [], isLoading, error: error ? 'Impossible de charger les séjours.' : null };
+  return { stays: data ?? [], isLoading, error: error ? 'hospit.error.stays' : null };
 }
 
 export function useStayDetail(stayId: string | null) {
@@ -122,7 +123,7 @@ export function useStayDetail(stayId: string | null) {
     queryFn: () => api.get<StayDetail>(`/hospitalization/stays/${stayId}`).then((r) => r.data),
     enabled: !!stayId,
   });
-  return { stay: data ?? null, isLoading, error: error ? 'Impossible de charger le séjour.' : null };
+  return { stay: data ?? null, isLoading, error: error ? 'hospit.error.stay' : null };
 }
 
 function useStayMutation<TVars>(fn: (v: TVars) => Promise<unknown>) {
@@ -211,7 +212,7 @@ export function useStayPrestations(stayId: string | null) {
   return {
     prestations: data ?? EMPTY_PRESTATIONS,
     isLoading,
-    error: error ? 'Impossible de charger les prestations.' : null,
+    error: error ? 'hospit.error.prestations' : null,
   };
 }
 

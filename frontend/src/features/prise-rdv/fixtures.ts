@@ -62,11 +62,15 @@ export const MOBILE_SLOTS: SlotOption[] = [
   { time: '16:00', available: true },
 ];
 
-/** Default duration options (desktop select). */
+/**
+ * Default duration option values (minutes). Labels are localized at render time
+ * via t('rdv.dur.minutes', { n }) (desktop) / t('rdv.m.durationMin', { n })
+ * (mobile) — i18n (#122), no hardcoded FR here.
+ */
 export const DURATION_OPTIONS = [
-  { value: 15, label: '15 minutes' },
-  { value: 20, label: '20 minutes' },
-  { value: 30, label: '30 minutes' },
-  { value: 45, label: '45 minutes' },
-  { value: 60, label: '60 minutes' },
+  { value: 15 },
+  { value: 20 },
+  { value: 30 },
+  { value: 45 },
+  { value: 60 },
 ];

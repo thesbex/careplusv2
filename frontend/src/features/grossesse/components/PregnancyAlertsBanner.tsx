@@ -4,6 +4,7 @@
  * Severity → CSS class (severity-CRITICAL / WARNING / INFO).
  */
 import { Warn } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PregnancyAlert } from '../types';
 
 interface PregnancyAlertsBannerProps {
@@ -21,10 +22,11 @@ function formatSince(iso: string): string {
 }
 
 export function PregnancyAlertsBanner({ alerts }: PregnancyAlertsBannerProps) {
+  const { t } = useT();
   if (alerts.length === 0) return null;
 
   return (
-    <div className="gr-alerts" role="alert" aria-label="Alertes obstétricales actives">
+    <div className="gr-alerts" role="alert" aria-label={t('gross.alerts.aria')}>
       {alerts.map((a) => (
         <div
           key={a.code}
@@ -33,7 +35,7 @@ export function PregnancyAlertsBanner({ alerts }: PregnancyAlertsBannerProps) {
         >
           <Warn aria-hidden="true" />
           <span style={{ fontWeight: 600 }}>{a.label}</span>
-          <span className="gr-alert-since">depuis {formatSince(a.since)}</span>
+          <span className="gr-alert-since">{t('gross.alerts.since', { date: formatSince(a.since) })}</span>
         </div>
       ))}
     </div>

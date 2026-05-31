@@ -22,8 +22,10 @@ import { useAuthStore } from '@/lib/auth/authStore';
 import { performLogout } from '@/lib/auth/useAuth';
 import { useChangeOwnPassword } from '@/features/parametres/hooks/useUsers';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export default function ForceChangePasswordPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
@@ -38,15 +40,15 @@ export default function ForceChangePasswordPage() {
     e.preventDefault();
     setError(null);
     if (newPwd.length < 12) {
-      setError('Le nouveau mot de passe doit faire au moins 12 caractères.');
+      setError(t('login.fcp.err.tooShort'));
       return;
     }
     if (newPwd !== confirmPwd) {
-      setError('Les deux mots de passe ne correspondent pas.');
+      setError(t('login.fcp.err.mismatch'));
       return;
     }
     if (newPwd === currentPwd) {
-      setError('Le nouveau mot de passe doit être différent de l\'actuel.');
+      setError(t('login.fcp.err.sameAsCurrent'));
       return;
     }
     try {
@@ -54,14 +56,14 @@ export default function ForceChangePasswordPage() {
       if (user) {
         setUser({ ...user, passwordChangeRequired: false });
       }
-      toast.success('Mot de passe mis à jour.');
+      toast.success(t('login.fcp.success'));
       navigate('/agenda', { replace: true });
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.code === 'INVALID_CURRENT_PASSWORD') {
-        setError('Le mot de passe actuel est incorrect.');
+        setError(t('login.fcp.err.invalidCurrent'));
       } else if (problem.code === 'PASSWORD_REUSED') {
-        setError('Le nouveau mot de passe doit être différent de l\'actuel.');
+        setError(t('login.fcp.err.sameAsCurrent'));
       } else {
         setError(problem.detail ?? problem.title);
       }
@@ -108,15 +110,14 @@ export default function ForceChangePasswordPage() {
         </div>
 
         <h1 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
-          Définissez votre nouveau mot de passe
+          {t('login.fcp.title')}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--ink-3)', lineHeight: 1.55, margin: 0 }}>
-          Un administrateur a réinitialisé votre mot de passe. Choisissez-en un
-          nouveau pour continuer.
+          {t('login.fcp.sub')}
         </p>
 
         <Field>
-          <FieldLabel htmlFor="fcp-current">Mot de passe actuel</FieldLabel>
+          <FieldLabel htmlFor="fcp-current">{t('login.fcp.current')}</FieldLabel>
           <Input
             id="fcp-current"
             type="password"
@@ -126,12 +127,12 @@ export default function ForceChangePasswordPage() {
             required
           />
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-            Celui qui vous a été communiqué par l'administrateur.
+            {t('login.fcp.currentHint')}
           </div>
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="fcp-new">Nouveau mot de passe</FieldLabel>
+          <FieldLabel htmlFor="fcp-new">{t('login.fcp.new')}</FieldLabel>
           <Input
             id="fcp-new"
             type="password"
@@ -141,12 +142,12 @@ export default function ForceChangePasswordPage() {
             required
           />
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-            12 caractères minimum.
+            {t('login.fcp.newHint')}
           </div>
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="fcp-confirm">Confirmer</FieldLabel>
+          <FieldLabel htmlFor="fcp-confirm">{t('login.fcp.confirm')}</FieldLabel>
           <Input
             id="fcp-confirm"
             type="password"
@@ -179,7 +180,7 @@ export default function ForceChangePasswordPage() {
           disabled={isPending}
           style={{ width: '100%', justifyContent: 'center', height: 44 }}
         >
-          <Lock /> {isPending ? 'Enregistrement…' : 'Valider et continuer'}
+          <Lock /> {isPending ? t('login.fcp.submitting') : t('login.fcp.submit')}
         </Button>
 
         <button
@@ -194,7 +195,7 @@ export default function ForceChangePasswordPage() {
             marginTop: 4,
           }}
         >
-          Se déconnecter
+          {t('login.fcp.logout')}
         </button>
       </form>
     </div>

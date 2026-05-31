@@ -11,6 +11,7 @@ import { MTopbar } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { ChevronRight } from '@/components/icons';
 import { Select } from '@/components/ui/Input';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePractitioners } from '../agenda/hooks/usePractitioners';
 import { useInvoice } from './hooks/useInvoices';
 import { useInvoiceSearch } from './hooks/useInvoiceSearch';
@@ -18,7 +19,7 @@ import { InvoiceDrawer } from './InvoiceDrawer';
 import { CaisseTodayPanel } from '../caisse/CaisseTodayPanel';
 import { AdvancedFiltersPopover } from './AdvancedFiltersPopover';
 import {
-  STATUS_LABEL,
+  invoiceStatusKey,
   type InvoiceSearchFilters,
   type InvoiceStatus,
 } from './types';
@@ -32,12 +33,12 @@ const TAB_MAP: Record<MobileTab, string> = {
   menu:     '/parametres',
 };
 
-const FILTERS: { key: InvoiceStatus | 'ALL'; label: string }[] = [
-  { key: 'ALL', label: 'Toutes' },
-  { key: 'BROUILLON', label: 'Brouillons' },
-  { key: 'EMISE', label: 'Émises' },
-  { key: 'PAYEE_PARTIELLE', label: 'Partielles' },
-  { key: 'PAYEE_TOTALE', label: 'Payées' },
+const FILTERS: { key: InvoiceStatus | 'ALL'; labelKey: string }[] = [
+  { key: 'ALL', labelKey: 'factu.filter.all' },
+  { key: 'BROUILLON', labelKey: 'factu.filter.drafts' },
+  { key: 'EMISE', labelKey: 'factu.filter.issued' },
+  { key: 'PAYEE_PARTIELLE', labelKey: 'factu.filter.partial' },
+  { key: 'PAYEE_TOTALE', labelKey: 'factu.filter.paid' },
 ];
 
 const STATUS_PILL: Record<InvoiceStatus, string> = {
@@ -82,6 +83,7 @@ function filtersToUrl(f: InvoiceSearchFilters): URLSearchParams {
 
 export default function FacturationMobilePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [urlParams, setUrlParams] = useSearchParams();
   const [filters, setFilters] = useState<InvoiceSearchFilters>(() => filtersFromUrl(urlParams));
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -112,24 +114,24 @@ export default function FacturationMobilePage() {
   return (
     <MScreen
       tab="factu"
-      topbar={<MTopbar brand title="Facturation" />}
-      onTabChange={(t) => navigate(TAB_MAP[t])}
+      topbar={<MTopbar brand title={t('factu.title')} />}
+      onTabChange={(tab) => navigate(TAB_MAP[tab])}
     >
       <div className="mb-pad">
         <CaisseTodayPanel />
         <div style={{ fontSize: 13, color: 'var(--ink-3)', marginBottom: 12 }}>
-          {totalCount} facture{totalCount > 1 ? 's' : ''}
+          {t('factu.count', { n: totalCount, s: totalCount > 1 ? 's' : '' })}
         </div>
 
         <div className="m-stat-grid">
           <div className="m-stat">
-            <div className="m-stat-k">Encaissé</div>
+            <div className="m-stat-k">{t('factu.kpi.collected')}</div>
             <div className="m-stat-v" style={{ color: 'var(--success)' }}>
               {formatMad(totalPaid)}
             </div>
           </div>
           <div className="m-stat">
-            <div className="m-stat-k">À encaisser</div>
+            <div className="m-stat-k">{t('factu.kpi.toCollect')}</div>
             <div className="m-stat-v" style={{ color: 'var(--amber)' }}>
               {formatMad(totalRemaining)}
             </div>
@@ -147,9 +149,9 @@ export default function FacturationMobilePage() {
               marginBottom: 8,
             }}
           >
-            Médecin
+            {t('factu.doctor')}
             <Select
-              aria-label="Filtrer par médecin"
+              aria-label={t('factu.doctor.filterAria')}
               value={filters.medecinId ?? 'ALL'}
               onChange={(e) =>
                 setFilters({
@@ -168,7 +170,7 @@ export default function FacturationMobilePage() {
                 background: 'var(--surface)',
               }}
             >
-              <option value="ALL">Tous les médecins</option>
+              <option value="ALL">{t('factu.doctor.all')}</option>
               {activePractitioners.map((p) => (
                 <option key={p.id} value={p.id}>
                   Dr {p.lastName} {p.firstName}
@@ -181,7 +183,7 @@ export default function FacturationMobilePage() {
 
         <div
           role="tablist"
-          aria-label="Filtres statut"
+          aria-label={t('factu.filtersAria')}
           style={{
             display: 'flex',
             gap: 6,
@@ -216,7 +218,7 @@ export default function FacturationMobilePage() {
                   whiteSpace: 'nowrap',
                 }}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             );
           })}
@@ -234,7 +236,7 @@ export default function FacturationMobilePage() {
         <div className="m-card">
           {isLoading ? (
             <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-              Chargement…
+              {t('common.loading')}
             </div>
           ) : items.length === 0 ? (
             <div
@@ -245,7 +247,7 @@ export default function FacturationMobilePage() {
                 fontSize: 13,
               }}
             >
-              Aucune facture pour ces filtres.
+              {t('factu.list.empty')}
             </div>
           ) : (
             items.map((inv, i) => {
@@ -277,7 +279,7 @@ export default function FacturationMobilePage() {
                         {inv.number ?? `BR-${inv.id.slice(0, 8).toUpperCase()}`}
                       </span>
                       <span className={`m-pill ${STATUS_PILL[inv.status]}`}>
-                        {STATUS_LABEL[inv.status]}
+                        {t(invoiceStatusKey(inv.status))}
                       </span>
                     </div>
                     <div className="m-row-sub">
@@ -297,7 +299,7 @@ export default function FacturationMobilePage() {
                         className="tnum"
                         style={{ fontSize: 11, color: 'var(--success)', marginTop: 2 }}
                       >
-                        {formatMad(inv.paidAmount)} payé
+                        {t('factu.paidSuffix', { amount: formatMad(inv.paidAmount) })}
                       </div>
                     )}
                   </div>

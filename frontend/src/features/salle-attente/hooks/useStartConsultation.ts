@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { ConsultationApi } from '@/features/consultation/hooks/useConsultation';
 
 interface StartConsultationPayload {
@@ -9,6 +10,7 @@ interface StartConsultationPayload {
 }
 
 export function useStartConsultation() {
+  const { t } = useT();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -26,6 +28,6 @@ export function useStartConsultation() {
   return {
     startConsultation: (payload: StartConsultationPayload) => mutation.mutateAsync(payload),
     isPending: mutation.isPending,
-    error: mutation.error ? 'Impossible de démarrer la consultation.' : null,
+    error: mutation.error ? t('salle.toast.startConsultErr') : null,
   };
 }

@@ -23,6 +23,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Close, Clipboard } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type {
   PrescriptionTemplate,
   DrugTemplateLine,
@@ -66,6 +67,7 @@ export function BioPanelPreviewDialog({
   template,
   trimester,
 }: BioPanelPreviewDialogProps) {
+  const { t } = useT();
   const formattedLines = useMemo(() => {
     if (!template) return [] as string[];
     return template.lines.map((l) => formatLine(l, template.type));
@@ -80,12 +82,12 @@ export function BioPanelPreviewDialog({
       // guard on existence to surface a useful error otherwise.
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-        toast.success(`${formattedLines.length} lignes copiées.`);
+        toast.success(t('gross.bio.copied', { n: formattedLines.length }));
       } else {
-        toast.error('Presse-papiers indisponible dans ce navigateur.');
+        toast.error(t('gross.bio.clipboardUnavailable'));
       }
     } catch {
-      toast.error('Copie impossible.');
+      toast.error(t('gross.bio.copyError'));
     }
   }
 
@@ -95,7 +97,7 @@ export function BioPanelPreviewDialog({
         <Dialog.Overlay className="gr-overlay" />
         <Dialog.Content
           className="gr-dialog"
-          aria-label={`Aperçu du bilan ${trimester}`}
+          aria-label={t('gross.bio.previewAria', { trimester })}
           data-testid="bio-panel-preview"
         >
           <div
@@ -107,7 +109,7 @@ export function BioPanelPreviewDialog({
             }}
           >
             <Dialog.Title style={{ fontSize: 14.5, fontWeight: 600, flex: 1, margin: 0 }}>
-              Bilan biologique {trimester}
+              {t('gross.bio.previewTitle', { trimester })}
               {template ? (
                 <span
                   style={{
@@ -117,12 +119,15 @@ export function BioPanelPreviewDialog({
                     fontWeight: 400,
                   }}
                 >
-                  {formattedLines.length} ligne{formattedLines.length !== 1 ? 's' : ''}
+                  {t('gross.bio.lineCount', {
+                    n: formattedLines.length,
+                    s: formattedLines.length !== 1 ? 's' : '',
+                  })}
                 </span>
               ) : null}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -131,9 +136,7 @@ export function BioPanelPreviewDialog({
           <Dialog.Description
             style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 12 }}
           >
-            Modèle PSGA pré-rempli (sérologies + bilans) pour le trimestre{' '}
-            <strong>{trimester}</strong>. Copiez les lignes ou ouvrez une
-            consultation pour émettre une ordonnance signée.
+            {t('gross.bio.previewDesc', { trimester })}
           </Dialog.Description>
 
           {template == null || formattedLines.length === 0 ? (
@@ -145,7 +148,7 @@ export function BioPanelPreviewDialog({
                 textAlign: 'center',
               }}
             >
-              Aucun modèle disponible pour {trimester}.
+              {t('gross.bio.previewEmpty', { trimester })}
             </div>
           ) : (
             <ol
@@ -183,7 +186,7 @@ export function BioPanelPreviewDialog({
           >
             <Dialog.Close asChild>
               <Button type="button" variant="ghost">
-                Fermer
+                {t('common.close')}
               </Button>
             </Dialog.Close>
             <Button
@@ -196,7 +199,7 @@ export function BioPanelPreviewDialog({
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Clipboard style={{ width: 14, height: 14 }} />
-              Copier les lignes
+              {t('gross.bio.copy')}
             </Button>
           </div>
         </Dialog.Content>

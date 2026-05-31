@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockSupplier } from '../types';
 
 /**
@@ -7,6 +8,7 @@ import type { StockSupplier } from '../types';
  * GET /api/stock/suppliers
  */
 export function useStockSuppliers() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['stock', 'suppliers'],
     queryFn: () =>
@@ -17,6 +19,6 @@ export function useStockSuppliers() {
   return {
     suppliers: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les fournisseurs.' : null,
+    error: error ? t('stock.err.loadSuppliers') : null,
   };
 }

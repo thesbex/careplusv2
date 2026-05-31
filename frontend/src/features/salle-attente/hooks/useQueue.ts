@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { QueueEntry, QueueKpi, UpcomingPatient } from '../types';
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
 
 interface QueueEntryApi {
   appointmentId: string;
@@ -40,7 +43,7 @@ function toWaited(arrivedAt: string | null): string {
   return `${Math.floor(min / 60)}h ${min % 60}min`;
 }
 
-function adapt(e: QueueEntryApi): QueueEntry {
+function adapt(e: QueueEntryApi, t: Translate): QueueEntry {
   const entry: QueueEntry = {
     appointmentId: e.appointmentId,
     patientId: e.patientId,
@@ -59,11 +62,11 @@ function adapt(e: QueueEntryApi): QueueEntry {
     durationMinutes: e.durationMinutes ?? null,
     isPremium: e.isPremium,
   };
-  if (e.hasAllergies) entry.allergy = 'Allergie';
+  if (e.hasAllergies) entry.allergy = t('salle.allergy');
   return entry;
 }
 
-function buildKpis(queue: QueueEntryApi[]): QueueKpi[] {
+function buildKpis(queue: QueueEntryApi[], t: Translate): QueueKpi[] {
   const total = queue.length;
   const waitMs = queue
     .filter((e) => e.arrivedAt)
@@ -72,8 +75,13 @@ function buildKpis(queue: QueueEntryApi[]): QueueKpi[] {
     ? Math.round(waitMs.reduce((a, b) => a + b, 0) / waitMs.length / 60_000)
     : 0;
   return [
-    { label: 'En attente', value: String(total), sub: 'patients aujourd\'hui' },
-    { label: 'Attente moy.', value: String(avgMin), unit: 'min', sub: 'depuis arrivée' },
+    { label: t('salle.kpi.waiting'), value: String(total), sub: t('salle.kpi.waitingSub') },
+    {
+      label: t('salle.kpi.avgWait'),
+      value: String(avgMin),
+      unit: t('salle.kpi.min'),
+      sub: t('salle.kpi.avgWaitSub'),
+    },
   ];
 }
 
@@ -86,6 +94,7 @@ export interface UseQueueResult {
 }
 
 export function useQueue(): UseQueueResult {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['queue'],
     queryFn: () => api.get<QueueEntryApi[]>('/queue').then((r) => r.data),
@@ -95,10 +104,10 @@ export function useQueue(): UseQueueResult {
 
   const raw = data ?? [];
   return {
-    queue: raw.map(adapt),
-    kpis: buildKpis(raw),
+    queue: raw.map((e) => adapt(e, t)),
+    kpis: buildKpis(raw, t),
     upcoming: [],
     isLoading,
-    error: error ? 'Impossible de charger la salle d\'attente.' : null,
+    error: error ? t('salle.loadError') : null,
   };
 }

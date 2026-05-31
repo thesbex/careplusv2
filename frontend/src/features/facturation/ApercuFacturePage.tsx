@@ -6,8 +6,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, Print } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useInvoice } from './hooks/useInvoices';
-import { STATUS_LABEL, PAYMENT_MODE_LABEL } from './types';
+import { invoiceStatusKey, paymentModeKey } from './types';
 import './facturation.css';
 
 const NAV_MAP = {
@@ -33,21 +34,22 @@ function formatMad(n: number): string {
 
 export default function ApercuFacturePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const { invoice, isLoading, error } = useInvoice(id);
 
   return (
     <Screen
       active="factu"
-      title="Aperçu — Facture"
-      sub={invoice?.number ?? `Brouillon ${id?.slice(0, 8).toUpperCase()}`}
+      title={t('factu.preview.title')}
+      sub={invoice?.number ?? t('factu.preview.draftSub', { id: id?.slice(0, 8).toUpperCase() ?? '' })}
       topbarRight={
         <>
           <Button onClick={() => navigate(-1)}>
-            <ChevronLeft /> Retour
+            <ChevronLeft /> {t('factu.preview.back')}
           </Button>
           <Button variant="primary" onClick={() => window.print()} disabled={!invoice}>
-            <Print /> Imprimer
+            <Print /> {t('factu.preview.print')}
           </Button>
         </>
       }
@@ -55,7 +57,7 @@ export default function ApercuFacturePage() {
     >
       <div style={{ background: 'var(--bg-alt)', overflow: 'auto', height: '100%' }}>
         {isLoading && (
-          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
         )}
         {error && <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>}
         {invoice && (
@@ -71,18 +73,19 @@ export default function ApercuFacturePage() {
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  Cabinet Médical
+                  {t('factu.preview.practiceName')}
                 </div>
                 <div style={{ fontSize: 11, color: '#555', marginTop: 4, lineHeight: 1.5 }}>
-                  Médecin Généraliste
+                  {t('factu.preview.practiceRole')}
                   <br />
-                  Inscrit à l&apos;Ordre National des Médecins
+                  {t('factu.preview.ordreLine')}
                 </div>
               </div>
               <div style={{ textAlign: 'right', fontSize: 11, color: '#555', lineHeight: 1.6 }}>
-                <div style={{ fontWeight: 600, color: '#111' }}>Facture</div>
-                Casablanca, le{' '}
-                {new Date(invoice.issuedAt ?? invoice.createdAt).toLocaleDateString('fr-MA')}
+                <div style={{ fontWeight: 600, color: '#111' }}>{t('factu.preview.invoiceLabel')}</div>
+                {t('factu.preview.cityDate', {
+                  date: new Date(invoice.issuedAt ?? invoice.createdAt).toLocaleDateString('fr-MA'),
+                })}
                 <br />
                 ICE 0000000000000 · RC 000000
                 <br />
@@ -107,14 +110,14 @@ export default function ApercuFacturePage() {
                     letterSpacing: '0.08em',
                   }}
                 >
-                  Patient
+                  {t('factu.preview.patient')}
                 </div>
                 <div className="mono" style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>
                   {invoice.patientId.slice(0, 8).toUpperCase()}
                 </div>
                 {invoice.mutuelleInsuranceName && (
                   <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>
-                    Mutuelle : {invoice.mutuelleInsuranceName}
+                    {t('factu.preview.mutuelle', { name: invoice.mutuelleInsuranceName })}
                   </div>
                 )}
               </div>
@@ -127,29 +130,29 @@ export default function ApercuFacturePage() {
                     letterSpacing: '0.08em',
                   }}
                 >
-                  Numéro
+                  {t('factu.preview.number')}
                 </div>
                 <div
                   className="mono"
                   style={{ fontSize: 14, fontWeight: 600, marginTop: 3, color: '#1E5AA8' }}
                 >
-                  {invoice.number ?? 'BROUILLON'}
+                  {invoice.number ?? t('factu.preview.draftValue')}
                 </div>
                 <div style={{ fontSize: 11, color: '#444', marginTop: 4 }}>
-                  Statut : {STATUS_LABEL[invoice.status]}
+                  {t('factu.preview.statusLine', { status: t(invoiceStatusKey(invoice.status)) })}
                 </div>
               </div>
             </div>
 
-            <div className="fa-a4-title">Facture</div>
+            <div className="fa-a4-title">{t('factu.preview.docTitle')}</div>
 
             <table className="fa-a4-table">
               <thead>
                 <tr>
-                  <th>Description</th>
-                  <th className="right">Qté</th>
-                  <th className="right">Prix unitaire</th>
-                  <th className="right">Total</th>
+                  <th>{t('factu.preview.col.description')}</th>
+                  <th className="right">{t('factu.preview.col.qty')}</th>
+                  <th className="right">{t('factu.preview.col.unitPrice')}</th>
+                  <th className="right">{t('factu.preview.col.total')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -168,17 +171,17 @@ export default function ApercuFacturePage() {
               <table>
                 <tbody>
                   <tr>
-                    <td>Sous-total</td>
+                    <td>{t('factu.preview.subtotal')}</td>
                     <td className="right">{formatMad(invoice.totalAmount)}</td>
                   </tr>
                   {invoice.discountAmount > 0 && (
                     <tr>
-                      <td>Remise</td>
+                      <td>{t('factu.preview.discount')}</td>
                       <td className="right">- {formatMad(invoice.discountAmount)}</td>
                     </tr>
                   )}
                   <tr className="net">
-                    <td>Net à payer</td>
+                    <td>{t('factu.preview.netDue')}</td>
                     <td className="right">{formatMad(invoice.netAmount)}</td>
                   </tr>
                 </tbody>
@@ -197,7 +200,7 @@ export default function ApercuFacturePage() {
                     color: '#666',
                   }}
                 >
-                  Paiements
+                  {t('factu.preview.payments')}
                 </div>
                 {invoice.payments.map((p) => (
                   <div
@@ -211,7 +214,7 @@ export default function ApercuFacturePage() {
                   >
                     <span>
                       {new Date(p.paidAt).toLocaleDateString('fr-MA')} ·{' '}
-                      {PAYMENT_MODE_LABEL[p.mode]}
+                      {t(paymentModeKey(p.mode))}
                       {p.reference ? ` · ${p.reference}` : ''}
                     </span>
                     <span className="tnum">{formatMad(p.amount)}</span>

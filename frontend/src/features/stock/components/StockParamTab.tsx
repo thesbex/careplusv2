@@ -17,6 +17,7 @@ import { useDeactivateSupplier } from '../hooks/useDeactivateSupplier';
 import { UpsertSupplierSchema } from '../schemas';
 import type { UpsertSupplierValues } from '../schemas';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockSupplier } from '../types';
 
 // ── Supplier form drawer ──────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ const EMPTY_SUPPLIER: UpsertSupplierValues = {
 };
 
 function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDrawerProps) {
+  const { t } = useT();
   const mutation = useUpsertSupplier(mode);
 
   const defaultValues: UpsertSupplierValues =
@@ -63,7 +65,7 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
     };
     try {
       await mutation.mutateAsync(initial?.id ? { id: initial.id, body } : { body });
-      toast.success(mode === 'create' ? 'Fournisseur ajouté.' : 'Fournisseur modifié.');
+      toast.success(mode === 'create' ? t('stock.suppliers.toast.added') : t('stock.suppliers.toast.updated'));
       onSaved();
     } catch (err) {
       const problem = toProblemDetail(err);
@@ -97,7 +99,7 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
       />
       <div
         role="dialog"
-        aria-label={mode === 'create' ? 'Ajouter un fournisseur' : 'Modifier le fournisseur'}
+        aria-label={mode === 'create' ? t('stock.suppliers.addTitle') : t('stock.suppliers.editTitle')}
         style={{
           position: 'relative',
           width: 400,
@@ -117,7 +119,7 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
             fontWeight: 600,
           }}
         >
-          {mode === 'create' ? 'Ajouter un fournisseur' : 'Modifier le fournisseur'}
+          {mode === 'create' ? t('stock.suppliers.addTitle') : t('stock.suppliers.editTitle')}
         </div>
 
         <form
@@ -135,24 +137,24 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
           }}
         >
           <Field>
-            <FieldLabel htmlFor="sup-name">Nom *</FieldLabel>
+            <FieldLabel htmlFor="sup-name">{t('stock.suppliers.name')}</FieldLabel>
             <Input
               id="sup-name"
-              placeholder="Pharma Maroc"
+              placeholder={t('stock.suppliers.namePlaceholder')}
               {...register('name')}
             />
             {errors.name && (
               <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.name.message}
+                {t(errors.name.message ?? '')}
               </div>
             )}
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="sup-phone">Téléphone</FieldLabel>
+            <FieldLabel htmlFor="sup-phone">{t('stock.suppliers.phone')}</FieldLabel>
             <Input
               id="sup-phone"
-              placeholder="+212 5 22 00 00 00"
+              placeholder={t('stock.suppliers.phonePlaceholder')}
               {...register('phone')}
             />
           </Field>
@@ -166,7 +168,7 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
                 style={{ width: 16, height: 16 }}
               />
               <label htmlFor="sup-active" style={{ fontSize: 13, cursor: 'pointer' }}>
-                Actif
+                {t('stock.suppliers.activeLabel')}
               </label>
             </div>
           )}
@@ -188,13 +190,13 @@ function SupplierFormDrawer({ mode, initial, onClose, onSaved }: SupplierFormDra
             style={{ flex: 1 }}
           >
             {mutation.isPending
-              ? 'Enregistrement…'
+              ? t('common.saving')
               : mode === 'create'
-                ? 'Ajouter'
-                : 'Enregistrer'}
+                ? t('stock.suppliers.submitAdd')
+                : t('stock.suppliers.submitSave')}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {t('common.cancel')}
           </Button>
         </div>
       </div>
@@ -215,6 +217,7 @@ function DeactivateConfirmDialog({
   onCancel: () => void;
   isPending: boolean;
 }) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -229,7 +232,7 @@ function DeactivateConfirmDialog({
     >
       <div
         role="dialog"
-        aria-label="Confirmer la désactivation"
+        aria-label={t('stock.suppliers.deactivateTitle')}
         style={{
           background: 'var(--surface)',
           borderRadius: 'var(--r-md)',
@@ -240,15 +243,14 @@ function DeactivateConfirmDialog({
         }}
       >
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>
-          Désactiver ce fournisseur ?
+          {t('stock.suppliers.deactivateQuestion')}
         </div>
         <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>
-          <strong>{supplier.name}</strong> sera désactivé et ne sera plus disponible dans la liste
-          de sélection des articles.
+          <strong>{supplier.name}</strong>{t('stock.suppliers.deactivateBodySuffix')}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onCancel}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -256,7 +258,7 @@ function DeactivateConfirmDialog({
             onClick={onConfirm}
             style={{ background: 'var(--danger)', border: 'none' }}
           >
-            {isPending ? 'Désactivation…' : 'Désactiver'}
+            {isPending ? t('stock.suppliers.deactivating') : t('stock.suppliers.deactivate')}
           </Button>
         </div>
       </div>
@@ -267,6 +269,7 @@ function DeactivateConfirmDialog({
 // ── Fournisseurs section ──────────────────────────────────────────────────────
 
 function FournisseursSection() {
+  const { t } = useT();
   const { suppliers, isLoading, error } = useStockSuppliers();
   const { deactivate, isPending: isDeactivating } = useDeactivateSupplier();
   const [showDrawer, setShowDrawer] = useState(false);
@@ -298,19 +301,19 @@ function FournisseursSection() {
     <>
       <Panel>
         <PanelHeader>
-          <span>Fournisseurs</span>
+          <span>{t('stock.suppliers.title')}</span>
           <Button
             size="sm"
             variant="primary"
             style={{ marginLeft: 'auto' }}
             onClick={openCreate}
           >
-            + Ajouter fournisseur
+            {t('stock.suppliers.add')}
           </Button>
         </PanelHeader>
         <div style={{ overflowX: 'auto' }}>
           {isLoading && (
-            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>{t('common.loading')}</div>
           )}
           {error && (
             <div style={{ padding: 16, color: 'var(--danger)', fontSize: 12 }}>{error}</div>
@@ -319,7 +322,12 @@ function FournisseursSection() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)' }}>
-                  {['Nom', 'Téléphone', 'Actif', 'Actions'].map((h) => (
+                  {[
+                    t('stock.suppliers.col.name'),
+                    t('stock.suppliers.col.phone'),
+                    t('stock.suppliers.col.active'),
+                    t('stock.suppliers.col.actions'),
+                  ].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -348,7 +356,7 @@ function FournisseursSection() {
                         textAlign: 'center',
                       }}
                     >
-                      Aucun fournisseur enregistré.
+                      {t('stock.suppliers.empty')}
                     </td>
                   </tr>
                 )}
@@ -369,7 +377,7 @@ function FournisseursSection() {
                         type="checkbox"
                         checked={s.active}
                         readOnly
-                        aria-label={`${s.name} actif`}
+                        aria-label={t('stock.suppliers.activeAria', { name: s.name })}
                         style={{ width: 16, height: 16, cursor: 'default' }}
                       />
                     </td>
@@ -379,7 +387,7 @@ function FournisseursSection() {
                           size="sm"
                           variant="ghost"
                           iconOnly
-                          aria-label={`Modifier ${s.name}`}
+                          aria-label={t('stock.suppliers.editAria', { name: s.name })}
                           onClick={() => openEdit(s)}
                         >
                           <Edit />
@@ -389,7 +397,7 @@ function FournisseursSection() {
                             size="sm"
                             variant="ghost"
                             iconOnly
-                            aria-label={`Désactiver ${s.name}`}
+                            aria-label={t('stock.suppliers.deactivateAria', { name: s.name })}
                             disabled={isDeactivating}
                             onClick={() => setDeactivateTarget(s)}
                           >
@@ -398,7 +406,7 @@ function FournisseursSection() {
                         )}
                         {!s.active && (
                           <span style={{ fontSize: 11, color: 'var(--ink-3)', padding: '4px 8px' }}>
-                            Désactivé
+                            {t('stock.suppliers.deactivated')}
                           </span>
                         )}
                       </div>

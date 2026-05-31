@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { VaccinationCalendarEntry } from '../types';
 
 /**
@@ -8,6 +9,7 @@ import type { VaccinationCalendarEntry } from '../types';
  * Returns both materialised (ADMINISTERED/DEFERRED/SKIPPED) and on-the-fly UPCOMING/DUE_SOON/OVERDUE doses.
  */
 export function useVaccinationCalendar(patientId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['vaccination', 'calendar', patientId],
     queryFn: () =>
@@ -21,6 +23,6 @@ export function useVaccinationCalendar(patientId?: string) {
   return {
     calendar: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger le calendrier vaccinal.' : null,
+    error: error ? t('vacc.cal.loadError') : null,
   };
 }

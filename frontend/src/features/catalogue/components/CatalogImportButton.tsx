@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
 import { Button } from '@/components/ui/Button';
 import { Upload } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 type ImportKind = 'drug' | 'lab' | 'imaging';
 
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export function CatalogImportButton({ kind, onImported }: Props) {
+  const { t: tr } = useT();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -58,10 +60,12 @@ export function CatalogImportButton({ kind, onImported }: Props) {
       });
       const { added, updated, skipped, errors } = res.data;
       if (errors.length === 0 && skipped === 0) {
-        toast.success(`Import OK — ${added} ajouté${added > 1 ? 's' : ''}, ${updated} mis à jour.`);
+        toast.success(
+          tr(added > 1 ? 'cat.import.ok_plural' : 'cat.import.ok', { added, updated }),
+        );
       } else {
         toast.warning(
-          `Import partiel — ${added} ajouté(s), ${updated} mis à jour, ${skipped} ignoré(s).`,
+          tr('cat.import.partial', { added, updated, skipped }),
           { description: errors.slice(0, 3).join(' · ') || undefined },
         );
       }
@@ -71,11 +75,11 @@ export function CatalogImportButton({ kind, onImported }: Props) {
         ? (err as { response?: { status?: number; data?: { detail?: string } } }).response
         : undefined;
       if (status?.status === 403) {
-        toast.error('Vous n\'avez pas le droit d\'importer le catalogue.');
+        toast.error(tr('cat.import.forbidden'));
       } else if (status?.status === 400) {
-        toast.error('Fichier rejeté.', { description: status.data?.detail });
+        toast.error(tr('cat.import.rejected'), { description: status.data?.detail });
       } else {
-        toast.error('Échec de l\'import.');
+        toast.error(tr('cat.import.error'));
       }
     } finally {
       setBusy(false);
@@ -95,16 +99,16 @@ export function CatalogImportButton({ kind, onImported }: Props) {
           // Reset so picking the same file twice still triggers onChange.
           e.target.value = '';
         }}
-        aria-label={`Importer un fichier CSV (${kind})`}
+        aria-label={tr('cat.import.fileAria', { kind })}
       />
       <Button
         type="button"
         variant="ghost"
         disabled={busy}
-        title={`CSV UTF-8 — colonnes : ${HEADERS_HINT[kind]}`}
+        title={tr('cat.import.title', { headers: HEADERS_HINT[kind] })}
         onClick={() => inputRef.current?.click()}
       >
-        <Upload /> {busy ? 'Import…' : 'Importer CSV'}
+        <Upload /> {busy ? tr('cat.import.busy') : tr('cat.import.button')}
       </Button>
     </>
   );

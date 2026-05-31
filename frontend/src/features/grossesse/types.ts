@@ -221,6 +221,48 @@ export const VISIT_PLAN_STATUS_LABEL: Record<VisitPlanStatus, string> = {
   ANNULEE: 'Annulée',
 };
 
+// ── i18n key maps (#122) ────────────────────────────────────────────────────
+// The *_LABEL maps above hold the original FR strings (kept for any
+// non-translated call site). For UI rendering, components translate via
+// `t(*_LABEL_KEY[value])` against the `gross.*` catalogue.
+
+export const OUTCOME_LABEL_KEY: Record<PregnancyOutcome, string> = {
+  ACCOUCHEMENT_VIVANT: 'gross.outcome.ACCOUCHEMENT_VIVANT',
+  MORT_NEE: 'gross.outcome.MORT_NEE',
+  MFIU: 'gross.outcome.MFIU',
+  FCS: 'gross.outcome.FCS',
+  IVG: 'gross.outcome.IVG',
+  GEU: 'gross.outcome.GEU',
+  MOLE: 'gross.outcome.MOLE',
+};
+
+export const STATUS_LABEL_KEY: Record<PregnancyStatus, string> = {
+  EN_COURS: 'gross.status.EN_COURS',
+  TERMINEE: 'gross.status.TERMINEE',
+  INTERROMPUE: 'gross.status.INTERROMPUE',
+};
+
+export const PRESENTATION_LABEL_KEY: Record<Presentation, string> = {
+  CEPHALIQUE: 'gross.presentation.CEPHALIQUE',
+  SIEGE: 'gross.presentation.SIEGE',
+  TRANSVERSE: 'gross.presentation.TRANSVERSE',
+  INDETERMINEE: 'gross.presentation.INDETERMINEE',
+};
+
+export const ULTRASOUND_KIND_LABEL_KEY: Record<UltrasoundKind, string> = {
+  T1_DATATION: 'gross.usKind.T1_DATATION',
+  T2_MORPHO: 'gross.usKind.T2_MORPHO',
+  T3_CROISSANCE: 'gross.usKind.T3_CROISSANCE',
+  AUTRE: 'gross.usKind.AUTRE',
+};
+
+export const VISIT_PLAN_STATUS_LABEL_KEY: Record<VisitPlanStatus, string> = {
+  PLANIFIEE: 'gross.planStatus.PLANIFIEE',
+  HONOREE: 'gross.planStatus.HONOREE',
+  MANQUEE: 'gross.planStatus.MANQUEE',
+  ANNULEE: 'gross.planStatus.ANNULEE',
+};
+
 /** Format a Date (or YYYY-MM-DD) into local YYYY-MM-DD without UTC drift. */
 export function toLocalDate(d: Date | string | null | undefined): string {
   if (!d) return '';

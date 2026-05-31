@@ -8,8 +8,9 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Print } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useInvoice } from './hooks/useInvoices';
-import { STATUS_LABEL, PAYMENT_MODE_LABEL } from './types';
+import { invoiceStatusKey, paymentModeKey } from './types';
 import './facturation.css';
 
 const TAB_MAP: Record<MobileTab, string> = {
@@ -26,6 +27,7 @@ function formatMad(n: number): string {
 
 export default function ApercuFactureMobilePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const { invoice, isLoading, error } = useInvoice(id);
 
@@ -33,19 +35,19 @@ export default function ApercuFactureMobilePage() {
     <MScreen
       tab="factu"
       noTabs
-      onTabChange={(t) => navigate(TAB_MAP[t])}
+      onTabChange={(tab) => navigate(TAB_MAP[tab])}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate(-1)} />}
-          title={invoice?.number ?? (id ? `BR-${id.slice(0, 8).toUpperCase()}` : 'Facture')}
-          sub="Aperçu"
+          left={<MIconBtn icon="ChevronLeft" label={t('factu.preview.back')} onClick={() => navigate(-1)} />}
+          title={invoice?.number ?? (id ? `BR-${id.slice(0, 8).toUpperCase()}` : t('factu.preview.invoiceFallback'))}
+          sub={t('factu.preview.subtitle')}
         />
       }
     >
       <div className="mb-pad">
         {isLoading && (
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: '12px 0' }}>
-            Chargement…
+            {t('common.loading')}
           </div>
         )}
         {error && (
@@ -58,34 +60,35 @@ export default function ApercuFactureMobilePage() {
             {/* Header card */}
             <div className="m-card" style={{ marginBottom: 14, padding: 16 }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                Numéro
+                {t('factu.preview.number')}
               </div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>
-                {invoice.number ?? 'BROUILLON'}
+                {invoice.number ?? t('factu.preview.draftValue')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 8 }}>
-                Émise le{' '}
-                {new Date(invoice.issuedAt ?? invoice.createdAt).toLocaleDateString('fr-MA')}
+                {t('factu.preview.issuedOn', {
+                  date: new Date(invoice.issuedAt ?? invoice.createdAt).toLocaleDateString('fr-MA'),
+                })}
                 {' · '}
                 <span style={{ fontWeight: 600, color: 'var(--ink-2)' }}>
-                  {STATUS_LABEL[invoice.status]}
+                  {t(invoiceStatusKey(invoice.status))}
                 </span>
               </div>
               {invoice.mutuelleInsuranceName && (
                 <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 4 }}>
-                  Mutuelle : {invoice.mutuelleInsuranceName}
+                  {t('factu.preview.mutuelle', { name: invoice.mutuelleInsuranceName })}
                 </div>
               )}
             </div>
 
             {/* Lines */}
             <div className="m-section-h">
-              <h3>Lignes</h3>
+              <h3>{t('factu.preview.lines')}</h3>
             </div>
             <div className="m-card" style={{ marginBottom: 14 }}>
               {invoice.lines.length === 0 ? (
                 <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>
-                  Aucune ligne.
+                  {t('factu.preview.noLines')}
                 </div>
               ) : (
                 invoice.lines.map((l, i) => (
@@ -116,9 +119,9 @@ export default function ApercuFactureMobilePage() {
 
             {/* Totals */}
             <div className="m-card" style={{ marginBottom: 14, padding: 16 }}>
-              <Row label="Sous-total" value={formatMad(invoice.totalAmount)} />
+              <Row label={t('factu.preview.subtotal')} value={formatMad(invoice.totalAmount)} />
               {invoice.discountAmount > 0 && (
-                <Row label="Remise" value={`- ${formatMad(invoice.discountAmount)}`} />
+                <Row label={t('factu.preview.discount')} value={`- ${formatMad(invoice.discountAmount)}`} />
               )}
               <div
                 style={{
@@ -131,7 +134,7 @@ export default function ApercuFactureMobilePage() {
                   fontWeight: 700,
                 }}
               >
-                <span>Net à payer</span>
+                <span>{t('factu.preview.netDue')}</span>
                 <span className="tnum">{formatMad(invoice.netAmount)}</span>
               </div>
             </div>
@@ -140,7 +143,7 @@ export default function ApercuFactureMobilePage() {
             {invoice.payments.length > 0 && (
               <>
                 <div className="m-section-h">
-                  <h3>Paiements</h3>
+                  <h3>{t('factu.preview.payments')}</h3>
                 </div>
                 <div className="m-card" style={{ marginBottom: 14 }}>
                   {invoice.payments.map((p, i) => (
@@ -156,7 +159,7 @@ export default function ApercuFactureMobilePage() {
                     >
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {PAYMENT_MODE_LABEL[p.mode]}
+                          {t(paymentModeKey(p.mode))}
                         </div>
                         <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
                           {new Date(p.paidAt).toLocaleDateString('fr-MA')}
@@ -178,7 +181,7 @@ export default function ApercuFactureMobilePage() {
               style={{ height: 44, width: '100%' }}
               onClick={() => window.print()}
             >
-              <Print aria-hidden="true" /> Imprimer
+              <Print aria-hidden="true" /> {t('factu.preview.print')}
             </button>
           </>
         )}

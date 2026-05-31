@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PregnancyVisit, UrineDip } from '../types';
 
 interface PageView<T> {
@@ -32,6 +33,7 @@ function parseVisit(wire: PregnancyVisitWire): PregnancyVisit {
  * For Étape 4 we only need the first page (default 20 visits).
  */
 export function usePregnancyVisits(pregnancyId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['pregnancies', 'visits', pregnancyId],
     queryFn: () =>
@@ -51,6 +53,6 @@ export function usePregnancyVisits(pregnancyId?: string) {
   return {
     visits,
     isLoading,
-    error: error ? 'Impossible de charger les visites.' : null,
+    error: error ? t('gross.err.loadVisits') : null,
   };
 }

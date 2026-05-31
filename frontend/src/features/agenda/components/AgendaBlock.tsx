@@ -1,5 +1,6 @@
 import { Warn } from '@/components/icons';
-import { toMin, pxFromMin } from '../fixtures';
+import { useT } from '@/lib/i18n/I18nProvider';
+import { pxFromMin, topPxAt, DEFAULT_FIRST_HOUR } from '../fixtures';
 import type { Appointment } from '../types';
 
 interface AgendaBlockProps {
@@ -25,6 +26,9 @@ interface AgendaBlockProps {
       Initiales + couleur dans une pastille à gauche du temps. Affiché seulement
       si fourni par AgendaGrid (qui ne le passe qu'en multi-praticien). */
   practitioner?: { initials: string; color: string; name: string };
+  /** Première heure affichée par la grille (origine du positionnement vertical).
+      AgendaGrid l'élargit < 8h ou > 19h pour englober les RDV hors plage. */
+  firstHour?: number;
 }
 
 /**
@@ -34,25 +38,26 @@ interface AgendaBlockProps {
  * Ported from design/prototype/screens/agenda.jsx:AgendaBlock.
  */
 /**
- * Libellé FR du statut affiché dans le tooltip hover. Doublon assumé avec la
+ * Clé i18n du statut affiché dans le tooltip hover. Doublon assumé avec la
  * légende couleur (qui code la même chose visuellement) — le tooltip rend la
  * sémantique explicite pour l'utilisateur qui survole une carte trop étroite
  * pour montrer tous ses détails (cas low-res / collisions 3+).
  */
-const STATUS_FR: Record<string, string> = {
-  confirmed: 'Confirmé',
-  arrived: 'Arrivé',
-  vitals: 'En attente constantes',
-  consult: 'En consultation',
-  done: 'Terminé',
+const STATUS_KEY: Record<string, string> = {
+  confirmed: 'agenda.status.confirmed',
+  arrived: 'agenda.status.arrived',
+  vitals: 'agenda.status.waitingVitals',
+  consult: 'agenda.status.consult',
+  done: 'agenda.status.done',
 };
 
-export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, colIndex = 0, colCount = 1, practitioner }: AgendaBlockProps) {
+export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, colIndex = 0, colCount = 1, practitioner, firstHour = DEFAULT_FIRST_HOUR }: AgendaBlockProps) {
+  const { t } = useT();
   // 1px inset top + bottom (was 2+2). Borders on the block already provide
   // visual separation between adjacent slots, so a 2px total gap is enough —
   // the 4px reservation was eating into the per-block padding budget and
   // making 30-min slots feel cramped.
-  const top = pxFromMin(toMin(a.start)) + 1;
+  const top = topPxAt(a.start, firstHour) + 1;
   const height = pxFromMin(a.dur) - 2;
   // Block-density tiers based on slot height:
   //   ≤15min  → compact   : time + name inline (one row, ~14px usable)
@@ -74,13 +79,15 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
   // Tooltip hover natif — couvre le cas low-res / collisions 3+ où le texte
   // tronqué cache l'info (cf. user feedback 2026-05-28). Pas de JS, pas de
   // CSS popover : le browser fait le rendu, accessible OS-natif, gratuit.
-  const statusLabel = late ? 'En retard' : (STATUS_FR[a.status] ?? a.status);
+  const statusLabel = late
+    ? t('agenda.status.late')
+    : (STATUS_KEY[a.status] ? t(STATUS_KEY[a.status]!) : a.status);
   const titleLines = [
     `${a.patient}`,
     `${a.start} · ${a.dur} min — ${statusLabel}`,
-    a.reason ? `Motif : ${a.reason}` : null,
-    practitioner ? `Médecin : ${practitioner.name}` : null,
-    a.allergy ? `⚠ Allergie : ${a.allergy}` : null,
+    a.reason ? t('agenda.tooltip.reason', { reason: a.reason }) : null,
+    practitioner ? t('agenda.tooltip.doctor', { name: practitioner.name }) : null,
+    a.allergy ? t('agenda.tooltip.allergy', { allergy: a.allergy }) : null,
   ].filter(Boolean);
   const tooltip = titleLines.join('\n');
   return (
@@ -95,7 +102,11 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
       }}
       onClick={() => onClick?.(a)}
       title={tooltip}
-      aria-label={`${a.patient} à ${a.start}, ${a.reason}${late ? ' (en retard)' : ''}`}
+      aria-label={
+        late
+          ? t('agenda.block.ariaLate', { patient: a.patient, start: a.start, reason: a.reason })
+          : t('agenda.block.aria', { patient: a.patient, start: a.start, reason: a.reason })
+      }
       draggable={draggable && !!a.id}
       onDragStart={(e) => {
         if (!draggable || !a.id) return;
@@ -119,7 +130,7 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
           <div className="ag-time tnum">{a.start}</div>
           <div className="ag-name">{a.patient}</div>
           {a.allergy && (
-            <span className="ag-allergy-dot" title={`Allergie : ${a.allergy}`}>
+            <span className="ag-allergy-dot" title={t('agenda.block.allergyTitle', { allergy: a.allergy })}>
               <Warn />
             </span>
           )}
@@ -144,7 +155,7 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
           <div className="ag-name">{a.patient}</div>
           <div className="ag-reason">{a.reason}</div>
           {a.allergy && (
-            <div className="ag-allergy" title={`Allergie : ${a.allergy}`}>
+            <div className="ag-allergy" title={t('agenda.block.allergyTitle', { allergy: a.allergy })}>
               <Warn /> <span>{a.allergy}</span>
             </div>
           )}

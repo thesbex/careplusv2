@@ -9,6 +9,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Search } from '@/components/icons';
 import { Select } from '@/components/ui/Input';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface ImagingExam {
   id: string;
@@ -19,6 +20,7 @@ interface ImagingExam {
 
 export default function ImagingCatalogueMobilePage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const [items, setItems] = useState<ImagingExam[]>([]);
   const [q, setQ] = useState('');
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -37,9 +39,9 @@ export default function ImagingCatalogueMobilePage() {
         params: debouncedQ.trim() ? { q: debouncedQ.trim() } : {},
       })
       .then((r) => setItems(r.data))
-      .catch(() => toast.error('Impossible de charger les examens d’imagerie.'))
+      .catch(() => toast.error(tr('cat.img.loadError')))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ]);
+  }, [debouncedQ, tr]);
 
   const modalities = useMemo(() => {
     const set = new Set<string>();
@@ -61,12 +63,12 @@ export default function ImagingCatalogueMobilePage() {
           left={
             <MIconBtn
               icon="ChevronLeft"
-              label="Retour"
+              label={tr('cat.back')}
               onClick={() => navigate('/parametres')}
             />
           }
-          title="Radio / Imagerie"
-          sub={`${filtered.length} entrée${filtered.length > 1 ? 's' : ''}`}
+          title={tr('cat.mobile.imgTitle')}
+          sub={tr(filtered.length > 1 ? 'cat.mobile.sub_plural' : 'cat.mobile.sub', { n: filtered.length })}
         />
       }
     >
@@ -75,10 +77,10 @@ export default function ImagingCatalogueMobilePage() {
           <Search aria-hidden="true" />
           <input
             type="search"
-            placeholder="Rechercher par nom ou code…"
+            placeholder={tr('cat.img.searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            aria-label="Rechercher un examen d'imagerie"
+            aria-label={tr('cat.img.searchAria')}
             style={{
               flex: 1,
               border: 0,
@@ -95,10 +97,10 @@ export default function ImagingCatalogueMobilePage() {
           value={modalityFilter}
           onChange={(e) => setModalityFilter(e.target.value)}
           className="m-input"
-          aria-label="Modalité"
+          aria-label={tr('cat.img.modalityAria')}
           style={{ marginBottom: 14 }}
         >
-          <option value="">Toutes les modalités</option>
+          <option value="">{tr('cat.img.allModalities')}</option>
           {modalities.map((m) => (
             <option key={m} value={m}>
               {m}
@@ -116,7 +118,7 @@ export default function ImagingCatalogueMobilePage() {
                 textAlign: 'center',
               }}
             >
-              Chargement…
+              {tr('common.loading')}
             </div>
           ) : filtered.length === 0 ? (
             <div
@@ -127,7 +129,7 @@ export default function ImagingCatalogueMobilePage() {
                 fontSize: 13,
               }}
             >
-              Aucun examen ne correspond.
+              {tr('cat.img.emptyShort')}
             </div>
           ) : (
             filtered.map((e) => (
@@ -155,8 +157,7 @@ export default function ImagingCatalogueMobilePage() {
             lineHeight: 1.5,
           }}
         >
-          Référentiel en lecture seule. La gestion (ajout, désactivation) sera
-          activée dès que le backend l’expose.
+          {tr('cat.mobile.readonlyNote')}
         </div>
       </div>
     </MScreen>

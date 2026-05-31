@@ -58,20 +58,22 @@ export interface BedBoard {
   wards: WardBoard[];
 }
 
-export const ROOM_CLASS_LABELS: Record<RoomClass, string> = {
-  INDIVIDUELLE: 'Individuelle',
-  DOUBLE: 'Double',
-  COMMUNE: 'Commune',
-  SUITE: 'Suite',
-  AUTRE: 'Autre',
+/** Clés i18n des classes de chambre (résolues via `t()` au rendu). */
+export const ROOM_CLASS_KEYS: Record<RoomClass, string> = {
+  INDIVIDUELLE: 'hospit.roomClass.INDIVIDUELLE',
+  DOUBLE: 'hospit.roomClass.DOUBLE',
+  COMMUNE: 'hospit.roomClass.COMMUNE',
+  SUITE: 'hospit.roomClass.SUITE',
+  AUTRE: 'hospit.roomClass.AUTRE',
 };
 
-export const BED_STATUS_LABELS: Record<BedStatus, string> = {
-  LIBRE: 'Libre',
-  OCCUPE: 'Occupé',
-  RESERVE: 'Réservé',
-  NETTOYAGE: 'Nettoyage',
-  HORS_SERVICE: 'Hors service',
+/** Clés i18n des statuts de lit (résolues via `t()` au rendu). */
+export const BED_STATUS_KEYS: Record<BedStatus, string> = {
+  LIBRE: 'hospit.bedStatus.LIBRE',
+  OCCUPE: 'hospit.bedStatus.OCCUPE',
+  RESERVE: 'hospit.bedStatus.RESERVE',
+  NETTOYAGE: 'hospit.bedStatus.NETTOYAGE',
+  HORS_SERVICE: 'hospit.bedStatus.HORS_SERVICE',
 };
 
 const EMPTY_WARDS: WardView[] = [];
@@ -92,7 +94,7 @@ export function useWards() {
   return {
     wards: data ?? EMPTY_WARDS,
     isLoading,
-    error: error ? 'Impossible de charger les services.' : null,
+    error: error ? 'hospit.error.wards' : null,
   };
 }
 
@@ -147,7 +149,7 @@ export function useRooms() {
   return {
     rooms: data ?? EMPTY_ROOMS,
     isLoading,
-    error: error ? 'Impossible de charger les chambres.' : null,
+    error: error ? 'hospit.error.rooms' : null,
   };
 }
 
@@ -227,7 +229,7 @@ export function useBeds() {
   return {
     beds: data ?? EMPTY_BEDS,
     isLoading,
-    error: error ? 'Impossible de charger les lits.' : null,
+    error: error ? 'hospit.error.beds' : null,
   };
 }
 
@@ -311,6 +313,6 @@ export function useBedBoard() {
   return {
     board: data ?? EMPTY_BOARD,
     isLoading,
-    error: error ? 'Impossible de charger le tableau des lits.' : null,
+    error: error ? 'hospit.error.board' : null,
   };
 }

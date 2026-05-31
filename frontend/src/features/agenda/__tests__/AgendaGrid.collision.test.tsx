@@ -20,6 +20,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { AgendaGrid } from '../components/AgendaGrid';
+import { ROW_PX } from '../fixtures';
 import type { Appointment, WeekDay } from '../types';
 
 const DAYS: WeekDay[] = [
@@ -319,6 +320,71 @@ describe('AgendaGrid — collision + late + status invariants', () => {
       );
       const block = container.querySelector('.ag-block') as HTMLElement | null;
       expect(block?.getAttribute('title')).toMatch(/Allergie : Aspirine/);
+    });
+  });
+
+  // ── Fenêtre horaire dynamique (bug user Image #5) ─────────────────────
+  // Des RDV du soir (20h–23h50) s'affichaient ~400 px SOUS une grille qui
+  // s'arrêtait à 19h : ils tombaient dans le vide, hors de l'axe des heures
+  // (le « trou vert » entouré par l'utilisateur). La grille doit s'étendre
+  // pour englober tout RDV hors de la plage 08–20h par défaut, et positionner
+  // chaque bloc À L'INTÉRIEUR de sa hauteur.
+  describe('Dynamic hour window (evening / early appointments fit the grid)', () => {
+    const gridHeight = (container: HTMLElement): number =>
+      parseFloat((container.querySelector('.ag-grid') as HTMLElement).style.height);
+    const hourLabels = (container: HTMLElement): string[] =>
+      Array.from(container.querySelectorAll('.ag-hour-label')).map((n) => n.textContent ?? '');
+
+    it('default business hours render exactly 08:00..19:00 (12 rows) — no regression', () => {
+      const items: Appointment[] = [
+        appt({ day: 'jeu', start: '09:00', dur: 30, patient: 'A', reason: 'r', status: 'arrived' }),
+        appt({ day: 'jeu', start: '16:00', dur: 30, patient: 'B', reason: 'r', status: 'arrived' }),
+      ];
+      const { container } = render(<AgendaGrid days={DAYS} appointments={items} today="jeu" now="08:00" />);
+      const labels = hourLabels(container);
+      expect(labels.length).toBe(12);
+      expect(labels[0]).toBe('08:00');
+      expect(labels[labels.length - 1]).toBe('19:00');
+      expect(gridHeight(container)).toBe(12 * ROW_PX);
+    });
+
+    it('evening appointments (Image #5: 17h–23h50) extend the grid and stay inside it', () => {
+      const evening: Appointment[] = [
+        appt({ day: 'jeu', start: '17:00', dur: 30, patient: 'E1', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '20:00', dur: 30, patient: 'E2', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '21:00', dur: 30, patient: 'E3', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '21:30', dur: 30, patient: 'E4', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '23:00', dur: 15, patient: 'E5', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '23:30', dur: 15, patient: 'E6', reason: 'r', status: 'confirmed' }),
+        appt({ day: 'jeu', start: '23:50', dur: 10, patient: 'E7', reason: 'r', status: 'confirmed' }),
+      ];
+      // now in the past so isLate styling never interferes with the layout test.
+      const { container } = render(<AgendaGrid days={DAYS} appointments={evening} today="jeu" now="08:00" />);
+      const labels = hourLabels(container);
+      // La grille doit descendre au moins jusqu'à 23:00 — sinon le RDV de 23h50
+      // retombe dans le vide sous le dernier libellé (le bug d'origine).
+      expect(labels).toContain('23:00');
+      const h = gridHeight(container);
+      const blocks = container.querySelectorAll('.ag-daycol').item(3).querySelectorAll('.ag-block');
+      expect(blocks.length).toBe(7);
+      // INVARIANT ANTI-BUG : aucun bloc n'est positionné sous la grille.
+      Array.from(blocks).forEach((b) => {
+        const top = parseFloat((b as HTMLElement).style.top);
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(top).toBeLessThan(h);
+      });
+    });
+
+    it('early-morning appointment (07:00) lowers the first hour and sits near the top', () => {
+      const items: Appointment[] = [
+        appt({ day: 'jeu', start: '07:00', dur: 30, patient: 'Early', reason: 'r', status: 'arrived' }),
+      ];
+      const { container } = render(<AgendaGrid days={DAYS} appointments={items} today="jeu" now="08:00" />);
+      expect(hourLabels(container)[0]).toBe('07:00');
+      const block = container.querySelector('.ag-block') as HTMLElement;
+      // Origine = 07:00 → le bloc 07:00 est tout en haut (≈ 1 px d'inset), pas
+      // poussé hors champ par une origine figée à 08:00.
+      expect(parseFloat(block.style.top)).toBeLessThanOrEqual(2);
     });
   });
 });

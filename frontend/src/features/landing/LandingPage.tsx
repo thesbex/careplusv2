@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { useT } from '@/lib/i18n/I18nProvider';
 import './landing.css';
 
 // ─────────── SVG icons (inline, scoped au prototype).
@@ -97,32 +98,14 @@ const IconCheck = () => (
   </svg>
 );
 
-// ────────── Données partagées entre les deux variantes
-const FAQ_ITEMS = [
-  {
-    q: 'Mes données sont-elles hébergées au Maroc ?',
-    a: 'Oui. Tous les serveurs careplus sont hébergés au Maroc, conformément à la loi 09-08 sur la protection des données personnelles. Vos dossiers patients ne quittent jamais le territoire.',
-  },
-  {
-    q: "Puis-je essayer sans m'engager ?",
-    a: "14 jours d'essai sans carte bancaire. Vous pouvez annuler en un clic depuis votre tableau de bord, à tout moment.",
-  },
-  {
-    q: 'Comment migrer depuis mon logiciel actuel ?',
-    a: 'Notre équipe importe vos patients, antécédents et historiques de RDV gratuitement. Compter 24 à 72 h selon le volume.',
-  },
-  {
-    q: 'La facturation est-elle conforme à la loi 9-88 ?',
-    a: 'Oui : ICE, mentions légales, TVA ou exonération, numérotation continue. Vos factures sont prêtes pour votre fiduciaire.',
-  },
-  {
-    q: 'Combien de temps pour installer ?',
-    a: '10 minutes pour créer votre compte et configurer votre agenda. Notre équipe est disponible par téléphone si besoin.',
-  },
-  {
-    q: 'Puis-je utiliser careplus sur mobile ?',
-    a: "Oui, careplus est entièrement responsive et fonctionne sur smartphone, tablette et ordinateur. Une app native iOS/Android est en cours de développement.",
-  },
+// ────────── Données partagées entre les deux variantes (clés i18n)
+const FAQ_ITEMS: { qKey: string; aKey: string }[] = [
+  { qKey: 'landing.faq.q1', aKey: 'landing.faq.a1' },
+  { qKey: 'landing.faq.q2', aKey: 'landing.faq.a2' },
+  { qKey: 'landing.faq.q3', aKey: 'landing.faq.a3' },
+  { qKey: 'landing.faq.q4', aKey: 'landing.faq.a4' },
+  { qKey: 'landing.faq.q5', aKey: 'landing.faq.a5' },
+  { qKey: 'landing.faq.q6', aKey: 'landing.faq.a6' },
 ];
 
 // ════════════════════════════════════════════════════════════════════════
@@ -139,6 +122,7 @@ export default function LandingPage() {
 // ════════════════════════════════════════════════════════════════════════
 
 function LandingDesktop() {
+  const { t } = useT();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
 
@@ -154,35 +138,35 @@ function LandingDesktop() {
       {/* Nav */}
       <nav className="nav">
         <div className="container nav-inner">
-          <Link to="/" className="brand" aria-label="careplus — Accueil">
+          <Link to="/" className="brand" aria-label={t('landing.brandHome')}>
             <span className="mark"><LogoMark variant="gradient" /></span>
             <span className="wm">care<span className="plus">plus</span></span>
           </Link>
           <div className="nav-links">
-            <a href="#fonctionnalites">Fonctionnalités</a>
-            <a href="#ecrans">Interface</a>
-            <a href="#tarifs">Tarifs</a>
-            <a href="#temoignages">Témoignages</a>
-            <a href="#faq">FAQ</a>
+            <a href="#fonctionnalites">{t('landing.nav.features')}</a>
+            <a href="#ecrans">{t('landing.nav.interface')}</a>
+            <a href="#tarifs">{t('landing.nav.pricing')}</a>
+            <a href="#temoignages">{t('landing.nav.testimonials')}</a>
+            <a href="#faq">{t('landing.nav.faq')}</a>
           </div>
           <div className="nav-cta">
-            <Link to="/login" className="btn ghost desktop-only">Se connecter</Link>
-            <a href="#cta" className="btn primary">Essai gratuit 14&nbsp;j</a>
-            <button type="button" className="nav-burger" aria-label="Menu" onClick={() => setDrawerOpen((v) => !v)}>
+            <Link to="/login" className="btn ghost desktop-only">{t('landing.nav.login')}</Link>
+            <a href="#cta" className="btn primary">{t('landing.nav.trial')}</a>
+            <button type="button" className="nav-burger" aria-label={t('landing.menu')} onClick={() => setDrawerOpen((v) => !v)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
             </button>
           </div>
         </div>
         <div className={`nav-drawer${drawerOpen ? ' open' : ''}`}>
           <div className="container">
-            <a href="#fonctionnalites" onClick={() => setDrawerOpen(false)}>Fonctionnalités</a>
-            <a href="#ecrans" onClick={() => setDrawerOpen(false)}>Interface</a>
-            <a href="#tarifs" onClick={() => setDrawerOpen(false)}>Tarifs</a>
-            <a href="#temoignages" onClick={() => setDrawerOpen(false)}>Témoignages</a>
-            <a href="#faq" onClick={() => setDrawerOpen(false)}>FAQ</a>
+            <a href="#fonctionnalites" onClick={() => setDrawerOpen(false)}>{t('landing.nav.features')}</a>
+            <a href="#ecrans" onClick={() => setDrawerOpen(false)}>{t('landing.nav.interface')}</a>
+            <a href="#tarifs" onClick={() => setDrawerOpen(false)}>{t('landing.nav.pricing')}</a>
+            <a href="#temoignages" onClick={() => setDrawerOpen(false)}>{t('landing.nav.testimonials')}</a>
+            <a href="#faq" onClick={() => setDrawerOpen(false)}>{t('landing.nav.faq')}</a>
             <div className="drawer-actions">
-              <Link to="/login" className="btn">Se connecter</Link>
-              <a href="#cta" className="btn primary" onClick={() => setDrawerOpen(false)}>Démarrer mon essai gratuit</a>
+              <Link to="/login" className="btn">{t('landing.nav.login')}</Link>
+              <a href="#cta" className="btn primary" onClick={() => setDrawerOpen(false)}>{t('landing.cta.startTrial')}</a>
             </div>
           </div>
         </div>
@@ -192,21 +176,21 @@ function LandingDesktop() {
       <section className="hero">
         <div className="container hero-grid">
           <div>
-            <span className="hero-pill"><span className="d" />Hébergé au Maroc · conforme loi 09-08</span>
-            <h1>La gestion de votre cabinet, <em>enfin simplement.</em></h1>
-            <p className="hero-sub">Agenda, dossier patient, consultation, prescription et facturation conforme. Tout ce dont votre cabinet a besoin dans une seule suite, pensée pour la pratique médicale marocaine.</p>
+            <span className="hero-pill"><span className="d" />{t('landing.hero.pill')}</span>
+            <h1>{t('landing.hero.title1')} <em>{t('landing.hero.title2')}</em></h1>
+            <p className="hero-sub">{t('landing.hero.sub')}</p>
             <div className="hero-cta">
-              <a href="#cta" className="btn primary lg">Démarrer mon essai gratuit</a>
-              <a href="#ecrans" className="btn lg">Voir l&apos;interface →</a>
+              <a href="#cta" className="btn primary lg">{t('landing.cta.startTrial')}</a>
+              <a href="#ecrans" className="btn lg">{t('landing.cta.seeInterface')}</a>
             </div>
             <div className="hero-note">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5l3 3L13 4.5" /></svg>
-              Sans carte bancaire · Installation en 10 minutes
+              {t('landing.hero.note')}
             </div>
             <div className="hero-trust">
-              <div><span className="n">184</span><span className="l">cabinets au Maroc</span></div>
-              <div><span className="n">62k</span><span className="l">consultations / mois</span></div>
-              <div><span className="n">99,98%</span><span className="l">disponibilité</span></div>
+              <div><span className="n">184</span><span className="l">{t('landing.trust.cabinets')}</span></div>
+              <div><span className="n">62k</span><span className="l">{t('landing.trust.consults')}</span></div>
+              <div><span className="n">99,98%</span><span className="l">{t('landing.trust.uptime')}</span></div>
             </div>
           </div>
 
@@ -266,7 +250,7 @@ function LandingDesktop() {
       {/* Trust */}
       <section className="trust">
         <div className="container trust-inner">
-          <span className="trust-label">Choisi par des cabinets de</span>
+          <span className="trust-label">{t('landing.trust.label')}</span>
           <div className="trust-logos">
             <span className="trust-logo"><span className="mk">C</span>Casablanca</span>
             <span className="trust-logo"><span className="mk">R</span>Rabat</span>
@@ -282,15 +266,15 @@ function LandingDesktop() {
       <section className="flow" id="fonctionnalites">
         <div className="container">
           <div className="sec-head">
-            <span className="sec-eyebrow"><span className="d" />Tout le flux patient</span>
-            <h2 className="sec-title">De l&apos;appel téléphonique à la facture payée</h2>
-            <p className="sec-sub">Une seule plateforme pour votre secrétaire, votre assistante et vous. Chaque étape conçue pour la pratique médicale marocaine.</p>
+            <span className="sec-eyebrow"><span className="d" />{t('landing.flow.eyebrow')}</span>
+            <h2 className="sec-title">{t('landing.flow.title')}</h2>
+            <p className="sec-sub">{t('landing.flow.sub')}</p>
           </div>
           <div className="flow-grid">
-            <div className="flow-card"><span className="flow-num">01</span><div className="flow-ic"><IconCalendar /></div><div className="flow-h">Agenda intelligent</div><div className="flow-p">Vue semaine ou jour, créneaux configurables, prise de RDV en 3 clics. Vue mobile pour votre secrétaire en déplacement.</div></div>
-            <div className="flow-card"><span className="flow-num">02</span><div className="flow-ic"><IconClock /></div><div className="flow-h">Salle d&apos;attente</div><div className="flow-p">Suivi en temps réel : qui est arrivé, qui passe ses constantes, qui est en consultation. Plus de « où en est ce patient ? ».</div></div>
-            <div className="flow-card"><span className="flow-num">03</span><div className="flow-ic"><IconStetho /></div><div className="flow-h">Consultation SOAP</div><div className="flow-p">Notes structurées Subjectif / Objectif / Analyse / Plan. Allergies et antécédents toujours visibles. Historique en un clic.</div></div>
-            <div className="flow-card"><span className="flow-num">04</span><div className="flow-ic"><IconInvoice /></div><div className="flow-h">Facturation conforme</div><div className="flow-p">Factures loi 9-88, ICE, mentions légales, TVA ou exonération. Suivi des impayés et relances automatisées.</div></div>
+            <div className="flow-card"><span className="flow-num">01</span><div className="flow-ic"><IconCalendar /></div><div className="flow-h">{t('landing.flow.agenda.t')}</div><div className="flow-p">{t('landing.flow.agenda.p')}</div></div>
+            <div className="flow-card"><span className="flow-num">02</span><div className="flow-ic"><IconClock /></div><div className="flow-h">{t('landing.flow.salle.t')}</div><div className="flow-p">{t('landing.flow.salle.p')}</div></div>
+            <div className="flow-card"><span className="flow-num">03</span><div className="flow-ic"><IconStetho /></div><div className="flow-h">{t('landing.flow.soap.t')}</div><div className="flow-p">{t('landing.flow.soap.p')}</div></div>
+            <div className="flow-card"><span className="flow-num">04</span><div className="flow-ic"><IconInvoice /></div><div className="flow-h">{t('landing.flow.factu.t')}</div><div className="flow-p">{t('landing.flow.factu.p')}</div></div>
           </div>
         </div>
       </section>
@@ -299,9 +283,9 @@ function LandingDesktop() {
       <section className="mosaic" id="ecrans">
         <div className="container">
           <div className="sec-head">
-            <span className="sec-eyebrow"><span className="d" />L&apos;interface en détail</span>
-            <h2 className="sec-title">Conçue par des médecins, pour des médecins</h2>
-            <p className="sec-sub">Dense quand il le faut, respirante où il le faut. Typographie utilitaire, hiérarchie claire, aucune place pour l&apos;ambiguïté.</p>
+            <span className="sec-eyebrow"><span className="d" />{t('landing.mosaic.eyebrow')}</span>
+            <h2 className="sec-title">{t('landing.mosaic.title')}</h2>
+            <p className="sec-sub">{t('landing.mosaic.sub')}</p>
           </div>
           <div className="mosaic-grid">
             <div className="mc lg">
@@ -314,7 +298,7 @@ function LandingDesktop() {
                 <div style={{ fontSize: 9.5, color: 'var(--ink-3)' }}>15h</div><div /><div className="b am">15:00 Ziani</div><div className="b">15:00 Benkirane</div><div />
                 <div style={{ fontSize: 9.5, color: 'var(--ink-3)' }}>16h</div><div className="b">16:00 Tazi</div><div /><div /><div className="b">16:30 Alami · Bilan</div>
               </div>
-              <span className="mc-label"><span className="kb">01</span>Agenda semaine</span>
+              <span className="mc-label"><span className="kb">01</span>{t('landing.mosaic.label.agenda')}</span>
             </div>
 
             <div className="mc md">
@@ -325,7 +309,7 @@ function LandingDesktop() {
                 <div className="row"><div className="av" style={{ background: '#C7DCEE', color: '#1C4B75' }}>AC</div><div className="nm">Ahmed Cherkaoui</div><div className="pl a">Arrivé</div></div>
                 <div className="row"><div className="av">KT</div><div className="nm">Khadija Tahiri</div><div className="pl w">Attend</div></div>
               </div>
-              <span className="mc-label"><span className="kb">04</span>Salle d&apos;attente</span>
+              <span className="mc-label"><span className="kb">04</span>{t('landing.mosaic.label.salle')}</span>
             </div>
 
             <div className="mc sm">
@@ -335,7 +319,7 @@ function LandingDesktop() {
                 <div className="c"><div className="k">T°</div><div className="v">36,8<span>°C</span></div></div>
                 <div className="c"><div className="k">SpO₂</div><div className="v">98<span>%</span></div></div>
               </div>
-              <span className="mc-label"><span className="kb">05</span>Constantes</span>
+              <span className="mc-label"><span className="kb">05</span>{t('landing.mosaic.label.constantes')}</span>
             </div>
 
             <div className="mc sm">
@@ -345,7 +329,7 @@ function LandingDesktop() {
                 <div className="row"><span className="n">Youssef Ziani</span><span className="a">450</span><span className="s p">Payée</span></div>
                 <div className="row"><span className="n">Khadija Tahiri</span><span className="a">300</span><span className="s o">Retard</span></div>
               </div>
-              <span className="mc-label"><span className="kb">09</span>Facturation</span>
+              <span className="mc-label"><span className="kb">09</span>{t('landing.mosaic.label.factu')}</span>
             </div>
 
             <div className="mc md">
@@ -357,7 +341,7 @@ function LandingDesktop() {
                 <div className="line"><div className="t">Atorvastatine 20 mg</div><div className="d">1 cp soir · 30 j</div></div>
                 <div className="line"><div className="t">Aspirine 100 mg</div><div className="d">1 cp midi · 30 j</div></div>
               </div>
-              <span className="mc-label"><span className="kb">08</span>Ordonnance A4</span>
+              <span className="mc-label"><span className="kb">08</span>{t('landing.mosaic.label.ordonnance')}</span>
             </div>
           </div>
         </div>
@@ -369,14 +353,14 @@ function LandingDesktop() {
 
           <div className="feat-row">
             <div>
-              <div className="feat-kicker"><IconCalendar />Agenda</div>
-              <h3>Un agenda que votre secrétaire adopte en 10 minutes</h3>
-              <p>Tous les rendez-vous, toutes les salles, tous les praticiens en une vue. Créneaux de 15 à 45 minutes, glisser-déposer pour replanifier, codes couleur par statut.</p>
+              <div className="feat-kicker"><IconCalendar />{t('landing.feat.agenda.kicker')}</div>
+              <h3>{t('landing.feat.agenda.h')}</h3>
+              <p>{t('landing.feat.agenda.p')}</p>
               <ul>
-                <li><span className="ck"><IconCheck /></span><span><strong>Multi-praticiens</strong> · chaque médecin son agenda, consultables côte à côte</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>SMS de rappel</strong> automatiques la veille, en français ou en arabe</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Horaires personnalisables</strong> par jour, pauses et jours fériés</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Vue mobile</strong> pour la secrétaire en déplacement</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.agenda.li1.s')}</strong> · {t('landing.feat.agenda.li1.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.agenda.li2.s')}</strong> {t('landing.feat.agenda.li2.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.agenda.li3.s')}</strong> {t('landing.feat.agenda.li3.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.agenda.li4.s')}</strong> {t('landing.feat.agenda.li4.r')}</span></li>
               </ul>
             </div>
             <div className="feat-vis">
@@ -394,14 +378,14 @@ function LandingDesktop() {
 
           <div className="feat-row rev">
             <div>
-              <div className="feat-kicker"><IconStetho />Consultation</div>
-              <h3>La consultation, structurée et sans friction</h3>
-              <p>Notes SOAP, antécédents et allergies en haut de page, prescription en deux clics. Tout ce qui se passe pendant la consultation reste à portée de regard.</p>
+              <div className="feat-kicker"><IconStetho />{t('landing.feat.consult.kicker')}</div>
+              <h3>{t('landing.feat.consult.h')}</h3>
+              <p>{t('landing.feat.consult.p')}</p>
               <ul>
-                <li><span className="ck"><IconCheck /></span><span><strong>Modèles de consultation</strong> par spécialité — médecine générale, cardio, gynéco, pédiatrie</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Prescriptions</strong> avec base médicaments et alertes interactions</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Ordonnances A4</strong> mises en page automatiquement, signature scannée</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Historique unifié</strong> consultation, biologie, imagerie</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.consult.li1.s')}</strong> {t('landing.feat.consult.li1.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.consult.li2.s')}</strong> {t('landing.feat.consult.li2.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.consult.li3.s')}</strong> {t('landing.feat.consult.li3.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.consult.li4.s')}</strong> {t('landing.feat.consult.li4.r')}</span></li>
               </ul>
             </div>
             <div className="feat-vis">
@@ -423,14 +407,14 @@ function LandingDesktop() {
 
           <div className="feat-row">
             <div>
-              <div className="feat-kicker"><IconBars />Pilotage</div>
-              <h3>Pilotez votre cabinet, pas seulement vos patients</h3>
-              <p>Tableau de bord clair pour comprendre votre activité : volume de consultations, mix payeurs, suivi des impayés, taux de no-show.</p>
+              <div className="feat-kicker"><IconBars />{t('landing.feat.pilot.kicker')}</div>
+              <h3>{t('landing.feat.pilot.h')}</h3>
+              <p>{t('landing.feat.pilot.p')}</p>
               <ul>
-                <li><span className="ck"><IconCheck /></span><span><strong>KPIs hebdomadaires</strong> envoyés par email tous les lundis matin</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Suivi des impayés</strong> et relances automatiques</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Export comptable</strong> au format de votre fiduciaire</span></li>
-                <li><span className="ck"><IconCheck /></span><span><strong>Mode multi-cabinets</strong> pour les groupes médicaux</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.pilot.li1.s')}</strong> {t('landing.feat.pilot.li1.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.pilot.li2.s')}</strong> {t('landing.feat.pilot.li2.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.pilot.li3.s')}</strong> {t('landing.feat.pilot.li3.r')}</span></li>
+                <li><span className="ck"><IconCheck /></span><span><strong>{t('landing.feat.pilot.li4.s')}</strong> {t('landing.feat.pilot.li4.r')}</span></li>
               </ul>
             </div>
             <div className="feat-vis">
@@ -464,52 +448,52 @@ function LandingDesktop() {
       <section className="pricing" id="tarifs">
         <div className="container">
           <div className="sec-head">
-            <span className="sec-eyebrow"><span className="d" />Tarifs</span>
-            <h2 className="sec-title">Sans engagement, sans surprise</h2>
-            <p className="sec-sub">Essai 14 jours offert sur tous les plans. Annulation en un clic depuis votre tableau de bord.</p>
+            <span className="sec-eyebrow"><span className="d" />{t('landing.pricing.eyebrow')}</span>
+            <h2 className="sec-title">{t('landing.pricing.title')}</h2>
+            <p className="sec-sub">{t('landing.pricing.sub')}</p>
           </div>
           <div className="pricing-grid">
             <div className="price">
-              <div className="name">Solo</div>
-              <div className="desc">Pour le médecin qui débute son cabinet.</div>
-              <div className="amt"><span className="n">290</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+              <div className="name">{t('landing.pricing.solo.name')}</div>
+              <div className="desc">{t('landing.pricing.solo.desc')}</div>
+              <div className="amt"><span className="n">290</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
               <ul>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Agenda et dossier patient</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Consultation SOAP</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Ordonnances et certificats</li>
-                <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Multi-utilisateurs</li>
-                <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Facturation conforme</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f1')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f2')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f3')}</li>
+                <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f4')}</li>
+                <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f5')}</li>
               </ul>
-              <a href="#cta" className="btn">Choisir Solo</a>
+              <a href="#cta" className="btn">{t('landing.pricing.solo.cta')}</a>
             </div>
 
             <div className="price featured">
-              <span className="price-tag">Le plus choisi</span>
-              <div className="name">Cabinet</div>
-              <div className="desc">Pour le cabinet avec secrétaire et assistante.</div>
-              <div className="amt"><span className="n">490</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+              <span className="price-tag">{t('landing.pricing.featured')}</span>
+              <div className="name">{t('landing.pricing.cabinet.name')}</div>
+              <div className="desc">{t('landing.pricing.cabinet.desc')}</div>
+              <div className="amt"><span className="n">490</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
               <ul>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Tout le plan Solo</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Multi-utilisateurs (3 inclus)</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Salle d&apos;attente temps réel</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Facturation loi 9-88, ICE</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>SMS de rappel inclus</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f1')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f2')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f3')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f4')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f5')}</li>
               </ul>
-              <a href="#cta" className="btn primary">Démarrer l&apos;essai</a>
+              <a href="#cta" className="btn primary">{t('landing.pricing.cabinet.cta')}</a>
             </div>
 
             <div className="price">
-              <div className="name">Multi-cabinets</div>
-              <div className="desc">Pour les groupes médicaux et polycliniques.</div>
-              <div className="amt"><span className="n">990</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+              <div className="name">{t('landing.pricing.multi.name')}</div>
+              <div className="desc">{t('landing.pricing.multi.desc')}</div>
+              <div className="amt"><span className="n">990</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
               <ul>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Tout le plan Cabinet</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Utilisateurs illimités</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Sites multiples</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>API et intégrations</li>
-                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Account manager dédié</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f1')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f2')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f3')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f4')}</li>
+                <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f5')}</li>
               </ul>
-              <a href="#cta" className="btn">Nous contacter</a>
+              <a href="#cta" className="btn">{t('landing.pricing.multi.cta')}</a>
             </div>
           </div>
         </div>
@@ -519,28 +503,28 @@ function LandingDesktop() {
       <section className="testi" id="temoignages">
         <div className="container">
           <div className="sec-head">
-            <span className="sec-eyebrow"><span className="d" />Témoignages</span>
-            <h2 className="sec-title">Ce qu&apos;en disent nos médecins</h2>
+            <span className="sec-eyebrow"><span className="d" />{t('landing.testi.eyebrow')}</span>
+            <h2 className="sec-title">{t('landing.testi.title')}</h2>
           </div>
           <div className="testi-grid">
             <div className="quote">
-              <p className="q">On a divisé par deux le temps de la secrétaire en fin de journée. Les patients arrivent, on sait où ils en sont, et la facture sort en un clic. Pour un cabinet de cardio, c&apos;est un changement complet.</p>
+              <p className="q">{t('landing.testi.q1')}</p>
               <div className="who">
                 <div className="av">KE</div>
                 <div>
                   <div className="nm">Dr. Khalid El Amrani</div>
-                  <div className="ti">Cardiologue · Casablanca</div>
+                  <div className="ti">{t('landing.testi.q1Role')}</div>
                 </div>
               </div>
             </div>
             <div className="quote-side">
               <div className="qs">
-                <p className="qt">L&apos;agenda mobile a changé notre quotidien. Ma secrétaire prend les RDV depuis son téléphone, depuis chez elle si besoin.</p>
-                <div className="who"><div className="av">SH</div><div><div className="nm">Dr. Sofia Haddad</div><div className="ti">Pédiatre · Rabat</div></div></div>
+                <p className="qt">{t('landing.testi.q2')}</p>
+                <div className="who"><div className="av">SH</div><div><div className="nm">Dr. Sofia Haddad</div><div className="ti">{t('landing.testi.q2Role')}</div></div></div>
               </div>
               <div className="qs">
-                <p className="qt">Les factures conformes loi 9-88 m&apos;ont fait gagner des heures avec mon comptable. Tout est prêt, propre, exportable.</p>
-                <div className="who"><div className="av">YB</div><div><div className="nm">Dr. Younes Bennani</div><div className="ti">Médecine générale · Marrakech</div></div></div>
+                <p className="qt">{t('landing.testi.q3')}</p>
+                <div className="who"><div className="av">YB</div><div><div className="nm">Dr. Younes Bennani</div><div className="ti">{t('landing.testi.q3Role')}</div></div></div>
               </div>
             </div>
           </div>
@@ -551,19 +535,19 @@ function LandingDesktop() {
       <section className="faq" id="faq">
         <div className="container faq-grid">
           <div>
-            <span className="sec-eyebrow"><span className="d" />FAQ</span>
-            <h2 className="sec-title" style={{ textAlign: 'left', fontSize: 36 }}>Questions fréquentes</h2>
-            <p style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--ink-3)', margin: '14px 0 0', maxWidth: 340 }}>Une question qui n&apos;est pas listée ? Notre équipe est joignable du lundi au vendredi, 9h–19h.</p>
+            <span className="sec-eyebrow"><span className="d" />{t('landing.faq.eyebrow')}</span>
+            <h2 className="sec-title" style={{ textAlign: 'left', fontSize: 36 }}>{t('landing.faq.title')}</h2>
+            <p style={{ fontSize: 15, lineHeight: 1.55, color: 'var(--ink-3)', margin: '14px 0 0', maxWidth: 340 }}>{t('landing.faq.intro')}</p>
           </div>
           <div className="faq-list">
             {FAQ_ITEMS.map((item, i) => (
               <div key={i} className={`faq-item${faqOpen === i ? ' open' : ''}`}>
                 <button type="button" className="faq-q" onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
-                  {item.q}
+                  {t(item.qKey)}
                   <span className="pl" aria-hidden="true">+</span>
                 </button>
                 <div className="faq-a">
-                  <div className="faq-a-inner">{item.a}</div>
+                  <div className="faq-a-inner">{t(item.aKey)}</div>
                 </div>
               </div>
             ))}
@@ -574,11 +558,11 @@ function LandingDesktop() {
       {/* Final CTA */}
       <section className="final" id="cta">
         <div className="container final-inner">
-          <h2>Prêt à simplifier votre cabinet&nbsp;?</h2>
-          <p>Essai 14 jours · Sans carte bancaire · Installation en 10 minutes. Notre équipe vous accompagne à chaque étape.</p>
+          <h2>{t('landing.final.title')}</h2>
+          <p>{t('landing.final.sub')}</p>
           <div className="final-actions">
-            <Link to="/login" className="btn lg">Démarrer mon essai gratuit</Link>
-            <a href="tel:+212522000000" className="btn ghost lg">Parler à un conseiller</a>
+            <Link to="/login" className="btn lg">{t('landing.cta.startTrial')}</Link>
+            <a href="tel:+212522000000" className="btn ghost lg">{t('landing.cta.talkAdvisor')}</a>
           </div>
         </div>
       </section>
@@ -592,40 +576,40 @@ function LandingDesktop() {
                 <span className="mark"><LogoMark variant="white" /></span>
                 <span className="wm">care<span className="plus">plus</span></span>
               </Link>
-              <p>La suite logicielle qui permet aux cabinets médicaux marocains de se concentrer sur leurs patients.</p>
+              <p>{t('landing.foot.tagline')}</p>
               <p className="foot-legal">careplus SARL · Casablanca, Maroc<br />ICE 002847163000091 · RC 547821</p>
             </div>
             <div>
-              <h4>Produit</h4>
+              <h4>{t('landing.foot.product')}</h4>
               <ul>
-                <li><a href="#fonctionnalites">Fonctionnalités</a></li>
-                <li><a href="#ecrans">Interface</a></li>
-                <li><a href="#tarifs">Tarifs</a></li>
-                <li><a href="#temoignages">Témoignages</a></li>
+                <li><a href="#fonctionnalites">{t('landing.nav.features')}</a></li>
+                <li><a href="#ecrans">{t('landing.nav.interface')}</a></li>
+                <li><a href="#tarifs">{t('landing.nav.pricing')}</a></li>
+                <li><a href="#temoignages">{t('landing.nav.testimonials')}</a></li>
               </ul>
             </div>
             <div>
-              <h4>Société</h4>
+              <h4>{t('landing.foot.company')}</h4>
               <ul>
-                <li><a href="#">À propos</a></li>
-                <li><a href="#">Contact</a></li>
-                <li><a href="#">Carrières</a></li>
-                <li><a href="#">Presse</a></li>
+                <li><a href="#">{t('landing.foot.about')}</a></li>
+                <li><a href="#">{t('landing.foot.contact')}</a></li>
+                <li><a href="#">{t('landing.foot.careers')}</a></li>
+                <li><a href="#">{t('landing.foot.press')}</a></li>
               </ul>
             </div>
             <div>
-              <h4>Ressources</h4>
+              <h4>{t('landing.foot.resources')}</h4>
               <ul>
-                <li><a href="#faq">FAQ</a></li>
-                <li><a href="#">Blog</a></li>
-                <li><a href="#">Centre d&apos;aide</a></li>
-                <li><a href="#">Loi 09-08</a></li>
+                <li><a href="#faq">{t('landing.nav.faq')}</a></li>
+                <li><a href="#">{t('landing.foot.blog')}</a></li>
+                <li><a href="#">{t('landing.foot.help')}</a></li>
+                <li><a href="#">{t('landing.foot.law')}</a></li>
               </ul>
             </div>
           </div>
           <div className="foot-bottom">
-            <span>© 2026 careplus SARL · Tous droits réservés.</span>
-            <span>Hébergement conforme loi 09-08 · ANRT</span>
+            <span>{t('landing.foot.rights')}</span>
+            <span>{t('landing.foot.hosting')}</span>
           </div>
         </div>
       </footer>
@@ -638,6 +622,7 @@ function LandingDesktop() {
 // ════════════════════════════════════════════════════════════════════════
 
 function LandingMobile() {
+  const { t } = useT();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -668,13 +653,13 @@ function LandingMobile() {
     <div className="m-lp-root">
       {/* Top nav */}
       <header className="m-nav">
-        <Link to="/" className="m-brand" aria-label="careplus — Accueil">
+        <Link to="/" className="m-brand" aria-label={t('landing.brandHome')}>
           <span className="mark"><LogoMark variant="gradient" /></span>
           <span className="wm">care<span className="plus">plus</span></span>
         </Link>
         <span className="spacer" />
-        <Link to="/login" className="login">Connexion</Link>
-        <button type="button" className="m-burger" aria-label="Menu" onClick={() => setDrawerOpen(true)}>
+        <Link to="/login" className="login">{t('landing.nav.loginShort')}</Link>
+        <button type="button" className="m-burger" aria-label={t('landing.menu')} onClick={() => setDrawerOpen(true)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
       </header>
@@ -683,37 +668,37 @@ function LandingMobile() {
       <div className={`m-drawer${drawerOpen ? ' open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setDrawerOpen(false); }}>
         <div className="m-drawer-sheet">
           <div className="m-drawer-head">
-            <button type="button" className="m-drawer-close" aria-label="Fermer" onClick={() => setDrawerOpen(false)}>
+            <button type="button" className="m-drawer-close" aria-label={t('landing.close')} onClick={() => setDrawerOpen(false)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
             </button>
           </div>
           <nav>
-            <a href="#fonctionnalites" onClick={() => setDrawerOpen(false)}>Fonctionnalités</a>
-            <a href="#ecrans" onClick={() => setDrawerOpen(false)}>Interface</a>
-            <a href="#tarifs" onClick={() => setDrawerOpen(false)}>Tarifs</a>
-            <a href="#temoignages" onClick={() => setDrawerOpen(false)}>Témoignages</a>
-            <a href="#faq" onClick={() => setDrawerOpen(false)}>FAQ</a>
-            <Link to="/login" onClick={() => setDrawerOpen(false)}>Se connecter</Link>
+            <a href="#fonctionnalites" onClick={() => setDrawerOpen(false)}>{t('landing.nav.features')}</a>
+            <a href="#ecrans" onClick={() => setDrawerOpen(false)}>{t('landing.nav.interface')}</a>
+            <a href="#tarifs" onClick={() => setDrawerOpen(false)}>{t('landing.nav.pricing')}</a>
+            <a href="#temoignages" onClick={() => setDrawerOpen(false)}>{t('landing.nav.testimonials')}</a>
+            <a href="#faq" onClick={() => setDrawerOpen(false)}>{t('landing.nav.faq')}</a>
+            <Link to="/login" onClick={() => setDrawerOpen(false)}>{t('landing.nav.login')}</Link>
           </nav>
           <div className="drawer-cta">
-            <a href="#cta" className="m-btn primary" onClick={() => setDrawerOpen(false)}>Démarrer mon essai gratuit</a>
-            <a href="tel:+212522000000" className="m-btn ghost">Parler à un conseiller</a>
+            <a href="#cta" className="m-btn primary" onClick={() => setDrawerOpen(false)}>{t('landing.cta.startTrial')}</a>
+            <a href="tel:+212522000000" className="m-btn ghost">{t('landing.cta.talkAdvisor')}</a>
           </div>
         </div>
       </div>
 
       {/* Hero */}
       <section className="m-hero">
-        <span className="m-pill"><span className="d" />Hébergé au Maroc · loi 09-08</span>
-        <h1>La gestion de votre cabinet, <em>enfin simplement.</em></h1>
-        <p className="lead">Agenda, dossier patient, consultation et facturation conforme. Tout en une seule app, pensée pour la pratique médicale marocaine.</p>
+        <span className="m-pill"><span className="d" />{t('landing.hero.pillShort')}</span>
+        <h1>{t('landing.hero.title1')} <em>{t('landing.hero.title2')}</em></h1>
+        <p className="lead">{t('landing.hero.subShort')}</p>
         <div className="cta-row">
-          <a href="#cta" className="m-btn primary">Démarrer mon essai gratuit</a>
-          <a href="#ecrans" className="m-btn">Voir l&apos;interface</a>
+          <a href="#cta" className="m-btn primary">{t('landing.cta.startTrial')}</a>
+          <a href="#ecrans" className="m-btn">{t('landing.cta.seeInterfaceShort')}</a>
         </div>
         <div className="m-hero-note">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5l3 3L13 4.5" /></svg>
-          Sans carte bancaire · Installation en 10 minutes
+          {t('landing.hero.note')}
         </div>
 
         <div className="m-hero-phone">
@@ -737,31 +722,31 @@ function LandingMobile() {
 
       {/* Trust */}
       <div className="m-trust">
-        <div className="stat"><div className="n">184</div><div className="l">cabinets au Maroc</div></div>
-        <div className="stat"><div className="n">62k</div><div className="l">consults / mois</div></div>
-        <div className="stat"><div className="n">99,98%</div><div className="l">disponibilité</div></div>
+        <div className="stat"><div className="n">184</div><div className="l">{t('landing.trust.cabinets')}</div></div>
+        <div className="stat"><div className="n">62k</div><div className="l">{t('landing.trust.consultsShort')}</div></div>
+        <div className="stat"><div className="n">99,98%</div><div className="l">{t('landing.trust.uptime')}</div></div>
       </div>
 
       {/* Flow */}
       <section className="m-flow" id="fonctionnalites">
-        <span className="sec-eyebrow"><span className="d" />Tout le flux patient</span>
-        <h2 className="sec-title">De l&apos;appel téléphonique à la facture payée</h2>
-        <p className="sec-sub">Une seule app pour votre secrétaire, votre assistante et vous.</p>
+        <span className="sec-eyebrow"><span className="d" />{t('landing.flow.eyebrow')}</span>
+        <h2 className="sec-title">{t('landing.flow.title')}</h2>
+        <p className="sec-sub">{t('landing.flow.subShort')}</p>
 
         <div className="m-flow-list">
-          <div className="m-flow-card"><div className="ic"><IconCalendar /></div><div><div className="num">01</div><h3>Agenda intelligent</h3><p>Vue jour ou semaine, créneaux configurables, prise de RDV en 3 taps. Vue mobile native pour votre secrétaire.</p></div></div>
-          <div className="m-flow-card"><div className="ic"><IconClock /></div><div><div className="num">02</div><h3>Salle d&apos;attente</h3><p>Suivi temps réel : qui est arrivé, qui passe ses constantes, qui est en consultation. Plus jamais perdu.</p></div></div>
-          <div className="m-flow-card"><div className="ic"><IconStetho /></div><div><div className="num">03</div><h3>Consultation SOAP</h3><p>Notes structurées Subjectif/Objectif/Analyse/Plan. Allergies et antécédents toujours visibles en un tap.</p></div></div>
-          <div className="m-flow-card"><div className="ic"><IconInvoice /></div><div><div className="num">04</div><h3>Facturation conforme</h3><p>Factures loi 9-88, ICE, mentions légales, TVA ou exonération. Suivi des impayés et relances automatisées.</p></div></div>
+          <div className="m-flow-card"><div className="ic"><IconCalendar /></div><div><div className="num">01</div><h3>{t('landing.flow.agenda.t')}</h3><p>{t('landing.flow.agenda.pMobile')}</p></div></div>
+          <div className="m-flow-card"><div className="ic"><IconClock /></div><div><div className="num">02</div><h3>{t('landing.flow.salle.t')}</h3><p>{t('landing.flow.salle.pMobile')}</p></div></div>
+          <div className="m-flow-card"><div className="ic"><IconStetho /></div><div><div className="num">03</div><h3>{t('landing.flow.soap.t')}</h3><p>{t('landing.flow.soap.pMobile')}</p></div></div>
+          <div className="m-flow-card"><div className="ic"><IconInvoice /></div><div><div className="num">04</div><h3>{t('landing.flow.factu.t')}</h3><p>{t('landing.flow.factu.p')}</p></div></div>
         </div>
       </section>
 
       {/* Screens carousel */}
       <section className="m-screens" id="ecrans">
         <div className="sec-head">
-          <span className="sec-eyebrow"><span className="d" />L&apos;interface en détail</span>
-          <h2 className="sec-title">Conçue par des médecins, pour des médecins</h2>
-          <p className="sec-sub">Glissez pour voir chaque écran.</p>
+          <span className="sec-eyebrow"><span className="d" />{t('landing.mosaic.eyebrow')}</span>
+          <h2 className="sec-title">{t('landing.mosaic.title')}</h2>
+          <p className="sec-sub">{t('landing.mosaic.subShort')}</p>
         </div>
 
         <div className="m-screens-rail" ref={railRef}>
@@ -773,7 +758,7 @@ function LandingMobile() {
               <div className="row"><div className="av" style={{ background: '#C7DCEE', color: '#1C4B75' }}>AC</div><div className="nm">Ahmed Cherkaoui</div><div className="pl a">Arrivé</div></div>
               <div className="row"><div className="av">KT</div><div className="nm">Khadija Tahiri</div><div className="pl w">Attend</div></div>
             </div>
-            <div className="m-screen-foot"><span className="kb">04</span><span className="lbl">Salle d&apos;attente</span></div>
+            <div className="m-screen-foot"><span className="kb">04</span><span className="lbl">{t('landing.mosaic.label.salle')}</span></div>
           </div>
 
           <div className="m-screen">
@@ -784,7 +769,7 @@ function LandingMobile() {
               <div className="c"><div className="k">SpO₂</div><div className="v">98<span>%</span></div></div>
               <div className="c" style={{ gridColumn: 'span 2' }}><div className="k">Poids · IMC</div><div className="v" style={{ fontSize: 18 }}>76 kg<span> · 24,8</span></div></div>
             </div>
-            <div className="m-screen-foot"><span className="kb">05</span><span className="lbl">Constantes</span></div>
+            <div className="m-screen-foot"><span className="kb">05</span><span className="lbl">{t('landing.mosaic.label.constantes')}</span></div>
           </div>
 
           <div className="m-screen">
@@ -796,7 +781,7 @@ function LandingMobile() {
               <div className="ln"><div className="t">Atorvastatine 20 mg</div><div className="d">1 cp soir · 30 j</div></div>
               <div className="ln"><div className="t">Aspirine 100 mg</div><div className="d">1 cp midi · 30 j</div></div>
             </div>
-            <div className="m-screen-foot"><span className="kb">08</span><span className="lbl">Ordonnance A4</span></div>
+            <div className="m-screen-foot"><span className="kb">08</span><span className="lbl">{t('landing.mosaic.label.ordonnance')}</span></div>
           </div>
 
           <div className="m-screen">
@@ -807,7 +792,7 @@ function LandingMobile() {
               <div className="row"><span className="n">Khadija Tahiri</span><span className="a">300</span><span className="s o">Retard</span></div>
               <div className="row"><span className="n">Ahmed Cherkaoui</span><span className="a">350</span><span className="s p">Payée</span></div>
             </div>
-            <div className="m-screen-foot"><span className="kb">09</span><span className="lbl">Facturation</span></div>
+            <div className="m-screen-foot"><span className="kb">09</span><span className="lbl">{t('landing.mosaic.label.factu')}</span></div>
           </div>
         </div>
 
@@ -818,65 +803,65 @@ function LandingMobile() {
 
       {/* Pricing */}
       <section className="m-pricing" id="tarifs">
-        <span className="sec-eyebrow"><span className="d" />Tarifs</span>
-        <h2 className="sec-title">Sans engagement, sans surprise</h2>
-        <p className="sec-sub">Essai 14 jours offert. Annulation en un clic.</p>
+        <span className="sec-eyebrow"><span className="d" />{t('landing.pricing.eyebrow')}</span>
+        <h2 className="sec-title">{t('landing.pricing.title')}</h2>
+        <p className="sec-sub">{t('landing.pricing.subShort')}</p>
 
         <div className="m-price-list">
           <div className="m-price">
-            <div className="name">Solo</div>
-            <div className="desc">Pour le médecin qui débute son cabinet.</div>
-            <div className="amt"><span className="n">290</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+            <div className="name">{t('landing.pricing.solo.name')}</div>
+            <div className="desc">{t('landing.pricing.solo.desc')}</div>
+            <div className="amt"><span className="n">290</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
             <ul>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Agenda et dossier patient</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Consultation SOAP</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Ordonnances et certificats</li>
-              <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Facturation conforme</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f1')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f2')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f3')}</li>
+              <li className="muted"><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.solo.f5')}</li>
             </ul>
-            <a href="#cta" className="m-btn">Choisir Solo</a>
+            <a href="#cta" className="m-btn">{t('landing.pricing.solo.cta')}</a>
           </div>
 
           <div className="m-price featured">
-            <span className="m-price-tag">Le plus choisi</span>
-            <div className="name">Cabinet</div>
-            <div className="desc">Pour le cabinet avec secrétaire et assistante.</div>
-            <div className="amt"><span className="n">490</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+            <span className="m-price-tag">{t('landing.pricing.featured')}</span>
+            <div className="name">{t('landing.pricing.cabinet.name')}</div>
+            <div className="desc">{t('landing.pricing.cabinet.desc')}</div>
+            <div className="amt"><span className="n">490</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
             <ul>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Tout le plan Solo</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Multi-utilisateurs (3 inclus)</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Salle d&apos;attente temps réel</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Facturation loi 9-88, ICE</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>SMS de rappel inclus</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f1')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f2')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f3')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f4')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.cabinet.f5')}</li>
             </ul>
-            <a href="#cta" className="m-btn primary">Démarrer l&apos;essai</a>
+            <a href="#cta" className="m-btn primary">{t('landing.pricing.cabinet.cta')}</a>
           </div>
 
           <div className="m-price">
-            <div className="name">Multi-cabinets</div>
-            <div className="desc">Pour les groupes médicaux et polycliniques.</div>
-            <div className="amt"><span className="n">990</span><span className="u">DH</span><span className="per">/ mois HT</span></div>
+            <div className="name">{t('landing.pricing.multi.name')}</div>
+            <div className="desc">{t('landing.pricing.multi.desc')}</div>
+            <div className="amt"><span className="n">990</span><span className="u">DH</span><span className="per">{t('landing.pricing.perMonth')}</span></div>
             <ul>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Tout le plan Cabinet</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Utilisateurs illimités</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Sites multiples</li>
-              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>Account manager dédié</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f1')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f2')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f3')}</li>
+              <li><svg className="ck" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 8.5l3 3L13 4.5" /></svg>{t('landing.pricing.multi.f5')}</li>
             </ul>
-            <a href="#cta" className="m-btn">Nous contacter</a>
+            <a href="#cta" className="m-btn">{t('landing.pricing.multi.cta')}</a>
           </div>
         </div>
       </section>
 
       {/* Testimonial */}
       <section className="m-test" id="temoignages">
-        <span className="sec-eyebrow"><span className="d" />Témoignages</span>
-        <h2 className="sec-title">Ce qu&apos;en disent nos médecins</h2>
+        <span className="sec-eyebrow"><span className="d" />{t('landing.testi.eyebrow')}</span>
+        <h2 className="sec-title">{t('landing.testi.title')}</h2>
         <div className="m-test-card">
-          <p className="q">On a divisé par deux le temps de la secrétaire en fin de journée. Les patients arrivent, on sait où ils en sont, et la facture sort en un clic.</p>
+          <p className="q">{t('landing.testi.q1Short')}</p>
           <div className="who">
             <div className="av">KE</div>
             <div>
               <div className="nm">Dr. Khalid El Amrani</div>
-              <div className="ti">Cardiologue · Casablanca</div>
+              <div className="ti">{t('landing.testi.q1Role')}</div>
             </div>
           </div>
         </div>
@@ -884,18 +869,18 @@ function LandingMobile() {
 
       {/* FAQ */}
       <section className="m-faq" id="faq">
-        <span className="sec-eyebrow"><span className="d" />Questions fréquentes</span>
-        <h2 className="sec-title">On répond à tout</h2>
+        <span className="sec-eyebrow"><span className="d" />{t('landing.faq.eyebrowMobile')}</span>
+        <h2 className="sec-title">{t('landing.faq.titleMobile')}</h2>
 
         <div className="m-faq-list">
           {FAQ_ITEMS.slice(0, 5).map((item, i) => (
             <div key={i} className={`m-faq-item${faqOpen === i ? ' open' : ''}`}>
               <button type="button" className="m-faq-q" onClick={() => setFaqOpen(faqOpen === i ? null : i)}>
-                {item.q}
+                {t(item.qKey)}
                 <span className="plus" aria-hidden="true">+</span>
               </button>
               <div className="m-faq-a">
-                <div className="m-faq-a-inner">{item.a}</div>
+                <div className="m-faq-a-inner">{t(item.aKey)}</div>
               </div>
             </div>
           ))}
@@ -904,9 +889,9 @@ function LandingMobile() {
 
       {/* Final CTA */}
       <div className="m-final" id="cta">
-        <h2>Prêt à simplifier votre cabinet ?</h2>
-        <p>Essai 14 jours · Sans carte · Installation en 10 minutes.</p>
-        <Link to="/login" className="m-btn">Démarrer mon essai gratuit</Link>
+        <h2>{t('landing.final.title')}</h2>
+        <p>{t('landing.final.subShort')}</p>
+        <Link to="/login" className="m-btn">{t('landing.cta.startTrial')}</Link>
       </div>
 
       {/* Footer */}
@@ -915,53 +900,53 @@ function LandingMobile() {
           <span className="mark"><LogoMark variant="soft" /></span>
           <span className="wm">care<span className="plus">plus</span></span>
         </Link>
-        <p className="tag">La suite logicielle qui permet aux cabinets médicaux marocains de se concentrer sur leurs patients.</p>
+        <p className="tag">{t('landing.foot.tagline')}</p>
 
         <div className="m-foot-grid">
           <div>
-            <h4>Produit</h4>
+            <h4>{t('landing.foot.product')}</h4>
             <ul>
-              <li><a href="#fonctionnalites">Fonctionnalités</a></li>
-              <li><a href="#ecrans">Interface</a></li>
-              <li><a href="#tarifs">Tarifs</a></li>
+              <li><a href="#fonctionnalites">{t('landing.nav.features')}</a></li>
+              <li><a href="#ecrans">{t('landing.nav.interface')}</a></li>
+              <li><a href="#tarifs">{t('landing.nav.pricing')}</a></li>
             </ul>
           </div>
           <div>
-            <h4>Société</h4>
+            <h4>{t('landing.foot.company')}</h4>
             <ul>
-              <li><a href="#">À propos</a></li>
-              <li><a href="#">Contact</a></li>
-              <li><a href="#">Carrières</a></li>
+              <li><a href="#">{t('landing.foot.about')}</a></li>
+              <li><a href="#">{t('landing.foot.contact')}</a></li>
+              <li><a href="#">{t('landing.foot.careers')}</a></li>
             </ul>
           </div>
           <div>
-            <h4>Ressources</h4>
+            <h4>{t('landing.foot.resources')}</h4>
             <ul>
-              <li><a href="#faq">FAQ</a></li>
-              <li><a href="#">Blog</a></li>
-              <li><a href="#">Aide</a></li>
+              <li><a href="#faq">{t('landing.nav.faq')}</a></li>
+              <li><a href="#">{t('landing.foot.blog')}</a></li>
+              <li><a href="#">{t('landing.foot.helpShort')}</a></li>
             </ul>
           </div>
           <div>
-            <h4>Légal</h4>
+            <h4>{t('landing.foot.legal')}</h4>
             <ul>
-              <li><a href="#">Confidentialité</a></li>
-              <li><a href="#">CGU</a></li>
-              <li><a href="#">Loi 09-08</a></li>
+              <li><a href="#">{t('landing.foot.privacy')}</a></li>
+              <li><a href="#">{t('landing.foot.cgu')}</a></li>
+              <li><a href="#">{t('landing.foot.law')}</a></li>
             </ul>
           </div>
         </div>
 
         <div className="legal">
           © 2026 careplus SARL · Casablanca, Maroc · ICE 002847163000091<br />
-          Hébergement conforme loi 09-08
+          {t('landing.foot.hosting')}
         </div>
       </footer>
 
       {/* Sticky bottom CTA */}
       <div className="m-cta-bar">
-        <div className="price-hint">À partir de<b>290 DH/mois</b></div>
-        <a href="#cta" className="m-btn primary">Essai gratuit</a>
+        <div className="price-hint">{t('landing.priceHint.from')}<b>290 DH/mois</b></div>
+        <a href="#cta" className="m-btn primary">{t('landing.cta.startTrialShort')}</a>
       </div>
     </div>
   );

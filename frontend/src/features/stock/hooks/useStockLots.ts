@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockLot, StockLotStatus } from '../types';
 
 /**
@@ -7,6 +8,7 @@ import type { StockLot, StockLotStatus } from '../types';
  * GET /api/stock/articles/:id/lots
  */
 export function useStockLots(articleId: string | undefined, status?: StockLotStatus) {
+  const { t } = useT();
   const params: Record<string, string> = {};
   if (status) params.status = status;
 
@@ -23,6 +25,6 @@ export function useStockLots(articleId: string | undefined, status?: StockLotSta
   return {
     lots: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les lots.' : null,
+    error: error ? t('stock.err.loadLots') : null,
   };
 }

@@ -31,7 +31,9 @@ export function useConsentTemplates() {
   return {
     templates: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les modèles de consentement.' : null,
+    // i18n (#122) : clé de traduction (les hooks ne peuvent pas appeler useT) ;
+    // le consommateur (ConsentTemplatesTab) passe la valeur à t().
+    error: error ? 'consent.tpl.err.loadList' : null,
   };
 }
 

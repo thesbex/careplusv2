@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
@@ -26,23 +27,24 @@ import { RecordDoseDrawerMobile } from './components/RecordDoseDrawer.mobile';
 import type { VaccinationCalendarEntry } from './types';
 
 type TabStatus = 'OVERDUE' | 'DUE_SOON' | 'UPCOMING';
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
-const TABS: { id: TabStatus; label: string }[] = [
-  { id: 'OVERDUE', label: 'En retard' },
-  { id: 'DUE_SOON', label: 'Cette semaine' },
-  { id: 'UPCOMING', label: 'Ce mois' },
+const TABS: { id: TabStatus; labelKey: string }[] = [
+  { id: 'OVERDUE', labelKey: 'vacc.tab.overdue' },
+  { id: 'DUE_SOON', labelKey: 'vacc.tab.dueWeekShort' },
+  { id: 'UPCOMING', labelKey: 'vacc.tab.dueMonthShort' },
 ];
 
-function formatAge(birthDateIso: string): string {
+function formatAge(birthDateIso: string, t: Tr): string {
   const birth = new Date(birthDateIso);
   const now = new Date();
   const diffMs = now.getTime() - birth.getTime();
   const totalMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
-  if (totalMonths < 24) return `${totalMonths} mois`;
+  if (totalMonths < 24) return t('vacc.param.age.months', { n: totalMonths });
   const years = Math.floor(totalMonths / 12);
   const rem = totalMonths % 12;
-  if (rem === 0) return `${years} ans`;
-  return `${years} ans ${rem} mois`;
+  if (rem === 0) return t('vacc.param.age.years', { n: years });
+  return t('vacc.param.age.yearsMonths', { years, months: rem });
 }
 
 function formatDate(isoDate: string): string {
@@ -73,7 +75,7 @@ function queueEntryToCalendarEntry(e: VaccinationQueueEntry): VaccinationCalenda
   };
 }
 
-function DaysOverdueBadge({ days }: { days: number }) {
+function DaysOverdueBadge({ days, t }: { days: number; t: Tr }) {
   if (days > 0) {
     return (
       <span
@@ -86,7 +88,7 @@ function DaysOverdueBadge({ days }: { days: number }) {
           color: 'var(--danger)',
         }}
       >
-        +{days} j
+        {t('vacc.overdue.plusDays', { n: days })}
       </span>
     );
   }
@@ -102,13 +104,13 @@ function DaysOverdueBadge({ days }: { days: number }) {
           color: 'var(--amber, #d97706)',
         }}
       >
-        Aujourd&apos;hui
+        {t('vacc.overdue.today')}
       </span>
     );
   }
   return (
     <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>
-      {Math.abs(days)} j
+      {t('vacc.overdue.days', { n: Math.abs(days) })}
     </span>
   );
 }
@@ -121,6 +123,7 @@ function VaccineCard({
   onRecord: (entry: VaccinationQueueEntry) => void;
 }) {
   const navigate = useNavigate();
+  const { t } = useT();
   const initials =
     `${entry.patientFirstName[0] ?? ''}${entry.patientLastName[0] ?? ''}`.toUpperCase();
 
@@ -163,7 +166,7 @@ function VaccineCard({
             {entry.patientLastName} {entry.patientFirstName}
           </button>
           <div style={{ fontSize: 13, color: 'var(--ink-3)', marginTop: 2 }}>
-            {formatAge(entry.patientBirthDate)}
+            {formatAge(entry.patientBirthDate, t)}
           </div>
         </div>
       </div>
@@ -182,7 +185,7 @@ function VaccineCard({
         <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
           {formatDate(entry.targetDate)}
         </span>
-        <DaysOverdueBadge days={entry.daysOverdue} />
+        <DaysOverdueBadge days={entry.daysOverdue} t={t} />
         <button
           type="button"
           onClick={() => onRecord(entry)}
@@ -200,7 +203,7 @@ function VaccineCard({
             cursor: 'pointer',
           }}
         >
-          Saisir
+          {t('vacc.action.recordShort')}
         </button>
       </div>
     </div>
@@ -259,6 +262,7 @@ function SkeletonCards() {
 
 export default function VaccinationsQueuePageMobile() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [activeTab, setActiveTab] = useState<TabStatus>('OVERDUE');
   const [page, setPage] = useState(0);
 
@@ -295,16 +299,16 @@ export default function VaccinationsQueuePageMobile() {
       onTabChange={(t) => navigate(TAB_MAP[t])}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-          title="Vaccinations"
-          sub="Suivi PNI marocain"
+          left={<MIconBtn icon="ChevronLeft" label={t('vacc.queue.back')} onClick={() => navigate('/parametres')} />}
+          title={t('vacc.queue.title')}
+          sub={t('vacc.queue.subShort')}
         />
       }
     >
       {/* Tab bar */}
       <div
         role="tablist"
-        aria-label="Statut de vaccination"
+        aria-label={t('vacc.queue.statusAria')}
         style={{
           position: 'sticky',
           top: 0,
@@ -316,15 +320,15 @@ export default function VaccinationsQueuePageMobile() {
           overflowX: 'auto',
         }}
       >
-        {TABS.map((t) => {
-          const isActive = activeTab === t.id;
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
           return (
             <button
-              key={t.id}
+              key={tab.id}
               type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => handleTabChange(t.id)}
+              onClick={() => handleTabChange(tab.id)}
               style={{
                 flex: '1 0 auto',
                 padding: '12px 14px',
@@ -339,7 +343,7 @@ export default function VaccinationsQueuePageMobile() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {t.label}
+              {t(tab.labelKey)}
             </button>
           );
         })}
@@ -374,10 +378,10 @@ export default function VaccinationsQueuePageMobile() {
             }}
           >
             {activeTab === 'OVERDUE'
-              ? 'Aucune dose en retard'
+              ? t('vacc.empty.overdue')
               : activeTab === 'DUE_SOON'
-              ? 'Aucune dose due cette semaine'
-              : 'Aucune dose due ce mois'}
+              ? t('vacc.empty.dueWeek')
+              : t('vacc.empty.dueMonth')}
           </div>
         )}
 
@@ -407,13 +411,13 @@ export default function VaccinationsQueuePageMobile() {
               marginTop: 4,
             }}
           >
-            Charger plus ({totalElements - entries.length} restants)
+            {t('vacc.loadMore', { n: totalElements - entries.length })}
           </button>
         )}
 
         {isLoading && entries.length > 0 && (
           <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-3)', padding: 12 }}>
-            Chargement…
+            {t('vacc.loading')}
           </div>
         )}
       </div>

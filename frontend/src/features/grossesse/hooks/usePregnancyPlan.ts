@@ -1,11 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { PregnancyVisitPlanEntry } from '../types';
 
 /**
  * GET /api/pregnancies/:id/plan — 8-entry visit plan (SA 12, 20, 26, 30, 34, 36, 38, 40).
  */
 export function usePregnancyPlan(pregnancyId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['pregnancies', 'plan', pregnancyId],
     queryFn: () =>
@@ -19,6 +21,6 @@ export function usePregnancyPlan(pregnancyId?: string) {
   return {
     plan: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger le plan de visites.' : null,
+    error: error ? t('gross.err.loadPlan') : null,
   };
 }

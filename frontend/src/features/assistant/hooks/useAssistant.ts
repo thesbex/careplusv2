@@ -27,7 +27,7 @@ export function useAiConfig() {
   return {
     config: data ?? null,
     isLoading,
-    error: error ? "Impossible de lire la configuration de l'assistant." : null,
+    error: error ? 'ai.errLoadConfig' : null,
   };
 }
 
@@ -41,7 +41,7 @@ export function useAssistantConversations() {
     enabled: isDoctor,
     staleTime: 30_000,
   });
-  return { conversations: data ?? [], isLoading, error: error ? 'Chargement impossible.' : null };
+  return { conversations: data ?? [], isLoading, error: error ? 'ai.errLoadList' : null };
 }
 
 /** Détail (fil de messages) d'une conversation. */
@@ -55,7 +55,7 @@ export function useAssistantConversation(conversationId: string | null) {
     enabled: !!conversationId,
     staleTime: 10_000,
   });
-  return { conversation: data ?? null, isLoading, error: error ? 'Conversation introuvable.' : null };
+  return { conversation: data ?? null, isLoading, error: error ? 'ai.errLoadConversation' : null };
 }
 
 /** Pose une question : crée ou poursuit une conversation. */

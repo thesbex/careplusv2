@@ -15,6 +15,7 @@ import { Select, Textarea } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Close, Search, Plus } from '@/components/icons';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { usePatientSearch } from './hooks/usePatientSearch';
 import { useReasons } from './hooks/useReasons';
@@ -31,11 +32,9 @@ import './prise-rdv.css';
 
 // ── Mini calendar ─────────────────────────────────────────────────────────────
 
+// Single-letter weekday headers (Mon→Sun). Kept as locale-neutral initials —
+// the prototype uses the same compact column heads regardless of language.
 const WEEKDAYS_SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const MONTHS_FR = [
-  'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
-];
 
 interface MiniCalProps {
   year: number;
@@ -49,6 +48,8 @@ interface MiniCalProps {
 }
 
 function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, availableDates, isLoading }: MiniCalProps) {
+  const { t } = useT();
+  const monthLabel = t(`rdv.month.${month}`);
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
 
@@ -73,16 +74,16 @@ function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, avail
           className="prise-rdv-cal-nav"
           onClick={onPrevMonth}
           disabled={!canGoPrev}
-          aria-label="Mois précédent"
+          aria-label={t('rdv.cal.prevMonth')}
         >
           ‹
         </button>
-        <span className="prise-rdv-cal-title">{MONTHS_FR[month]} {year}</span>
-        <button type="button" className="prise-rdv-cal-nav" onClick={onNextMonth} aria-label="Mois suivant">
+        <span className="prise-rdv-cal-title">{monthLabel} {year}</span>
+        <button type="button" className="prise-rdv-cal-nav" onClick={onNextMonth} aria-label={t('rdv.cal.nextMonth')}>
           ›
         </button>
       </div>
-      <div className="prise-rdv-cal-grid" role="grid" aria-label="Calendrier">
+      <div className="prise-rdv-cal-grid" role="grid" aria-label={t('rdv.cal.aria')}>
         {WEEKDAYS_SHORT.map((d, i) => (
           <div key={i} className="prise-rdv-cal-weekday" role="columnheader">{d}</div>
         ))}
@@ -100,7 +101,7 @@ function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, avail
               <button
                 type="button"
                 disabled={disabled}
-                aria-label={`${day} ${MONTHS_FR[month] ?? ''} ${year}`}
+                aria-label={t('rdv.cal.dayAria', { day, month: monthLabel, year })}
                 aria-pressed={isSelected}
                 className={[
                   'prise-rdv-cal-day',
@@ -120,7 +121,7 @@ function MiniCal({ year, month, onPrevMonth, onNextMonth, value, onChange, avail
           );
         })}
       </div>
-      {isLoading && <div className="prise-rdv-cal-loading">Chargement…</div>}
+      {isLoading && <div className="prise-rdv-cal-loading">{t('rdv.cal.loading')}</div>}
     </div>
   );
 }
@@ -137,6 +138,7 @@ function sanitizeName(v: string) {
 }
 
 function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
+  const { t } = useT();
   const { create, isPending } = useCreatePatient();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -148,19 +150,19 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
   async function handleSave() {
     setValidationError(null);
     if (firstName.trim().length < 2 || lastName.trim().length < 2) {
-      setValidationError('Prénom et nom requis (2 caractères min, lettres uniquement).');
+      setValidationError(t('rdv.newPatient.err.names'));
       return;
     }
     if (!phone.trim() || !/^[\d\s+\-().]{6,20}$/.test(phone.trim())) {
-      setValidationError('Téléphone requis (6-20 chiffres).');
+      setValidationError(t('rdv.newPatient.err.phone'));
       return;
     }
     if (!birthDate) {
-      setValidationError('Date de naissance requise.');
+      setValidationError(t('rdv.newPatient.err.birthRequired'));
       return;
     }
     if (birthDate > new Date().toISOString().slice(0, 10)) {
-      setValidationError('La date de naissance ne peut pas être dans le futur.');
+      setValidationError(t('rdv.newPatient.err.birthFuture'));
       return;
     }
     try {
@@ -182,7 +184,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
         allergies: [],
         antecedents: [],
       });
-      toast.success('Patient créé.');
+      toast.success(t('rdv.newPatient.toast.created'));
       onCreated(created.id, `${created.firstName} ${created.lastName}`);
     } catch (err) {
       // Surface the real backend reason (CIN duplicate, validation message,
@@ -194,9 +196,9 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
         (err as { response?: { data?: { message?: string; detail?: string } } })?.response?.data
           ?.detail ??
         (err as Error)?.message ??
-        'Création refusée par le serveur.';
+        t('rdv.newPatient.err.serverFallback');
       setValidationError(detail);
-      toast.error('Création impossible', { description: detail });
+      toast.error(t('rdv.newPatient.toast.failed'), { description: detail });
       // eslint-disable-next-line no-console
       console.error('[NewPatientInline] create failed', err);
     }
@@ -225,11 +227,11 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 10, color: 'var(--primary)' }}>
-        Nouveau patient — informations minimales
+        {t('rdv.newPatient.title')}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
         <input
-          placeholder="Prénom *"
+          placeholder={t('rdv.newPatient.firstName')}
           value={firstName}
           onChange={(e) => {
             setFirstName(sanitizeName(e.target.value));
@@ -247,7 +249,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
           autoFocus
         />
         <input
-          placeholder="Nom *"
+          placeholder={t('rdv.newPatient.lastName')}
           value={lastName}
           onChange={(e) => {
             setLastName(sanitizeName(e.target.value));
@@ -269,12 +271,12 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
           value={gender}
           onChange={(e) => setGender(e.target.value as 'M' | 'F' | 'O')}
         >
-          <option value="M">Homme</option>
-          <option value="F">Femme</option>
-          <option value="O">Autre</option>
+          <option value="M">{t('rdv.newPatient.gender.M')}</option>
+          <option value="F">{t('rdv.newPatient.gender.F')}</option>
+          <option value="O">{t('rdv.newPatient.gender.O')}</option>
         </Select>
         <input
-          placeholder="Téléphone *"
+          placeholder={t('rdv.newPatient.phone')}
           value={phone}
           onChange={(e) => {
             setPhone(e.target.value.replace(/[^\d\s+\-().]/g, ''));
@@ -301,7 +303,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
             setBirthDate(e.target.value);
             setValidationError(null);
           }}
-          aria-label="Date de naissance"
+          aria-label={t('rdv.newPatient.birthDate')}
           style={{
             width: '100%',
             height: 34,
@@ -314,7 +316,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
           }}
         />
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-          Date de naissance *
+          {t('rdv.newPatient.birthDateLabel')}
         </div>
       </div>
       {validationError && (
@@ -324,7 +326,7 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
       )}
       <div style={{ display: 'flex', gap: 8 }}>
         <Button type="button" size="sm" onClick={onCancel}>
-          Annuler
+          {t('common.cancel')}
         </Button>
         <Button
           type="button"
@@ -333,10 +335,10 @@ function NewPatientInline({ onCreated, onCancel }: NewPatientInlineProps) {
           disabled={isPending}
           onClick={() => void handleSave()}
         >
-          {isPending ? 'Création…' : 'Créer & sélectionner'}
+          {isPending ? t('rdv.newPatient.creating') : t('rdv.newPatient.createSelect')}
         </Button>
         <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto', alignSelf: 'center' }}>
-          Vous pourrez compléter le dossier plus tard.
+          {t('rdv.newPatient.completeLater')}
         </span>
       </div>
     </div>
@@ -365,6 +367,7 @@ export function PriseRDVDialog({
   prefilledDate,
   prefilledTime,
 }: PriseRDVDialogProps) {
+  const { t } = useT();
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
   const [selectedReasonId, setSelectedReasonId] = useState<string | null>(null);
@@ -483,10 +486,13 @@ export function PriseRDVDialog({
           })}`
         : '';
       const dr = first ? `Dr ${first.conflictPractitionerLastName}` : '';
+      const many = conflicts.length > 1;
       toast.warning(
-        `Conflit salle : ${conflicts.length} autre${conflicts.length > 1 ? 's' : ''} RDV partage${
-          conflicts.length > 1 ? 'nt' : ''
-        } cette salle au même créneau (${dr} ${time}).`,
+        t(many ? 'rdv.roomConflict.many' : 'rdv.roomConflict.one', {
+          count: conflicts.length,
+          dr,
+          time,
+        }),
       );
     } catch {
       // silent — conflict probe failure must not break the create flow.
@@ -505,7 +511,7 @@ export function PriseRDVDialog({
 
   async function onSubmit(data: RdvFormValues) {
     if (!selectedPatientId) {
-      setPatientError('Veuillez sélectionner un patient.');
+      setPatientError(t('rdv.err.selectPatient'));
       return;
     }
     const result = await createAppointment({
@@ -542,14 +548,14 @@ export function PriseRDVDialog({
           <div className="prise-rdv-header">
             <div>
               <Dialog.Title className="prise-rdv-header-title">
-                Nouveau rendez-vous
+                {t('rdv.title')}
               </Dialog.Title>
               <Dialog.Description className="prise-rdv-header-sub">
-                Renseigner le patient et le créneau — le RDV sera ajouté à l&apos;agenda
+                {t('rdv.subtitle')}
               </Dialog.Description>
             </div>
             <Dialog.Close asChild>
-              <Button variant="ghost" iconOnly aria-label="Fermer" style={{ marginLeft: 'auto' }}>
+              <Button variant="ghost" iconOnly aria-label={t('common.close')} style={{ marginLeft: 'auto' }}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -564,7 +570,7 @@ export function PriseRDVDialog({
 
               {/* Step 1: Patient */}
               <div style={{ marginBottom: 18 }}>
-                <div className="prise-rdv-step-label">Étape 1 · Patient</div>
+                <div className="prise-rdv-step-label">{t('rdv.step1')}</div>
 
                 {selectedPatientId && selectedPatientName ? (
                   /* ── Selected patient card ── */
@@ -583,7 +589,7 @@ export function PriseRDVDialog({
                         setValue('patientQuery', '');
                       }}
                     >
-                      Changer
+                      {t('rdv.change')}
                     </button>
                   </div>
                 ) : (
@@ -594,8 +600,8 @@ export function PriseRDVDialog({
                       <input
                         {...register('patientQuery')}
                         className="prise-rdv-search-input"
-                        placeholder="Nom, téléphone ou CIN…"
-                        aria-label="Rechercher un patient"
+                        placeholder={t('rdv.searchPlaceholder')}
+                        aria-label={t('rdv.searchAria')}
                         autoFocus
                       />
                       <Button
@@ -603,7 +609,7 @@ export function PriseRDVDialog({
                         type="button"
                         onClick={() => setShowNewPatientForm((v) => !v)}
                       >
-                        <Plus /> {showNewPatientForm ? 'Fermer' : 'Nouveau'}
+                        <Plus /> {showNewPatientForm ? t('common.close') : t('rdv.newPatientBtn')}
                       </Button>
                     </div>
 
@@ -624,7 +630,7 @@ export function PriseRDVDialog({
                       <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{patientError}</div>
                     )}
                     {!showNewPatientForm && candidates.length > 0 && (
-                      <div className="prise-rdv-candidates" role="listbox" aria-label="Résultats patients">
+                      <div className="prise-rdv-candidates" role="listbox" aria-label={t('rdv.candidatesAria')}>
                         {candidates.map((s) => (
                           <button
                             key={s.id}
@@ -642,11 +648,14 @@ export function PriseRDVDialog({
                             <div style={{ flex: 1 }}>
                               <div className="prise-rdv-candidate-name">{s.name}</div>
                               <div className="prise-rdv-candidate-meta">
-                                {s.phone} · Dernière visite : {s.lastVisit}
+                                {s.phone} · {t('rdv.lastVisit', { date: s.lastVisit })}
                               </div>
                             </div>
-                            {s.tags.map((t) => (
-                              <span key={t} className="pill">{t}</span>
+                            {typeof s.ageYears === 'number' && (
+                              <span className="pill">{t('rdv.years', { n: s.ageYears })}</span>
+                            )}
+                            {s.tags.map((tag) => (
+                              <span key={tag} className="pill">{tag}</span>
                             ))}
                           </button>
                         ))}
@@ -658,7 +667,7 @@ export function PriseRDVDialog({
 
               {/* Step 2: Créneau */}
               <div style={{ marginBottom: 18 }}>
-                <div className="prise-rdv-step-label">Étape 2 · Créneau</div>
+                <div className="prise-rdv-step-label">{t('rdv.step2')}</div>
                 <div className="prise-rdv-creneau-layout">
                   <MiniCal
                     year={calYear}
@@ -672,7 +681,7 @@ export function PriseRDVDialog({
                   />
                   <div className="prise-rdv-creneau-right">
                     <Field style={{ marginBottom: 12 }}>
-                      <FieldLabel htmlFor="rdv-dur">Durée</FieldLabel>
+                      <FieldLabel htmlFor="rdv-dur">{t('rdv.duration')}</FieldLabel>
                       <Controller
                         name="durationMin"
                         control={control}
@@ -683,21 +692,21 @@ export function PriseRDVDialog({
                             onChange={(e) => { field.onChange(Number(e.target.value)); setValue('time', ''); }}
                           >
                             {DURATION_OPTIONS.map((d) => (
-                              <option key={d.value} value={d.value}>{d.label}</option>
+                              <option key={d.value} value={d.value}>{t('rdv.dur.minutes', { n: d.value })}</option>
                             ))}
                           </Select>
                         )}
                       />
                     </Field>
-                    <div className="prise-rdv-slots-label">Créneaux disponibles</div>
+                    <div className="prise-rdv-slots-label">{t('rdv.slots')}</div>
                     {isLoadingSlots ? (
-                      <div className="prise-rdv-slots-empty">Chargement…</div>
+                      <div className="prise-rdv-slots-empty">{t('rdv.slotsLoading')}</div>
                     ) : slots.length === 0 ? (
                       <div className="prise-rdv-slots-empty">
-                        {dateValue ? 'Aucun créneau disponible ce jour' : 'Sélectionnez une date'}
+                        {dateValue ? t('rdv.slotsEmptyDay') : t('rdv.slotsPickDate')}
                       </div>
                     ) : (
-                      <div className="prise-rdv-slots" role="group" aria-label="Créneaux disponibles">
+                      <div className="prise-rdv-slots" role="group" aria-label={t('rdv.slotsAria')}>
                         {slots.map((s) => (
                           <button
                             key={s.time}
@@ -712,10 +721,10 @@ export function PriseRDVDialog({
                       </div>
                     )}
                     {errors.date && (
-                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{errors.date.message}</div>
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 6 }}>{t(errors.date.message ?? '')}</div>
                     )}
                     {errors.time && (
-                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{errors.time.message}</div>
+                      <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{t(errors.time.message ?? '')}</div>
                     )}
                   </div>
                 </div>
@@ -726,10 +735,10 @@ export function PriseRDVDialog({
                 <div style={{ marginBottom: 18 }}>
                   <div className="prise-rdv-step-label">
                     {showPractitionerField && showRoomField
-                      ? 'Médecin & salle'
+                      ? t('rdv.practitionerAndRoom')
                       : showPractitionerField
-                        ? 'Médecin'
-                        : 'Salle'}
+                        ? t('rdv.practitioner')
+                        : t('rdv.room')}
                   </div>
                   <div
                     style={{
@@ -741,15 +750,15 @@ export function PriseRDVDialog({
                   >
                     {showPractitionerField && (
                       <Field>
-                        <FieldLabel htmlFor="rdv-practitioner">Médecin</FieldLabel>
+                        <FieldLabel htmlFor="rdv-practitioner">{t('rdv.practitioner')}</FieldLabel>
                         <Select
                           id="rdv-practitioner"
-                          aria-label="Médecin"
+                          aria-label={t('rdv.practitioner')}
                           value={practitionerId}
                           onChange={(e) => setPractitionerId(e.target.value)}
                         >
                           <option value="" disabled>
-                            Choisir un médecin…
+                            {t('rdv.pickPractitioner')}
                           </option>
                           {activePractitioners.map((p) => (
                             <option key={p.id} value={p.id}>
@@ -762,14 +771,14 @@ export function PriseRDVDialog({
                     )}
                     {showRoomField && (
                       <Field>
-                        <FieldLabel htmlFor="rdv-room">Salle</FieldLabel>
+                        <FieldLabel htmlFor="rdv-room">{t('rdv.room')}</FieldLabel>
                         <Select
                           id="rdv-room"
-                          aria-label="Salle"
+                          aria-label={t('rdv.room')}
                           value={roomId}
                           onChange={(e) => setRoomId(e.target.value)}
                         >
-                          <option value="">Aucune</option>
+                          <option value="">{t('rdv.noRoom')}</option>
                           {activeRooms.map((r) => (
                             <option key={r.id} value={r.id}>
                               {r.name}
@@ -787,10 +796,10 @@ export function PriseRDVDialog({
 
               {/* Step 3: Motif */}
               <div>
-                <div className="prise-rdv-step-label">Étape 3 · Motif</div>
+                <div className="prise-rdv-step-label">{t('rdv.step3')}</div>
                 <Field style={{ marginBottom: 10 }}>
-                  <FieldLabel>Type</FieldLabel>
-                  <div className="prise-rdv-reason-btns" role="group" aria-label="Type de consultation">
+                  <FieldLabel>{t('rdv.type')}</FieldLabel>
+                  <div className="prise-rdv-reason-btns" role="group" aria-label={t('rdv.typeAria')}>
                     {reasons.map((r) => {
                       const isSelected = selectedReasonId === r.id;
                       return (
@@ -814,11 +823,11 @@ export function PriseRDVDialog({
                   </div>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="rdv-notes">Note pour le médecin (facultatif)</FieldLabel>
+                  <FieldLabel htmlFor="rdv-notes">{t('rdv.noteLabel')}</FieldLabel>
                   <Textarea
                     id="rdv-notes"
                     {...register('notes')}
-                    placeholder="Ex. Apporter carnet de vaccination, résultats de la dernière prise de sang, etc."
+                    placeholder={t('rdv.notePlaceholder')}
                   />
                 </Field>
               </div>
@@ -828,17 +837,17 @@ export function PriseRDVDialog({
             <div className="prise-rdv-footer">
               <label className="prise-rdv-sms-label">
                 <input type="checkbox" {...register('sendSms')} defaultChecked />
-                Envoyer un SMS de confirmation
+                {t('rdv.sendSms')}
               </label>
               {error && (
-                <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{error}</div>
+                <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{t(error)}</div>
               )}
               <div className="prise-rdv-footer-actions">
                 <Dialog.Close asChild>
-                  <Button type="button">Annuler</Button>
+                  <Button type="button">{t('common.cancel')}</Button>
                 </Dialog.Close>
                 <Button type="submit" variant="primary" disabled={isPending}>
-                  {isPending ? 'Enregistrement…' : 'Confirmer le RDV'}
+                  {isPending ? t('rdv.submitting') : t('rdv.confirm')}
                 </Button>
               </div>
             </div>

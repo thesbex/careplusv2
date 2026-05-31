@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Input';
 import { Plus, Trash, Users as UsersIcon } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useStaffList,
   useStaffSummary,
@@ -30,9 +31,9 @@ import {
   useDeleteSalaryPayment,
 } from './hooks/useStaff';
 import {
-  ROLE_LABELS,
+  ROLE_LABEL_KEYS,
   ROLE_ORDER,
-  LEAVE_TYPE_LABELS,
+  LEAVE_TYPE_LABEL_KEYS,
   LEAVE_TYPE_ORDER,
   formatMad,
   formatDays,
@@ -81,6 +82,7 @@ const EMPTY_STAFF_FORM: StaffFormState = {
 };
 
 export default function PersonnelPage() {
+  const { t } = useT();
   const { staff: rawStaff, isLoading } = useStaffList();
   const { createStaff, isPending: creating } = useCreateStaff();
   const { updateStaff, isPending: updating } = useUpdateStaff();
@@ -117,14 +119,22 @@ export default function PersonnelPage() {
 
   /** Export du personnel filtré + récap par membre (rôle, recrutement, salaire). */
   function exportStaffCsv() {
-    const headers = ['Nom', 'Poste', 'Recrutement', 'Salaire mensuel (MAD)', 'Téléphone', 'Statut', 'Notes'];
+    const headers = [
+      t('staff.csv.name'),
+      t('staff.csv.role'),
+      t('staff.csv.hireDate'),
+      t('staff.csv.salary'),
+      t('staff.csv.phone'),
+      t('staff.csv.status'),
+      t('staff.csv.notes'),
+    ];
     const rows = staff.map((s) => [
       s.fullName,
-      ROLE_LABELS[s.role] ?? s.role,
+      t(ROLE_LABEL_KEYS[s.role]),
       s.hireDate,
       s.monthlySalary != null ? String(s.monthlySalary) : '',
       s.phone ?? '',
-      s.active ? 'Actif' : 'Inactif',
+      s.active ? t('staff.statusActive') : t('staff.statusInactive'),
       (s.notes ?? '').replace(/\s+/g, ' '),
     ]);
     const csv = [headers, ...rows]
@@ -170,18 +180,18 @@ export default function PersonnelPage() {
 
   async function handleSave() {
     if (!form.fullName.trim()) {
-      toast.error('Le nom est requis.');
+      toast.error(t('staff.err.nameRequired'));
       return;
     }
     if (!form.hireDate) {
-      toast.error('La date de recrutement est requise.');
+      toast.error(t('staff.err.hireDateRequired'));
       return;
     }
     let salary: number | undefined;
     if (form.monthlySalary.trim()) {
       const n = Number(form.monthlySalary);
       if (Number.isNaN(n) || n < 0) {
-        toast.error('Le salaire doit être un nombre positif.');
+        toast.error(t('staff.err.salaryPositive'));
         return;
       }
       salary = n;
@@ -199,10 +209,10 @@ export default function PersonnelPage() {
     try {
       if (editingId) {
         await updateStaff({ id: editingId, body });
-        toast.success('Membre mis à jour.');
+        toast.success(t('staff.toast.updated'));
       } else {
         await createStaff(body);
-        toast.success('Membre ajouté.');
+        toast.success(t('staff.toast.added'));
       }
       setFormOpen(false);
       setForm(EMPTY_STAFF_FORM);
@@ -211,40 +221,40 @@ export default function PersonnelPage() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
-          : "Échec de l'enregistrement.",
+          ? t('staff.err.forbidden')
+          : t('staff.err.saveFailed'),
       );
     }
   }
 
   async function handleDelete(s: StaffResponse) {
-    if (!confirm(`Supprimer le membre « ${s.fullName} » ?`)) return;
+    if (!confirm(t('staff.confirmDelete', { name: s.fullName }))) return;
     try {
       await deleteStaff(s.id);
       if (detailId === s.id) setDetailId(null);
-      toast.success('Membre supprimé.');
+      toast.success(t('staff.toast.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
   return (
     <Screen
       active="personnel"
-      title="Personnel"
-      sub={`${staff.length} membre${staff.length > 1 ? 's' : ''}`}
+      title={t('staff.title')}
+      sub={t('staff.count', { n: staff.length, s: staff.length > 1 ? 's' : '' })}
       topbarRight={
         <>
           <Button
             type="button"
             onClick={exportStaffCsv}
             disabled={staff.length === 0}
-            title={staff.length === 0 ? 'Aucune ligne à exporter' : 'Exporter en CSV'}
+            title={staff.length === 0 ? t('staff.exportNothing') : t('staff.exportHint')}
           >
-            Exporter CSV
+            {t('staff.exportCsv')}
           </Button>
           <Button variant="primary" onClick={openCreate}>
-            <Plus /> Ajouter un membre
+            <Plus /> {t('staff.add')}
           </Button>
         </>
       }
@@ -256,53 +266,53 @@ export default function PersonnelPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, alignItems: 'end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Rechercher
+                {t('staff.filter.search')}
               </span>
               <input
                 type="search"
                 value={nameSearch}
                 onChange={(e) => setNameSearch(e.target.value)}
-                placeholder="Nom, prénom, téléphone…"
-                aria-label="Rechercher un membre"
+                placeholder={t('staff.filter.searchPlaceholder')}
+                aria-label={t('staff.filter.searchAria')}
                 style={inputStyle}
               />
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Poste
+                {t('staff.filter.role')}
               </span>
               <Select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as StaffRole | '')}
-                aria-label="Filtrer par poste"
+                aria-label={t('staff.filter.byRoleAria')}
                 style={inputStyle}
               >
-                <option value="">Tous</option>
+                <option value="">{t('staff.filter.all')}</option>
                 {ROLE_ORDER.map((r) => (
-                  <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                  <option key={r} value={r}>{t(ROLE_LABEL_KEYS[r])}</option>
                 ))}
               </Select>
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Statut
+                {t('staff.filter.status')}
               </span>
               <Select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as '' | 'active' | 'inactive')}
-                aria-label="Filtrer par statut"
+                aria-label={t('staff.filter.byStatusAria')}
                 style={inputStyle}
               >
-                <option value="">Tous</option>
-                <option value="active">Actifs</option>
-                <option value="inactive">Inactifs</option>
+                <option value="">{t('staff.filter.all')}</option>
+                <option value="active">{t('staff.filter.active')}</option>
+                <option value="inactive">{t('staff.filter.inactive')}</option>
               </Select>
             </label>
           </div>
           {hasActiveFilter && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, fontSize: 11.5, color: 'var(--ink-3)' }}>
               <span>
-                {staff.length} résultat{staff.length > 1 ? 's' : ''} après filtres (sur {rawStaff.length})
+                {t('staff.filter.results', { n: staff.length, s: staff.length > 1 ? 's' : '', total: rawStaff.length })}
               </span>
               <button
                 type="button"
@@ -313,7 +323,7 @@ export default function PersonnelPage() {
                   color: 'var(--primary)',
                 }}
               >
-                Réinitialiser
+                {t('staff.filter.reset')}
               </button>
             </div>
           )}
@@ -321,23 +331,23 @@ export default function PersonnelPage() {
 
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {isLoading && (
-            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('staff.loading')}</div>
           )}
           {!isLoading && staff.length === 0 && (
             <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun membre du personnel.
+              {t('staff.empty')}
             </div>
           )}
           {!isLoading && staff.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-2)', zIndex: 1 }}>
                 <tr>
-                  <Th>Nom</Th>
-                  <Th>Poste</Th>
-                  <Th style={{ width: 130 }}>Recrutement</Th>
-                  <Th style={{ textAlign: 'right', width: 140 }}>Salaire mensuel</Th>
-                  <Th style={{ width: 130 }}>Téléphone</Th>
-                  <Th style={{ width: 90 }}>Statut</Th>
+                  <Th>{t('staff.col.name')}</Th>
+                  <Th>{t('staff.col.role')}</Th>
+                  <Th style={{ width: 130 }}>{t('staff.col.hireDate')}</Th>
+                  <Th style={{ textAlign: 'right', width: 140 }}>{t('staff.col.salary')}</Th>
+                  <Th style={{ width: 130 }}>{t('staff.col.phone')}</Th>
+                  <Th style={{ width: 90 }}>{t('staff.col.status')}</Th>
                   <Th style={{ width: 150 }}> </Th>
                 </tr>
               </thead>
@@ -363,7 +373,7 @@ export default function PersonnelPage() {
                         {s.fullName}
                       </button>
                     </Td>
-                    <Td>{ROLE_LABELS[s.role]}</Td>
+                    <Td>{t(ROLE_LABEL_KEYS[s.role])}</Td>
                     <Td className="tnum">{s.hireDate}</Td>
                     <Td className="tnum" style={{ textAlign: 'right' }}>
                       {s.monthlySalary != null ? formatMad(s.monthlySalary) : '—'}
@@ -378,21 +388,21 @@ export default function PersonnelPage() {
                           color: s.active ? 'var(--primary)' : 'var(--ink-3)',
                         }}
                       >
-                        {s.active ? 'Actif' : 'Inactif'}
+                        {s.active ? t('staff.statusActive') : t('staff.statusInactive')}
                       </span>
                     </Td>
                     <Td>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button type="button" onClick={() => setDetailId(s.id)} style={btnLink}>
-                          Détail
+                          {t('staff.detail')}
                         </button>
                         <button type="button" onClick={() => openEdit(s)} style={btnLink}>
-                          Modifier
+                          {t('staff.edit')}
                         </button>
                         <button
                           type="button"
                           onClick={() => { void handleDelete(s); }}
-                          aria-label={`Supprimer ${s.fullName}`}
+                          aria-label={t('staff.deleteAria', { name: s.fullName })}
                           style={{
                             background: 'none', border: 'none', cursor: 'pointer',
                             color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -440,47 +450,48 @@ function StaffFormDrawer({
   onClose: () => void;
   onSave: () => void;
 }) {
+  const { t } = useT();
   return (
     <DrawerShell
-      title={editing ? 'Modifier le membre' : 'Nouveau membre'}
+      title={editing ? t('staff.editTitle') : t('staff.newTitle')}
       onClose={onClose}
       footer={
         <>
-          <Button type="button" onClick={onClose}>Annuler</Button>
+          <Button type="button" onClick={onClose}>{t('common.cancel')}</Button>
           <Button type="button" variant="primary" disabled={busy} onClick={onSave}>
-            {editing ? 'Enregistrer' : 'Ajouter le membre'}
+            {editing ? t('staff.form.save') : t('staff.form.create')}
           </Button>
         </>
       }
     >
       <Field
-        label="Nom complet *"
+        label={t('staff.form.fullName')}
         value={form.fullName}
         onChange={(v) => setForm({ ...form, fullName: v })}
-        placeholder="ex. Fatima Zahra Bennani"
+        placeholder={t('staff.form.fullNamePlaceholder')}
       />
       <SelectField
-        label="Poste *"
+        label={t('staff.form.role')}
         value={form.role}
         onChange={(v) => setForm({ ...form, role: v as StaffRole })}
-        options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABELS[r] }))}
+        options={ROLE_ORDER.map((r) => ({ value: r, label: t(ROLE_LABEL_KEYS[r]) }))}
       />
       <DateField
-        label="Date de recrutement *"
+        label={t('staff.form.hireDate')}
         value={form.hireDate}
         onChange={(v) => setForm({ ...form, hireDate: v })}
       />
       <Field
-        label="Salaire mensuel (MAD)"
+        label={t('staff.form.salary')}
         value={form.monthlySalary}
         onChange={(v) => setForm({ ...form, monthlySalary: v.replace(/[^0-9.]/g, '') })}
-        placeholder="ex. 4500"
+        placeholder={t('staff.form.salaryPlaceholder')}
       />
       <Field
-        label="Téléphone"
+        label={t('staff.form.phone')}
         value={form.phone}
         onChange={(v) => setForm({ ...form, phone: v })}
-        placeholder="ex. 0612345678"
+        placeholder={t('staff.form.phonePlaceholder')}
       />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
         <input
@@ -488,15 +499,15 @@ function StaffFormDrawer({
           checked={form.active}
           onChange={(e) => setForm({ ...form, active: e.target.checked })}
         />
-        Membre actif
+        {t('staff.form.active')}
       </label>
       <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-        <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Notes</span>
+        <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('staff.form.notes')}</span>
         <textarea
           value={form.notes}
           onChange={(e) => setForm({ ...form, notes: e.target.value })}
           rows={3}
-          placeholder="Remarque interne (optionnel)"
+          placeholder={t('staff.form.notesPlaceholder')}
           style={{
             padding: '8px 10px',
             border: '1px solid var(--border)', borderRadius: 6,
@@ -516,6 +527,7 @@ function StaffDetailDrawer({
   member: StaffResponse;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const { summary } = useStaffSummary(member.id);
   const { entries } = useLeaveEntries(member.id);
   const { payments } = useSalaryPayments(member.id);
@@ -539,12 +551,12 @@ function StaffDetailDrawer({
 
   async function handleAddLeave() {
     if (!leaveForm.startDate) {
-      toast.error('La date est requise.');
+      toast.error(t('staff.err.dateRequired'));
       return;
     }
     const daysNum = leaveForm.days.trim() ? Number(leaveForm.days) : undefined;
     if (daysNum !== undefined && (Number.isNaN(daysNum) || daysNum <= 0)) {
-      toast.error('Le nombre de jours doit être positif.');
+      toast.error(t('staff.err.daysPositive'));
       return;
     }
     const body: LeaveEntryRequest = {
@@ -555,35 +567,35 @@ function StaffDetailDrawer({
     };
     try {
       await createLeave({ staffId: member.id, body });
-      toast.success('Entrée ajoutée.');
+      toast.success(t('staff.toast.entryAdded'));
       setLeaveForm({ type: 'CONGE', startDate: todayLocal(), days: '1', notes: '' });
     } catch {
-      toast.error("Échec de l'ajout.");
+      toast.error(t('staff.err.addFailed'));
     }
   }
 
   async function handleDeleteLeave(id: string) {
-    if (!confirm('Supprimer cette entrée ?')) return;
+    if (!confirm(t('staff.confirmDeleteEntry'))) return;
     try {
       await deleteLeave({ id, staffId: member.id });
-      toast.success('Entrée supprimée.');
+      toast.success(t('staff.toast.entryDeleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
   async function handleAddPayment() {
     if (!payForm.period) {
-      toast.error('La période est requise.');
+      toast.error(t('staff.err.periodRequired'));
       return;
     }
     const amount = Number(payForm.amount);
     if (!payForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Le montant doit être un nombre positif.');
+      toast.error(t('staff.err.amountPositive'));
       return;
     }
     if (!payForm.paidAt) {
-      toast.error('La date de paiement est requise.');
+      toast.error(t('staff.err.paidAtRequired'));
       return;
     }
     const body: SalaryPaymentRequest = {
@@ -594,20 +606,20 @@ function StaffDetailDrawer({
     };
     try {
       await createPayment({ staffId: member.id, body });
-      toast.success('Paiement enregistré.');
+      toast.success(t('staff.toast.paymentAdded'));
       setPayForm({ period: thisMonthLocal(), amount: payForm.amount, paidAt: todayLocal(), notes: '' });
     } catch {
-      toast.error("Échec de l'enregistrement.");
+      toast.error(t('staff.err.saveFailed'));
     }
   }
 
   async function handleDeletePayment(id: string) {
-    if (!confirm('Supprimer ce paiement ?')) return;
+    if (!confirm(t('staff.confirmDeletePayment'))) return;
     try {
       await deletePayment({ id, staffId: member.id });
-      toast.success('Paiement supprimé.');
+      toast.success(t('staff.toast.paymentDeleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
@@ -630,15 +642,15 @@ function StaffDetailDrawer({
     const slug = member.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     downloadCsv(
       `conges-${slug}.csv`,
-      ['Type', 'Date', 'Jours', 'Notes'],
-      entries.map((e) => [LEAVE_TYPE_LABELS[e.type] ?? e.type, e.startDate, e.days, (e.notes ?? '').replace(/\s+/g, ' ')]),
+      [t('staff.csv.leaveType'), t('staff.csv.date'), t('staff.csv.days'), t('staff.csv.notes')],
+      entries.map((e) => [t(LEAVE_TYPE_LABEL_KEYS[e.type]), e.startDate, e.days, (e.notes ?? '').replace(/\s+/g, ' ')]),
     );
   }
   function exportPayments() {
     const slug = member.fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     downloadCsv(
       `salaires-${slug}.csv`,
-      ['Période', 'Montant (MAD)', 'Payé le', 'Notes'],
+      [t('staff.csv.period'), t('staff.csv.amount'), t('staff.csv.paidAt'), t('staff.csv.notes')],
       payments.map((p) => [p.period, p.amount, p.paidAt, (p.notes ?? '').replace(/\s+/g, ' ')]),
     );
   }
@@ -657,34 +669,34 @@ function StaffDetailDrawer({
   );
 
   return (
-    <DrawerShell title={member.fullName} sub={ROLE_LABELS[member.role]} onClose={onClose}>
+    <DrawerShell title={member.fullName} sub={t(ROLE_LABEL_KEYS[member.role])} onClose={onClose}>
       {/* Récap congés */}
       <section>
-        <h3 style={sectionTitle}>Congés</h3>
+        <h3 style={sectionTitle}>{t('staff.leaveSection')}</h3>
         {summary ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
             <div style={{ fontWeight: 700, fontSize: 15 }}>
-              Solde congés : {formatDays(summary.leaveBalanceDays)} j
+              {t('staff.leaveBalance', { n: formatDays(summary.leaveBalanceDays) })}
             </div>
             <div style={{ color: 'var(--ink-3)' }}>
-              Acquis : {formatDays(summary.accruedLeaveDays)} j ({summary.monthsWorked} mois × 1,5)
+              {t('staff.leaveAccrued', { n: formatDays(summary.accruedLeaveDays), months: summary.monthsWorked })}
             </div>
-            <div style={{ color: 'var(--ink-3)' }}>Pris : {formatDays(summary.takenLeaveDays)} j</div>
-            <div style={{ color: 'var(--ink-3)' }}>Absences : {summary.absencesCount}</div>
-            <div style={{ color: 'var(--ink-3)' }}>Retards : {summary.latenessCount}</div>
+            <div style={{ color: 'var(--ink-3)' }}>{t('staff.leaveTaken', { n: formatDays(summary.takenLeaveDays) })}</div>
+            <div style={{ color: 'var(--ink-3)' }}>{t('staff.absences', { n: summary.absencesCount })}</div>
+            <div style={{ color: 'var(--ink-3)' }}>{t('staff.lateness', { n: summary.latenessCount })}</div>
           </div>
         ) : (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('staff.loading')}</div>
         )}
       </section>
 
       {/* Filtre date range + exports — user request 2026-05-28 :
           rechercher historique salaires/absences/retards + exports. */}
       <section>
-        <h3 style={sectionTitle}>Période d'historique</h3>
+        <h3 style={sectionTitle}>{t('staff.history.title')}</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <DateField label="Du" value={historyFrom} onChange={setHistoryFrom} />
-          <DateField label="Au" value={historyTo} onChange={setHistoryTo} />
+          <DateField label={t('staff.history.from')} value={historyFrom} onChange={setHistoryFrom} />
+          <DateField label={t('staff.history.to')} value={historyTo} onChange={setHistoryTo} />
         </div>
         {(historyFrom || historyTo) && (
           <button
@@ -695,7 +707,7 @@ function StaffDetailDrawer({
               fontSize: 11.5, padding: 0, color: 'var(--primary)', fontFamily: 'inherit',
             }}
           >
-            Réinitialiser la période
+            {t('staff.history.reset')}
           </button>
         )}
       </section>
@@ -703,7 +715,7 @@ function StaffDetailDrawer({
       {/* Liste des entrées congé/absence/retard */}
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h3 style={sectionTitle}>Congés, absences & retards</h3>
+          <h3 style={sectionTitle}>{t('staff.entries.title')}</h3>
           <button
             type="button"
             onClick={exportLeaves}
@@ -715,11 +727,11 @@ function StaffDetailDrawer({
               opacity: filteredEntries.length === 0 ? 0.5 : 1,
             }}
           >
-            Exporter CSV
+            {t('staff.exportCsv')}
           </button>
         </div>
         {filteredEntries.length === 0 ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucune entrée{historyFrom || historyTo ? ' sur la période' : ''}.</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{historyFrom || historyTo ? t('staff.entries.emptyPeriod') : t('staff.entries.empty')}</div>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredEntries.map((e) => (
@@ -730,14 +742,14 @@ function StaffDetailDrawer({
                   padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6,
                 }}
               >
-                <span style={{ fontWeight: 600, minWidth: 64 }}>{LEAVE_TYPE_LABELS[e.type]}</span>
+                <span style={{ fontWeight: 600, minWidth: 64 }}>{t(LEAVE_TYPE_LABEL_KEYS[e.type])}</span>
                 <span className="tnum">{e.startDate}</span>
-                <span style={{ color: 'var(--ink-3)' }}>{formatDays(e.days)} j</span>
+                <span style={{ color: 'var(--ink-3)' }}>{t('staff.entries.daysUnit', { n: formatDays(e.days) })}</span>
                 {e.notes && <span style={{ color: 'var(--ink-3)', flex: 1 }}>{e.notes}</span>}
                 <button
                   type="button"
                   onClick={() => { void handleDeleteLeave(e.id); }}
-                  aria-label="Supprimer l'entrée"
+                  aria-label={t('staff.entries.deleteAria')}
                   style={{
                     marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
                     color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -751,30 +763,30 @@ function StaffDetailDrawer({
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
           <SelectField
-            label="Type"
+            label={t('staff.entries.formType')}
             value={leaveForm.type}
             onChange={(v) => setLeaveForm({ ...leaveForm, type: v as LeaveType })}
-            options={LEAVE_TYPE_ORDER.map((t) => ({ value: t, label: LEAVE_TYPE_LABELS[t] }))}
+            options={LEAVE_TYPE_ORDER.map((lt) => ({ value: lt, label: t(LEAVE_TYPE_LABEL_KEYS[lt]) }))}
           />
           <DateField
-            label="Date"
+            label={t('staff.entries.formDate')}
             value={leaveForm.startDate}
             onChange={(v) => setLeaveForm({ ...leaveForm, startDate: v })}
           />
           <Field
-            label="Jours"
+            label={t('staff.entries.formDays')}
             value={leaveForm.days}
             onChange={(v) => setLeaveForm({ ...leaveForm, days: v.replace(/[^0-9.]/g, '') })}
-            placeholder="ex. 1"
+            placeholder={t('staff.entries.formDaysPlaceholder')}
           />
           <Field
-            label="Notes"
+            label={t('staff.entries.formNotes')}
             value={leaveForm.notes}
             onChange={(v) => setLeaveForm({ ...leaveForm, notes: v })}
-            placeholder="Optionnel"
+            placeholder={t('staff.entries.formNotesPlaceholder')}
           />
           <Button type="button" disabled={addingLeave} onClick={() => { void handleAddLeave(); }}>
-            <Plus /> Ajouter congé/absence/retard
+            <Plus /> {t('staff.entries.addBtn')}
           </Button>
         </div>
       </section>
@@ -782,7 +794,7 @@ function StaffDetailDrawer({
       {/* Paiements de salaire */}
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h3 style={sectionTitle}>Paiements de salaire</h3>
+          <h3 style={sectionTitle}>{t('staff.payments.title')}</h3>
           <button
             type="button"
             onClick={exportPayments}
@@ -794,11 +806,11 @@ function StaffDetailDrawer({
               opacity: filteredPayments.length === 0 ? 0.5 : 1,
             }}
           >
-            Exporter CSV
+            {t('staff.exportCsv')}
           </button>
         </div>
         {filteredPayments.length === 0 ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucun paiement{historyFrom || historyTo ? ' sur la période' : ''}.</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{historyFrom || historyTo ? t('staff.payments.emptyPeriod') : t('staff.payments.empty')}</div>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {filteredPayments.map((p) => (
@@ -811,11 +823,11 @@ function StaffDetailDrawer({
               >
                 <span className="tnum" style={{ fontWeight: 600, minWidth: 64 }}>{p.period}</span>
                 <span className="tnum">{formatMad(p.amount)}</span>
-                <span style={{ color: 'var(--ink-3)' }}>payé le <span className="tnum">{p.paidAt}</span></span>
+                <span style={{ color: 'var(--ink-3)' }}>{t('staff.payments.paidOn')} <span className="tnum">{p.paidAt}</span></span>
                 <button
                   type="button"
                   onClick={() => { void handleDeletePayment(p.id); }}
-                  aria-label="Supprimer le paiement"
+                  aria-label={t('staff.payments.deleteAria')}
                   style={{
                     marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer',
                     color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -829,7 +841,7 @@ function StaffDetailDrawer({
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Période</span>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('staff.payments.period')}</span>
             <input
               type="month"
               value={payForm.period}
@@ -838,24 +850,24 @@ function StaffDetailDrawer({
             />
           </label>
           <Field
-            label="Montant (MAD)"
+            label={t('staff.payments.amount')}
             value={payForm.amount}
             onChange={(v) => setPayForm({ ...payForm, amount: v.replace(/[^0-9.]/g, '') })}
-            placeholder="ex. 4500"
+            placeholder={t('staff.payments.amountPlaceholder')}
           />
           <DateField
-            label="Payé le"
+            label={t('staff.payments.paidAt')}
             value={payForm.paidAt}
             onChange={(v) => setPayForm({ ...payForm, paidAt: v })}
           />
           <Field
-            label="Notes"
+            label={t('staff.payments.notes')}
             value={payForm.notes}
             onChange={(v) => setPayForm({ ...payForm, notes: v })}
-            placeholder="Optionnel"
+            placeholder={t('staff.payments.notesPlaceholder')}
           />
           <Button type="button" disabled={addingPayment} onClick={() => { void handleAddPayment(); }}>
-            <Plus /> Enregistrer un paiement
+            <Plus /> {t('staff.payments.addBtn')}
           </Button>
         </div>
       </section>
@@ -891,6 +903,7 @@ function DrawerShell({
   footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div
       role="dialog"
@@ -919,7 +932,7 @@ function DrawerShell({
             type="button"
             onClick={onClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--ink-3)' }}
-            aria-label="Fermer"
+            aria-label={t('staff.close')}
           >
             ×
           </button>

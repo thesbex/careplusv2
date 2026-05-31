@@ -108,14 +108,15 @@ export interface StaffFilters {
   role?: StaffRole | '';
 }
 
-export const ROLE_LABELS: Record<StaffRole, string> = {
-  SECURITE: 'Agent de sécurité',
-  MENAGE: "Agent d'entretien",
-  INFIRMIER: 'Infirmier(ère)',
-  SECRETAIRE: 'Secrétaire',
-  ASSISTANTE: 'Assistant(e)',
-  TECHNICIEN: 'Technicien',
-  AUTRE: 'Autre',
+/** Clés i18n des postes (StaffRole) — voir messages.staff.ts (`staff.role.*`). */
+export const ROLE_LABEL_KEYS: Record<StaffRole, string> = {
+  SECURITE: 'staff.role.SECURITE',
+  MENAGE: 'staff.role.MENAGE',
+  INFIRMIER: 'staff.role.INFIRMIER',
+  SECRETAIRE: 'staff.role.SECRETAIRE',
+  ASSISTANTE: 'staff.role.ASSISTANTE',
+  TECHNICIEN: 'staff.role.TECHNICIEN',
+  AUTRE: 'staff.role.AUTRE',
 };
 
 export const ROLE_ORDER: StaffRole[] = [
@@ -128,10 +129,11 @@ export const ROLE_ORDER: StaffRole[] = [
   'AUTRE',
 ];
 
-export const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  CONGE: 'Congé',
-  ABSENCE: 'Absence',
-  RETARD: 'Retard',
+/** Clés i18n des types de congé (LeaveType) — voir messages.staff.ts (`staff.leaveType.*`). */
+export const LEAVE_TYPE_LABEL_KEYS: Record<LeaveType, string> = {
+  CONGE: 'staff.leaveType.CONGE',
+  ABSENCE: 'staff.leaveType.ABSENCE',
+  RETARD: 'staff.leaveType.RETARD',
 };
 
 export const LEAVE_TYPE_ORDER: LeaveType[] = ['CONGE', 'ABSENCE', 'RETARD'];

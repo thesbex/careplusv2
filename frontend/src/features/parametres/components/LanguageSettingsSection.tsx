@@ -46,7 +46,7 @@ export function LanguageSettingsSection() {
       qc.setQueryData(['clinic-settings'], updated);
       toast.success(t('settings.language.saved'));
     } catch {
-      toast.error('Échec de la mise à jour de la langue.');
+      toast.error(t('settings.language.saveError'));
     } finally {
       setSaving(null);
     }
@@ -58,14 +58,14 @@ export function LanguageSettingsSection() {
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {t('settings.language.title')}
           <span
-            title="Réservé au super administrateur"
+            title={t('settings.superAdminTooltip')}
             style={{
               fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
               color: 'var(--primary)', background: 'var(--primary-soft)',
               border: '1px solid var(--primary)', borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap',
             }}
           >
-            🔒 Super admin
+            🔒 {t('settings.superAdminBadge')}
           </span>
         </span>
       </PanelHeader>

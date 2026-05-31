@@ -22,6 +22,7 @@ import { Select } from '@/components/ui/Input';
 import { Avatar } from '@/components/ui/Avatar';
 import { Close, Search } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatientSearch } from '@/features/prise-rdv/hooks/usePatientSearch';
 import { useReasons } from '@/features/prise-rdv/hooks/useReasons';
 import { usePractitioners } from '@/features/agenda/hooks/usePractitioners';
@@ -34,6 +35,7 @@ interface AddWalkInDialogProps {
 }
 
 export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialogProps) {
+  const { t } = useT();
   const [query, setQuery] = useState('');
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [selectedPatientName, setSelectedPatientName] = useState<string | null>(null);
@@ -81,11 +83,11 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
   async function submit() {
     setFormError(null);
     if (!selectedPatientId) {
-      setFormError('Veuillez sélectionner un patient.');
+      setFormError(t('salle.walkIn.errNoPatient'));
       return;
     }
     if (!practitionerId) {
-      setFormError('Veuillez choisir un médecin.');
+      setFormError(t('salle.walkIn.errNoDoctor'));
       return;
     }
     try {
@@ -94,7 +96,11 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
         practitionerId,
         ...(reasonId ? { reasonId } : {}),
       });
-      toast.success(`${selectedPatientName ?? 'Patient'} ajouté à la salle d'attente.`);
+      toast.success(
+        t('salle.walkIn.toastAdded', {
+          name: selectedPatientName ?? t('salle.walkIn.toastDefaultName'),
+        }),
+      );
       onAdded?.();
       onOpenChange(false);
     } catch (e: unknown) {
@@ -102,7 +108,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
         (e as { response?: { data?: { detail?: string; message?: string } } })?.response?.data
           ?.detail ??
         (e as { response?: { data?: { message?: string } } })?.response?.data?.message ??
-        "Impossible d'ajouter le patient à la salle.";
+        t('salle.walkIn.err');
       setFormError(msg);
       toast.error(msg);
     }
@@ -133,21 +139,21 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>
-              Ajouter un patient sans RDV
+              {t('salle.walkIn.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
           <Dialog.Description style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
-            Le patient est ajouté directement à la file d&apos;attente (arrivée immédiate).
+            {t('salle.walkIn.desc')}
           </Dialog.Description>
 
           {/* Patient picker */}
           <div style={{ marginBottom: 16 }}>
-            <FieldLabel htmlFor="walkin-search">Patient</FieldLabel>
+            <FieldLabel htmlFor="walkin-search">{t('salle.walkIn.patient')}</FieldLabel>
             {selectedPatientId && selectedPatientName ? (
               <div
                 style={{
@@ -181,7 +187,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
                     setQuery('');
                   }}
                 >
-                  Changer
+                  {t('salle.walkIn.change')}
                 </Button>
               </div>
             ) : (
@@ -202,8 +208,8 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
                     id="walkin-search"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Nom, téléphone ou CIN…"
-                    aria-label="Rechercher un patient"
+                    placeholder={t('salle.walkIn.searchPlaceholder')}
+                    aria-label={t('salle.walkIn.searchAria')}
                     autoFocus
                     style={{
                       flex: 1,
@@ -219,7 +225,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
                 {candidates.length > 0 && (
                   <div
                     role="listbox"
-                    aria-label="Résultats patients"
+                    aria-label={t('salle.walkIn.resultsAria')}
                     style={{
                       border: '1px solid var(--border)',
                       borderRadius: 8,
@@ -283,10 +289,10 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
               always rendered so a secrétaire can pick whose queue to feed. */}
           {activePractitioners.length >= 2 && (
             <Field style={{ marginBottom: 16 }}>
-              <FieldLabel htmlFor="walkin-practitioner">Médecin</FieldLabel>
+              <FieldLabel htmlFor="walkin-practitioner">{t('salle.walkIn.doctor')}</FieldLabel>
               <Select
                 id="walkin-practitioner"
-                aria-label="Médecin"
+                aria-label={t('salle.walkIn.doctor')}
                 value={practitionerId}
                 onChange={(e) => {
                   setPractitionerId(e.target.value);
@@ -294,7 +300,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
                 }}
               >
                 <option value="" disabled>
-                  Choisir un médecin…
+                  {t('salle.walkIn.chooseDoctor')}
                 </option>
                 {activePractitioners.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -309,14 +315,14 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
           {/* Reason (optional) */}
           {reasons.length > 0 && (
             <Field style={{ marginBottom: 16 }}>
-              <FieldLabel htmlFor="walkin-reason">Motif (facultatif)</FieldLabel>
+              <FieldLabel htmlFor="walkin-reason">{t('salle.walkIn.reason')}</FieldLabel>
               <Select
                 id="walkin-reason"
-                aria-label="Motif"
+                aria-label={t('salle.walkIn.reason')}
                 value={reasonId}
                 onChange={(e) => setReasonId(e.target.value)}
               >
-                <option value="">Aucun</option>
+                <option value="">{t('salle.walkIn.reasonNone')}</option>
                 {reasons.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.label}
@@ -334,7 +340,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 6 }}>
             <Dialog.Close asChild>
-              <Button type="button">Annuler</Button>
+              <Button type="button">{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button
               type="button"
@@ -342,7 +348,7 @@ export function AddWalkInDialog({ open, onOpenChange, onAdded }: AddWalkInDialog
               disabled={isPending || !selectedPatientId}
               onClick={() => void submit()}
             >
-              {isPending ? 'Ajout…' : 'Ajouter à la salle'}
+              {isPending ? t('salle.walkIn.adding') : t('salle.walkIn.submit')}
             </Button>
           </div>
         </Dialog.Content>

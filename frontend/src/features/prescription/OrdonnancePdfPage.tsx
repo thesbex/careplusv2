@@ -17,18 +17,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, File as FileIcon, Print } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useDocumentPdfController, metaForPrescription } from './components/DocumentPdfViewer';
 import { PdfCanvasViewer } from './components/PdfCanvasViewer';
 import { usePrescription } from './hooks/usePrescriptions';
 import './prescription.css';
 
 export default function OrdonnancePdfPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { prescription } = usePrescription(id);
   const { url, isLoading, error, iframeId, download, print } = useDocumentPdfController(id);
 
   const meta = metaForPrescription(prescription);
+  const docLabel = t(meta.labelKey);
   const shortId = id ? id.slice(0, 8).toUpperCase() : '—';
 
   function handleDownload() {
@@ -38,18 +41,18 @@ export default function OrdonnancePdfPage() {
   return (
     <Screen
       active="consult"
-      title={`Aperçu — ${meta.label}`}
+      title={t('presc.preview.title', { label: docLabel })}
       sub={`${meta.prefix}-${shortId}${prescription ? ` · ${new Date(prescription.issuedAt).toLocaleDateString('fr-MA')}` : ''}`}
       topbarRight={
         <>
           <Button onClick={() => navigate(-1)}>
-            <ChevronLeft /> Retour
+            <ChevronLeft /> {t('presc.preview.back')}
           </Button>
           <Button onClick={handleDownload} disabled={!url}>
-            <FileIcon /> Télécharger
+            <FileIcon /> {t('presc.preview.download')}
           </Button>
           <Button variant="primary" onClick={print} disabled={!url}>
-            <Print /> Imprimer
+            <Print /> {t('presc.preview.print')}
           </Button>
         </>
       }
@@ -76,7 +79,7 @@ export default function OrdonnancePdfPage() {
       <div style={{ height: '100%', background: 'var(--bg-alt)' }}>
         {isLoading && (
           <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-            Chargement du PDF…
+            {t('presc.preview.loadingPdf')}
           </div>
         )}
         {error && (
@@ -89,7 +92,7 @@ export default function OrdonnancePdfPage() {
                 (PDF.js, insensible au paramètre Chrome "Télécharger les PDF"). */}
             <iframe
               id={iframeId}
-              title={`Aperçu ${meta.label}`}
+              title={t('presc.preview.frameTitle', { label: docLabel })}
               src={url}
               style={{ display: 'none' }}
               aria-hidden="true"

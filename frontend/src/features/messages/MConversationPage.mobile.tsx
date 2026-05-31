@@ -6,6 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { MScreen } from '@/components/shell/MScreen';
 import {
   Pin,
@@ -25,6 +26,7 @@ import type { ChatMessage, Conversation } from './types';
 import './messages.css';
 
 export default function MConversationMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const { data: convo } = useConversation(conversationId ?? null);
@@ -77,7 +79,7 @@ export default function MConversationMobilePage() {
       : convo.name
     : '…';
   const isUrgentHeader = convo?.kind === 'channel' && convo.name === 'urgences';
-  const sub = convo ? convo.topic || `${convo.members?.length ?? 0} membres` : '';
+  const sub = convo ? convo.topic || t('chat.members', { n: convo.members?.length ?? 0 }) : '';
 
   function handleSend() {
     if (!conversationId || !draft.trim()) return;
@@ -102,7 +104,7 @@ export default function MConversationMobilePage() {
 
       <div style={{ padding: '4px 12px 12px' }}>
         {!convo ? (
-          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: 20 }}>Chargement…</div>
+          <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: 20 }}>{t('chat.loading')}</div>
         ) : (
           flattenWithDayDividers(convo).map((entry, i) =>
             'day' in entry ? (
@@ -143,6 +145,7 @@ function flattenWithDayDividers(convo: Conversation): FlatEntry[] {
 }
 
 function PinnedBar({ body }: { body: string }) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -170,7 +173,7 @@ function PinnedBar({ body }: { body: string }) {
           whiteSpace: 'nowrap',
         }}
       >
-        <strong style={{ color: 'var(--amber)' }}>Épinglé :</strong> {body}
+        <strong style={{ color: 'var(--amber)' }}>{t('chat.pinned')}</strong> {body}
       </span>
     </div>
   );
@@ -187,12 +190,13 @@ function ConversationTopbar({
   urgent?: boolean;
   onBack: () => void;
 }) {
+  const { t } = useT();
   return (
     <div className="mt" style={urgent ? { borderBottom: '2px solid var(--danger)' } : undefined}>
       <button
         type="button"
         onClick={onBack}
-        aria-label="Retour"
+        aria-label={t('chat.back')}
         style={{
           border: 0,
           background: 'transparent',
@@ -240,7 +244,7 @@ function ConversationTopbar({
               }}
             >
               <span style={{ width: 4, height: 4, borderRadius: 2, background: 'var(--danger)' }} />
-              URGENT
+              {t('chat.urgent')}
             </span>
           )}
         </div>
@@ -248,7 +252,7 @@ function ConversationTopbar({
       </div>
       <button
         type="button"
-        aria-label="Appeler"
+        aria-label={t('chat.call')}
         style={{
           border: 0,
           background: 'transparent',
@@ -261,7 +265,7 @@ function ConversationTopbar({
       </button>
       <button
         type="button"
-        aria-label="Plus d'actions"
+        aria-label={t('chat.moreActions')}
         style={{
           border: 0,
           background: 'transparent',
@@ -422,6 +426,8 @@ function renderText(text: string, isMe: boolean) {
 }
 
 function TypingRow({ who }: { who: string }) {
+  const { t } = useT();
+  const [before = '', after = ''] = t('chat.typingShort', { who: '__WHO__' }).split('__WHO__');
   return (
     <div
       style={{
@@ -458,7 +464,9 @@ function TypingRow({ who }: { who: string }) {
         ))}
       </div>
       <span>
-        <strong style={{ color: 'var(--ink-2)' }}>{who}</strong> écrit…
+        {before}
+        <strong style={{ color: 'var(--ink-2)' }}>{who}</strong>
+        {after}
       </span>
     </div>
   );
@@ -483,6 +491,7 @@ function Composer({
   onSend: () => void;
   sending: boolean;
 }) {
+  const { t } = useT();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
 
@@ -517,14 +526,14 @@ function Composer({
         <>
           <div
             role="button"
-            aria-label="Fermer le sélecteur d'émoticônes"
+            aria-label={t('chat.emoji.closeAria')}
             tabIndex={-1}
             onClick={() => setEmojiOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 90 }}
           />
           <div
             role="dialog"
-            aria-label="Émoticônes"
+            aria-label={t('chat.emoji.title')}
             style={{
               position: 'absolute',
               bottom: 60,
@@ -549,7 +558,7 @@ function Composer({
                   insertAtCursor(e);
                   setEmojiOpen(false);
                 }}
-                aria-label={`Émoticône ${e}`}
+                aria-label={t('chat.emoji.itemAria', { emoji: e })}
                 style={{
                   height: 34,
                   border: 0,
@@ -584,7 +593,7 @@ function Composer({
         >
           <input
             ref={inputRef}
-            placeholder="Saisir un message"
+            placeholder={t('chat.composer.placeholderShort')}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => {
@@ -607,7 +616,7 @@ function Composer({
           />
           <button
             type="button"
-            aria-label="Ajouter une émoticône"
+            aria-label={t('chat.composer.emojiAria')}
             aria-pressed={emojiOpen}
             onClick={() => setEmojiOpen((v) => !v)}
             style={{
@@ -628,7 +637,7 @@ function Composer({
         </div>
         <button
           type="button"
-          aria-label="Envoyer"
+          aria-label={t('chat.composer.sendAria')}
           disabled={sending || !value.trim()}
           onClick={onSend}
           style={{

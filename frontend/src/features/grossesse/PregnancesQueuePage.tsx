@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Avatar } from '@/components/ui/Avatar';
 import { ChevronLeft, ChevronRight, Warn } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   usePregnancyQueue,
   type PregnancyQueueEntry,
@@ -35,14 +36,11 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-const TRIMESTER_CHIPS: { id: Trimester | 'ALL'; label: string }[] = [
-  { id: 'ALL', label: 'Toutes' },
-  { id: 'T1', label: 'T1' },
-  { id: 'T2', label: 'T2' },
-  { id: 'T3', label: 'T3' },
-];
+const TRIMESTER_IDS: (Trimester | 'ALL')[] = ['ALL', 'T1', 'T2', 'T3'];
 
 const PAGE_SIZE = 20;
+
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -55,19 +53,19 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function relativeFromNow(iso: string | null): string {
+function relativeFromNow(iso: string | null, t: Tr): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   const diffMs = Date.now() - d.getTime();
   const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Aujourd'hui";
-  if (days === 1) return 'Hier';
-  if (days < 30) return `il y a ${days} j`;
+  if (days <= 0) return t('gross.rel.today');
+  if (days === 1) return t('gross.rel.yesterday');
+  if (days < 30) return t('gross.rel.daysAgo', { n: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `il y a ${months} mois`;
+  if (months < 12) return t('gross.rel.monthsAgo', { n: months });
   const years = Math.floor(months / 12);
-  return `il y a ${years} an${years > 1 ? 's' : ''}`;
+  return t('gross.rel.yearsAgo', { n: years, s: years > 1 ? 's' : '' });
 }
 
 function TrimesterPill({ trimester }: { trimester: Trimester }) {
@@ -166,6 +164,7 @@ function SkeletonRows() {
 
 export default function PregnancesQueuePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // ── URL-synced state ──────────────────────────────────────────────────────
@@ -249,8 +248,8 @@ export default function PregnancesQueuePage() {
   return (
     <Screen
       active="grossesses"
-      title="Grossesses"
-      sub="Suivi prénatal — Programme PSGA Maroc"
+      title={t('gross.queue.title')}
+      sub={t('gross.queue.sub')}
       onNavigate={(id) => {
         const path = NAV_MAP[id as keyof typeof NAV_MAP];
         if (path) navigate(path);
@@ -262,18 +261,19 @@ export default function PregnancesQueuePage() {
         <div
           style={{ display: 'flex', gap: 6 }}
           role="tablist"
-          aria-label="Filtrer par trimestre"
+          aria-label={t('gross.queue.filterByTrimester')}
         >
-          {TRIMESTER_CHIPS.map((c) => {
+          {TRIMESTER_IDS.map((id) => {
             const isActive =
-              c.id === 'ALL' ? !trimesterParam : trimesterParam === c.id;
+              id === 'ALL' ? !trimesterParam : trimesterParam === id;
+            const label = id === 'ALL' ? t('gross.queue.trimester.all') : id;
             return (
               <button
-                key={c.id}
+                key={id}
                 type="button"
                 role="tab"
                 aria-selected={isActive}
-                onClick={() => setTrimester(c.id)}
+                onClick={() => setTrimester(id)}
                 style={{
                   padding: '6px 14px',
                   border: '1px solid var(--border)',
@@ -286,7 +286,7 @@ export default function PregnancesQueuePage() {
                   cursor: 'pointer',
                 }}
               >
-                {c.label}
+                {label}
               </button>
             );
           })}
@@ -298,8 +298,8 @@ export default function PregnancesQueuePage() {
             type="search"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            placeholder="Rechercher une patiente…"
-            aria-label="Rechercher une patiente"
+            placeholder={t('gross.queue.searchPlaceholder')}
+            aria-label={t('gross.queue.searchAria')}
             style={{
               height: 32,
               minWidth: 240,
@@ -327,9 +327,9 @@ export default function PregnancesQueuePage() {
               type="checkbox"
               checked={withAlertsParam}
               onChange={(e) => setWithAlerts(e.target.checked)}
-              aria-label="Avec alertes uniquement"
+              aria-label={t('gross.queue.withAlertsOnly')}
             />
-            Avec alertes uniquement
+            {t('gross.queue.withAlertsOnly')}
           </label>
 
           {filtersActive && (
@@ -337,15 +337,18 @@ export default function PregnancesQueuePage() {
               size="sm"
               variant="ghost"
               onClick={resetFilters}
-              aria-label="Réinitialiser les filtres"
+              aria-label={t('gross.queue.resetAria')}
             >
-              Réinitialiser
+              {t('gross.queue.reset')}
             </Button>
           )}
 
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--ink-3)' }}>
             {!isLoading &&
-              `${totalElements} grossesse${totalElements !== 1 ? 's' : ''}`}
+              t('gross.queue.count', {
+                n: totalElements,
+                s: totalElements !== 1 ? 's' : '',
+              })}
           </span>
         </div>
 
@@ -371,7 +374,7 @@ export default function PregnancesQueuePage() {
             <table
               style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
               role="table"
-              aria-label="Liste des grossesses en cours"
+              aria-label={t('gross.queue.tableAria')}
             >
               <thead>
                 <tr
@@ -390,7 +393,7 @@ export default function PregnancesQueuePage() {
                     }}
                     colSpan={2}
                   >
-                    Patiente
+                    {t('gross.queue.col.patient')}
                   </th>
                   <th
                     style={{
@@ -401,7 +404,7 @@ export default function PregnancesQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    SA
+                    {t('gross.queue.col.sa')}
                   </th>
                   <th
                     style={{
@@ -412,7 +415,7 @@ export default function PregnancesQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    DPA
+                    {t('gross.queue.col.dpa')}
                   </th>
                   <th
                     style={{
@@ -423,7 +426,7 @@ export default function PregnancesQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Dernière visite
+                    {t('gross.queue.col.lastVisit')}
                   </th>
                   <th
                     style={{
@@ -434,7 +437,7 @@ export default function PregnancesQueuePage() {
                       color: 'var(--ink-3)',
                     }}
                   >
-                    Alertes
+                    {t('gross.queue.col.alerts')}
                   </th>
                   <th scope="col" style={{ padding: '10px 12px' }}>
                     <span
@@ -450,7 +453,7 @@ export default function PregnancesQueuePage() {
                         border: 0,
                       }}
                     >
-                      Actions
+                      {t('gross.queue.col.actions')}
                     </span>
                   </th>
                 </tr>
@@ -468,7 +471,7 @@ export default function PregnancesQueuePage() {
                         fontSize: 13,
                       }}
                     >
-                      Aucune grossesse en cours.{' '}
+                      {t('gross.queue.empty')}{' '}
                       <a
                         href="/patients"
                         style={{ color: 'var(--primary)', fontWeight: 550 }}
@@ -477,7 +480,7 @@ export default function PregnancesQueuePage() {
                           navigate('/patients');
                         }}
                       >
-                        Déclarer depuis un dossier patiente →
+                        {t('gross.queue.emptyCtaDesktop')}
                       </a>
                     </td>
                   </tr>
@@ -534,7 +537,7 @@ export default function PregnancesQueuePage() {
                           {formatDate(entry.dueDate)}
                         </td>
                         <td style={{ padding: '10px 12px', color: 'var(--ink-2)' }}>
-                          {relativeFromNow(entry.lastVisitAt)}
+                          {relativeFromNow(entry.lastVisitAt, t)}
                         </td>
                         <td style={{ padding: '10px 12px' }}>
                           <AlertBadges entry={entry} />
@@ -547,7 +550,7 @@ export default function PregnancesQueuePage() {
                               navigate(`/patients/${entry.patientId}?tab=grossesse`)
                             }
                           >
-                            Voir
+                            {t('gross.queue.view')}
                           </Button>
                         </td>
                       </tr>
@@ -573,22 +576,22 @@ export default function PregnancesQueuePage() {
               variant="ghost"
               disabled={currentPage === 0}
               onClick={() => setPage(currentPage - 1)}
-              aria-label="Page précédente"
+              aria-label={t('gross.queue.prevAria')}
             >
               <ChevronLeft />
-              Précédent
+              {t('gross.queue.prev')}
             </Button>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Page {currentPage + 1} / {totalPages}
+              {t('gross.queue.pageOf', { current: currentPage + 1, total: totalPages })}
             </span>
             <Button
               size="sm"
               variant="ghost"
               disabled={currentPage >= totalPages - 1}
               onClick={() => setPage(currentPage + 1)}
-              aria-label="Page suivante"
+              aria-label={t('gross.queue.nextAria')}
             >
-              Suivant
+              {t('gross.queue.next')}
               <ChevronRight />
             </Button>
           </div>

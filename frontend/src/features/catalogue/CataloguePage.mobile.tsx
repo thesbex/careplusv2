@@ -11,6 +11,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Search } from '@/components/icons';
 import { Select } from '@/components/ui/Input';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface Medication {
   id: string;
@@ -25,6 +26,7 @@ interface Medication {
 
 export default function CatalogueMobilePage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const [items, setItems] = useState<Medication[]>([]);
   const [tags, setTags] = useState<string[]>([]);
   const [q, setQ] = useState('');
@@ -49,9 +51,9 @@ export default function CatalogueMobilePage() {
     api
       .get<Medication[]>('/catalog/medications/browse', { params })
       .then((r) => setItems(r.data))
-      .catch(() => toast.error('Impossible de charger le catalogue.'))
+      .catch(() => toast.error(tr('cat.med.loadError')))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ, tagFilter]);
+  }, [debouncedQ, tagFilter, tr]);
 
   return (
     <MScreen
@@ -63,12 +65,12 @@ export default function CatalogueMobilePage() {
           left={
             <MIconBtn
               icon="ChevronLeft"
-              label="Retour"
+              label={tr('cat.back')}
               onClick={() => navigate('/parametres')}
             />
           }
-          title="Catalogue"
-          sub={`${items.length} entrée${items.length > 1 ? 's' : ''}`}
+          title={tr('cat.mobile.medTitle')}
+          sub={tr(items.length > 1 ? 'cat.mobile.sub_plural' : 'cat.mobile.sub', { n: items.length })}
         />
       }
     >
@@ -78,10 +80,10 @@ export default function CatalogueMobilePage() {
           <Search aria-hidden="true" />
           <input
             type="search"
-            placeholder="Rechercher par nom commercial ou DCI…"
+            placeholder={tr('cat.med.searchPlaceholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            aria-label="Rechercher un médicament"
+            aria-label={tr('cat.med.searchAria')}
             style={{
               flex: 1,
               border: 0,
@@ -99,13 +101,13 @@ export default function CatalogueMobilePage() {
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
           className="m-input"
-          aria-label="Classe pharmacologique"
+          aria-label={tr('cat.med.classAria')}
           style={{ marginBottom: 14 }}
         >
-          <option value="">Toutes les classes</option>
-          {tags.map((t) => (
-            <option key={t} value={t}>
-              {t}
+          <option value="">{tr('cat.med.allClasses')}</option>
+          {tags.map((tag) => (
+            <option key={tag} value={tag}>
+              {tag}
             </option>
           ))}
         </Select>
@@ -121,7 +123,7 @@ export default function CatalogueMobilePage() {
                 textAlign: 'center',
               }}
             >
-              Chargement…
+              {tr('common.loading')}
             </div>
           ) : items.length === 0 ? (
             <div
@@ -132,7 +134,7 @@ export default function CatalogueMobilePage() {
                 fontSize: 13,
               }}
             >
-              Aucun médicament ne correspond.
+              {tr('cat.med.emptyShort')}
             </div>
           ) : (
             items.map((m) => (
@@ -146,7 +148,7 @@ export default function CatalogueMobilePage() {
                     {m.favorite && (
                       <span
                         className="m-pill"
-                        aria-label="Médicament favori"
+                        aria-label={tr('cat.med.favoriteRowAria')}
                         style={{
                           fontSize: 10,
                           padding: '2px 6px',
@@ -154,7 +156,7 @@ export default function CatalogueMobilePage() {
                           color: 'var(--amber)',
                         }}
                       >
-                        Favori
+                        {tr('cat.med.favoritePill')}
                       </span>
                     )}
                   </div>
@@ -179,8 +181,7 @@ export default function CatalogueMobilePage() {
             lineHeight: 1.5,
           }}
         >
-          La gestion du catalogue (ajout / modification) se fait depuis la version
-          desktop par un médecin ou un administrateur.
+          {tr('cat.mobile.medManageNote')}
         </div>
       </div>
     </MScreen>

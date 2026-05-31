@@ -356,6 +356,7 @@ function MenuRow({
   badge?: number;
   onClick: () => void;
 }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -395,7 +396,7 @@ function MenuRow({
       </div>
       {typeof badge === 'number' && badge > 0 && (
         <span
-          aria-label={`${badge} alerte${badge > 1 ? 's' : ''}`}
+          aria-label={t('common.alertsAria', { n: badge })}
           style={{
             minWidth: 20,
             height: 20,

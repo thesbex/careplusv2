@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Cancel an appointment via DELETE /api/appointments/{id}.
@@ -7,6 +8,7 @@ import { api } from '@/lib/api/client';
  * cancels their visit (empêchement) — the staff retires them from the list.
  */
 export function useCancelAppointment() {
+  const { t } = useT();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -29,6 +31,6 @@ export function useCancelAppointment() {
         reason === undefined ? { appointmentId } : { appointmentId, reason },
       ),
     isPending: mutation.isPending,
-    error: mutation.error ? "Erreur lors de l'annulation du RDV." : null,
+    error: mutation.error ? t('salle.cancel.rdvErr') : null,
   };
 }

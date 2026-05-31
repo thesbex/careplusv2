@@ -1,15 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT, type I18nContextValue } from '@/lib/i18n/I18nProvider';
+import type { Lang } from '@/lib/i18n/index';
 import type { ApiConversation, ApiMessage } from '../api-types';
 import type { ChatMessage, Conversation, MessageDay, TeamMember } from '../types';
+
+/** Map de Lang → locale BCP-47 pour le formatage des dates (jour, heure). */
+const LOCALE: Record<Lang, string> = {
+  fr: 'fr-FR',
+  en: 'en-GB',
+  ar: 'ar-MA',
+  es: 'es-ES',
+};
 
 /**
  * Récupère la conversation + ses messages, et mappe vers la shape `Conversation`
  * attendue par les composants existants (messages groupés par jour).
  */
 export function useConversation(conversationId: string | null | undefined) {
+  const { t, lang } = useT();
+  const locale = LOCALE[lang] ?? 'fr-FR';
   return useQuery({
-    queryKey: ['chat', 'conversation', conversationId],
+    // `lang` dans la clé : les libellés de jour / heure sont dérivés selon la
+    // langue, on re-mappe donc quand le super admin change la langue.
+    queryKey: ['chat', 'conversation', conversationId, lang],
     enabled: !!conversationId,
     queryFn: async (): Promise<Conversation> => {
       const [convRes, msgsRes] = await Promise.all([
@@ -29,7 +43,7 @@ export function useConversation(conversationId: string | null | undefined) {
         hasPhoto: m.hasPhoto ?? false,
       }));
 
-      const days = groupByDay(msgs);
+      const days = groupByDay(msgs, t, locale);
 
       const result: Conversation = {
         id: conv.id,
@@ -48,12 +62,12 @@ export function useConversation(conversationId: string | null | undefined) {
   });
 }
 
-function groupByDay(msgs: ApiMessage[]): MessageDay[] {
+function groupByDay(msgs: ApiMessage[], t: I18nContextValue['t'], locale: string): MessageDay[] {
   const map = new Map<string, ChatMessage[]>();
   const dayOrder: string[] = [];
   for (const m of msgs) {
     const d = new Date(m.createdAt);
-    const day = formatDayLabel(d);
+    const day = formatDayLabel(d, t, locale);
     if (!map.has(day)) {
       map.set(day, []);
       dayOrder.push(day);
@@ -69,7 +83,7 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
     };
     const cm: ChatMessage = {
       u: sender,
-      time: d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      time: d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' }),
       text: m.body,
     };
     if (m.urgent) cm.urgent = true;
@@ -80,7 +94,7 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
     if (m.reply) {
       cm.reply = {
         count: m.reply.count,
-        last: relativeFromIso(m.reply.lastAt),
+        last: relativeFromIso(m.reply.lastAt, t, locale),
       };
     }
     if (m.patient) {
@@ -104,30 +118,31 @@ function groupByDay(msgs: ApiMessage[]): MessageDay[] {
   return dayOrder.map((day) => ({ day, msgs: map.get(day)! }));
 }
 
-function formatDayLabel(d: Date): string {
+function formatDayLabel(d: Date, t: I18nContextValue['t'], locale: string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const yest = new Date(today);
   yest.setDate(today.getDate() - 1);
   const dDay = new Date(d);
   dDay.setHours(0, 0, 0, 0);
+  const dateLabel = d.toLocaleDateString(locale, { weekday: 'long', day: '2-digit', month: 'long' });
   if (dDay.getTime() === today.getTime()) {
-    return "aujourd'hui · " + d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
+    return `${t('chat.day.today')} · ${dateLabel}`;
   }
   if (dDay.getTime() === yest.getTime()) {
-    return 'hier · ' + d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
+    return `${t('chat.day.yesterday')} · ${dateLabel}`;
   }
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long' });
+  return dateLabel;
 }
 
-function relativeFromIso(iso: string | null): string {
+function relativeFromIso(iso: string | null, t: I18nContextValue['t'], locale: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   const delta = Date.now() - d.getTime();
   const min = Math.round(delta / 60000);
-  if (min < 1) return 'à l\'instant';
-  if (min < 60) return `il y a ${min} min`;
+  if (min < 1) return t('chat.ago.now');
+  if (min < 60) return t('chat.ago.minutes', { n: min });
   const h = Math.round(min / 60);
-  if (h < 24) return `il y a ${h} h`;
-  return d.toLocaleDateString('fr-FR');
+  if (h < 24) return t('chat.ago.hours', { n: h });
+  return d.toLocaleDateString(locale);
 }

@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { InvoiceApi, InvoiceStatus } from '../types';
 
 export function useInvoices(status?: InvoiceStatus | 'ALL') {
+  const { t } = useT();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['invoices', status ?? 'ALL'],
     queryFn: () => {
@@ -15,12 +17,13 @@ export function useInvoices(status?: InvoiceStatus | 'ALL') {
   return {
     invoices: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les factures.' : null,
+    error: error ? t('factu.error.loadList') : null,
     refetch,
   };
 }
 
 export function useInvoicesForPatient(patientId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['invoices', 'patient', patientId],
     queryFn: () =>
@@ -32,11 +35,12 @@ export function useInvoicesForPatient(patientId?: string) {
   return {
     invoices: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les factures.' : null,
+    error: error ? t('factu.error.loadList') : null,
   };
 }
 
 export function useInvoice(id?: string) {
+  const { t } = useT();
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['invoice', id],
     queryFn: () => api.get<InvoiceApi>(`/invoices/${id}`).then((r) => r.data),
@@ -47,7 +51,7 @@ export function useInvoice(id?: string) {
   return {
     invoice: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger la facture.' : null,
+    error: error ? t('factu.error.loadOne') : null,
     refetch,
   };
 }

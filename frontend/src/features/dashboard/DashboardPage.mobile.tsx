@@ -12,6 +12,7 @@ import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useDashboardClinical } from './hooks/useDashboardClinical';
 import { useDashboardAgenda } from './hooks/useDashboardAgenda';
 import { useDashboardFinancial } from './hooks/useDashboardFinancial';
@@ -43,6 +44,11 @@ function fmtPct(ratio: number | null | undefined): string {
   return `${Math.round(ratio * 100)} %`;
 }
 
+function pctInt(ratio: number | null | undefined): string {
+  if (ratio == null || Number.isNaN(ratio)) return '—';
+  return String(Math.round(ratio * 100));
+}
+
 function MKpi({
   label,
   value,
@@ -72,7 +78,7 @@ function MSection({ title, children }: { title: string; children: React.ReactNod
   );
 }
 
-function MSparkline({ points }: { points: ActivityPoint[] }) {
+function MSparkline({ points, emptyLabel }: { points: ActivityPoint[]; emptyLabel: string }) {
   if (points.length === 0) {
     return (
       <div
@@ -85,7 +91,7 @@ function MSparkline({ points }: { points: ActivityPoint[] }) {
           borderRadius: 'var(--r-md)',
         }}
       >
-        Aucune activité.
+        {emptyLabel}
       </div>
     );
   }
@@ -122,6 +128,7 @@ function MSparkline({ points }: { points: ActivityPoint[] }) {
 
 export default function DashboardPageMobile() {
   const navigate = useNavigate();
+  const { t } = useT();
   const user = useAuthStore((s) => s.user);
   const showFinancial = !!user && FINANCIAL_ROLES.some((r) => user.roles.includes(r));
 
@@ -134,53 +141,53 @@ export default function DashboardPageMobile() {
       tab="menu"
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-          title="Dashboard"
+          left={<MIconBtn icon="ChevronLeft" label={t('dash.back')} onClick={() => navigate('/parametres')} />}
+          title={t('dash.title')}
         />
       }
       onTabChange={(t) => navigate(TAB_MAP[t])}
     >
       <div className="mb-pad" style={{ paddingTop: 16 }}>
-        <MSection title="Aujourd'hui">
+        <MSection title={t('dash.today')}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <MKpi
               testId="kpi-patients-actifs"
-              label="Patients actifs"
+              label={t('dash.kpi.activePatients')}
               value={fmtNumber(clinical.data?.patientsActifsTotal)}
               hint={
                 clinical.data
-                  ? `${fmtNumber(clinical.data.patientsActifs30j)} sur 30 j`
+                  ? t('dash.kpi.activePatientsDelta', { n: fmtNumber(clinical.data.patientsActifs30j) })
                   : undefined
               }
             />
             <MKpi
               testId="kpi-consultations-jour"
-              label="Consult. du jour"
+              label={t('dash.kpi.consultDay')}
               value={fmtNumber(clinical.data?.consultationsAujourdhui)}
             />
             <MKpi
               testId="kpi-rdv-jour"
-              label="RDV du jour"
+              label={t('dash.kpi.rdvDay')}
               value={fmtNumber(agenda.data?.rdvAujourdhui)}
               hint={
                 agenda.data
-                  ? `Remplissage ${fmtPct(agenda.data.tauxRemplissageJour)}`
+                  ? t('dash.kpi.fillRate', { n: pctInt(agenda.data.tauxRemplissageJour) })
                   : undefined
               }
             />
             {showFinancial && (
               <MKpi
                 testId="kpi-ca-jour"
-                label="CA du jour"
+                label={t('dash.kpi.caDay')}
                 value={fmtMoney(financial.data?.caJour)}
               />
             )}
           </div>
         </MSection>
 
-        <MSection title="Activité 30 j">
+        <MSection title={t('dash.activity')}>
           {clinical.data ? (
-            <MSparkline points={clinical.data.activite30j} />
+            <MSparkline points={clinical.data.activite30j} emptyLabel={t('dash.empty.activity')} />
           ) : (
             <div
               style={{
@@ -192,69 +199,67 @@ export default function DashboardPageMobile() {
                 borderRadius: 'var(--r-md)',
               }}
             >
-              {clinical.isLoading ? 'Chargement…' : '—'}
+              {clinical.isLoading ? t('common.loading') : '—'}
             </div>
           )}
         </MSection>
 
-        <MSection title="Agenda — semaine">
+        <MSection title={t('dash.agendaWeek')}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <MKpi
               testId="kpi-rdv-semaine"
-              label="RDV semaine"
+              label={t('dash.kpi.rdvWeek')}
               value={fmtNumber(agenda.data?.rdvSemaine)}
               hint={
                 agenda.data
-                  ? `${fmtPct(agenda.data.tauxRemplissageSemaine)} rempli`
+                  ? t('dash.kpi.fillRate', { n: pctInt(agenda.data.tauxRemplissageSemaine) })
                   : undefined
               }
             />
             <MKpi
               testId="kpi-no-shows"
-              label="No-shows"
+              label={t('dash.kpi.noShows')}
               value={fmtNumber(agenda.data?.noShowsSemaine)}
             />
             <MKpi
               testId="kpi-annulations"
-              label="Annulations"
+              label={t('dash.kpi.cancellations')}
               value={fmtNumber(agenda.data?.annulationsSemaine)}
             />
             <MKpi
               testId="kpi-nouveaux-patients"
-              label="Nouveaux patients"
+              label={t('dash.kpi.newPatients')}
               value={fmtNumber(agenda.data?.nouveauxPatientsMois)}
             />
           </div>
         </MSection>
 
         {showFinancial && (
-          <MSection title="Performance financière">
+          <MSection title={t('dash.financial')}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <MKpi
                 testId="kpi-ca-mois"
-                label="CA mois"
+                label={t('dash.kpi.caMonth')}
                 value={fmtMoney(financial.data?.caMois)}
               />
               <MKpi
                 testId="kpi-ca-ytd"
-                label="CA YTD"
+                label={t('dash.kpi.caYtd')}
                 value={fmtMoney(financial.data?.caYTD)}
               />
               <MKpi
                 testId="kpi-impayes"
-                label="Impayés"
+                label={t('dash.kpi.unpaid')}
                 value={fmtMoney(financial.data?.impayesTotal)}
                 hint={
                   financial.data
-                    ? `${fmtNumber(financial.data.impayesCount)} facture${
-                        (financial.data.impayesCount ?? 0) > 1 ? 's' : ''
-                      }`
+                    ? t('dash.kpi.unpaidDelta', { n: fmtNumber(financial.data.impayesCount) })
                     : undefined
                 }
               />
               <MKpi
                 testId="kpi-encaissement"
-                label="Taux encaissement"
+                label={t('dash.kpi.collectRate')}
                 value={fmtPct(financial.data?.tauxEncaissement)}
               />
             </div>

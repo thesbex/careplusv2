@@ -6,31 +6,33 @@ import { z } from 'zod';
  * chip and phone field are surfaced for design parity but only `email`,
  * `firstName`, `lastName`, `password` are sent to the backend.
  */
+// i18n (#122) : les `message` portent des CLÉS de traduction (register.err.*),
+// résolues au rendu par le composant via `t(errors.<field>.message)`.
 export const registerSchema = z
   .object({
     firstName: z
       .string()
-      .min(1, 'Prénom requis.')
-      .max(64, 'Prénom trop long.'),
+      .min(1, 'register.err.firstNameRequired')
+      .max(64, 'register.err.firstNameTooLong'),
     lastName: z
       .string()
-      .min(1, 'Nom requis.')
-      .max(64, 'Nom trop long.'),
+      .min(1, 'register.err.lastNameRequired')
+      .max(64, 'register.err.lastNameTooLong'),
     role: z.enum(['MEDECIN', 'SECRETAIRE', 'GESTIONNAIRE']).default('MEDECIN'),
     email: z
       .string()
-      .min(1, 'Email requis.')
-      .email('Adresse email invalide.')
+      .min(1, 'register.err.emailRequired')
+      .email('register.err.emailInvalid')
       .max(255),
     phone: z.string().max(32).optional().or(z.literal('')),
     password: z
       .string()
-      .min(12, 'Au moins 12 caractères.')
-      .max(128, 'Mot de passe trop long.')
-      .regex(/[A-Z]/, 'Au moins une majuscule.')
-      .regex(/[0-9]/, 'Au moins un chiffre.'),
+      .min(12, 'register.err.passwordMin')
+      .max(128, 'register.err.passwordMax')
+      .regex(/[A-Z]/, 'register.err.passwordUpper')
+      .regex(/[0-9]/, 'register.err.passwordDigit'),
     acceptTerms: z.literal(true, {
-      errorMap: () => ({ message: "Vous devez accepter les conditions d'utilisation." }),
+      errorMap: () => ({ message: 'register.err.terms' }),
     }),
   });
 

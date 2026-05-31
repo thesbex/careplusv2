@@ -6,12 +6,13 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Plus } from '@/components/icons';
 import {
-  STATUS_LABEL,
-  OUTCOME_LABEL,
-  ULTRASOUND_KIND_LABEL,
-  VISIT_PLAN_STATUS_LABEL,
+  STATUS_LABEL_KEY,
+  OUTCOME_LABEL_KEY,
+  ULTRASOUND_KIND_LABEL_KEY,
+  VISIT_PLAN_STATUS_LABEL_KEY,
   type Pregnancy,
   type Trimester,
 } from '../types';
@@ -34,6 +35,8 @@ interface PregnancyTabMobileProps {
   patientId: string;
 }
 
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
+
 const PLAN_TARGETS: number[] = [12, 20, 26, 30, 34, 36, 38, 40];
 
 function fmtDate(iso: string | null | undefined): string {
@@ -48,6 +51,7 @@ function fmtDate(iso: string | null | undefined): string {
 }
 
 export function PregnancyTabMobile({ patientId }: PregnancyTabMobileProps) {
+  const { t } = useT();
   const { pregnancy, isLoading } = useCurrentPregnancy(patientId);
   const { pregnancies } = usePregnancies(patientId);
   const roles = useAuthStore((s) => s.user?.roles ?? []);
@@ -75,7 +79,7 @@ export function PregnancyTabMobile({ patientId }: PregnancyTabMobileProps) {
             background: 'var(--bg-alt)',
             borderRadius: 'var(--r-md)',
           }}
-          aria-label="Chargement…"
+          aria-label={t('gross.tab.loading')}
         />
       </div>
     );
@@ -87,7 +91,7 @@ export function PregnancyTabMobile({ patientId }: PregnancyTabMobileProps) {
       <div className="gr-tab mobile" data-testid="pregnancy-tab-mobile-empty">
         <div className="gr-section" style={{ textAlign: 'center', padding: '24px 12px' }}>
           <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 12 }}>
-            Pas de grossesse en cours.
+            {t('gross.tab.emptyMobile')}
           </div>
           {canDeclare && (
             <button
@@ -103,13 +107,13 @@ export function PregnancyTabMobile({ patientId }: PregnancyTabMobileProps) {
               }}
               onClick={() => setDeclareOpen(true)}
             >
-              <Plus aria-hidden="true" /> Déclarer
+              <Plus aria-hidden="true" /> {t('gross.action.declareMobile')}
             </button>
           )}
         </div>
 
         {closed.length > 0 && (
-          <MobileHistory pregnancies={closed} />
+          <MobileHistory pregnancies={closed} t={t} />
         )}
 
         <PregnancyDeclareDialog
@@ -141,12 +145,14 @@ export function PregnancyTabMobile({ patientId }: PregnancyTabMobileProps) {
         onOpenUs={() => setUsOpen(true)}
         onOpenClose={() => setCloseOpen(true)}
         onOpenCreateChild={() => setCreateChildOpen(true)}
+        t={t}
       />
 
       <MobileHistory
         pregnancies={pregnancies.filter(
           (p) => p.id !== pregnancy.id && p.status !== 'EN_COURS',
         )}
+        t={t}
       />
 
       <PregnancyVisitDrawer pregnancy={pregnancy} open={visitOpen} onOpenChange={setVisitOpen} />
@@ -180,6 +186,7 @@ interface MobileBodyProps {
   onOpenUs: () => void;
   onOpenClose: () => void;
   onOpenCreateChild: () => void;
+  t: Tr;
 }
 
 function MobileBody({
@@ -195,6 +202,7 @@ function MobileBody({
   onOpenUs,
   onOpenClose,
   onOpenCreateChild,
+  t,
 }: MobileBodyProps) {
   const { visits } = usePregnancyVisits(pregnancy.id);
   const { ultrasounds } = usePregnancyUltrasounds(pregnancy.id);
@@ -208,29 +216,31 @@ function MobileBody({
 
       <div className="gr-section">
         <div className="gr-section-title">
-          Grossesse en cours{' '}
+          {t('gross.tab.current')}{' '}
           <span className={`gr-status-pill ${pregnancy.status}`}>
-            {STATUS_LABEL[pregnancy.status]}
+            {t(STATUS_LABEL_KEY[pregnancy.status])}
           </span>
         </div>
 
         <div className="gr-header-stats" style={{ flexDirection: 'column', gap: 10 }}>
           <div className="gr-stat">
-            <span className="gr-stat-label">SA actuelle</span>
+            <span className="gr-stat-label">{t('gross.stat.saCurrent')}</span>
             <span className="gr-stat-value">
               {pregnancy.saWeeks ?? '—'}
               {pregnancy.saWeeks != null && (
                 <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                  {' '}sem +{pregnancy.saDays ?? 0}j
+                  {' '}{t('gross.stat.weeks')} +{pregnancy.saDays ?? 0}j
                 </span>
               )}
             </span>
           </div>
           <div className="gr-stat">
-            <span className="gr-stat-label">DPA</span>
+            <span className="gr-stat-label">{t('gross.stat.dpa')}</span>
             <span className="gr-stat-value">{fmtDate(pregnancy.dueDate)}</span>
             <span className="gr-stat-sub">
-              {pregnancy.dueDateSource === 'ECHO_T1' ? 'Corrigée par écho T1' : 'Naegele'}
+              {pregnancy.dueDateSource === 'ECHO_T1'
+                ? t('gross.stat.dpaEchoT1')
+                : t('gross.stat.dpaNaegele')}
             </span>
           </div>
         </div>
@@ -245,8 +255,11 @@ function MobileBody({
                 className={`gr-plan-chip ${status.toLowerCase()}`}
                 title={
                   entry
-                    ? `${VISIT_PLAN_STATUS_LABEL[entry.status]} — cible ${fmtDate(entry.targetDate)}`
-                    : `SA ${sa} — non planifiée`
+                    ? t('gross.tab.planTitle', {
+                        label: t(VISIT_PLAN_STATUS_LABEL_KEY[entry.status]),
+                        date: fmtDate(entry.targetDate),
+                      })
+                    : t('gross.tab.planNotPlanned', { sa })
                 }
               >
                 SA {sa}
@@ -265,21 +278,21 @@ function MobileBody({
         >
           {canRecordVisit && (
             <button type="button" className="m-btn primary" onClick={onOpenVisit}>
-              Saisir une visite
+              {t('gross.action.recordVisitMobile')}
             </button>
           )}
           {canRecordUs && (
             <button type="button" className="m-btn" onClick={onOpenUs}>
-              Saisir une échographie
+              {t('gross.action.recordUsMobile')}
             </button>
           )}
           {canPrescribeBio && (
             <div style={{ display: 'flex', gap: 6 }}>
-              {(['T1', 'T2', 'T3'] as Trimester[]).map((t) => (
+              {(['T1', 'T2', 'T3'] as Trimester[]).map((tr) => (
                 <BioPanelButton
-                  key={t}
+                  key={tr}
                   pregnancyId={pregnancy.id}
-                  trimester={t}
+                  trimester={tr}
                   variant="ghost"
                 />
               ))}
@@ -287,24 +300,24 @@ function MobileBody({
           )}
           {canClose && pregnancy.status === 'EN_COURS' && (
             <button type="button" className="m-btn" onClick={onOpenClose}>
-              Clôturer
+              {t('gross.action.closeMobile')}
             </button>
           )}
           {showCreateChildCta && (
             <button type="button" className="m-btn primary" onClick={onOpenCreateChild}>
-              Créer la fiche enfant
+              {t('gross.action.createChild')}
             </button>
           )}
         </div>
       </div>
 
       <CollapsibleSection
-        label={`Visites (${visits.length})`}
+        label={t('gross.visits.countLabel', { n: visits.length })}
         isOpen={openSection === 'visites'}
         onToggle={() => setOpenSection(openSection === 'visites' ? null : 'visites')}
       >
         {visits.length === 0 ? (
-          <div className="gr-empty">Aucune visite.</div>
+          <div className="gr-empty">{t('gross.visits.emptyShort')}</div>
         ) : (
           visits.map((v) => (
             <div
@@ -332,12 +345,12 @@ function MobileBody({
       </CollapsibleSection>
 
       <CollapsibleSection
-        label={`Échographies (${ultrasounds.length})`}
+        label={t('gross.us.countLabel', { n: ultrasounds.length })}
         isOpen={openSection === 'echos'}
         onToggle={() => setOpenSection(openSection === 'echos' ? null : 'echos')}
       >
         {ultrasounds.length === 0 ? (
-          <div className="gr-empty">Aucune échographie.</div>
+          <div className="gr-empty">{t('gross.us.emptyShort')}</div>
         ) : (
           ultrasounds.map((u) => (
             <div
@@ -348,15 +361,16 @@ function MobileBody({
                 fontSize: 12.5,
               }}
             >
-              <div style={{ fontWeight: 600 }}>{ULTRASOUND_KIND_LABEL[u.kind]}</div>
+              <div style={{ fontWeight: 600 }}>{t(ULTRASOUND_KIND_LABEL_KEY[u.kind])}</div>
               <div style={{ color: 'var(--ink-3)' }}>
                 {fmtDate(u.performedAt)} — SA {u.saWeeksAtExam}+{u.saDaysAtExam}
-                {u.correctsDueDate ? ' · DPA corrigée' : ''}
+                {u.correctsDueDate ? ` · ${t('gross.us.dpaCorrected')}` : ''}
               </div>
               <div style={{ marginTop: 6 }}>
                 <UltrasoundCrPdfButtonMobile
                   pregnancyId={pregnancy.id}
                   ultrasoundId={u.id}
+                  t={t}
                 />
               </div>
             </div>
@@ -370,9 +384,11 @@ function MobileBody({
 function UltrasoundCrPdfButtonMobile({
   pregnancyId,
   ultrasoundId,
+  t,
 }: {
   pregnancyId: string;
   ultrasoundId: string;
+  t: Tr;
 }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -381,15 +397,15 @@ function UltrasoundCrPdfButtonMobile({
       className="m-btn"
       style={{ height: 32, fontSize: 12 }}
       disabled={busy}
-      aria-label="Télécharger le compte-rendu PDF"
+      aria-label={t('gross.us.crPdfAria')}
       onClick={() => {
         setBusy(true);
         downloadUltrasoundCrPdf(pregnancyId, ultrasoundId)
-          .catch(() => toast.error('Compte-rendu PDF indisponible.'))
+          .catch(() => toast.error(t('gross.us.crPdfUnavailable')))
           .finally(() => setBusy(false));
       }}
     >
-      {busy ? '…' : 'Compte-rendu PDF'}
+      {busy ? '…' : t('gross.us.crPdf')}
     </button>
   );
 }
@@ -435,23 +451,23 @@ function CollapsibleSection({
   );
 }
 
-function MobileHistory({ pregnancies }: { pregnancies: Pregnancy[] }) {
+function MobileHistory({ pregnancies, t }: { pregnancies: Pregnancy[]; t: Tr }) {
   if (pregnancies.length === 0) return null;
   return (
     <div className="gr-section" data-testid="obstetric-history-mobile">
-      <div className="gr-section-title">Antécédents obstétricaux</div>
+      <div className="gr-section-title">{t('gross.history.title')}</div>
       {pregnancies.map((p) => (
         <div key={p.id} className="gr-history-row">
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 13, fontWeight: 600 }}>
-              {p.outcome ? OUTCOME_LABEL[p.outcome] : 'Issue inconnue'}
+              {p.outcome ? t(OUTCOME_LABEL_KEY[p.outcome]) : t('gross.history.unknownOutcome')}
             </div>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-              DDR {fmtDate(p.lmpDate)} · Fin {fmtDate(p.endedAt)}
+              {t('gross.history.ddrEndMobile', { ddr: fmtDate(p.lmpDate), end: fmtDate(p.endedAt) })}
             </div>
           </div>
           <span className={`gr-status-pill ${p.status}`}>
-            {STATUS_LABEL[p.status]}
+            {t(STATUS_LABEL_KEY[p.status])}
           </span>
         </div>
       ))}

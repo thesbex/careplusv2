@@ -5,6 +5,7 @@
  */
 import { Edit, Trash } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { VaccinationCalendarEntry, DoseStatus, DrawerMode } from '../types';
 
 interface DoseCardProps {
@@ -17,42 +18,42 @@ interface DoseCardProps {
   onDelete: (dose: VaccinationCalendarEntry) => void;
 }
 
-const STATUS_STYLE: Record<DoseStatus, { bg: string; border: string; color: string; label: string }> = {
+const STATUS_STYLE: Record<DoseStatus, { bg: string; border: string; color: string; labelKey: string }> = {
   ADMINISTERED: {
     bg: 'var(--success-soft)',
     border: 'var(--success)',
     color: 'var(--success)',
-    label: 'Administrée',
+    labelKey: 'vacc.status.administered',
   },
   DUE_SOON: {
     bg: 'var(--amber-soft)',
     border: 'var(--amber)',
     color: 'var(--amber)',
-    label: 'Prochaine',
+    labelKey: 'vacc.status.dueSoon',
   },
   OVERDUE: {
     bg: 'var(--danger-soft)',
     border: 'var(--danger)',
     color: 'var(--danger)',
-    label: 'En retard',
+    labelKey: 'vacc.status.overdue',
   },
   UPCOMING: {
     bg: 'var(--surface)',
     border: 'var(--border)',
     color: 'var(--ink-3)',
-    label: 'Planifiée',
+    labelKey: 'vacc.status.upcoming',
   },
   SKIPPED: {
     bg: 'var(--bg-alt)',
     border: 'var(--border)',
     color: 'var(--ink-4)',
-    label: 'Non administrée',
+    labelKey: 'vacc.status.skipped',
   },
   DEFERRED: {
     bg: 'var(--bg-alt)',
     border: 'var(--border-strong)',
     color: 'var(--ink-2)',
-    label: 'Reportée',
+    labelKey: 'vacc.status.deferred',
   },
 };
 
@@ -81,6 +82,7 @@ export function DoseCard({
   onSkip,
   onDelete,
 }: DoseCardProps) {
+  const { t } = useT();
   const style = STATUS_STYLE[dose.status];
   const isActionable = dose.status === 'UPCOMING' || dose.status === 'DUE_SOON' || dose.status === 'OVERDUE';
   const isAdministered = dose.status === 'ADMINISTERED';
@@ -147,7 +149,7 @@ export function DoseCard({
             flexShrink: 0,
           }}
         >
-          {style.label}
+          {t(style.labelKey)}
         </span>
       </div>
 
@@ -156,19 +158,19 @@ export function DoseCard({
         <div style={{ fontSize: 12, color: 'var(--ink-2)', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {dose.administeredAt && (
             <div>
-              <span style={{ color: 'var(--ink-3)' }}>Le </span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('vacc.dose.on')}</span>
               <span className="tnum">{formatDateTimeFR(dose.administeredAt)}</span>
             </div>
           )}
           {dose.lotNumber && (
             <div>
-              <span style={{ color: 'var(--ink-3)' }}>Lot </span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('vacc.dose.lot')}</span>
               <span className="mono">{dose.lotNumber}</span>
             </div>
           )}
           {dose.administeredByName && (
             <div>
-              <span style={{ color: 'var(--ink-3)' }}>Par </span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('vacc.dose.by')}</span>
               {dose.administeredByName}
             </div>
           )}
@@ -189,7 +191,7 @@ export function DoseCard({
           }}
           title={dose.deferralReason}
         >
-          Motif : {dose.deferralReason}
+          {t('vacc.dose.reason', { reason: dose.deferralReason })}
         </div>
       )}
 
@@ -202,7 +204,7 @@ export function DoseCard({
             onClick={() => onRecord(dose, 'record')}
             style={{ fontSize: 12 }}
           >
-            Saisir dose
+            {t('vacc.action.record')}
           </Button>
         )}
         {isActionable && canRecord && (
@@ -211,7 +213,7 @@ export function DoseCard({
             onClick={() => onDefer(dose)}
             style={{ fontSize: 12 }}
           >
-            Reporter
+            {t('vacc.dose.defer')}
           </Button>
         )}
         {isActionable && canAdmin && (
@@ -221,7 +223,7 @@ export function DoseCard({
             onClick={() => onSkip(dose)}
             style={{ fontSize: 12, color: 'var(--ink-3)' }}
           >
-            Non administrée
+            {t('vacc.dose.skip')}
           </Button>
         )}
         {isAdministered && canAdmin && (
@@ -230,7 +232,7 @@ export function DoseCard({
             onClick={() => onRecord(dose, 'edit')}
             style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            <Edit style={{ width: 12, height: 12 }} /> Modifier
+            <Edit style={{ width: 12, height: 12 }} /> {t('vacc.dose.edit')}
           </Button>
         )}
         {isAdministered && canAdmin && (
@@ -240,7 +242,7 @@ export function DoseCard({
             onClick={() => onDelete(dose)}
             style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            <Trash style={{ width: 12, height: 12 }} /> Supprimer
+            <Trash style={{ width: 12, height: 12 }} /> {t('vacc.dose.delete')}
           </Button>
         )}
         {(isAdministered) && (
@@ -250,7 +252,7 @@ export function DoseCard({
             onClick={() => onRecord(dose, 'view')}
             style={{ fontSize: 12 }}
           >
-            Voir
+            {t('vacc.dose.view')}
           </Button>
         )}
       </div>

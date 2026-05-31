@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type EstablishmentType =
   | 'CABINET'
@@ -106,6 +107,7 @@ export interface TierConfig {
 }
 
 export function useClinicSettings() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['clinic-settings'],
     queryFn: () =>
@@ -119,7 +121,7 @@ export function useClinicSettings() {
   return {
     settings: data ?? null,
     isLoading,
-    error: error ? 'Impossible de charger les paramètres cabinet.' : null,
+    error: error ? t('settings.errors.loadSettings') : null,
   };
 }
 

@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Field, FieldLabel } from '@/components/ui/Field';
@@ -26,22 +27,19 @@ import type { VaccineScheduleDose } from '../hooks/useVaccinationSchedule';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const ROUTE_LABELS: Record<string, string> = {
-  IM: 'IM — Intramusculaire',
-  SC: 'SC — Sous-cutané',
-  PO: 'PO — Per os (oral)',
-  ID: 'ID — Intradermique',
-};
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
-function formatTargetAge(days: number): string {
-  if (days === 0) return 'Naissance';
-  if (days < 30) return `${days} j`;
+const ROUTE_ORDER = ['IM', 'SC', 'PO', 'ID'] as const;
+
+function formatTargetAge(days: number, t: Tr): string {
+  if (days === 0) return t('vacc.param.age.birth');
+  if (days < 30) return t('vacc.param.age.days', { n: days });
   const months = Math.round(days / 30.44);
-  if (months < 24) return `${months} mois`;
+  if (months < 24) return t('vacc.param.age.months', { n: months });
   const years = Math.floor(months / 12);
   const rem = months % 12;
-  if (rem === 0) return `${years} ans`;
-  return `${years} ans ${rem} mois`;
+  if (rem === 0) return t('vacc.param.age.years', { n: years });
+  return t('vacc.param.age.yearsMonths', { years, months: rem });
 }
 
 // ── Vaccine form drawer ──────────────────────────────────────────────────────
@@ -63,6 +61,7 @@ const EMPTY_VACCINE: UpsertVaccineValues = {
 };
 
 function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawerProps) {
+  const { t } = useT();
   const mutation = useUpsertVaccine(mode);
 
   const defaultValues: UpsertVaccineValues =
@@ -97,7 +96,7 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
     };
     try {
       await mutation.mutateAsync(initial?.id ? { id: initial.id, body } : { body });
-      toast.success(mode === 'create' ? 'Vaccin ajouté.' : 'Vaccin modifié.');
+      toast.success(mode === 'create' ? t('vacc.param.vaccine.addedSuccess') : t('vacc.param.vaccine.editedSuccess'));
       onSaved();
     } catch (err) {
       const problem = toProblemDetail(err);
@@ -149,7 +148,7 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
             fontWeight: 600,
           }}
         >
-          {mode === 'create' ? 'Ajouter un vaccin' : 'Modifier le vaccin'}
+          {mode === 'create' ? t('vacc.param.vaccine.addTitle') : t('vacc.param.vaccine.editTitle')}
         </div>
 
         <form
@@ -158,10 +157,10 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
           style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}
         >
           <Field>
-            <FieldLabel htmlFor="vac-code">Code *</FieldLabel>
+            <FieldLabel htmlFor="vac-code">{t('vacc.param.vaccine.code')}</FieldLabel>
             <Input
               id="vac-code"
-              placeholder="BCG"
+              placeholder={t('vacc.param.vaccine.codePlaceholder')}
               {...register('code', {
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
                   e.target.value = e.target.value.toUpperCase();
@@ -178,8 +177,8 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="vac-name">Nom *</FieldLabel>
-            <Input id="vac-name" placeholder="BCG — vaccin antituberculeux" {...register('nameFr')} />
+            <FieldLabel htmlFor="vac-name">{t('vacc.param.vaccine.name')}</FieldLabel>
+            <Input id="vac-name" placeholder={t('vacc.param.vaccine.namePlaceholder')} {...register('nameFr')} />
             {errors.nameFr && (
               <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
                 {errors.nameFr.message}
@@ -188,12 +187,12 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="vac-mfr">Fabricant par défaut</FieldLabel>
-            <Input id="vac-mfr" placeholder="Sanofi, MSD, GSK…" {...register('manufacturerDefault')} />
+            <FieldLabel htmlFor="vac-mfr">{t('vacc.param.vaccine.manufacturer')}</FieldLabel>
+            <Input id="vac-mfr" placeholder={t('vacc.param.vaccine.manufacturerPlaceholder')} {...register('manufacturerDefault')} />
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="vac-route">Voie par défaut</FieldLabel>
+            <FieldLabel htmlFor="vac-route">{t('vacc.param.vaccine.routeDefault')}</FieldLabel>
             <Select
               id="vac-route"
               {...register('routeDefault')}
@@ -208,15 +207,15 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
               }}
             >
               <option value="">—</option>
-              {Object.entries(ROUTE_LABELS).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
+              {ROUTE_ORDER.map((k) => (
+                <option key={k} value={k}>{t(`vacc.route.${k}`)}</option>
               ))}
             </Select>
           </Field>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <input type="checkbox" id="vac-active" {...register('active')} style={{ width: 16, height: 16 }} />
-            <label htmlFor="vac-active" style={{ fontSize: 13, cursor: 'pointer' }}>Actif</label>
+            <label htmlFor="vac-active" style={{ fontSize: 13, cursor: 'pointer' }}>{t('vacc.param.vaccine.active')}</label>
           </div>
 
           {mode === 'edit' && initial?.isPni && (
@@ -229,7 +228,7 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
                 color: 'var(--primary)',
               }}
             >
-              Vaccin PNI — le flag PNI est géré uniquement via le seed base de données.
+              {t('vacc.param.vaccine.pniNote')}
             </div>
           )}
         </form>
@@ -249,10 +248,10 @@ function VaccineFormDrawer({ mode, initial, onClose, onSaved }: VaccineFormDrawe
             disabled={mutation.isPending}
             style={{ flex: 1 }}
           >
-            {mutation.isPending ? 'Enregistrement…' : mode === 'create' ? 'Ajouter' : 'Enregistrer'}
+            {mutation.isPending ? t('vacc.param.vaccine.saving') : mode === 'create' ? t('vacc.param.vaccine.add') : t('vacc.param.vaccine.save')}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {t('vacc.param.vaccine.cancel')}
           </Button>
         </div>
       </div>
@@ -279,12 +278,12 @@ const EMPTY_DOSE: UpsertScheduleDoseValues = {
 };
 
 const TARGET_AGE_HELPERS = [
-  { label: 'Naissance', value: 0 },
-  { label: '2 mois', value: 60 },
-  { label: '4 mois', value: 120 },
-  { label: '12 mois', value: 365 },
-  { label: '18 mois', value: 548 },
-  { label: '5 ans', value: 1825 },
+  { labelKey: 'vacc.param.preset.birth', value: 0 },
+  { labelKey: 'vacc.param.preset.2m', value: 60 },
+  { labelKey: 'vacc.param.preset.4m', value: 120 },
+  { labelKey: 'vacc.param.preset.12m', value: 365 },
+  { labelKey: 'vacc.param.preset.18m', value: 548 },
+  { labelKey: 'vacc.param.preset.5y', value: 1825 },
 ];
 
 function ScheduleDoseFormDrawer({
@@ -294,6 +293,7 @@ function ScheduleDoseFormDrawer({
   onClose,
   onSaved,
 }: ScheduleDoseFormDrawerProps) {
+  const { t } = useT();
   const mutation = useUpsertScheduleDose(mode);
 
   const defaultValues: UpsertScheduleDoseValues =
@@ -327,12 +327,12 @@ function ScheduleDoseFormDrawer({
     };
     try {
       await mutation.mutateAsync(initial?.id ? { id: initial.id, body } : { body });
-      toast.success(mode === 'create' ? 'Dose ajoutée au calendrier.' : 'Dose modifiée.');
+      toast.success(mode === 'create' ? t('vacc.param.dose.addedSuccess') : t('vacc.param.dose.editedSuccess'));
       onSaved();
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 409) {
-        toast.error('Cette dose existe déjà pour ce vaccin');
+        toast.error(t('vacc.param.dose.duplicate'));
       } else if (problem.violations?.length) {
         toast.error(problem.violations.map((v) => `${v.field} : ${v.message}`).join(' · '));
       } else {
@@ -383,7 +383,7 @@ function ScheduleDoseFormDrawer({
             fontWeight: 600,
           }}
         >
-          {mode === 'create' ? 'Ajouter une dose au calendrier' : 'Modifier la dose'}
+          {mode === 'create' ? t('vacc.param.dose.addTitle') : t('vacc.param.dose.editTitle')}
         </div>
 
         <form
@@ -392,7 +392,7 @@ function ScheduleDoseFormDrawer({
           style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}
         >
           <Field>
-            <FieldLabel htmlFor="sd-vaccine">Vaccin *</FieldLabel>
+            <FieldLabel htmlFor="sd-vaccine">{t('vacc.param.dose.vaccine')}</FieldLabel>
             <Select
               id="sd-vaccine"
               {...register('vaccineId')}
@@ -407,7 +407,7 @@ function ScheduleDoseFormDrawer({
                 background: 'var(--surface)',
               }}
             >
-              <option value="">Sélectionner un vaccin…</option>
+              <option value="">{t('vacc.param.dose.selectVaccine')}</option>
               {activeVaccines.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.nameFr} ({v.code})
@@ -422,7 +422,7 @@ function ScheduleDoseFormDrawer({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="sd-dose-number">Numéro de dose *</FieldLabel>
+            <FieldLabel htmlFor="sd-dose-number">{t('vacc.param.dose.doseNumber')}</FieldLabel>
             <Input
               id="sd-dose-number"
               type="number"
@@ -437,7 +437,7 @@ function ScheduleDoseFormDrawer({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="sd-target-age">Âge cible (jours) *</FieldLabel>
+            <FieldLabel htmlFor="sd-target-age">{t('vacc.param.dose.targetAge')}</FieldLabel>
             <Input
               id="sd-target-age"
               type="number"
@@ -466,17 +466,17 @@ function ScheduleDoseFormDrawer({
                     color: 'var(--ink-2)',
                   }}
                 >
-                  {h.label}={h.value}
+                  {t(h.labelKey)}={h.value}
                 </button>
               ))}
             </div>
             <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 4 }}>
-              Naissance=0, 2 mois=60, 12 mois=365, 5 ans=1825
+              {t('vacc.param.dose.targetAgeHint')}
             </div>
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="sd-tolerance">Tolérance (jours) *</FieldLabel>
+            <FieldLabel htmlFor="sd-tolerance">{t('vacc.param.dose.tolerance')}</FieldLabel>
             <Input
               id="sd-tolerance"
               type="number"
@@ -491,8 +491,8 @@ function ScheduleDoseFormDrawer({
           </Field>
 
           <Field>
-            <FieldLabel htmlFor="sd-label">Libellé *</FieldLabel>
-            <Input id="sd-label" placeholder="Ex. BCG Naissance D1" {...register('labelFr')} />
+            <FieldLabel htmlFor="sd-label">{t('vacc.param.dose.label')}</FieldLabel>
+            <Input id="sd-label" placeholder={t('vacc.param.dose.labelPlaceholder')} {...register('labelFr')} />
             {errors.labelFr && (
               <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
                 {errors.labelFr.message}
@@ -516,10 +516,10 @@ function ScheduleDoseFormDrawer({
             disabled={mutation.isPending}
             style={{ flex: 1 }}
           >
-            {mutation.isPending ? 'Enregistrement…' : mode === 'create' ? 'Ajouter' : 'Enregistrer'}
+            {mutation.isPending ? t('vacc.param.dose.saving') : mode === 'create' ? t('vacc.param.dose.add') : t('vacc.param.dose.save')}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            Annuler
+            {t('vacc.param.dose.cancel')}
           </Button>
         </div>
       </div>
@@ -538,6 +538,7 @@ function DeleteScheduleDoseDialog({
   onCancel: () => void;
   isPending: boolean;
 }) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -561,14 +562,14 @@ function DeleteScheduleDoseDialog({
         }}
       >
         <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}>
-          Supprimer cette ligne du calendrier ?
+          {t('vacc.param.delete.title')}
         </div>
         <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 20, lineHeight: 1.5 }}>
-          Les doses déjà saisies sur les patients ne seront pas affectées.
+          {t('vacc.param.delete.body')}
         </div>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <Button variant="ghost" onClick={onCancel}>
-            Annuler
+            {t('vacc.param.delete.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -576,7 +577,7 @@ function DeleteScheduleDoseDialog({
             onClick={onConfirm}
             style={{ background: 'var(--danger)', border: 'none' }}
           >
-            {isPending ? 'Suppression…' : 'Supprimer'}
+            {isPending ? t('vacc.param.delete.deleting') : t('vacc.param.delete.confirm')}
           </Button>
         </div>
       </div>
@@ -587,6 +588,7 @@ function DeleteScheduleDoseDialog({
 // ── Section 1 — Catalog ───────────────────────────────────────────────────────
 
 function VaccineCatalogSection() {
+  const { t } = useT();
   const { catalog, isLoading, error } = useVaccinationCatalog();
   const { deactivate, isPending: isDeactivating } = useDeactivateVaccine();
   const [showDrawer, setShowDrawer] = useState(false);
@@ -609,7 +611,7 @@ function VaccineCatalogSection() {
 
   async function handleDeactivate(vaccine: VaccineCatalogEntry) {
     if (vaccine.isPni) {
-      toast.error('Vaccin PNI : désactivation interdite');
+      toast.error(t('vacc.param.catalog.pniProtected'));
       return;
     }
     await deactivate(vaccine.id).catch(() => null);
@@ -620,9 +622,9 @@ function VaccineCatalogSection() {
       <Panel>
         <PanelHeader>
           <div>
-            <div style={{ fontWeight: 600 }}>Vaccins</div>
+            <div style={{ fontWeight: 600 }}>{t('vacc.param.catalog.title')}</div>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 400, marginTop: 2 }}>
-              Catalogue PNI Maroc + vaccins ajoutés par le cabinet
+              {t('vacc.param.catalog.sub')}
             </div>
           </div>
           <Button
@@ -631,12 +633,12 @@ function VaccineCatalogSection() {
             style={{ marginLeft: 'auto' }}
             onClick={openCreate}
           >
-            Ajouter un vaccin
+            {t('vacc.param.catalog.add')}
           </Button>
         </PanelHeader>
         <div style={{ overflowX: 'auto' }}>
           {isLoading && (
-            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>{t('vacc.param.loading')}</div>
           )}
           {error && (
             <div style={{ padding: 16, color: 'var(--danger)', fontSize: 12 }}>{error}</div>
@@ -645,7 +647,15 @@ function VaccineCatalogSection() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)' }}>
-                  {['Code', 'Nom', 'Fabricant', 'Voie', 'PNI', 'Actif', 'Actions'].map((h) => (
+                  {[
+                    t('vacc.param.catalog.col.code'),
+                    t('vacc.param.catalog.col.name'),
+                    t('vacc.param.catalog.col.manufacturer'),
+                    t('vacc.param.catalog.col.route'),
+                    t('vacc.param.catalog.col.pni'),
+                    t('vacc.param.catalog.col.active'),
+                    t('vacc.param.catalog.col.actions'),
+                  ].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -666,7 +676,7 @@ function VaccineCatalogSection() {
                 {catalog.length === 0 && (
                   <tr>
                     <td colSpan={7} style={{ padding: '24px 12px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-                      Aucun vaccin dans le catalogue.
+                      {t('vacc.param.catalog.empty')}
                     </td>
                   </tr>
                 )}
@@ -724,7 +734,7 @@ function VaccineCatalogSection() {
                         type="checkbox"
                         checked={v.active}
                         readOnly
-                        aria-label={`${v.nameFr} actif`}
+                        aria-label={t('vacc.param.catalog.activeAria', { name: v.nameFr })}
                         style={{ width: 16, height: 16, cursor: 'default' }}
                       />
                     </td>
@@ -734,7 +744,7 @@ function VaccineCatalogSection() {
                           size="sm"
                           variant="ghost"
                           iconOnly
-                          aria-label={`Modifier ${v.nameFr}`}
+                          aria-label={t('vacc.param.catalog.editAria', { name: v.nameFr })}
                           onClick={() => openEdit(v)}
                         >
                           <Edit />
@@ -744,7 +754,7 @@ function VaccineCatalogSection() {
                             size="sm"
                             variant="ghost"
                             iconOnly
-                            aria-label={`Désactiver ${v.nameFr}`}
+                            aria-label={t('vacc.param.catalog.deactivateAria', { name: v.nameFr })}
                             disabled={isDeactivating}
                             onClick={() => void handleDeactivate(v)}
                           >
@@ -776,6 +786,7 @@ function VaccineCatalogSection() {
 // ── Section 2 — Schedule ──────────────────────────────────────────────────────
 
 function VaccineScheduleSection() {
+  const { t } = useT();
   const { schedule, isLoading, error } = useVaccinationSchedule();
   const { catalog } = useVaccinationCatalog();
   const { deleteDose, isPending: isDeleting, deletingId } = useDeleteScheduleDose();
@@ -810,9 +821,9 @@ function VaccineScheduleSection() {
       <Panel>
         <PanelHeader>
           <div>
-            <div style={{ fontWeight: 600 }}>Calendrier vaccinal</div>
+            <div style={{ fontWeight: 600 }}>{t('vacc.param.schedule.title')}</div>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 400, marginTop: 2 }}>
-              Doses planifiées par âge — éditable selon les recommandations PNI
+              {t('vacc.param.schedule.sub')}
             </div>
           </div>
           <Button
@@ -821,12 +832,12 @@ function VaccineScheduleSection() {
             style={{ marginLeft: 'auto' }}
             onClick={openCreateDose}
           >
-            Ajouter une dose
+            {t('vacc.param.schedule.add')}
           </Button>
         </PanelHeader>
         <div style={{ overflowX: 'auto' }}>
           {isLoading && (
-            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>
+            <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>{t('vacc.param.loading')}</div>
           )}
           {error && (
             <div style={{ padding: 16, color: 'var(--danger)', fontSize: 12 }}>{error}</div>
@@ -835,7 +846,14 @@ function VaccineScheduleSection() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ background: 'var(--surface-2)' }}>
-                  {['Vaccin', 'N° dose', 'Âge cible', 'Tolérance', 'Libellé', 'Actions'].map((h) => (
+                  {[
+                    t('vacc.param.schedule.col.vaccine'),
+                    t('vacc.param.schedule.col.doseNumber'),
+                    t('vacc.param.schedule.col.targetAge'),
+                    t('vacc.param.schedule.col.tolerance'),
+                    t('vacc.param.schedule.col.label'),
+                    t('vacc.param.schedule.col.actions'),
+                  ].map((h) => (
                     <th
                       key={h}
                       style={{
@@ -856,7 +874,7 @@ function VaccineScheduleSection() {
                 {schedule.length === 0 && (
                   <tr>
                     <td colSpan={6} style={{ padding: '24px 12px', color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-                      Aucune dose dans le calendrier.
+                      {t('vacc.param.schedule.empty')}
                     </td>
                   </tr>
                 )}
@@ -877,9 +895,9 @@ function VaccineScheduleSection() {
                       </span>
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--ink-2)' }}>{d.doseNumber}</td>
-                    <td style={{ padding: '8px 12px' }}>{formatTargetAge(d.targetAgeDays)}</td>
+                    <td style={{ padding: '8px 12px' }}>{formatTargetAge(d.targetAgeDays, t)}</td>
                     <td style={{ padding: '8px 12px', color: 'var(--ink-2)' }}>
-                      ± {d.toleranceDays} j
+                      {t('vacc.param.schedule.toleranceValue', { n: d.toleranceDays })}
                     </td>
                     <td style={{ padding: '8px 12px', color: 'var(--ink-2)' }}>{d.labelFr}</td>
                     <td style={{ padding: '8px 12px' }}>
@@ -888,7 +906,7 @@ function VaccineScheduleSection() {
                           size="sm"
                           variant="ghost"
                           iconOnly
-                          aria-label={`Modifier ${d.labelFr}`}
+                          aria-label={t('vacc.param.schedule.editAria', { label: d.labelFr })}
                           onClick={() => openEditDose(d)}
                         >
                           <Edit />
@@ -897,7 +915,7 @@ function VaccineScheduleSection() {
                           size="sm"
                           variant="ghost"
                           iconOnly
-                          aria-label={`Supprimer ${d.labelFr}`}
+                          aria-label={t('vacc.param.schedule.deleteAria', { label: d.labelFr })}
                           disabled={isDeleting && deletingId === d.id}
                           onClick={() => setDeleteTarget(d)}
                         >

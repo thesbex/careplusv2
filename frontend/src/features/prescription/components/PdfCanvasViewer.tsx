@@ -19,6 +19,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import { useT } from '@/lib/i18n/I18nProvider';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 // Vite résout l'URL du worker en build (chunk séparé). PDF.js le télécharge
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function PdfCanvasViewer({ src, width = 800, className, maxHeight }: Props) {
+  const { t } = useT();
   const [numPages, setNumPages] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -72,11 +74,11 @@ export function PdfCanvasViewer({ src, width = 800, className, maxHeight }: Prop
         onLoadError={(err) => {
           // eslint-disable-next-line no-console
           console.error('[PdfCanvasViewer] PDF.js loadError', err);
-          setLoadError("Impossible d'afficher le PDF. Utilisez le bouton Télécharger.");
+          setLoadError(t('presc.canvas.loadError'));
         }}
         loading={
           <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: 24 }}>
-            Chargement du PDF…
+            {t('presc.canvas.loading')}
           </div>
         }
       >

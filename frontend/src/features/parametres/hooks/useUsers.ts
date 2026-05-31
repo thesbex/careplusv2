@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface AdminUser {
   id: string;
@@ -69,6 +70,7 @@ export interface UpdateUserPayload {
 }
 
 export function useUsers() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-users'],
     queryFn: () => api.get<AdminUser[]>('/admin/users').then((r) => r.data),
@@ -77,7 +79,7 @@ export function useUsers() {
   return {
     users: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les utilisateurs.' : null,
+    error: error ? t('settings.errors.loadUsers') : null,
   };
 }
 

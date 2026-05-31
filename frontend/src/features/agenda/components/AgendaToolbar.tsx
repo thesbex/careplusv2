@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export type AgendaView = 'jour' | 'semaine' | 'mois';
 
@@ -14,10 +15,11 @@ interface AgendaToolbarProps {
 export function AgendaToolbar({
   view, onViewChange, weekLabel, onPrev, onNext, onToday,
 }: AgendaToolbarProps) {
+  const { t } = useT();
   return (
     <div className="ag-toolbar">
-      <div className="ag-week-nav" role="group" aria-label="Navigation semaine">
-        <button type="button" aria-label="Précédent" onClick={onPrev}>
+      <div className="ag-week-nav" role="group" aria-label={t('agenda.weekNavAria')}>
+        <button type="button" aria-label={t('agenda.prev')} onClick={onPrev}>
           <ChevronLeft />
         </button>
         <div className="vdv" />
@@ -26,10 +28,10 @@ export function AgendaToolbar({
           style={{ width: 'auto', padding: '0 12px', fontSize: 12, fontWeight: 500 }}
           onClick={onToday}
         >
-          Aujourd'hui
+          {t('agenda.today')}
         </button>
         <div className="vdv" />
-        <button type="button" aria-label="Suivant" onClick={onNext}>
+        <button type="button" aria-label={t('agenda.next')} onClick={onNext}>
           <ChevronRight />
         </button>
       </div>
@@ -41,7 +43,7 @@ export function AgendaToolbar({
       <div
         className="ag-view-toggle"
         role="group"
-        aria-label="Période"
+        aria-label={t('agenda.periodAria')}
         style={{ marginLeft: 18 }}
       >
         {(['jour', 'semaine', 'mois'] as AgendaView[]).map((v) => (
@@ -52,7 +54,7 @@ export function AgendaToolbar({
             aria-pressed={view === v}
             onClick={() => onViewChange(v)}
           >
-            {v.charAt(0).toUpperCase() + v.slice(1)}
+            {t(`agenda.view.${v}`)}
           </button>
         ))}
       </div>

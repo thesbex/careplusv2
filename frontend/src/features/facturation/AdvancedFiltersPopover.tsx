@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatientSearch } from '../prise-rdv/hooks/usePatientSearch';
 import {
   EMPTY_FILTERS,
-  PAYMENT_MODE_LABEL,
+  paymentModeKey,
   type DateField,
   type InvoiceSearchFilters,
   type PaymentMode,
@@ -27,6 +28,7 @@ function activeFilterCount(f: InvoiceSearchFilters): number {
 }
 
 export function AdvancedFiltersPopover({ filters, onChange }: Props) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<InvoiceSearchFilters>(filters);
 
@@ -57,7 +59,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         <button type="button" className="fa-filter-btn" aria-haspopup="dialog">
-          Filtres avancés{count > 0 ? ` (${count})` : ''}
+          {count > 0 ? t('factu.adv.triggerCount', { n: count }) : t('factu.adv.trigger')}
         </button>
       </Popover.Trigger>
       <Popover.Portal>
@@ -65,10 +67,10 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
           className="fa-filters-popover"
           sideOffset={6}
           align="end"
-          aria-label="Filtres avancés"
+          aria-label={t('factu.adv.aria')}
         >
           <div className="fa-fp-section">
-            <div className="fa-fp-label">Date à appliquer</div>
+            <div className="fa-fp-label">{t('factu.adv.dateField')}</div>
             <div className="fa-fp-radios">
               {(['ISSUED', 'PAID'] as DateField[]).map((f) => (
                 <label key={f} className="fa-fp-radio">
@@ -79,13 +81,13 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                     checked={draft.dateField === f}
                     onChange={() => setDraft({ ...draft, dateField: f })}
                   />
-                  {f === 'ISSUED' ? 'Émission' : 'Encaissement'}
+                  {f === 'ISSUED' ? t('factu.adv.issued') : t('factu.adv.paid')}
                 </label>
               ))}
             </div>
             <div className="fa-fp-row">
               <label>
-                Du
+                {t('factu.adv.from')}
                 <input
                   type="date"
                   value={draft.from ?? ''}
@@ -93,7 +95,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                 />
               </label>
               <label>
-                Au
+                {t('factu.adv.to')}
                 <input
                   type="date"
                   value={draft.to ?? ''}
@@ -103,19 +105,19 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
             </div>
             <div className="fa-fp-presets">
               <button type="button" onClick={() => applyPreset('thisMonth')}>
-                Ce mois
+                {t('factu.adv.preset.thisMonth')}
               </button>
               <button type="button" onClick={() => applyPreset('lastMonth')}>
-                Mois dernier
+                {t('factu.adv.preset.lastMonth')}
               </button>
               <button type="button" onClick={() => applyPreset('thisYear')}>
-                Cette année
+                {t('factu.adv.preset.thisYear')}
               </button>
             </div>
           </div>
 
           <div className="fa-fp-section">
-            <div className="fa-fp-label">Modes de paiement</div>
+            <div className="fa-fp-label">{t('factu.adv.paymentModes')}</div>
             <div className="fa-fp-checkbox-grid">
               {MODES.map((m) => (
                 <label key={m} className="fa-fp-checkbox">
@@ -129,7 +131,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                       setDraft({ ...draft, paymentModes: next });
                     }}
                   />
-                  {PAYMENT_MODE_LABEL[m]}
+                  {t(paymentModeKey(m))}
                 </label>
               ))}
             </div>
@@ -141,10 +143,10 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
           />
 
           <div className="fa-fp-section">
-            <div className="fa-fp-label">Montant net (MAD)</div>
+            <div className="fa-fp-label">{t('factu.adv.amount')}</div>
             <div className="fa-fp-row">
               <label>
-                Min
+                {t('factu.adv.min')}
                 <input
                   type="number"
                   step="1"
@@ -156,7 +158,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                 />
               </label>
               <label>
-                Max
+                {t('factu.adv.max')}
                 <input
                   type="number"
                   step="1"
@@ -180,7 +182,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                 setOpen(false);
               }}
             >
-              Réinitialiser
+              {t('factu.adv.reset')}
             </button>
             <button
               type="button"
@@ -190,7 +192,7 @@ export function AdvancedFiltersPopover({ filters, onChange }: Props) {
                 setOpen(false);
               }}
             >
-              Appliquer
+              {t('factu.adv.apply')}
             </button>
           </div>
         </Popover.Content>
@@ -206,17 +208,18 @@ function PatientPicker({
   value: string | null;
   onChange: (id: string | null) => void;
 }) {
+  const { t } = useT();
   const [query, setQuery] = useState('');
   const { candidates } = usePatientSearch(query);
   const selected = value ? candidates.find((c) => c.id === value) : null;
 
   return (
     <div className="fa-fp-section">
-      <div className="fa-fp-label">Patient</div>
+      <div className="fa-fp-label">{t('factu.adv.patient')}</div>
       {value && selected ? (
         <div className="fa-fp-selected">
           <span>{selected.name}</span>
-          <button type="button" onClick={() => onChange(null)} aria-label="Retirer le patient">
+          <button type="button" onClick={() => onChange(null)} aria-label={t('factu.adv.removePatient')}>
             ×
           </button>
         </div>
@@ -224,7 +227,7 @@ function PatientPicker({
         <>
           <input
             type="text"
-            placeholder="Nom ou téléphone…"
+            placeholder={t('factu.adv.patientPlaceholder')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />

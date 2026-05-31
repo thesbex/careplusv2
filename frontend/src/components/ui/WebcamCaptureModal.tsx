@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from './Button';
 import { Camera } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface WebcamCaptureModalProps {
   open: boolean;
@@ -23,7 +24,7 @@ export interface WebcamCaptureModalProps {
   quality?: number;
   /** Largeur cible — la frame est rognée si la caméra est plus grande. */
   maxWidth?: number;
-  /** Étiquette du bouton « Capturer ». */
+  /** Étiquette du bouton « Capturer ». Défaut : traduction `ui.webcam.capture`. */
   captureLabel?: string;
   onCapture: (file: File) => void;
   onClose: () => void;
@@ -43,10 +44,12 @@ export function WebcamCaptureModal({
   mimeType = 'image/jpeg',
   quality = 0.92,
   maxWidth = 1280,
-  captureLabel = 'Capturer',
+  captureLabel,
   onCapture,
   onClose,
 }: WebcamCaptureModalProps) {
+  const { t } = useT();
+  const resolvedCaptureLabel = captureLabel ?? t('ui.webcam.capture');
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<CameraError | null>(null);
@@ -71,17 +74,17 @@ export function WebcamCaptureModal({
 
     if (!window.isSecureContext) {
       setError({
-        title: 'Contexte non sécurisé',
-        detail: "L'accès caméra n'est autorisé que sur HTTPS ou localhost.",
-        hints: ["Ouvrez l'application en HTTPS, ou testez en local sur http://localhost."],
+        title: t('ui.webcam.err.insecure.title'),
+        detail: t('ui.webcam.err.insecure.detail'),
+        hints: [t('ui.webcam.err.insecure.hint')],
       });
       return;
     }
     if (!navigator.mediaDevices?.getUserMedia) {
       setError({
-        title: 'Capture non supportée',
-        detail: 'Ce navigateur ne supporte pas la capture caméra.',
-        hints: ['Mettez à jour Chrome / Edge / Firefox vers la dernière version.'],
+        title: t('ui.webcam.err.unsupported.title'),
+        detail: t('ui.webcam.err.unsupported.detail'),
+        hints: [t('ui.webcam.err.unsupported.hint')],
       });
       return;
     }
@@ -118,11 +121,11 @@ export function WebcamCaptureModal({
 
       if (err instanceof DOMException && (err.name === 'NotAllowedError' || err.name === 'SecurityError')) {
         setError({
-          title: 'Permission caméra refusée',
-          detail: "Le navigateur a bloqué l'accès à la caméra.",
+          title: t('ui.webcam.err.denied.title'),
+          detail: t('ui.webcam.err.denied.detail'),
           hints: [
-            "Cliquez sur l'icône caméra dans la barre d'adresse et choisissez « Toujours autoriser ».",
-            'Puis cliquez sur « Réessayer ».',
+            t('ui.webcam.err.denied.hint1'),
+            t('ui.webcam.err.denied.hint2'),
           ],
           cause,
         });
@@ -130,11 +133,11 @@ export function WebcamCaptureModal({
       }
       if (err instanceof DOMException && err.name === 'NotReadableError') {
         setError({
-          title: 'Caméra occupée',
-          detail: 'Une autre application utilise déjà la caméra.',
+          title: t('ui.webcam.err.busy.title'),
+          detail: t('ui.webcam.err.busy.detail'),
           hints: [
-            'Fermez Zoom / Teams / Meet / OBS / Skype / l\'app Caméra Windows.',
-            'Puis cliquez sur « Réessayer ».',
+            t('ui.webcam.err.busy.hint1'),
+            t('ui.webcam.err.busy.hint2'),
           ],
           cause,
         });
@@ -144,21 +147,21 @@ export function WebcamCaptureModal({
       // « pas de caméra du tout » de « contrainte trop stricte ».
       if (hasVideoDevice === false) {
         setError({
-          title: 'Aucune caméra accessible',
-          detail: 'Le système n\'expose aucun périphérique caméra à ce navigateur.',
+          title: t('ui.webcam.err.noCam.title'),
+          detail: t('ui.webcam.err.noCam.detail'),
           hints: [
-            'Windows : Paramètres → Confidentialité et sécurité → Caméra → activez « Autoriser les applications à accéder à votre caméra » ET « Autoriser les applications de bureau à accéder à votre caméra ».',
-            'Vérifiez le commutateur physique de la webcam (touche F-x ou interrupteur sur l\'écran).',
-            'Branchez/débranchez la webcam externe et rechargez la page.',
+            t('ui.webcam.err.noCam.hint1'),
+            t('ui.webcam.err.noCam.hint2'),
+            t('ui.webcam.err.noCam.hint3'),
           ],
           cause,
         });
         return;
       }
       setError({
-        title: 'Caméra inaccessible',
-        detail: causeMsg || 'Erreur inconnue.',
-        hints: ['Rechargez la page et réessayez.'],
+        title: t('ui.webcam.err.generic.title'),
+        detail: causeMsg || t('ui.webcam.err.generic.detail'),
+        hints: [t('ui.webcam.err.generic.hint')],
         cause,
       });
     }
@@ -220,7 +223,7 @@ export function WebcamCaptureModal({
       }
       setReady(false);
     };
-  }, [open, maxWidth, retryNonce]);
+  }, [open, maxWidth, retryNonce, t]);
 
   // Branche le flux acquis au <video> dès qu'il est monté (après que l'erreur ait
   // disparu). Indépendant de l'effet d'acquisition pour éviter la course
@@ -267,9 +270,9 @@ export function WebcamCaptureModal({
       onCapture(file);
     } catch (err) {
       setError({
-        title: 'Capture impossible',
+        title: t('ui.webcam.err.capture.title'),
         detail: err instanceof Error ? err.message : String(err),
-        hints: ['Réessayez. Si le problème persiste, rechargez la page.'],
+        hints: [t('ui.webcam.err.capture.hint')],
       });
     } finally {
       setBusy(false);
@@ -282,7 +285,7 @@ export function WebcamCaptureModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Capture caméra"
+      aria-label={t('ui.webcam.title')}
       style={{
         position: 'fixed',
         inset: 0,
@@ -311,10 +314,10 @@ export function WebcamCaptureModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Camera style={{ width: 18, height: 18 }} />
-          <strong>Capture caméra</strong>
+          <strong>{t('ui.webcam.title')}</strong>
           <div style={{ flex: 1 }} />
           <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Fermer
+            {t('common.close')}
           </Button>
         </div>
         {error ? (
@@ -343,7 +346,7 @@ export function WebcamCaptureModal({
             )}
             {error.cause && (
               <code style={{ fontSize: 11, color: 'var(--ink-3, #7A7F8A)' }}>
-                code : {error.cause}
+                {t('ui.webcam.codeLabel', { code: error.cause })}
               </code>
             )}
             <div>
@@ -353,7 +356,7 @@ export function WebcamCaptureModal({
                 size="sm"
                 onClick={() => setRetryNonce((n) => n + 1)}
               >
-                Réessayer
+                {t('ui.webcam.retry')}
               </Button>
             </div>
           </div>
@@ -374,7 +377,7 @@ export function WebcamCaptureModal({
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
           <Button type="button" variant="ghost" onClick={onClose}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button
             type="button"
@@ -383,7 +386,7 @@ export function WebcamCaptureModal({
             onClick={handleCapture}
           >
             <Camera style={{ width: 14, height: 14 }} />
-            {busy ? 'Capture…' : captureLabel}
+            {busy ? t('ui.webcam.capturing') : resolvedCaptureLabel}
           </Button>
         </div>
       </div>

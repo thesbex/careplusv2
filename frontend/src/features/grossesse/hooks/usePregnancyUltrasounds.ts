@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { Biometry, PregnancyUltrasound } from '../types';
 
 /** Backend returns biometryJson as a String — parse to typed Biometry on read. */
@@ -24,6 +25,7 @@ function parseUltrasound(wire: UltrasoundWire): PregnancyUltrasound {
  * GET /api/pregnancies/:pregnancyId/ultrasounds — list of obstetrical ultrasounds.
  */
 export function usePregnancyUltrasounds(pregnancyId?: string) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['pregnancies', 'ultrasounds', pregnancyId],
     queryFn: () =>
@@ -37,7 +39,7 @@ export function usePregnancyUltrasounds(pregnancyId?: string) {
   return {
     ultrasounds: (data ?? []).map(parseUltrasound),
     isLoading,
-    error: error ? 'Impossible de charger les échographies.' : null,
+    error: error ? t('gross.err.loadUltrasounds') : null,
   };
 }
 

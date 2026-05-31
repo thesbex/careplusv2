@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Downloads the vaccination booklet PDF as a blob and opens it in a new tab.
@@ -10,6 +11,7 @@ import { api } from '@/lib/api/client';
  * Pattern identical to CertificatDialog / PrescriptionDrawer.handlePdfDownload.
  */
 export function useDownloadBooklet(patientId: string) {
+  const { t } = useT();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -27,7 +29,7 @@ export function useDownloadBooklet(patientId: string) {
       // Revoke after a short delay to allow the new tab to load
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } catch {
-      setError('Impossible de télécharger le carnet. Réessayez.');
+      setError(t('vacc.booklet.downloadError'));
     } finally {
       setIsLoading(false);
     }

@@ -16,6 +16,7 @@ import { Panel } from '@/components/ui/Panel';
 import { Plus, Search, Trash } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
 
@@ -56,6 +57,7 @@ const NAV_MAP = {
 
 export default function LabCataloguePage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
   const canEdit = userRoles.includes('MEDECIN') || userRoles.includes('ADMIN');
   const [items, setItems] = useState<LabTest[]>([]);
@@ -80,9 +82,9 @@ export default function LabCataloguePage() {
         params: debouncedQ.trim() ? { q: debouncedQ.trim() } : {},
       })
       .then((r) => setItems(r.data))
-      .catch(() => toast.error('Impossible de charger les analyses.'))
+      .catch(() => toast.error(tr('cat.lab.loadError')))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ, refreshTick]);
+  }, [debouncedQ, refreshTick, tr]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -98,13 +100,13 @@ export default function LabCataloguePage() {
   const grouped = useMemo(() => {
     const m = new Map<string, LabTest[]>();
     for (const it of filtered) {
-      const key = it.category ?? 'Autres';
+      const key = it.category ?? tr('cat.other');
       const list = m.get(key) ?? [];
       list.push(it);
       m.set(key, list);
     }
     return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered]);
+  }, [filtered, tr]);
 
   function openCreate() {
     setEditingId(null);
@@ -125,7 +127,7 @@ export default function LabCataloguePage() {
 
   async function handleSave() {
     if (!form.code.trim() || !form.name.trim()) {
-      toast.error('Champs requis : Code, Nom.');
+      toast.error(tr('cat.lab.required'));
       return;
     }
     const internalPrice = form.internalPrice.trim();
@@ -133,7 +135,7 @@ export default function LabCataloguePage() {
     if (internalPrice) {
       const n = Number(internalPrice.replace(',', '.'));
       if (!Number.isFinite(n) || n < 0) {
-        toast.error('Prix interne invalide.');
+        toast.error(tr('cat.price.invalid'));
         return;
       }
       parsedPrice = n;
@@ -147,10 +149,10 @@ export default function LabCataloguePage() {
       };
       if (editingId) {
         await api.put(`/catalog/lab-tests/${editingId}`, body);
-        toast.success('Analyse mise à jour.');
+        toast.success(tr('cat.lab.updated'));
       } else {
         await api.post('/catalog/lab-tests', body);
-        toast.success('Analyse ajoutée au catalogue.');
+        toast.success(tr('cat.lab.added'));
       }
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
@@ -159,37 +161,37 @@ export default function LabCataloguePage() {
     } catch (err) {
       const e = err as { response?: { status?: number } };
       if (e.response?.status === 409) {
-        toast.error('Ce code est déjà utilisé.');
+        toast.error(tr('cat.code.taken'));
       } else if (e.response?.status === 403) {
-        toast.error('Permission refusée (rôle MEDECIN ou ADMIN requis).');
+        toast.error(tr('cat.permissionDenied'));
       } else {
-        toast.error("Échec de l'enregistrement.");
+        toast.error(tr('cat.saveError'));
       }
     }
   }
 
   async function handleDelete(t: LabTest) {
-    if (!confirm(`Désactiver l'analyse « ${t.name} » du catalogue ?`)) return;
+    if (!confirm(tr('cat.lab.confirmDeactivate', { name: t.name }))) return;
     try {
       await api.delete(`/catalog/lab-tests/${t.id}`);
-      toast.success('Analyse désactivée.');
+      toast.success(tr('cat.lab.deactivated'));
       setItems((xs) => xs.filter((x) => x.id !== t.id));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(tr('cat.deleteError'));
     }
   }
 
   return (
     <Screen
       active="catalogue"
-      title="Catalogue analyses"
-      sub={`${filtered.length} analyse${filtered.length > 1 ? 's' : ''}`}
+      title={tr('cat.lab.title')}
+      sub={tr(filtered.length > 1 ? 'cat.lab.sub_plural' : 'cat.lab.sub', { n: filtered.length })}
       topbarRight={
         canEdit ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <CatalogImportButton kind="lab" onImported={() => setRefreshTick((t) => t + 1)} />
             <Button variant="primary" onClick={openCreate}>
-              <Plus /> Ajouter
+              <Plus /> {tr('cat.add')}
             </Button>
           </div>
         ) : undefined
@@ -214,13 +216,13 @@ export default function LabCataloguePage() {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher par nom ou code…"
+              placeholder={tr('cat.lab.searchPlaceholder')}
               style={{
                 width: '100%', height: 36, padding: '0 12px 0 32px',
                 border: '1px solid var(--border)', borderRadius: 6,
                 fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
               }}
-              aria-label="Rechercher une analyse"
+              aria-label={tr('cat.lab.searchAria')}
             />
           </div>
           <select
@@ -231,9 +233,9 @@ export default function LabCataloguePage() {
               border: '1px solid var(--border)', borderRadius: 6,
               fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
             }}
-            aria-label="Catégorie d'analyse"
+            aria-label={tr('cat.lab.categoryAria')}
           >
-            <option value="">Toutes les catégories</option>
+            <option value="">{tr('cat.lab.allCategories')}</option>
             {categories.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
@@ -242,21 +244,21 @@ export default function LabCataloguePage() {
 
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {isLoading && (
-            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{tr('common.loading')}</div>
           )}
           {!isLoading && filtered.length === 0 && (
             <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucune analyse ne correspond à la recherche.
+              {tr('cat.lab.empty')}
             </div>
           )}
           {!isLoading && filtered.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-2)', zIndex: 1 }}>
                 <tr>
-                  <Th style={{ width: 100 }}>Code</Th>
-                  <Th>Nom</Th>
-                  <Th style={{ width: 220 }}>Catégorie</Th>
-                  <Th style={{ width: 130, textAlign: 'right' }}>Prix interne</Th>
+                  <Th style={{ width: 100 }}>{tr('cat.lab.col.code')}</Th>
+                  <Th>{tr('cat.lab.col.name')}</Th>
+                  <Th style={{ width: 220 }}>{tr('cat.lab.col.category')}</Th>
+                  <Th style={{ width: 130, textAlign: 'right' }}>{tr('cat.lab.col.internalPrice')}</Th>
                   {canEdit && <Th style={{ width: 110 }}> </Th>}
                 </tr>
               </thead>
@@ -282,12 +284,12 @@ export default function LabCataloguePage() {
                               onClick={() => openEdit(t)}
                               style={btnLink}
                             >
-                              Modifier
+                              {tr('common.edit')}
                             </button>
                             <button
                               type="button"
                               onClick={() => { void handleDelete(t); }}
-                              aria-label={`Supprimer ${t.name}`}
+                              aria-label={tr('cat.lab.deleteAria', { name: t.name })}
                               style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -329,33 +331,33 @@ export default function LabCataloguePage() {
           >
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2 style={{ fontSize: 14, fontWeight: 650, margin: 0, flex: 1 }}>
-                {editingId ? "Modifier l'analyse" : 'Nouvelle analyse'}
+                {editingId ? tr('cat.lab.drawer.edit') : tr('cat.lab.drawer.new')}
               </h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--ink-3)' }}
-                aria-label="Fermer"
+                aria-label={tr('common.close')}
               >
                 ×
               </button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'auto' }}>
-              <Field label="Code *" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="ex. NFS, CRP, GLY-VEIN…" hint="Identifiant unique servant aux prescriptions." />
-              <Field label="Nom *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="ex. Numération formule sanguine" />
-              <Field label="Catégorie" value={form.category} onChange={(v) => setForm({ ...form, category: v })} placeholder="Hématologie, Bactériologie, Biochimie…" />
+              <Field label={tr('cat.lab.field.code')} value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder={tr('cat.lab.field.code.ph')} hint={tr('cat.lab.field.code.hint')} />
+              <Field label={tr('cat.lab.field.name')} value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder={tr('cat.lab.field.name.ph')} />
+              <Field label={tr('cat.lab.field.category')} value={form.category} onChange={(v) => setForm({ ...form, category: v })} placeholder={tr('cat.lab.field.category.ph')} />
               <Field
-                label="Prix interne (MAD)"
+                label={tr('cat.lab.field.internalPrice')}
                 value={form.internalPrice}
                 onChange={(v) => setForm({ ...form, internalPrice: v })}
-                placeholder="ex. 120 — laisser vide = non facturable en interne"
-                hint="V050 — Quand le médecin coche 'Réaliser en interne' et signe la consultation, cette ligne est ajoutée automatiquement à la facture brouillon du patient. Laisser vide pour ne pas facturer automatiquement."
+                placeholder={tr('cat.lab.field.internalPrice.ph')}
+                hint={tr('cat.lab.field.internalPrice.hint')}
               />
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>
+              <Button type="button" onClick={() => setDrawerOpen(false)}>{tr('common.cancel')}</Button>
               <Button type="button" variant="primary" onClick={() => { void handleSave(); }}>
-                {editingId ? 'Enregistrer' : 'Ajouter au catalogue'}
+                {editingId ? tr('cat.lab.submit.edit') : tr('cat.lab.submit.new')}
               </Button>
             </div>
           </div>
@@ -367,23 +369,24 @@ export default function LabCataloguePage() {
 
 export function CatalogueTabs({ active }: { active: 'medicaments' | 'analyses' | 'radio' }) {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const tabs: { id: 'medicaments' | 'analyses' | 'radio'; label: string; path: string }[] = [
-    { id: 'medicaments', label: 'Médicaments', path: '/catalogue' },
-    { id: 'analyses', label: 'Analyses', path: '/catalogue/analyses' },
-    { id: 'radio', label: 'Radio / Imagerie', path: '/catalogue/radio' },
+    { id: 'medicaments', label: tr('cat.tab.medicaments'), path: '/catalogue' },
+    { id: 'analyses', label: tr('cat.tab.analyses'), path: '/catalogue/analyses' },
+    { id: 'radio', label: tr('cat.tab.radio'), path: '/catalogue/radio' },
   ];
   return (
-    <div className="cat-tabs" role="tablist" aria-label="Catalogues">
-      {tabs.map((t) => (
+    <div className="cat-tabs" role="tablist" aria-label={tr('cat.tabsAria')}>
+      {tabs.map((tab) => (
         <button
-          key={t.id}
+          key={tab.id}
           type="button"
           role="tab"
-          aria-selected={active === t.id}
-          className={`cat-tab${active === t.id ? ' on' : ''}`}
-          onClick={() => navigate(t.path)}
+          aria-selected={active === tab.id}
+          className={`cat-tab${active === tab.id ? ' on' : ''}`}
+          onClick={() => navigate(tab.path)}
         >
-          {t.label}
+          {tab.label}
         </button>
       ))}
     </div>

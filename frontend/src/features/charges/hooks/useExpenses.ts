@@ -25,7 +25,10 @@ export function useExpenses(filters: ExpenseFilters = {}) {
   return {
     expenses: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les charges.' : null,
+    // i18n (#122) : clé de traduction (les hooks ne peuvent pas appeler useT) ;
+    // le consommateur passe la valeur à t(). Aucun écran charges ne l'affiche
+    // aujourd'hui, mais on garde le contrat i18n cohérent.
+    error: error ? 'charges.err.loadList' : null,
     refetch,
   };
 }
@@ -44,7 +47,8 @@ export function useExpenseSummary(year: number) {
   return {
     summary: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger le récapitulatif.' : null,
+    // i18n (#122) : clé de traduction (voir useExpenses ci-dessus).
+    error: error ? 'charges.err.loadSummary' : null,
   };
 }
 

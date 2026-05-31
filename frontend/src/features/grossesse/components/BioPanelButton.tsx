@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Flask } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useBioPanelTemplate } from '../hooks/useBioPanelTemplate';
 import { BioPanelPreviewDialog } from './BioPanelPreviewDialog';
 import type { Trimester } from '../types';
@@ -45,6 +46,7 @@ export function BioPanelButton({
   onTemplateLoaded,
   variant = 'ghost',
 }: BioPanelButtonProps) {
+  const { t } = useT();
   const mutation = useBioPanelTemplate();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [loadedTemplate, setLoadedTemplate] = useState<PrescriptionTemplate | null>(
@@ -61,7 +63,7 @@ export function BioPanelButton({
         setPreviewOpen(true);
       }
     } catch {
-      toast.error('Impossible de charger le modèle de bilan.');
+      toast.error(t('gross.bio.loadError'));
     }
   }
 
@@ -75,11 +77,11 @@ export function BioPanelButton({
           void handleClick();
         }}
         disabled={mutation.isPending}
-        aria-label={`Prescrire bilan ${trimester}`}
+        aria-label={t('gross.bio.buttonAria', { trimester })}
         style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
       >
         <Flask style={{ width: 13, height: 13 }} />
-        {mutation.isPending ? 'Chargement…' : `Bilan ${trimester}`}
+        {mutation.isPending ? t('gross.bio.buttonLoading') : t('gross.bio.button', { trimester })}
       </Button>
 
       {/* Standalone preview path : only when no consultation-context callback. */}

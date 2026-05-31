@@ -2,6 +2,10 @@
  * Zod schemas for the Stock interne module.
  * Mirrors backend DTOs: RecordMovementRequest, UpsertArticleRequest, UpsertSupplierRequest.
  * exactOptionalPropertyTypes: true — use z.optional() rather than z.undefined().
+ *
+ * i18n (#122) : les messages de validation sont des CLÉS de traduction
+ * (`stock.valid.*`), résolues au rendu via `t(errors.<champ>.message)` côté
+ * composant. Cf. messages.stock.ts et le pattern grossesse/schemas.ts.
  */
 import { z } from 'zod';
 
@@ -22,9 +26,9 @@ export const MovementSchema = z
   .object({
     type: z.enum(['IN', 'OUT', 'ADJUSTMENT']),
     quantity: z
-      .number({ invalid_type_error: 'Quantité requise' })
-      .int('La quantité doit être un entier')
-      .min(1, 'La quantité doit être > 0'),
+      .number({ invalid_type_error: 'stock.valid.qtyRequired' })
+      .int('stock.valid.qtyInteger')
+      .min(1, 'stock.valid.qtyPositive'),
     reason: z.string().max(500).optional(),
     lotNumber: z.string().max(100).optional(),
     expiresOn: z.string().optional(), // ISO date "YYYY-MM-DD"
@@ -37,7 +41,7 @@ export const MovementSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['reason'],
-          message: 'Motif obligatoire pour un ajustement',
+          message: 'stock.valid.reasonRequired',
         });
       }
     }
@@ -46,14 +50,14 @@ export const MovementSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['lotNumber'],
-          message: 'Numéro de lot obligatoire pour un médicament',
+          message: 'stock.valid.lotRequired',
         });
       }
       if (!data.expiresOn || data.expiresOn.trim().length === 0) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['expiresOn'],
-          message: 'Date de péremption obligatoire pour un médicament',
+          message: 'stock.valid.expiryRequired',
         });
       }
     }
@@ -79,18 +83,18 @@ export const UpsertArticleSchema = z
   .object({
     code: z
       .string()
-      .min(1, 'Code requis')
+      .min(1, 'stock.valid.codeRequired')
       .max(64)
       .toUpperCase(),
-    label: z.string().min(1, 'Libellé requis').max(200),
+    label: z.string().min(1, 'stock.valid.labelRequired').max(200),
     category: z.enum(['MEDICAMENT_INTERNE', 'DOSSIER_PHYSIQUE', 'CONSOMMABLE'], {
-      required_error: 'Catégorie requise',
+      required_error: 'stock.valid.categoryRequired',
     }),
-    unit: z.string().min(1, 'Unité requise').max(32),
+    unit: z.string().min(1, 'stock.valid.unitRequired').max(32),
     minThreshold: z
-      .number({ invalid_type_error: 'Seuil requis' })
+      .number({ invalid_type_error: 'stock.valid.thresholdRequired' })
       .int()
-      .min(0, 'Seuil >= 0'),
+      .min(0, 'stock.valid.thresholdMin'),
     supplierId: z.preprocess(emptyToUndef, z.string().uuid().optional()),
     location: z.preprocess(emptyToUndef, z.string().max(200).optional()),
     active: z.boolean(),
@@ -101,7 +105,7 @@ export const UpsertArticleSchema = z
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           path: ['location'],
-          message: 'Emplacement requis pour un dossier physique',
+          message: 'stock.valid.locationRequired',
         });
       }
     }
@@ -115,7 +119,7 @@ export type UpsertArticleValues = z.infer<typeof UpsertArticleSchema>;
  * Schema for creating/editing a supplier.
  */
 export const UpsertSupplierSchema = z.object({
-  name: z.string().min(1, 'Nom requis').max(200),
+  name: z.string().min(1, 'stock.valid.nameRequired').max(200),
   phone: z.preprocess(emptyToUndef, z.string().max(50).optional()),
   active: z.boolean(),
 });

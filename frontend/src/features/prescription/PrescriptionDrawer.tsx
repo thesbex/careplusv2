@@ -14,6 +14,7 @@ import {
   AllergyConflictError,
 } from './hooks/useCreatePrescription';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { PrescriptionTemplatePicker } from './components/PrescriptionTemplatePicker';
 import { PdfGenerationOverlay } from './components/PdfGenerationOverlay';
 import type {
@@ -58,6 +59,7 @@ export function PrescriptionDrawer({
   type = 'DRUG',
   onCreated,
 }: PrescriptionDrawerProps) {
+  const { t } = useT();
   const [query, setQuery] = useState('');
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [lines, setLines] = useState<PrescriptionLineDraft[]>([emptyLine()]);
@@ -140,13 +142,11 @@ export function PrescriptionDrawer({
     const filled = lines.filter((l) => l.item !== null || l.instructions.trim().length > 0);
     if (filled.length === 0) {
       toast.error(
-        type === 'DRUG'
-          ? 'Ajoutez au moins un médicament.'
-          : type === 'LAB'
-          ? 'Ajoutez au moins une analyse.'
-          : type === 'IMAGING'
-          ? 'Ajoutez au moins un examen.'
-          : 'Ajoutez au moins une ligne.',
+        t(
+          type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+            ? `presc.err.needLine.${type}`
+            : 'presc.err.needLine.default',
+        ),
       );
       return;
     }
@@ -165,15 +165,15 @@ export function PrescriptionDrawer({
       if (allergyOverride) payload.allergyOverrideReason = overrideReason;
       if (internalToggleVisible && internalRouting) payload.internal = true;
       const created = await createPrescription(payload);
-      toast.success('Ordonnance créée.');
+      toast.success(t('presc.ok.created'));
       onCreated?.(created.id);
       onOpenChange(false);
       resetState();
     } catch (err) {
       if (err instanceof AllergyConflictError) {
         setConflict({ medication: err.medication, allergy: err.allergy });
-        toast.error(`Conflit : ${err.medication} / ${err.allergy}`, {
-          description: 'Confirmez l\'override avec une raison pour continuer.',
+        toast.error(t('presc.err.conflictToast', { medication: err.medication, allergy: err.allergy }), {
+          description: t('presc.err.conflictDesc'),
         });
       } else {
         // Retour terrain Excel : "Request failed with status code 400" était
@@ -190,7 +190,7 @@ export function PrescriptionDrawer({
         } else if (err instanceof Error) {
           description = err.message;
         }
-        toast.error('Création impossible', { description });
+        toast.error(t('presc.err.createFailed'), { description });
       }
     }
   }
@@ -216,27 +216,23 @@ export function PrescriptionDrawer({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="pr-overlay" />
-        <Dialog.Content className="pr-drawer" aria-label="Nouvelle prescription">
+        <Dialog.Content className="pr-drawer" aria-label={t('presc.drawer.aria')}>
           <div className="pr-header">
             <PillIcon />
             <div style={{ flex: 1 }}>
               <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-                {type === 'DRUG'
-                  ? 'Prescription médicamenteuse'
-                  : type === 'LAB'
-                  ? "Bon d'analyses biologiques"
-                  : type === 'IMAGING'
-                  ? "Bon d'imagerie médicale"
-                  : 'Ordonnance'}
+                {t(
+                  type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                    ? `presc.title.${type}`
+                    : 'presc.title.default',
+                )}
               </Dialog.Title>
               <Dialog.Description style={{ fontSize: 11.5, color: 'var(--ink-3)', margin: 0 }}>
-                {type === 'DRUG'
-                  ? 'Médicaments'
-                  : type === 'LAB'
-                  ? 'Analyses biologiques'
-                  : type === 'IMAGING'
-                  ? 'Examens d\'imagerie'
-                  : 'Ordonnance'}
+                {t(
+                  type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                    ? `presc.sub.${type}`
+                    : 'presc.sub.default',
+                )}
               </Dialog.Description>
             </div>
             {(type === 'DRUG' || type === 'LAB' || type === 'IMAGING') && (
@@ -246,7 +242,7 @@ export function PrescriptionDrawer({
               />
             )}
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('presc.drawer.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -259,10 +255,14 @@ export function PrescriptionDrawer({
             >
               <Warn />
               {conflict
-                ? `Conflit : ${conflict.medication} interagit avec l'allergie ${conflict.allergy}.`
-                : `Allergie${patientAllergies.length > 1 ? 's' : ''} connue${
-                    patientAllergies.length > 1 ? 's' : ''
-                  } : ${patientAllergies.join(', ')}`}
+                ? t('presc.allergy.conflict', {
+                    medication: conflict.medication,
+                    allergy: conflict.allergy,
+                  })
+                : t(
+                    patientAllergies.length > 1 ? 'presc.allergy.known.many' : 'presc.allergy.known.one',
+                    { list: patientAllergies.join(', ') },
+                  )}
             </div>
           )}
 
@@ -270,11 +270,7 @@ export function PrescriptionDrawer({
             {(type === 'DRUG' || type === 'LAB' || type === 'IMAGING') && (
               <>
                 <div className="pr-section-h">
-                  {type === 'DRUG'
-                    ? 'Rechercher un médicament'
-                    : type === 'LAB'
-                    ? 'Rechercher une analyse'
-                    : "Rechercher un examen d'imagerie"}
+                  {t(`presc.search.${type}`)}
                 </div>
                 <div className="pr-search" ref={searchWrapRef}>
                   <span className="pr-search-icon">
@@ -282,13 +278,7 @@ export function PrescriptionDrawer({
                   </span>
                   <input
                     className="pr-search-input"
-                    placeholder={
-                      type === 'DRUG'
-                        ? 'Nom commercial ou DCI…'
-                        : type === 'LAB'
-                        ? 'Nom de l\'analyse ou code…'
-                        : "Nom de l'examen ou code…"
-                    }
+                    placeholder={t(`presc.search.ph.${type}`)}
                     value={query}
                     onChange={(e) => {
                       setQuery(e.target.value);
@@ -298,18 +288,18 @@ export function PrescriptionDrawer({
                     onKeyDown={(e) => {
                       if (e.key === 'Escape') setSuggestOpen(false);
                     }}
-                    aria-label="Rechercher dans le catalogue"
+                    aria-label={t('presc.search.aria')}
                   />
                   {suggestOpen && hasQuery && (
                     <div className="pr-suggest" role="listbox">
                       {isFetching && (
                         <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>
-                          Recherche…
+                          {t('presc.search.searching')}
                         </div>
                       )}
                       {!isFetching && results.length === 0 && (
                         <div style={{ padding: 10, fontSize: 12, color: 'var(--ink-3)' }}>
-                          Aucun résultat.
+                          {t('presc.search.noResult')}
                         </div>
                       )}
                       {results.map((it) => (
@@ -347,17 +337,18 @@ export function PrescriptionDrawer({
                     type="checkbox"
                     checked={internalRouting}
                     onChange={(e) => setInternalRouting(e.target.checked)}
-                    aria-label={type === 'DRUG' ? 'Fournir en interne' : 'Réaliser en interne'}
+                    aria-label={t(type === 'DRUG' ? 'presc.internal.aria.DRUG' : 'presc.internal.aria.other')}
                   />
-                  <strong>{type === 'DRUG' ? 'Fournir en interne (pharmacie)' : 'Réaliser en interne'}</strong>
+                  <strong>{t(type === 'DRUG' ? 'presc.internal.label.DRUG' : 'presc.internal.label.other')}</strong>
                 </label>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.4 }}>
-                  {type === 'DRUG'
-                    ? "Si coché, les médicaments sont fournis par la pharmacie de l'établissement "
-                      + 'et ajoutés à la facture de la consultation (au prix interne du catalogue).'
-                    : 'Si coché, la demande part dans la queue du '
-                      + (type === 'LAB' ? 'laboratoire' : 'service de radiologie')
-                      + " interne au lieu d'imprimer un bon papier pour le patient."}
+                  {t(
+                    type === 'DRUG'
+                      ? 'presc.internal.hint.DRUG'
+                      : type === 'LAB'
+                      ? 'presc.internal.hint.LAB'
+                      : 'presc.internal.hint.IMAGING',
+                  )}
                 </div>
               </div>
             )}
@@ -385,23 +376,20 @@ export function PrescriptionDrawer({
                   <Warn aria-hidden="true" />
                 </span>
                 <span>
-                  {internalDrugsWithoutPrice.length > 1 ? 'Ces médicaments n’ont' : 'Ce médicament n’a'}{' '}
-                  pas de prix interne au catalogue —{' '}
-                  {internalDrugsWithoutPrice.length > 1 ? 'ils ne seront' : 'il ne sera'} pas{' '}
-                  {internalDrugsWithoutPrice.length > 1 ? 'facturés' : 'facturé'} :{' '}
-                  <strong>{internalDrugsWithoutPrice.map((l) => l.item?.name).join(', ')}</strong>.
-                  Définissez le prix dans Catalogue → Médicaments pour le facturer.
+                  {t(
+                    internalDrugsWithoutPrice.length > 1 ? 'presc.noPrice.many' : 'presc.noPrice.one',
+                    { names: internalDrugsWithoutPrice.map((l) => l.item?.name).join(', ') },
+                  )}
                 </span>
               </div>
             )}
             <div className="pr-section-h">
-              {type === 'DRUG'
-                ? `Médicaments (${lines.filter((l) => l.item).length})`
-                : type === 'LAB'
-                ? `Analyses (${lines.filter((l) => l.item).length})`
-                : type === 'IMAGING'
-                ? `Examens (${lines.filter((l) => l.item).length})`
-                : 'Lignes'}
+              {t(
+                type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                  ? `presc.lines.${type}`
+                  : 'presc.lines.default',
+                { n: lines.filter((l) => l.item).length },
+              )}
             </div>
             {lines.map((line, i) => (
               <div key={i} className="pr-line-card">
@@ -409,13 +397,11 @@ export function PrescriptionDrawer({
                   <div style={{ flex: 1 }}>
                     <div className="pr-line-name">
                       {line.item?.name ??
-                        (type === 'DRUG'
-                          ? 'Sélectionner un médicament…'
-                          : type === 'LAB'
-                          ? 'Sélectionner une analyse…'
-                          : type === 'IMAGING'
-                          ? 'Sélectionner un examen…'
-                          : 'Ligne libre')}
+                        t(
+                          type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                            ? `presc.line.pick.${type}`
+                            : 'presc.line.pick.default',
+                        )}
                     </div>
                     {line.item?.sub && (
                       <div className="pr-line-meta">
@@ -427,7 +413,7 @@ export function PrescriptionDrawer({
                     variant="ghost"
                     size="sm"
                     iconOnly
-                    aria-label="Supprimer la ligne"
+                    aria-label={t('presc.line.removeAria')}
                     onClick={() => removeLine(i)}
                   >
                     <Trash />
@@ -436,34 +422,34 @@ export function PrescriptionDrawer({
                 {type === 'DRUG' && (
                   <div className="pr-line-grid">
                     <div className="pr-field-sm">
-                      <label htmlFor={`pr-dos-${i}`}>Posologie</label>
+                      <label htmlFor={`pr-dos-${i}`}>{t('presc.field.dosage')}</label>
                       <input
                         id={`pr-dos-${i}`}
                         value={line.dosage}
                         onChange={(e) => updateLine(i, { dosage: e.target.value })}
-                        placeholder="1 cp matin"
+                        placeholder={t('presc.field.dosage.ph')}
                       />
                     </div>
                     <div className="pr-field-sm">
-                      <label htmlFor={`pr-freq-${i}`}>Fréquence</label>
+                      <label htmlFor={`pr-freq-${i}`}>{t('presc.field.frequency')}</label>
                       <input
                         id={`pr-freq-${i}`}
                         value={line.frequency}
                         onChange={(e) => updateLine(i, { frequency: e.target.value })}
-                        placeholder="Par jour"
+                        placeholder={t('presc.field.frequency.ph')}
                       />
                     </div>
                     <div className="pr-field-sm">
-                      <label htmlFor={`pr-dur-${i}`}>Durée</label>
+                      <label htmlFor={`pr-dur-${i}`}>{t('presc.field.duration')}</label>
                       <input
                         id={`pr-dur-${i}`}
                         value={line.duration}
                         onChange={(e) => updateLine(i, { duration: e.target.value })}
-                        placeholder="30 jours"
+                        placeholder={t('presc.field.duration.ph')}
                       />
                     </div>
                     <div className="pr-field-sm">
-                      <label htmlFor={`pr-qty-${i}`}>Quantité</label>
+                      <label htmlFor={`pr-qty-${i}`}>{t('presc.field.quantity')}</label>
                       <input
                         id={`pr-qty-${i}`}
                         type="number"
@@ -474,32 +460,26 @@ export function PrescriptionDrawer({
                             quantity: e.target.value === '' ? null : Number(e.target.value),
                           })
                         }
-                        placeholder="1"
+                        placeholder={t('presc.field.quantity.ph')}
                       />
                     </div>
                   </div>
                 )}
                 <div className="pr-field-sm" style={{ gridColumn: '1 / -1' }}>
                   <label htmlFor={`pr-notes-${i}`}>
-                    {type === 'DRUG'
-                      ? 'Instructions (optionnel)'
-                      : type === 'LAB'
-                      ? 'Indication clinique / commentaire (optionnel)'
-                      : type === 'IMAGING'
-                      ? 'Renseignement clinique / région (optionnel)'
-                      : 'Instructions (optionnel)'}
+                    {t(
+                      type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                        ? `presc.notes.${type}`
+                        : 'presc.notes.default',
+                    )}
                   </label>
                   <input
                     id={`pr-notes-${i}`}
                     value={line.instructions}
                     onChange={(e) => updateLine(i, { instructions: e.target.value })}
                     placeholder={
-                      type === 'DRUG'
-                        ? 'Ex : à prendre avec un repas'
-                        : type === 'LAB'
-                        ? 'Ex : à jeun, suspicion diabète…'
-                        : type === 'IMAGING'
-                        ? 'Ex : douleur lombaire L4-L5…'
+                      type === 'DRUG' || type === 'LAB' || type === 'IMAGING'
+                        ? t(`presc.notes.ph.${type}`)
                         : ''
                     }
                   />
@@ -512,10 +492,10 @@ export function PrescriptionDrawer({
               style={{ width: '100%', justifyContent: 'center' }}
               onClick={() => setLines((ls) => [...ls, emptyLine()])}
             >
-              <Plus /> Ajouter une ligne
+              <Plus /> {t('presc.addLine')}
             </Button>
 
-            <div className="pr-section-h">Recommandations au patient</div>
+            <div className="pr-section-h">{t('presc.reco.title')}</div>
             <textarea
               style={{
                 width: '100%',
@@ -529,13 +509,13 @@ export function PrescriptionDrawer({
               }}
               value={recommendations}
               onChange={(e) => setRecommendations(e.target.value)}
-              placeholder="Conseils, surveillance, consignes d'urgence…"
+              placeholder={t('presc.reco.ph')}
             />
 
             {conflict && (
               <>
                 <div className="pr-section-h" style={{ color: 'var(--danger)' }}>
-                  Override allergie requis
+                  {t('presc.override.title')}
                 </div>
                 <textarea
                   style={{
@@ -549,8 +529,8 @@ export function PrescriptionDrawer({
                   }}
                   value={overrideReason}
                   onChange={(e) => setOverrideReason(e.target.value)}
-                  placeholder="Justification clinique de l'override…"
-                  aria-label="Raison de l'override allergie"
+                  placeholder={t('presc.override.ph')}
+                  aria-label={t('presc.override.aria')}
                 />
               </>
             )}
@@ -558,7 +538,7 @@ export function PrescriptionDrawer({
 
           <div className="pr-footer">
             <Dialog.Close asChild>
-              <Button type="button">Annuler</Button>
+              <Button type="button">{t('presc.cancel')}</Button>
             </Dialog.Close>
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
               {conflict ? (
@@ -570,7 +550,7 @@ export function PrescriptionDrawer({
                     void handleSave(true);
                   }}
                 >
-                  <Check /> Confirmer override
+                  <Check /> {t('presc.override.confirm')}
                 </Button>
               ) : (
                 <Button
@@ -581,7 +561,7 @@ export function PrescriptionDrawer({
                     void handleSave(false);
                   }}
                 >
-                  <Check /> {isPending ? 'Enregistrement…' : 'Créer l\'ordonnance'}
+                  <Check /> {isPending ? t('presc.saving') : t('presc.create')}
                 </Button>
               )}
             </div>

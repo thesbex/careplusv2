@@ -79,11 +79,11 @@ export function RoomsManagementSection() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) {
-      toast.error('Le nom de la salle est requis.');
+      toast.error(t('settings.rooms.nameRequired'));
       return;
     }
     if (draft.name.length > 80) {
-      toast.error('Le nom ne peut pas dépasser 80 caractères.');
+      toast.error(t('settings.rooms.nameTooLong'));
       return;
     }
     try {
@@ -96,19 +96,19 @@ export function RoomsManagementSection() {
             active: editingActive,
           },
         });
-        toast.success('Salle mise à jour.');
+        toast.success(t('settings.rooms.updated'));
       } else {
         await createRoom({
           name: draft.name.trim(),
           capabilityTags: parseTags(draft.capabilityTagsRaw),
         });
-        toast.success('Salle créée.');
+        toast.success(t('settings.rooms.created'));
       }
       resetForm();
     } catch (err) {
       const problem = toProblemDetail(err);
       if (problem.status === 403) {
-        toast.error("Action réservée à l'administrateur.");
+        toast.error(t('settings.rooms.adminOnly'));
       } else {
         toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
       }
@@ -116,10 +116,10 @@ export function RoomsManagementSection() {
   }
 
   async function handleDeactivate(room: RoomView) {
-    if (!confirm(`Désactiver la salle « ${room.name} » ?`)) return;
+    if (!confirm(t('settings.rooms.confirmDeactivate', { name: room.name }))) return;
     try {
       await deactivateRoom(room.id);
-      toast.success('Salle désactivée.');
+      toast.success(t('settings.rooms.deactivated'));
     } catch (err) {
       const problem = toProblemDetail(err);
       toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
@@ -136,7 +136,7 @@ export function RoomsManagementSection() {
           active: true,
         },
       });
-      toast.success('Salle réactivée.');
+      toast.success(t('settings.rooms.reactivated'));
     } catch (err) {
       const problem = toProblemDetail(err);
       toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
@@ -182,7 +182,7 @@ export function RoomsManagementSection() {
                 value={draft.name}
                 maxLength={80}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Salle 1 — Consultation générale"
+                placeholder={t('settings.rooms.namePlaceholder')}
               />
             </Field>
             <Field>
@@ -191,7 +191,7 @@ export function RoomsManagementSection() {
                 id="room-tags"
                 value={draft.capabilityTagsRaw}
                 onChange={(e) => setDraft({ ...draft, capabilityTagsRaw: e.target.value })}
-                placeholder="échographe, ECG, examen pédiatrique"
+                placeholder={t('settings.rooms.equipPlaceholder')}
               />
             </Field>
             {editingId && (

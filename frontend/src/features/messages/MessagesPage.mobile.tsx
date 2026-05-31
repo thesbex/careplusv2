@@ -9,6 +9,7 @@
  */
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import {
@@ -30,13 +31,14 @@ import './messages.css';
 
 type Tab = 'all' | 'mentions' | 'unread';
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'all', label: 'Tout' },
-  { id: 'mentions', label: 'Mentions' },
-  { id: 'unread', label: 'Non lus' },
+const TABS: { id: Tab; labelKey: string }[] = [
+  { id: 'all', labelKey: 'chat.tab.all' },
+  { id: 'mentions', labelKey: 'chat.tab.mentions' },
+  { id: 'unread', labelKey: 'chat.tab.unread' },
 ];
 
 export default function MessagesMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('all');
   const { items: mobileListItems } = useMobileList();
@@ -60,7 +62,7 @@ export default function MessagesMobilePage() {
 
   const onlineCount = team.filter((m) => m.online === 'on' || m.online === 'self').length;
   const subline =
-    team.length > 0 ? `Équipe · ${onlineCount} en ligne` : 'Messagerie interne';
+    team.length > 0 ? t('chat.sub.teamMobile', { online: onlineCount }) : t('chat.sub.internal');
 
   // Detect le message urgent le plus récent — détermine le banner orange "1 message urgent".
   const urgentChannel = mobileListItems.find((it) => it.urgent);
@@ -70,12 +72,12 @@ export default function MessagesMobilePage() {
       tab="menu"
       topbar={
         <MTopbar
-          title="Messages"
+          title={t('chat.titleMobile')}
           sub={subline}
           right={
             <button
               type="button"
-              aria-label="Rechercher"
+              aria-label={t('chat.searchAria')}
               style={{
                 border: 0,
                 background: 'transparent',
@@ -94,7 +96,7 @@ export default function MessagesMobilePage() {
       fab={
         <button
           type="button"
-          aria-label="Nouveau message"
+          aria-label={t('chat.newMessageAria')}
           onClick={() => setPickerOpen(true)}
           style={{
             position: 'absolute',
@@ -141,13 +143,13 @@ export default function MessagesMobilePage() {
           gap: 8,
         }}
       >
-        {TABS.map((t) => {
-          const on = tab === t.id;
+        {TABS.map((tab_) => {
+          const on = tab === tab_.id;
           return (
             <button
-              key={t.id}
+              key={tab_.id}
               type="button"
-              onClick={() => setTab(t.id)}
+              onClick={() => setTab(tab_.id)}
               style={{
                 height: 30,
                 padding: '0 12px',
@@ -163,7 +165,7 @@ export default function MessagesMobilePage() {
                 cursor: 'pointer',
               }}
             >
-              {t.label}
+              {t(tab_.labelKey)}
               <span
                 className="tnum"
                 style={{
@@ -172,7 +174,7 @@ export default function MessagesMobilePage() {
                   color: on ? 'rgba(255,255,255,0.7)' : 'var(--ink-4)',
                 }}
               >
-                {counts[t.id]}
+                {counts[tab_.id]}
               </span>
             </button>
           );
@@ -215,7 +217,7 @@ export default function MessagesMobilePage() {
           </span>
           <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--danger)' }}>
-              Message urgent · {urgentChannel.name}
+              {t('chat.urgentMessage', { name: urgentChannel.name })}
             </div>
             <div
               style={{
@@ -280,6 +282,7 @@ function MobileColleaguePicker({
   onPick: (userId: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   // R058 — filtre nom/prénom (case + accent insensitive).
   const [q, setQ] = useState('');
   const norm = (s: string) =>
@@ -291,7 +294,7 @@ function MobileColleaguePicker({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Choisir un collègue"
+      aria-label={t('chat.picker.dialogAriaMobile')}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -318,17 +321,17 @@ function MobileColleaguePicker({
         }}
       >
         <div style={{ padding: '14px 18px 10px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Nouveau message</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{t('chat.picker.title')}</div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            Choisissez un collègue.
+            {t('chat.picker.subtitleMobile')}
           </div>
           <input
             autoFocus
             type="search"
-            placeholder="Rechercher un collègue…"
+            placeholder={t('chat.picker.placeholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            aria-label="Rechercher un collègue par nom ou prénom"
+            aria-label={t('chat.picker.aria')}
             style={{
               marginTop: 10,
               width: '100%',
@@ -344,16 +347,16 @@ function MobileColleaguePicker({
         </div>
         <div style={{ overflow: 'auto', flex: 1 }}>
           {loading && (
-            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>{t('chat.picker.loading')}</div>
           )}
           {!loading && colleagues.length === 0 && (
             <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun autre collègue actif.
+              {t('chat.picker.empty')}
             </div>
           )}
           {!loading && colleagues.length > 0 && filtered.length === 0 && (
             <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun collègue ne correspond à « {q.trim()} ».
+              {t('chat.picker.noResult', { q: q.trim() })}
             </div>
           )}
           {filtered.map((c) => (
@@ -409,7 +412,7 @@ function MobileColleaguePicker({
             cursor: 'pointer',
           }}
         >
-          Annuler
+          {t('common.cancel')}
         </button>
       </div>
     </div>

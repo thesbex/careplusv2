@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Input';
 import { Plus, Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useConsentTemplates,
   useCreateConsentTemplate,
@@ -18,7 +19,6 @@ import {
   useDeleteConsentTemplate,
 } from '../hooks/useConsentTemplates';
 import {
-  CONSENT_TYPE_LABELS,
   CONSENT_TYPE_ORDER,
   CONSENT_PLACEHOLDERS,
   type ConsentTemplateView,
@@ -41,6 +41,7 @@ const EMPTY_FORM: FormState = {
 };
 
 export function ConsentTemplatesTab() {
+  const { t } = useT();
   const { templates, isLoading, error } = useConsentTemplates();
   const { create, isPending: creating } = useCreateConsentTemplate();
   const { update, isPending: updating } = useUpdateConsentTemplate();
@@ -63,11 +64,11 @@ export function ConsentTemplatesTab() {
 
   async function handleSave() {
     if (!form.title.trim()) {
-      toast.error('Le titre est requis.');
+      toast.error(t('consent.tpl.err.titleRequired'));
       return;
     }
     if (!form.body.trim()) {
-      toast.error('Le corps du consentement est requis.');
+      toast.error(t('consent.tpl.err.bodyRequired'));
       return;
     }
     const body: ConsentTemplateWriteRequest = {
@@ -79,10 +80,10 @@ export function ConsentTemplatesTab() {
     try {
       if (editingId) {
         await update({ id: editingId, body });
-        toast.success('Modèle mis à jour.');
+        toast.success(t('consent.tpl.toast.updated'));
       } else {
         await create(body);
-        toast.success('Modèle ajouté.');
+        toast.success(t('consent.tpl.toast.added'));
       }
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
@@ -91,19 +92,19 @@ export function ConsentTemplatesTab() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
-          : "Échec de l'enregistrement.",
+          ? t('consent.tpl.err.forbidden')
+          : t('consent.tpl.err.saveFailed'),
       );
     }
   }
 
-  async function handleDelete(t: ConsentTemplateView) {
-    if (!confirm(`Supprimer le modèle « ${t.title} » ?`)) return;
+  async function handleDelete(tpl: ConsentTemplateView) {
+    if (!confirm(t('consent.tpl.confirmDelete', { title: tpl.title }))) return;
     try {
-      await remove(t.id);
-      toast.success('Modèle supprimé.');
+      await remove(tpl.id);
+      toast.success(t('consent.tpl.toast.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('consent.tpl.err.deleteFailed'));
     }
   }
 
@@ -111,39 +112,38 @@ export function ConsentTemplatesTab() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, fontSize: 12, color: 'var(--ink-3)' }}>
-          Modèles de consentement éclairé utilisés par le médecin pour générer un
-          document signable depuis le dossier patient.
+          {t('consent.tpl.intro')}
         </div>
         <Button variant="primary" onClick={openCreate}>
-          <Plus /> Ajouter un modèle
+          <Plus /> {t('consent.tpl.add')}
         </Button>
       </div>
 
       <Panel style={{ overflow: 'auto', padding: 0 }}>
         {isLoading && (
-          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+          <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{t('common.loading')}</div>
         )}
         {error && (
-          <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+          <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>{t(error)}</div>
         )}
         {!isLoading && !error && templates.length === 0 && (
           <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-            Aucun modèle de consentement. Créez-en un avec le bouton ci-dessus.
+            {t('consent.tpl.empty')}
           </div>
         )}
         {templates.length > 0 && (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead style={{ background: 'var(--surface-2)' }}>
               <tr>
-                <Th style={{ width: 180 }}>Type</Th>
-                <Th>Titre</Th>
-                <Th style={{ width: 100 }}>Statut</Th>
+                <Th style={{ width: 180 }}>{t('consent.tpl.col.type')}</Th>
+                <Th>{t('consent.tpl.col.title')}</Th>
+                <Th style={{ width: 100 }}>{t('consent.tpl.col.status')}</Th>
                 <Th style={{ width: 120 }}> </Th>
               </tr>
             </thead>
             <tbody>
-              {templates.map((t) => (
-                <tr key={t.id} style={{ borderTop: '1px solid var(--border)' }}>
+              {templates.map((tpl) => (
+                <tr key={tpl.id} style={{ borderTop: '1px solid var(--border)' }}>
                   <Td>
                     <span
                       style={{
@@ -152,33 +152,33 @@ export function ConsentTemplatesTab() {
                         background: 'var(--surface-2)', color: 'var(--ink-2)',
                       }}
                     >
-                      {CONSENT_TYPE_LABELS[t.type]}
+                      {t(`consent.type.${tpl.type}`)}
                     </span>
                   </Td>
                   <Td>
-                    <div style={{ fontWeight: 600 }}>{t.title}</div>
+                    <div style={{ fontWeight: 600 }}>{tpl.title}</div>
                   </Td>
                   <Td>
                     <span
                       style={{
                         fontSize: 11, padding: '2px 8px', borderRadius: 12,
-                        background: t.active ? 'var(--green-soft, #E8F5E9)' : 'var(--surface-2)',
-                        color: t.active ? '#2E7D32' : 'var(--ink-3)',
-                        border: `1px solid ${t.active ? '#A5D6A7' : 'var(--border)'}`,
+                        background: tpl.active ? 'var(--green-soft, #E8F5E9)' : 'var(--surface-2)',
+                        color: tpl.active ? '#2E7D32' : 'var(--ink-3)',
+                        border: `1px solid ${tpl.active ? '#A5D6A7' : 'var(--border)'}`,
                       }}
                     >
-                      {t.active ? 'Actif' : 'Inactif'}
+                      {tpl.active ? t('consent.tpl.active') : t('consent.tpl.inactive')}
                     </span>
                   </Td>
                   <Td>
                     <div style={{ display: 'flex', gap: 4 }}>
-                      <button type="button" onClick={() => openEdit(t)} style={btnLink}>
-                        Modifier
+                      <button type="button" onClick={() => openEdit(tpl)} style={btnLink}>
+                        {t('consent.tpl.edit')}
                       </button>
                       <button
                         type="button"
-                        onClick={() => { void handleDelete(t); }}
-                        aria-label={`Supprimer ${t.title}`}
+                        onClick={() => { void handleDelete(tpl); }}
+                        aria-label={t('consent.tpl.deleteAria', { title: tpl.title })}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
                           color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -199,7 +199,7 @@ export function ConsentTemplatesTab() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={editingId ? 'Modifier le modèle de consentement' : 'Nouveau modèle de consentement'}
+          aria-label={editingId ? t('consent.tpl.editAria') : t('consent.tpl.newAria')}
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(20,18,12,0.45)', zIndex: 100,
@@ -218,20 +218,20 @@ export function ConsentTemplatesTab() {
           >
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2 style={{ fontSize: 14, fontWeight: 650, margin: 0, flex: 1 }}>
-                {editingId ? 'Modifier le modèle' : 'Nouveau modèle de consentement'}
+                {editingId ? t('consent.tpl.editTitle') : t('consent.tpl.newTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--ink-3)' }}
-                aria-label="Fermer"
+                aria-label={t('consent.tpl.close')}
               >
                 ×
               </button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'auto' }}>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Type *</span>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('consent.tpl.typeLabel')}</span>
                 <Select
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as ConsentType })}
@@ -242,17 +242,17 @@ export function ConsentTemplatesTab() {
                   }}
                 >
                   {CONSENT_TYPE_ORDER.map((c) => (
-                    <option key={c} value={c}>{CONSENT_TYPE_LABELS[c]}</option>
+                    <option key={c} value={c}>{t(`consent.type.${c}`)}</option>
                   ))}
                 </Select>
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Titre *</span>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('consent.tpl.titleLabel')}</span>
                 <input
                   type="text"
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="ex. Consentement à l'acte opératoire"
+                  placeholder={t('consent.tpl.titlePlaceholder')}
                   style={{
                     height: 34, padding: '0 10px',
                     border: '1px solid var(--border)', borderRadius: 6,
@@ -261,12 +261,12 @@ export function ConsentTemplatesTab() {
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Corps *</span>
+                <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('consent.tpl.bodyLabel')}</span>
                 <textarea
                   value={form.body}
                   onChange={(e) => setForm({ ...form, body: e.target.value })}
                   rows={10}
-                  placeholder="Texte du consentement…"
+                  placeholder={t('consent.tpl.bodyPlaceholder')}
                   style={{
                     padding: '8px 10px',
                     border: '1px solid var(--border)', borderRadius: 6,
@@ -275,7 +275,7 @@ export function ConsentTemplatesTab() {
                 />
               </label>
               <div style={{ fontSize: 11.5, color: 'var(--ink-3)', lineHeight: 1.6 }}>
-                Variables disponibles (remplacées à la génération) :{' '}
+                {t('consent.tpl.placeholdersHint')}{' '}
                 {CONSENT_PLACEHOLDERS.map((p) => (
                   <code
                     key={p}
@@ -295,19 +295,19 @@ export function ConsentTemplatesTab() {
                   onChange={(e) => setForm({ ...form, active: e.target.checked })}
                 />
                 <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>
-                  Actif (proposé au médecin lors de la génération)
+                  {t('consent.tpl.activeLabel')}
                 </span>
               </label>
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>
+              <Button type="button" onClick={() => setDrawerOpen(false)}>{t('common.cancel')}</Button>
               <Button
                 type="button"
                 variant="primary"
                 disabled={creating || updating}
                 onClick={() => { void handleSave(); }}
               >
-                {editingId ? 'Enregistrer' : 'Ajouter le modèle'}
+                {editingId ? t('common.save') : t('consent.tpl.addBtn')}
               </Button>
             </div>
           </div>

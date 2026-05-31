@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Textarea } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { DeclarePregnancySchema, type DeclarePregnancyValues } from '../schemas';
 import { useDeclarePregnancy } from '../hooks/useDeclarePregnancy';
 import { toLocalDate } from '../types';
@@ -27,6 +28,7 @@ export function PregnancyDeclareDialog({
   onOpenChange,
   onCreated,
 }: PregnancyDeclareDialogProps) {
+  const { t } = useT();
   const declare = useDeclarePregnancy(patientId);
   const form = useForm<DeclarePregnancyValues>({
     resolver: zodResolver(DeclarePregnancySchema),
@@ -39,12 +41,12 @@ export function PregnancyDeclareDialog({
         lmpDate: values.lmpDate,
         ...(values.notes ? { notes: values.notes } : {}),
       });
-      toast.success('Grossesse déclarée. Plan de visites OMS généré.');
+      toast.success(t('gross.declare.success'));
       onCreated?.(created.id);
       form.reset();
       onOpenChange(false);
     } catch {
-      toast.error('Impossible de déclarer la grossesse.');
+      toast.error(t('gross.declare.error'));
     }
   }
 
@@ -58,7 +60,7 @@ export function PregnancyDeclareDialog({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="gr-overlay" />
-        <Dialog.Content className="gr-dialog" aria-label="Déclarer une grossesse">
+        <Dialog.Content className="gr-dialog" aria-label={t('gross.declare.title')}>
           <div
             style={{
               display: 'flex',
@@ -68,10 +70,10 @@ export function PregnancyDeclareDialog({
             }}
           >
             <Dialog.Title style={{ fontSize: 14.5, fontWeight: 600, flex: 1, margin: 0 }}>
-              Déclarer une grossesse
+              {t('gross.declare.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -79,8 +81,7 @@ export function PregnancyDeclareDialog({
           <Dialog.Description
             style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}
           >
-            La DPA est calculée automatiquement (Naegele : DDR + 280 j) et
-            8 visites prénatales sont planifiées (SA 12, 20, 26, 30, 34, 36, 38, 40).
+            {t('gross.declare.desc')}
           </Dialog.Description>
 
           <form
@@ -91,7 +92,7 @@ export function PregnancyDeclareDialog({
           >
             <div className="gr-field">
               <label htmlFor="grd-lmpDate" className="gr-label">
-                Date des dernières règles (DDR) *
+                {t('gross.declare.lmpLabel')}
               </label>
               <Input
                 id="grd-lmpDate"
@@ -100,18 +101,18 @@ export function PregnancyDeclareDialog({
                 {...form.register('lmpDate')}
               />
               {form.formState.errors.lmpDate && (
-                <div className="gr-error">{form.formState.errors.lmpDate.message}</div>
+                <div className="gr-error">{t(form.formState.errors.lmpDate.message ?? '')}</div>
               )}
             </div>
 
             <div className="gr-field">
               <label htmlFor="grd-notes" className="gr-label">
-                Notes (optionnel)
+                {t('gross.declare.notesLabel')}
               </label>
               <Textarea
                 id="grd-notes"
                 rows={3}
-                placeholder="Contexte, antécédents pertinents…"
+                placeholder={t('gross.declare.notesPlaceholder')}
                 {...form.register('notes')}
               />
             </div>
@@ -119,7 +120,7 @@ export function PregnancyDeclareDialog({
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Dialog.Close asChild>
                 <Button type="button" variant="ghost">
-                  Annuler
+                  {t('common.cancel')}
                 </Button>
               </Dialog.Close>
               <Button
@@ -127,7 +128,7 @@ export function PregnancyDeclareDialog({
                 variant="primary"
                 disabled={declare.isPending}
               >
-                {declare.isPending ? 'Déclaration…' : 'Déclarer la grossesse'}
+                {declare.isPending ? t('gross.declare.submitting') : t('gross.declare.submit')}
               </Button>
             </div>
           </form>

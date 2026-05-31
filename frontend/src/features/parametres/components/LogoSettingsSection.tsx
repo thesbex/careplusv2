@@ -129,7 +129,7 @@ export function LogoSettingsSection() {
           {!isLoading && hasLogo && previewUrl && (
             <img
               src={previewUrl}
-              alt="Logo configuré"
+              alt={t('settings.logo.alt')}
               style={{ maxWidth: 240, maxHeight: 90, objectFit: 'contain' }}
             />
           )}

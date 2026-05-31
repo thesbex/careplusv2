@@ -24,10 +24,12 @@ import { groupQueueByPractitioner } from './queueGrouping';
 import type { QueueEntry } from './types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import './salle-attente.css';
 
 export default function SalleAttentePage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { queue, kpis } = useQueue();
   const { upcoming } = useUpcomingToday();
   const { checkIn, isPending: isCheckingIn } = useCheckIn();
@@ -47,7 +49,10 @@ export default function SalleAttentePage() {
   const activePractitioners = practitioners.filter((p) => p.active);
   const showColumns = activePractitioners.length >= 2;
   const columns = showColumns
-    ? groupQueueByPractitioner(queue, activePractitioners)
+    ? groupQueueByPractitioner(queue, activePractitioners, {
+        unassigned: t('salle.unassigned'),
+        doctorFallback: t('salle.doctorFallback'),
+      })
     : [];
 
   function handleTakeVitals(appointmentId: string) {
@@ -56,7 +61,7 @@ export default function SalleAttentePage() {
 
   async function handleStartConsult(entry: QueueEntry) {
     if (!entry.patientId) {
-      toast.error('Patient introuvable pour cette entrée.');
+      toast.error(t('salle.toast.patientNotFound'));
       return;
     }
     try {
@@ -67,22 +72,22 @@ export default function SalleAttentePage() {
       const created = await startConsultation(payload);
       void navigate(`/consultations/${created.id}`);
     } catch {
-      toast.error("Impossible de démarrer la consultation (rôle requis : médecin).");
+      toast.error(t('salle.toast.startConsultRoleErr'));
     }
   }
 
   async function handleMarkArrived(appointmentId: string) {
     try {
       await checkIn(appointmentId);
-      toast.success('Patient marqué comme arrivé.');
+      toast.success(t('salle.toast.markedArrived'));
     } catch {
-      toast.error("Échec de la déclaration d'arrivée.");
+      toast.error(t('salle.toast.checkInErr'));
     }
   }
 
   async function handleOpenConsult(entry: QueueEntry) {
     if (!entry.appointmentId) {
-      toast.error('Rendez-vous introuvable pour cette entrée.');
+      toast.error(t('salle.toast.rdvNotFound'));
       return;
     }
     try {
@@ -91,7 +96,7 @@ export default function SalleAttentePage() {
         .then((r) => r.data);
       void navigate(`/consultations/${consult.id}`);
     } catch {
-      toast.error('Impossible de retrouver la consultation en cours.');
+      toast.error(t('salle.toast.openConsultErr'));
     }
   }
 
@@ -143,7 +148,15 @@ export default function SalleAttentePage() {
   const tableHead = (
     <thead className="sa-queue-thead">
       <tr>
-        {['Patient', 'RDV', 'Arrivé à', 'Attente', 'Motif', 'Statut', 'Salle'].map((h, i) => (
+        {[
+          t('salle.colPatient'),
+          t('salle.colRdv'),
+          t('salle.colArrivedAt'),
+          t('salle.colWait'),
+          t('salle.colReason'),
+          t('salle.colStatus'),
+          t('salle.colRoom'),
+        ].map((h, i) => (
           <th key={i} scope="col">
             {h}
           </th>
@@ -162,7 +175,7 @@ export default function SalleAttentePage() {
               border: 0,
             }}
           >
-            Actions
+            {t('salle.colActions')}
           </span>
         </th>
       </tr>
@@ -172,18 +185,21 @@ export default function SalleAttentePage() {
   return (
     <Screen
       active="salle"
-      title="Salle d'attente"
-      sub={`${todayLabel} · ${queue.length} patient${queue.length > 1 ? 's' : ''} présent${queue.length > 1 ? 's' : ''}`}
+      title={t('nav.salle')}
+      sub={t(queue.length > 1 ? 'salle.subtitlePlural' : 'salle.subtitle', {
+        date: todayLabel,
+        n: queue.length,
+      })}
       topbarRight={
         <>
           <Button onClick={() => window.print()}>
-            <Print /> Liste
+            <Print /> {t('salle.print')}
           </Button>
           <Button onClick={() => setWalkInOpen(true)}>
-            <Plus /> Ajouter un patient sans RDV
+            <Plus /> {t('salle.addWalkIn')}
           </Button>
           <Button variant="primary" onClick={() => navigate('/agenda')}>
-            <Plus /> Déclarer arrivée
+            <Plus /> {t('salle.declareArrival')}
           </Button>
         </>
       }
@@ -208,29 +224,32 @@ export default function SalleAttentePage() {
       }}
     >
       <div className="sa-scroll scroll">
-        <div className="sa-kpi-grid" role="region" aria-label="Indicateurs">
+        <div className="sa-kpi-grid" role="region" aria-label={t('salle.kpiRegion')}>
           {kpis.map((kpi) => (
             <KpiTile key={kpi.label} kpi={kpi} />
           ))}
         </div>
 
         {showColumns ? (
-          <div className="sa-columns" role="region" aria-label="File d'attente par médecin">
+          <div className="sa-columns" role="region" aria-label={t('salle.queueByDoctor')}>
             {columns.map((col) => (
               <Panel key={col.practitionerId ?? 'unassigned'} className="sa-col">
                 <div className="sa-col-head">
                   <span className="sa-col-title">{col.label}</span>
                   <span className="sa-col-count">
-                    {col.entries.length} patient{col.entries.length > 1 ? 's' : ''}
+                    {t(
+                      col.entries.length > 1 ? 'salle.colCountPlural' : 'salle.colCount',
+                      { n: col.entries.length },
+                    )}
                   </span>
                 </div>
                 {col.entries.length === 0 ? (
-                  <div className="sa-col-empty">Aucun patient présent.</div>
+                  <div className="sa-col-empty">{t('salle.colEmpty')}</div>
                 ) : (
                   <div
                     className="sa-col-list"
                     role="list"
-                    aria-label={`File d'attente — ${col.label}`}
+                    aria-label={t('salle.queueForDoctor', { label: col.label })}
                   >
                     {col.entries.map((p, i) => renderCard(p, i))}
                   </div>
@@ -241,10 +260,10 @@ export default function SalleAttentePage() {
         ) : (
           <Panel>
             <PanelHeader>
-              <span>File d'attente</span>
-              <span className="sa-panel-sort">Trié par heure d'arrivée</span>
+              <span>{t('salle.queue')}</span>
+              <span className="sa-panel-sort">{t('salle.sortedByArrival')}</span>
             </PanelHeader>
-            <table className="sa-queue-table" aria-label="File d'attente">
+            <table className="sa-queue-table" aria-label={t('salle.queue')}>
               {tableHead}
               <tbody>
                 {queue.length === 0 && (
@@ -258,7 +277,7 @@ export default function SalleAttentePage() {
                         fontSize: 13,
                       }}
                     >
-                      Aucun patient présent pour le moment.
+                      {t('salle.empty')}
                     </td>
                   </tr>
                 )}
@@ -281,7 +300,7 @@ export default function SalleAttentePage() {
 
         {upcoming.length > 0 && (
           <>
-            <div className="sa-upcoming-h">RDV prévus — pas encore arrivés</div>
+            <div className="sa-upcoming-h">{t('salle.upcoming')}</div>
             <Panel className="sa-upcoming-panel">
               {upcoming.map((p) => (
                 <div key={p.appointmentId} className="sa-upcoming-row">
@@ -307,7 +326,7 @@ export default function SalleAttentePage() {
                         void handleMarkArrived(p.appointmentId);
                       }}
                     >
-                      Marquer arrivé
+                      {t('salle.markArrived')}
                     </Button>
                   )}
                 </div>

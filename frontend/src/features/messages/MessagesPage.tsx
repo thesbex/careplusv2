@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Screen } from '@/components/shell/Screen';
 import {
   Search,
@@ -50,6 +51,7 @@ import type {
 import './messages.css';
 
 export default function MessagesPage() {
+  const { t } = useT();
   const { data: channels = [] } = useChannels();
   const { data: dms = [] } = useDirectMessages();
   const { data: patientThreads = [] } = usePatientThreads();
@@ -124,20 +126,22 @@ export default function MessagesPage() {
 
   const onlineCount = team.filter((m) => m.online === 'on' || m.online === 'self').length;
   const subline =
-    team.length > 0 ? `${team.length} membre${team.length > 1 ? 's' : ''} · ${onlineCount} en ligne` : '';
+    team.length > 0
+      ? t('chat.sub.members', { n: team.length, s: team.length > 1 ? 's' : '', online: onlineCount })
+      : '';
 
   return (
     <Screen
       active="messages"
-      title="Messages équipe"
+      title={t('chat.title')}
       sub={subline}
       topbarRight={
         <>
           <Button>
-            <Filter /> Tous
+            <Filter /> {t('chat.filter.all')}
           </Button>
           <Button variant="primary" onClick={() => setDmPickerOpen(true)}>
-            <Plus /> Nouveau message
+            <Plus /> {t('chat.newMessage')}
           </Button>
         </>
       }
@@ -191,7 +195,7 @@ export default function MessagesPage() {
             </>
           ) : (
             <div style={{ flex: 1, display: 'grid', placeItems: 'center', color: 'var(--ink-3)' }}>
-              Chargement…
+              {t('chat.loading')}
             </div>
           )}
         </div>
@@ -216,6 +220,7 @@ interface LeftRailProps {
 }
 
 function LeftRail({ channels, dms, patientThreads, active, onSelect, self, onAddDm }: LeftRailProps) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -242,22 +247,22 @@ function LeftRail({ channels, dms, patientThreads, active, onSelect, self, onAdd
           }}
         >
           <Search />
-          <span>Rechercher une conversation</span>
+          <span>{t('chat.searchConversation')}</span>
         </div>
       </div>
 
       <div className="scroll" style={{ overflow: 'auto', flex: 1, padding: '4px 8px 12px' }}>
-        <RailHeader label="Canaux" count={channels.length} />
+        <RailHeader label={t('chat.section.channels')} count={channels.length} />
         {channels.map((c) => (
           <ChannelRow key={c.id} c={c} active={active === c.id} onClick={() => onSelect(c.id)} />
         ))}
 
-        <RailHeader label="Messages directs" count={dms.length} mt={14} onAdd={onAddDm} />
+        <RailHeader label={t('chat.section.dms')} count={dms.length} mt={14} onAdd={onAddDm} />
         {dms.map((d) => (
           <DMRow key={d.id} d={d} active={active === d.id} onClick={() => onSelect(d.id)} />
         ))}
 
-        <RailHeader label="Fils patient" count={patientThreads.length} mt={14} hint />
+        <RailHeader label={t('chat.section.patientThreads')} count={patientThreads.length} mt={14} hint />
         {patientThreads.map((p) => (
           <PatientThreadRow key={p.id} p={p} active={active === p.id} onClick={() => onSelect(p.id)} />
         ))}
@@ -291,11 +296,11 @@ function LeftRail({ channels, dms, patientThreads, active, onSelect, self, onAdd
         </div>
         <div style={{ minWidth: 0, flex: 1, fontSize: 11.5 }}>
           <div style={{ fontWeight: 600, color: 'var(--ink)' }}>{self?.name ?? '—'}</div>
-          <div style={{ color: 'var(--success)', fontSize: 10.5, fontWeight: 600 }}>● En ligne</div>
+          <div style={{ color: 'var(--success)', fontSize: 10.5, fontWeight: 600 }}>{t('chat.onlineDot')}</div>
         </div>
         <button
           type="button"
-          aria-label="Plus d'actions"
+          aria-label={t('chat.moreActions')}
           style={{
             height: 26,
             width: 26,
@@ -329,6 +334,7 @@ function RailHeader({
   hint?: boolean;
   onAdd?: () => void;
 }) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -356,7 +362,7 @@ function RailHeader({
       <span style={{ flex: 1 }} />
       <button
         type="button"
-        aria-label={`Ajouter dans ${label}`}
+        aria-label={t('chat.section.addAria', { section: label })}
         onClick={onAdd}
         disabled={!onAdd}
         style={{
@@ -373,7 +379,7 @@ function RailHeader({
       </button>
       {hint && (
         <span
-          title="Conversations rattachées à un dossier patient"
+          title={t('chat.patientThreadsHint')}
           style={{
             fontSize: 9,
             color: 'var(--primary)',
@@ -384,7 +390,7 @@ function RailHeader({
             letterSpacing: '0.04em',
           }}
         >
-          NEW
+          {t('chat.new')}
         </span>
       )}
     </div>
@@ -633,6 +639,7 @@ function PatientThreadRow({
 // Header / messages / composer (center column)
 // ════════════════════════════════════════════════════════════
 function ConvoHeader({ convo }: { convo: Conversation }) {
+  const { t } = useT();
   const members = convo.members ?? [];
   // Badge URGENT n'apparaît que sur le canal "urgences" (sémantique : canal dédié)
   const showUrgent = convo.kind === 'channel' && convo.name === 'urgences';
@@ -679,7 +686,7 @@ function ConvoHeader({ convo }: { convo: Conversation }) {
               }}
             >
               <span style={{ width: 5, height: 5, borderRadius: 3, background: 'var(--danger)' }} />
-              URGENT
+              {t('chat.urgent')}
             </span>
           )}
         </div>
@@ -729,7 +736,7 @@ function ConvoHeader({ convo }: { convo: Conversation }) {
         <Button variant="ghost" size="sm">
           <Pin /> {convo.pinned ?? 1}
         </Button>
-        <Button variant="ghost" size="sm" aria-label="Plus d'actions">
+        <Button variant="ghost" size="sm" aria-label={t('chat.moreActions')}>
           <MoreH />
         </Button>
       </div>
@@ -738,6 +745,7 @@ function ConvoHeader({ convo }: { convo: Conversation }) {
 }
 
 function ConvoMessages({ convo }: { convo: Conversation }) {
+  const { t } = useT();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Comptage total des messages pour déclencher l'auto-scroll quand un nouveau
   // arrive (polling 5 s côté useConversation).
@@ -792,7 +800,7 @@ function ConvoMessages({ convo }: { convo: Conversation }) {
           <span style={{ color: 'var(--amber)' }}>
             <Pin />
           </span>
-          <span style={{ color: 'var(--amber)', fontWeight: 700 }}>Épinglé :</span>
+          <span style={{ color: 'var(--amber)', fontWeight: 700 }}>{t('chat.pinned')}</span>
           <span
             style={{
               color: 'var(--ink-2)',
@@ -816,7 +824,7 @@ function ConvoMessages({ convo }: { convo: Conversation }) {
               fontWeight: 600,
             }}
           >
-            Voir
+            {t('chat.view')}
           </button>
         </div>
       ) : null}
@@ -859,7 +867,16 @@ function ConvoMessages({ convo }: { convo: Conversation }) {
             ))}
           </span>
           <span>
-            <strong style={{ color: 'var(--ink-2)' }}>{convo.typing}</strong> est en train d&apos;écrire…
+            {(() => {
+              const [before, after] = t('chat.typing', { who: '__WHO__' }).split('__WHO__');
+              return (
+                <>
+                  {before}
+                  <strong style={{ color: 'var(--ink-2)' }}>{convo.typing}</strong>
+                  {after}
+                </>
+              );
+            })()}
           </span>
         </div>
       ) : null}
@@ -909,6 +926,7 @@ function Message({
   m: ChatMessage;
   previousFromSameUser: boolean;
 }) {
+  const { t } = useT();
   const isUrgent = !!m.urgent;
   return (
     <div
@@ -984,7 +1002,7 @@ function Message({
             ))}
             <button
               type="button"
-              aria-label="Ajouter une réaction"
+              aria-label={t('chat.addReaction')}
               style={{
                 padding: '2px 7px',
                 borderRadius: 11,
@@ -1017,8 +1035,8 @@ function Message({
               cursor: 'pointer',
             }}
           >
-            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{m.reply.count} réponses</span>
-            <span style={{ color: 'var(--ink-3)' }}>· dernière {m.reply.last}</span>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{t('chat.replies', { count: m.reply.count })}</span>
+            <span style={{ color: 'var(--ink-3)' }}>{t('chat.repliesLast', { last: m.reply.last })}</span>
           </div>
         )}
       </div>
@@ -1063,6 +1081,7 @@ function MessageBody({ text }: { text: string }) {
 }
 
 function PatientAttachCard({ p }: { p: PatientAttach }) {
+  const { t } = useT();
   const navigate = useNavigate();
   const initials = p.name
     .split(' ')
@@ -1090,11 +1109,11 @@ function PatientAttachCard({ p }: { p: PatientAttach }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>{p.name}</div>
         <div className="mono" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
-          {p.id} · {p.age} ans
+          {t('chat.patientAge', { id: p.id, age: p.age })}
         </div>
       </div>
       <Button variant="primary" size="sm" onClick={() => navigate(`/patients/${p.recordId}`)}>
-        Ouvrir dossier
+        {t('chat.openRecord')}
       </Button>
     </div>
   );
@@ -1124,6 +1143,7 @@ function ConvoComposer({
   sending: boolean;
   members: TeamMember[];
 }) {
+  const { t } = useT();
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -1214,7 +1234,7 @@ function ConvoComposer({
               send();
             }
           }}
-          placeholder="Saisir un message — Entrée pour envoyer, Shift+Entrée pour une nouvelle ligne"
+          placeholder={t('chat.composer.placeholder')}
           style={{
             width: '100%',
             border: 0,
@@ -1249,12 +1269,12 @@ function ConvoComposer({
           >
             <Stetho />
             <span>
-              Patient joint : <strong>{attachedPatient.name}</strong>
+              {t('chat.composer.patientAttached')} <strong>{attachedPatient.name}</strong>
             </span>
             <button
               type="button"
               onClick={() => setAttachedPatient(null)}
-              aria-label="Retirer le patient joint"
+              aria-label={t('chat.composer.removePatientAria')}
               style={{
                 border: 0,
                 background: 'transparent',
@@ -1281,7 +1301,7 @@ function ConvoComposer({
         >
           <ComposerBtn
             icon={<At />}
-            ariaLabel="Mentionner un collègue"
+            ariaLabel={t('chat.composer.mentionAria')}
             active={mentionOpen}
             onClick={() => {
               setEmojiOpen(false);
@@ -1290,7 +1310,7 @@ function ConvoComposer({
           />
           <ComposerBtn
             icon={<Smile />}
-            ariaLabel="Ajouter une émoticône"
+            ariaLabel={t('chat.composer.emojiAria')}
             active={emojiOpen}
             onClick={() => {
               setMentionOpen(false);
@@ -1312,7 +1332,7 @@ function ConvoComposer({
               />
               <ComposerBtn
                 icon={<Paperclip />}
-                ariaLabel="Joindre un document"
+                ariaLabel={t('chat.composer.attachAria')}
                 onClick={() => fileRef.current?.click()}
               />
             </>
@@ -1321,7 +1341,7 @@ function ConvoComposer({
               voit une carte "Mme X · PT-00489 · Ouvrir dossier" sous la bulle. */}
           <ComposerBtn
             icon={<Stetho />}
-            label="Patient"
+            label={t('chat.composer.patient')}
             active={patientOpen || !!attachedPatient}
             onClick={() => {
               setEmojiOpen(false);
@@ -1343,7 +1363,7 @@ function ConvoComposer({
             >
               ⏎
             </span>
-            <span style={{ marginLeft: 4 }}>pour envoyer</span>
+            <span style={{ marginLeft: 4 }}>{t('chat.composer.enterToSend')}</span>
           </span>
           <Button
             variant="primary"
@@ -1352,7 +1372,7 @@ function ConvoComposer({
             onClick={() => send()}
             disabled={sending || !value.trim()}
           >
-            <Send /> {sending ? 'Envoi…' : 'Envoyer'}
+            <Send /> {sending ? t('chat.composer.sending') : t('chat.composer.send')}
           </Button>
         </div>
       </div>
@@ -1412,18 +1432,19 @@ function EmojiPickerPopover({
   onPick: (emoji: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   return (
     <>
       <div
         role="button"
-        aria-label="Fermer le sélecteur d'émoticônes"
+        aria-label={t('chat.emoji.closeAria')}
         tabIndex={-1}
         onClick={onClose}
         style={{ position: 'fixed', inset: 0, zIndex: 90 }}
       />
       <div
         role="dialog"
-        aria-label="Émoticônes"
+        aria-label={t('chat.emoji.title')}
         style={{
           position: 'absolute',
           bottom: 72,
@@ -1445,7 +1466,7 @@ function EmojiPickerPopover({
             key={e}
             type="button"
             onClick={() => onPick(e)}
-            aria-label={`Émoticône ${e}`}
+            aria-label={t('chat.emoji.itemAria', { emoji: e })}
             style={{
               width: 28,
               height: 28,
@@ -1475,6 +1496,7 @@ function MentionPickerPopover({
   onPick: (m: TeamMember) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   // Exclut le user courant (self) ; le @moi n'a aucun sens dans un message.
   const baseList = members.filter((m) => m.online !== 'self');
   // R058 — recherche nom/prénom (longues équipes).
@@ -1488,14 +1510,14 @@ function MentionPickerPopover({
     <>
       <div
         role="button"
-        aria-label="Fermer le sélecteur de mention"
+        aria-label={t('chat.mention.closeAria')}
         tabIndex={-1}
         onClick={onClose}
         style={{ position: 'fixed', inset: 0, zIndex: 90 }}
       />
       <div
         role="dialog"
-        aria-label="Mentionner un collègue"
+        aria-label={t('chat.mention.title')}
         style={{
           position: 'absolute',
           bottom: 72,
@@ -1515,10 +1537,10 @@ function MentionPickerPopover({
         <input
           autoFocus
           type="search"
-          placeholder="Filtrer…"
+          placeholder={t('chat.mention.filterPlaceholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Filtrer la liste des collègues à mentionner"
+          aria-label={t('chat.mention.filterAria')}
           style={{
             margin: 6,
             padding: '6px 8px',
@@ -1532,7 +1554,7 @@ function MentionPickerPopover({
         <div style={{ overflow: 'auto', flex: 1, padding: '0 4px 4px' }}>
         {list.length === 0 && (
           <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
-            {q.trim() ? `Aucun résultat pour « ${q.trim()} ».` : 'Aucun collègue à mentionner.'}
+            {q.trim() ? t('chat.mention.noResult', { q: q.trim() }) : t('chat.mention.empty')}
           </div>
         )}
         {list.map((m) => (
@@ -1588,20 +1610,21 @@ function PatientPickerPopover({
   onPick: (p: { id: string; name: string }) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   const [q, setQ] = useState('');
   const { candidates, isLoading } = usePatientSearch(q);
   return (
     <>
       <div
         role="button"
-        aria-label="Fermer le sélecteur de patient"
+        aria-label={t('chat.patientPicker.closeAria')}
         tabIndex={-1}
         onClick={onClose}
         style={{ position: 'fixed', inset: 0, zIndex: 90 }}
       />
       <div
         role="dialog"
-        aria-label="Joindre un patient"
+        aria-label={t('chat.patientPicker.title')}
         style={{
           position: 'absolute',
           bottom: 72,
@@ -1621,10 +1644,10 @@ function PatientPickerPopover({
         <input
           autoFocus
           type="search"
-          placeholder="Rechercher un patient (nom, téléphone)…"
+          placeholder={t('chat.patientPicker.placeholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Rechercher un patient à joindre"
+          aria-label={t('chat.patientPicker.aria')}
           style={{
             margin: 6,
             padding: '6px 8px',
@@ -1638,15 +1661,15 @@ function PatientPickerPopover({
         <div style={{ overflow: 'auto', flex: 1, padding: '0 4px 4px' }}>
           {q.trim().length < 2 && (
             <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
-              Saisissez au moins 2 caractères.
+              {t('chat.patientPicker.minChars')}
             </div>
           )}
           {q.trim().length >= 2 && isLoading && (
-            <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>Recherche…</div>
+            <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>{t('chat.patientPicker.searching')}</div>
           )}
           {q.trim().length >= 2 && !isLoading && candidates.length === 0 && (
             <div style={{ padding: 12, fontSize: 12, color: 'var(--ink-3)' }}>
-              Aucun patient pour « {q.trim()} ».
+              {t('chat.patientPicker.noResult', { q: q.trim() })}
             </div>
           )}
           {candidates.map((c) => (
@@ -1697,6 +1720,7 @@ function RightRail({
   /** R056 — clic sur un MemberRow → démarre/ouvre la DM 1-1 avec ce collègue. */
   onPickMember: (memberId: string) => void;
 }) {
+  const { t } = useT();
   const members = convo?.members ?? team;
   // Patients référencés dans les messages de la conversation — dédupliqués.
   const linkedPatients = (() => {
@@ -1712,7 +1736,7 @@ function RightRail({
             id: m.patient.id,
             recordId: m.patient.recordId,
             name: m.patient.name,
-            tag: 'Patient',
+            tag: t('chat.right.patientTag'),
             tagColor: 'var(--primary)',
           });
         }
@@ -1733,7 +1757,7 @@ function RightRail({
           fontSize: 12,
         }}
       >
-        Sélectionnez une conversation.
+        {t('chat.right.selectConversation')}
       </div>
     );
   }
@@ -1747,12 +1771,12 @@ function RightRail({
         padding: '14px 14px 24px',
       }}
     >
-      <SectionLabel>À propos</SectionLabel>
+      <SectionLabel>{t('chat.right.about')}</SectionLabel>
       <div style={{ fontSize: 11.5, color: 'var(--ink-2)', lineHeight: 1.5, marginBottom: 12 }}>
-        {convo.topic || 'Pas de description.'}
+        {convo.topic || t('chat.right.noDescription')}
       </div>
 
-      <SectionLabel>Membres · {members.length}</SectionLabel>
+      <SectionLabel>{t('chat.right.members', { n: members.length })}</SectionLabel>
       <div style={{ marginBottom: 14 }}>
         {members.map((m) => (
           <MemberRow key={m.id} m={m} onPick={onPickMember} />
@@ -1774,11 +1798,11 @@ function RightRail({
             fontWeight: 600,
           }}
         >
-          <Plus /> Inviter un membre
+          <Plus /> {t('chat.right.inviteMember')}
         </button>
       </div>
 
-      <SectionLabel>Fichiers partagés · 0</SectionLabel>
+      <SectionLabel>{t('chat.right.sharedFiles')}</SectionLabel>
       <div
         style={{
           fontSize: 11.5,
@@ -1791,13 +1815,12 @@ function RightRail({
           lineHeight: 1.4,
         }}
       >
-        Le partage de fichiers arrivera dans une prochaine itération
-        (module Documents existant à brancher).
+        {t('chat.right.sharedFilesSoon')}
       </div>
 
       {linkedPatients.length > 0 && (
         <>
-          <SectionLabel>Patients liés · {linkedPatients.length}</SectionLabel>
+          <SectionLabel>{t('chat.right.linkedPatients', { n: linkedPatients.length })}</SectionLabel>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {linkedPatients.map((p) => (
               <LinkedPatient
@@ -1834,6 +1857,7 @@ function SectionLabel({ children }: { children: ReactNode }) {
 }
 
 function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) => void }) {
+  const { t } = useT();
   const dotColor =
     m.online === 'self'
       ? 'var(--success)'
@@ -1841,8 +1865,12 @@ function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) =>
         'var(--ink-4)';
   const stateLabel =
     m.online === 'self'
-      ? 'En ligne'
-      : ({ on: 'En ligne', away: 'Absent', off: 'Hors ligne' } as const)[m.online] ?? '';
+      ? t('chat.presence.online')
+      : ({
+          on: t('chat.presence.online'),
+          away: t('chat.presence.away'),
+          off: t('chat.presence.offline'),
+        } as const)[m.online] ?? '';
   // R056 — un clic sur un membre démarre/ouvre la DM 1-1 avec lui. Pas pour
   // soi-même : on ne chatte pas avec soi.
   const isSelf = m.online === 'self';
@@ -1882,7 +1910,7 @@ function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) =>
         >
           {m.name}
           {isSelf && (
-            <span style={{ color: 'var(--ink-4)', fontWeight: 500, marginLeft: 4 }}>(vous)</span>
+            <span style={{ color: 'var(--ink-4)', fontWeight: 500, marginLeft: 4 }}>{t('chat.presence.you')}</span>
           )}
         </div>
         <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 1 }}>
@@ -1903,7 +1931,7 @@ function MemberRow({ m, onPick }: { m: TeamMember; onPick: (memberId: string) =>
     <button
       type="button"
       onClick={() => onPick(m.id)}
-      aria-label={`Démarrer une discussion avec ${m.name}`}
+      aria-label={t('chat.startDmWithAria', { name: m.name })}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -2029,6 +2057,7 @@ function ColleaguePicker({
   onPick: (userId: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useT();
   // R058 — filtre nom/prénom (case-insensitive, accent-insensitive).
   const [q, setQ] = useState('');
   const norm = (s: string) =>
@@ -2040,7 +2069,7 @@ function ColleaguePicker({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Choisir un collègue pour démarrer une discussion"
+      aria-label={t('chat.picker.dialogAria')}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -2067,17 +2096,17 @@ function ColleaguePicker({
         }}
       >
         <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-          <strong style={{ fontSize: 14 }}>Nouveau message</strong>
+          <strong style={{ fontSize: 14 }}>{t('chat.picker.title')}</strong>
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-            Choisissez un collègue pour ouvrir une discussion privée.
+            {t('chat.picker.subtitle')}
           </div>
           <input
             autoFocus
             type="search"
-            placeholder="Rechercher un collègue…"
+            placeholder={t('chat.picker.placeholder')}
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            aria-label="Rechercher un collègue par nom ou prénom"
+            aria-label={t('chat.picker.aria')}
             style={{
               marginTop: 10,
               width: '100%',
@@ -2093,16 +2122,16 @@ function ColleaguePicker({
         </div>
         <div style={{ overflow: 'auto', flex: 1 }}>
           {loading && (
-            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>{t('chat.picker.loading')}</div>
           )}
           {!loading && colleagues.length === 0 && (
             <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun autre collègue actif.
+              {t('chat.picker.empty')}
             </div>
           )}
           {!loading && colleagues.length > 0 && filtered.length === 0 && (
             <div style={{ padding: 18, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun collègue ne correspond à « {q.trim()} ».
+              {t('chat.picker.noResult', { q: q.trim() })}
             </div>
           )}
           {filtered.map((c) => (
@@ -2145,7 +2174,7 @@ function ColleaguePicker({
           ))}
         </div>
         <div style={{ padding: 10, borderTop: '1px solid var(--border)', textAlign: 'right' }}>
-          <Button onClick={onClose}>Fermer</Button>
+          <Button onClick={onClose}>{t('common.close')}</Button>
         </div>
       </div>
     </div>

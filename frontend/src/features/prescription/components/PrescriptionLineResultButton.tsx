@@ -17,6 +17,7 @@ import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { Button } from '@/components/ui/Button';
 import { Trash } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAttachPrescriptionResult,
   useDetachPrescriptionResult,
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function PrescriptionLineResultButton({ lineId, resultDocumentId, disabled = false }: Props) {
+  const { t } = useT();
   const { attach, isPending: uploading } = useAttachPrescriptionResult();
   const { detach, isPending: deleting } = useDetachPrescriptionResult();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -37,20 +39,20 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
   async function onFile(file: File) {
     try {
       await attach({ lineId, file });
-      toast.success('Résultat attaché.');
+      toast.success(t('presc.lineResult.ok.attached'));
     } catch (err) {
       const status =
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { status?: number } }).response?.status
           : undefined;
       if (status === 415) {
-        toast.error('Format non supporté', {
-          description: 'Acceptés : PDF, JPEG, PNG, WebP, HEIC.',
+        toast.error(t('presc.lineResult.err.badFormat'), {
+          description: t('presc.lineResult.err.badFormatDesc'),
         });
       } else if (status === 413) {
-        toast.error('Fichier trop volumineux (max 10 Mo).');
+        toast.error(t('presc.lineResult.err.tooBig'));
       } else {
-        toast.error('Échec du téléversement', {
+        toast.error(t('presc.lineResult.err.uploadFailed'), {
           description: err instanceof Error ? err.message : undefined,
         });
       }
@@ -60,9 +62,9 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
   async function onDetach() {
     try {
       await detach(lineId);
-      toast.success('Résultat retiré.');
+      toast.success(t('presc.lineResult.ok.detached'));
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('presc.lineResult.err.detachFailed'));
     } finally {
       setConfirmingDelete(false);
     }
@@ -84,7 +86,7 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
       window.open(url, '_blank', 'noopener,noreferrer');
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      toast.error("Impossible d'ouvrir le résultat.");
+      toast.error(t('presc.lineResult.err.openFailed'));
     }
   }
 
@@ -105,7 +107,7 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
             textDecoration: 'underline',
           }}
         >
-          📄 Voir résultat
+          📄 {t('presc.lineResult.view')}
         </button>
         {!disabled && (
           confirmingDelete ? (
@@ -117,7 +119,7 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
                 disabled={deleting}
                 onClick={onDetach}
               >
-                Confirmer
+                {t('presc.lineResult.confirm')}
               </Button>
               <Button
                 type="button"
@@ -125,7 +127,7 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
                 size="sm"
                 onClick={() => setConfirmingDelete(false)}
               >
-                Annuler
+                {t('presc.lineResult.cancel')}
               </Button>
             </>
           ) : (
@@ -134,7 +136,7 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
               variant="ghost"
               size="sm"
               onClick={() => setConfirmingDelete(true)}
-              aria-label="Retirer le résultat"
+              aria-label={t('presc.lineResult.removeAria')}
             >
               <Trash style={{ width: 12, height: 12 }} />
             </Button>
@@ -146,8 +148,8 @@ export function PrescriptionLineResultButton({ lineId, resultDocumentId, disable
 
   return (
     <DocumentUploadButton
-      uploadLabel="Téléverser résultat"
-      cameraLabel="Photographier résultat"
+      uploadLabel={t('presc.lineResult.upload')}
+      cameraLabel={t('presc.lineResult.camera')}
       disabled={disabled || uploading}
       variant="default"
       onFile={onFile}

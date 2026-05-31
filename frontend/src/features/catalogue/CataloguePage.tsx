@@ -21,6 +21,7 @@ import { Plus, Search, Trash, Pill as PillIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { useClinicSettings } from '@/features/parametres/hooks/useSettings';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { CatalogueTabs } from './LabCataloguePage';
 import { CatalogImportButton } from './components/CatalogImportButton';
 import './catalogue-tabs.css';
@@ -78,6 +79,7 @@ const NAV_MAP = {
 
 export default function CataloguePage() {
   const navigate = useNavigate();
+  const { t: tr } = useT();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
   const canEdit = userRoles.includes('MEDECIN') || userRoles.includes('ADMIN');
 
@@ -113,9 +115,9 @@ export default function CataloguePage() {
     api
       .get<Medication[]>('/catalog/medications/browse', { params })
       .then((r) => setItems(r.data))
-      .catch(() => toast.error('Impossible de charger le catalogue.'))
+      .catch(() => toast.error(tr('cat.med.loadError')))
       .finally(() => setIsLoading(false));
-  }, [debouncedQ, tagFilter, refreshTick]);
+  }, [debouncedQ, tagFilter, refreshTick, tr]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, Medication[]>();
@@ -148,7 +150,7 @@ export default function CataloguePage() {
   }
   async function handleSave() {
     if (!form.commercialName.trim() || !form.dci.trim() || !form.form.trim() || !form.dosage.trim()) {
-      toast.error('Champs requis : Nom commercial, DCI, Forme, Dosage.');
+      toast.error(tr('cat.med.required'));
       return;
     }
     try {
@@ -165,10 +167,10 @@ export default function CataloguePage() {
       };
       if (editingId) {
         await api.put(`/catalog/medications/${editingId}`, body);
-        toast.success('Médicament mis à jour.');
+        toast.success(tr('cat.med.updated'));
       } else {
         await api.post('/catalog/medications', body);
-        toast.success('Médicament ajouté au catalogue.');
+        toast.success(tr('cat.med.added'));
       }
       setDrawerOpen(false);
       setForm(EMPTY_FORM);
@@ -184,33 +186,33 @@ export default function CataloguePage() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle MEDECIN ou ADMIN requis).'
-          : 'Échec de l\'enregistrement.',
+          ? tr('cat.permissionDenied')
+          : tr('cat.saveError'),
       );
     }
   }
   async function handleDelete(m: Medication) {
-    if (!confirm(`Désactiver « ${m.commercialName} ${m.dosage} » du catalogue ?`)) return;
+    if (!confirm(tr('cat.med.confirmDeactivate', { name: m.commercialName, dosage: m.dosage }))) return;
     try {
       await api.delete(`/catalog/medications/${m.id}`);
-      toast.success('Médicament désactivé.');
+      toast.success(tr('cat.med.deactivated'));
       setItems((xs) => xs.filter((x) => x.id !== m.id));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(tr('cat.deleteError'));
     }
   }
 
   return (
     <Screen
       active="catalogue"
-      title="Catalogue médicaments"
-      sub={`${items.length} entrée${items.length > 1 ? 's' : ''} commercialisée${items.length > 1 ? 's' : ''} au Maroc`}
+      title={tr('cat.med.title')}
+      sub={tr(items.length > 1 ? 'cat.med.sub_plural' : 'cat.med.sub', { n: items.length })}
       topbarRight={
         canEdit ? (
           <div style={{ display: 'flex', gap: 8 }}>
             <CatalogImportButton kind="drug" onImported={() => setRefreshTick((t) => t + 1)} />
             <Button variant="primary" onClick={openCreate}>
-              <Plus /> Ajouter
+              <Plus /> {tr('cat.add')}
             </Button>
           </div>
         ) : undefined
@@ -235,7 +237,8 @@ export default function CataloguePage() {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher par nom commercial ou DCI…"
+              placeholder={tr('cat.med.searchPlaceholder')}
+              aria-label={tr('cat.med.searchAria')}
               style={{
                 width: '100%', height: 36, padding: '0 12px 0 32px',
                 border: '1px solid var(--border)', borderRadius: 6,
@@ -246,15 +249,16 @@ export default function CataloguePage() {
           <Select
             value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
+            aria-label={tr('cat.med.classAria')}
             style={{
               height: 36, padding: '0 10px',
               border: '1px solid var(--border)', borderRadius: 6,
               fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
             }}
           >
-            <option value="">Toutes les classes</option>
-            {tags.map((t) => (
-              <option key={t} value={t}>{t}</option>
+            <option value="">{tr('cat.med.allClasses')}</option>
+            {tags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
             ))}
           </Select>
           {(q || tagFilter) && (
@@ -267,7 +271,7 @@ export default function CataloguePage() {
                 fontFamily: 'inherit',
               }}
             >
-              Réinitialiser
+              {tr('cat.reset')}
             </button>
           )}
         </div>
@@ -275,24 +279,24 @@ export default function CataloguePage() {
         {/* Tableau */}
         <Panel style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {isLoading && (
-            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>{tr('common.loading')}</div>
           )}
           {!isLoading && items.length === 0 && (
             <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun médicament ne correspond à la recherche.
+              {tr('cat.med.empty')}
             </div>
           )}
           {!isLoading && items.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--surface-2)', zIndex: 1 }}>
                 <tr>
-                  <Th>DCI / Nom commercial</Th>
-                  <Th>Forme</Th>
-                  <Th>Dosage</Th>
-                  <Th>Classe</Th>
+                  <Th>{tr('cat.med.col.dciName')}</Th>
+                  <Th>{tr('cat.med.col.form')}</Th>
+                  <Th>{tr('cat.med.col.dosage')}</Th>
+                  <Th>{tr('cat.med.col.class')}</Th>
                   {/* V057 — prix interne, colonne visible seulement si la pharmacie interne est activée. */}
                   {pharmacyInternal && (
-                    <Th style={{ width: 120, textAlign: 'right' }}>Prix interne</Th>
+                    <Th style={{ width: 120, textAlign: 'right' }}>{tr('cat.med.col.internalPrice')}</Th>
                   )}
                   <Th style={{ width: 60, textAlign: 'center' }}>★</Th>
                   {canEdit && <Th style={{ width: 110 }}> </Th>}
@@ -344,7 +348,7 @@ export default function CataloguePage() {
                       )}
                       <Td style={{ textAlign: 'center' }}>
                         {m.favorite && (
-                          <span style={{ color: 'var(--amber)' }} aria-label="Favori">★</span>
+                          <span style={{ color: 'var(--amber)' }} aria-label={tr('cat.favoriteAria')}>★</span>
                         )}
                       </Td>
                       {canEdit && (
@@ -355,12 +359,12 @@ export default function CataloguePage() {
                               onClick={() => openEdit(m)}
                               style={btnLink}
                             >
-                              Modifier
+                              {tr('common.edit')}
                             </button>
                             <button
                               type="button"
                               onClick={() => { void handleDelete(m); }}
-                              aria-label={`Supprimer ${m.commercialName}`}
+                              aria-label={tr('cat.med.deleteAria', { name: m.commercialName })}
                               style={{
                                 background: 'none', border: 'none', cursor: 'pointer',
                                 color: 'var(--danger)', padding: 4, lineHeight: 0,
@@ -403,28 +407,28 @@ export default function CataloguePage() {
             <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <PillIcon />
               <h2 style={{ fontSize: 14, fontWeight: 650, margin: 0, flex: 1 }}>
-                {editingId ? 'Modifier le médicament' : 'Nouveau médicament'}
+                {editingId ? tr('cat.med.drawer.edit') : tr('cat.med.drawer.new')}
               </h2>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--ink-3)' }}
-                aria-label="Fermer"
+                aria-label={tr('common.close')}
               >
                 ×
               </button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12, flex: 1, overflow: 'auto' }}>
-              <Field label="Nom commercial *" value={form.commercialName} onChange={(v) => setForm({ ...form, commercialName: v })} placeholder="ex. Doliprane" />
-              <Field label="DCI (molécule) *" value={form.dci} onChange={(v) => setForm({ ...form, dci: v })} placeholder="ex. Paracétamol" />
-              <Field label="Forme *" value={form.form} onChange={(v) => setForm({ ...form, form: v })} placeholder="comprimé, sirop, gélule…" />
-              <Field label="Dosage *" value={form.dosage} onChange={(v) => setForm({ ...form, dosage: v })} placeholder="500mg, 10mg/ml…" />
+              <Field label={tr('cat.med.field.commercialName')} value={form.commercialName} onChange={(v) => setForm({ ...form, commercialName: v })} placeholder={tr('cat.med.field.commercialName.ph')} />
+              <Field label={tr('cat.med.field.dci')} value={form.dci} onChange={(v) => setForm({ ...form, dci: v })} placeholder={tr('cat.med.field.dci.ph')} />
+              <Field label={tr('cat.med.field.form')} value={form.form} onChange={(v) => setForm({ ...form, form: v })} placeholder={tr('cat.med.field.form.ph')} />
+              <Field label={tr('cat.med.field.dosage')} value={form.dosage} onChange={(v) => setForm({ ...form, dosage: v })} placeholder={tr('cat.med.field.dosage.ph')} />
               <Field
-                label="Classe pharmacologique"
+                label={tr('cat.med.field.class')}
                 value={form.tags}
                 onChange={(v) => setForm({ ...form, tags: v })}
-                placeholder="ex. ains, ipp, antalgique, penicillines…"
-                hint="Sert au contrôle des allergies (les substances déclarées chez le patient sont matchées sur ce tag)."
+                placeholder={tr('cat.med.field.class.ph')}
+                hint={tr('cat.med.field.class.hint')}
               />
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginTop: 4 }}>
                 <input
@@ -432,23 +436,23 @@ export default function CataloguePage() {
                   checked={form.favorite}
                   onChange={(e) => setForm({ ...form, favorite: e.target.checked })}
                 />
-                Marquer comme favori (apparaît en haut des suggestions)
+                {tr('cat.med.field.favorite')}
               </label>
               {/* V057 (QA9-6) — prix interne, visible seulement si la pharmacie interne est activée. */}
               {pharmacyInternal && (
                 <Field
-                  label="Prix de cession en interne (MAD)"
+                  label={tr('cat.med.field.internalPrice')}
                   value={form.internalPrice}
                   onChange={(v) => setForm({ ...form, internalPrice: v.replace(/[^0-9.]/g, '') })}
-                  placeholder="ex. 45.00 — vide = non facturable en interne"
-                  hint="Si renseigné, ce prix est ajouté à la facture de consultation quand le médecin coche « fournir en interne » à la prescription."
+                  placeholder={tr('cat.med.field.internalPrice.ph')}
+                  hint={tr('cat.med.field.internalPrice.hint')}
                 />
               )}
             </div>
             <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button type="button" onClick={() => setDrawerOpen(false)}>Annuler</Button>
+              <Button type="button" onClick={() => setDrawerOpen(false)}>{tr('common.cancel')}</Button>
               <Button type="button" variant="primary" onClick={() => { void handleSave(); }}>
-                {editingId ? 'Enregistrer' : 'Ajouter au catalogue'}
+                {editingId ? tr('cat.med.submit.edit') : tr('cat.med.submit.new')}
               </Button>
             </div>
           </div>

@@ -12,13 +12,15 @@ interface PatientSummaryApi {
 
 interface Page<T> { content: T[] }
 
-function toAge(birthDate: string | null): string {
-  if (!birthDate) return '';
+/** Computes the age in years from a birthdate. Returns null when unknown so the
+ *  caller can localize the "{n} ans" label via t('rdv.years', { n }). */
+function toAgeYears(birthDate: string | null): number | null {
+  if (!birthDate) return null;
   const d = new Date(birthDate);
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();
   if (now.getMonth() - d.getMonth() < 0) age--;
-  return `${age} ans`;
+  return age;
 }
 
 export function usePatientSearch(query: string): {
@@ -43,12 +45,15 @@ export function usePatientSearch(query: string): {
     name: `${p.firstName} ${p.lastName}`,
     phone: p.phone ?? '—',
     lastVisit: '',
-    tags: p.birthDate ? [toAge(p.birthDate)] : [],
+    tags: [],
+    // Age unit localized at render time via t('rdv.years', { n }) (#122).
+    ageYears: toAgeYears(p.birthDate),
   }));
 
   return {
     candidates: trimmed.length < 2 ? [] : candidates,
     isLoading,
-    error: error ? 'Recherche impossible.' : null,
+    // i18n (#122) : clé de traduction (le consommateur fait t()).
+    error: error ? 'rdv.err.search' : null,
   };
 }

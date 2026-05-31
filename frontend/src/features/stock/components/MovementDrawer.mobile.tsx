@@ -12,6 +12,7 @@ import type { MovementValues } from '../schemas';
 import { useRecordMovement } from '../hooks/useRecordMovement';
 import { useStockLots } from '../hooks/useStockLots';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockArticleCategory, StockMovementType } from '../types';
 
 interface MovementDrawerMobileProps {
@@ -24,10 +25,10 @@ interface MovementDrawerMobileProps {
   onClose: () => void;
 }
 
-const MODE_LABEL: Record<StockMovementType, string> = {
-  IN: 'Entrée de stock',
-  OUT: 'Sortie de stock',
-  ADJUSTMENT: 'Ajustement de stock',
+const MODE_LABEL_KEY: Record<StockMovementType, string> = {
+  IN: 'stock.movement.in',
+  OUT: 'stock.movement.out',
+  ADJUSTMENT: 'stock.movement.adjustment',
 };
 
 const MODE_COLOR: Record<StockMovementType, string> = {
@@ -45,6 +46,8 @@ export function MovementDrawerMobile({
   open,
   onClose,
 }: MovementDrawerMobileProps) {
+  const { t } = useT();
+  const modeLabel = t(MODE_LABEL_KEY[mode]);
   const isMedicament = articleCategory === 'MEDICAMENT_INTERNE';
   const { lots } = useStockLots(isMedicament ? articleId : undefined, 'ACTIVE');
   const recordMutation = useRecordMovement(articleId);
@@ -107,22 +110,22 @@ export function MovementDrawerMobile({
       await recordMutation.mutateAsync(body);
       toast.success(
         mode === 'IN'
-          ? 'Entrée enregistrée'
+          ? t('stock.movement.toast.in')
           : mode === 'OUT'
-          ? 'Sortie enregistrée'
-          : 'Ajustement enregistré',
+          ? t('stock.movement.toast.out')
+          : t('stock.movement.toast.adjustment'),
       );
       onClose();
     } catch (err) {
       const pd = toProblemDetail(err);
       if (pd?.type?.includes('INSUFFICIENT_STOCK')) {
-        toast.error('Stock insuffisant pour cette sortie');
+        toast.error(t('stock.movement.err.insufficient'));
       } else if (pd?.type?.includes('LOT_REQUIRED')) {
-        toast.error('Numéro de lot obligatoire pour ce médicament');
+        toast.error(t('stock.movement.err.lotRequired'));
       } else if (pd?.type?.includes('REASON_REQUIRED')) {
-        toast.error("Motif obligatoire pour l'ajustement");
+        toast.error(t('stock.movement.err.reasonRequired'));
       } else {
-        toast.error(pd?.detail ?? "Impossible d'enregistrer le mouvement");
+        toast.error(pd?.detail ?? t('stock.movement.err.generic'));
       }
     }
   }
@@ -139,7 +142,7 @@ export function MovementDrawerMobile({
           }}
         />
         <Drawer.Content
-          aria-label={MODE_LABEL[mode]}
+          aria-label={modeLabel}
           style={{
             position: 'fixed',
             bottom: 0,
@@ -165,7 +168,7 @@ export function MovementDrawerMobile({
 
           <div style={{ padding: '16px 20px 8px' }}>
             <div style={{ fontSize: 14, fontWeight: 650, color: MODE_COLOR[mode] }}>
-              {MODE_LABEL[mode]}
+              {modeLabel}
             </div>
             <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
               {articleLabel}
@@ -191,7 +194,7 @@ export function MovementDrawerMobile({
                 color: 'var(--ink-2)',
               }}
             >
-              Stock disponible :{' '}
+              {t('stock.movement.availableStock')}{' '}
               <strong style={{ color: 'var(--ink)' }}>{currentQuantity}</strong>
             </div>
 
@@ -201,7 +204,7 @@ export function MovementDrawerMobile({
                 htmlFor="mv-m-quantity"
                 style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
               >
-                Quantité{mode === 'ADJUSTMENT' ? ' (nouvelle quantité totale)' : ''} *
+                {mode === 'ADJUSTMENT' ? t('stock.movement.quantityAdjust') : t('stock.movement.quantity')} *
               </label>
               <input
                 id="mv-m-quantity"
@@ -224,12 +227,12 @@ export function MovementDrawerMobile({
               />
               {errors.quantity && (
                 <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                  {errors.quantity.message}
+                  {t(errors.quantity.message ?? '')}
                 </div>
               )}
               {isOverStock && (
                 <div style={{ fontSize: 12, color: 'var(--amber, #d97706)', marginTop: 4 }}>
-                  Attention : quantité supérieure au stock ({currentQuantity})
+                  {t('stock.movement.overStockShort', { n: currentQuantity })}
                 </div>
               )}
             </div>
@@ -242,12 +245,12 @@ export function MovementDrawerMobile({
                     htmlFor="mv-m-lot"
                     style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
                   >
-                    Numéro de lot *
+                    {t('stock.movement.lotNumber')}
                   </label>
                   <input
                     id="mv-m-lot"
                     list="mv-m-lot-list"
-                    placeholder="ex. L2024-001"
+                    placeholder={t('stock.movement.lotPlaceholder')}
                     {...register('lotNumber')}
                     aria-invalid={Boolean(errors.lotNumber)}
                     style={{
@@ -272,7 +275,7 @@ export function MovementDrawerMobile({
                   )}
                   {errors.lotNumber && (
                     <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                      {errors.lotNumber.message}
+                      {t(errors.lotNumber.message ?? '')}
                     </div>
                   )}
                 </div>
@@ -282,7 +285,7 @@ export function MovementDrawerMobile({
                     htmlFor="mv-m-expires"
                     style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
                   >
-                    Date de péremption *
+                    {t('stock.movement.expiry')}
                   </label>
                   <input
                     id="mv-m-expires"
@@ -304,7 +307,7 @@ export function MovementDrawerMobile({
                   />
                   {errors.expiresOn && (
                     <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                      {errors.expiresOn.message}
+                      {t(errors.expiresOn.message ?? '')}
                     </div>
                   )}
                 </div>
@@ -318,12 +321,12 @@ export function MovementDrawerMobile({
                   htmlFor="mv-m-reason"
                   style={{ display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
                 >
-                  Motif *
+                  {t('stock.movement.reason')}
                 </label>
                 <textarea
                   id="mv-m-reason"
                   rows={3}
-                  placeholder="Inventaire mensuel, correction erreur de saisie…"
+                  placeholder={t('stock.movement.reasonPlaceholder')}
                   {...register('reason')}
                   aria-invalid={Boolean(errors.reason)}
                   style={{
@@ -341,7 +344,7 @@ export function MovementDrawerMobile({
                 />
                 {errors.reason && (
                   <div style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4 }}>
-                    {errors.reason.message}
+                    {t(errors.reason.message ?? '')}
                   </div>
                 )}
               </div>
@@ -365,7 +368,7 @@ export function MovementDrawerMobile({
                 opacity: isSubmitting || recordMutation.isPending ? 0.7 : 1,
               }}
             >
-              {isSubmitting || recordMutation.isPending ? 'Enregistrement…' : MODE_LABEL[mode]}
+              {isSubmitting || recordMutation.isPending ? t('common.saving') : modeLabel}
             </button>
 
             <button
@@ -383,7 +386,7 @@ export function MovementDrawerMobile({
                 cursor: 'pointer',
               }}
             >
-              Annuler
+              {t('common.cancel')}
             </button>
           </form>
         </Drawer.Content>

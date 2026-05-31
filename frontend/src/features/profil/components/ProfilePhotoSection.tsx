@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/heic,image/heif';
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -20,6 +21,7 @@ function initials(first?: string | null, last?: string | null) {
 }
 
 export function ProfilePhotoSection() {
+  const { t } = useT();
   const user = useAuthStore((s) => s.user);
   const userId = user?.id;
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -53,7 +55,7 @@ export function ProfilePhotoSection() {
 
   async function onFile(file: File) {
     if (file.size > MAX_BYTES) {
-      toast.error('Photo trop volumineuse (max 2 Mo).');
+      toast.error(t('profil.photo.tooLarge'));
       return;
     }
     setBusy(true);
@@ -63,7 +65,7 @@ export function ProfilePhotoSection() {
       await api.put('/me/photo', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      toast.success('Photo mise à jour.');
+      toast.success(t('profil.photo.updated'));
       setVersion((v) => v + 1);
     } catch (err) {
       const status =
@@ -71,13 +73,13 @@ export function ProfilePhotoSection() {
           ? (err as { response?: { status?: number } }).response?.status
           : undefined;
       if (status === 415) {
-        toast.error('Format non supporté', {
-          description: 'Acceptés : JPEG, PNG, WebP, HEIC.',
+        toast.error(t('profil.photo.unsupported'), {
+          description: t('profil.photo.unsupportedDesc'),
         });
       } else if (status === 413) {
-        toast.error('Photo trop volumineuse (max 2 Mo).');
+        toast.error(t('profil.photo.tooLarge'));
       } else {
-        toast.error('Échec du téléversement.');
+        toast.error(t('profil.photo.uploadFailed'));
       }
     } finally {
       setBusy(false);
@@ -88,10 +90,10 @@ export function ProfilePhotoSection() {
     setBusy(true);
     try {
       await api.delete('/me/photo');
-      toast.success('Photo retirée.');
+      toast.success(t('profil.photo.removed'));
       setVersion((v) => v + 1);
     } catch {
-      toast.error('Échec de la suppression.');
+      toast.error(t('profil.photo.removeFailed'));
     } finally {
       setBusy(false);
     }
@@ -109,10 +111,9 @@ export function ProfilePhotoSection() {
         gap: 12,
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: 14 }}>Photo de profil</div>
+      <div style={{ fontWeight: 600, fontSize: 14 }}>{t('profil.photo.title')}</div>
       <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-        Visible dans la messagerie interne à la place de vos initiales. JPEG, PNG,
-        WebP ou HEIC — 2 Mo max.
+        {t('profil.photo.hint')}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -135,7 +136,7 @@ export function ProfilePhotoSection() {
           {photoUrl ? (
             <img
               src={photoUrl}
-              alt="Votre photo de profil"
+              alt={t('profil.photo.alt')}
               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
@@ -162,7 +163,7 @@ export function ProfilePhotoSection() {
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
-            {photoUrl ? 'Remplacer la photo' : 'Téléverser une photo'}
+            {photoUrl ? t('profil.photo.replace') : t('profil.photo.upload')}
           </Button>
           {photoUrl && (
             <Button
@@ -172,7 +173,7 @@ export function ProfilePhotoSection() {
               disabled={busy}
               onClick={() => void onDelete()}
             >
-              Retirer
+              {t('profil.photo.remove')}
             </Button>
           )}
         </div>

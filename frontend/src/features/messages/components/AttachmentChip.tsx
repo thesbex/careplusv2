@@ -8,15 +8,17 @@
 import { toast } from 'sonner';
 import { File as FileIcon } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT, type I18nContextValue } from '@/lib/i18n/I18nProvider';
 import type { MessageAttachment } from '../types';
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} Ko`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
+function formatSize(bytes: number, t: I18nContextValue['t']): string {
+  if (bytes < 1024) return t('chat.size.bytes', { n: bytes });
+  if (bytes < 1024 * 1024) return t('chat.size.kb', { n: (bytes / 1024).toFixed(0) });
+  return t('chat.size.mb', { n: (bytes / (1024 * 1024)).toFixed(1) });
 }
 
 export function AttachmentChip({ a }: { a: MessageAttachment }) {
+  const { t } = useT();
   async function open() {
     try {
       const res = await api.get(`/chat/attachments/${a.id}/content`, {
@@ -28,7 +30,7 @@ export function AttachmentChip({ a }: { a: MessageAttachment }) {
       window.open(url, '_blank', 'noopener,noreferrer');
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      toast.error("Impossible d'ouvrir la pièce jointe.");
+      toast.error(t('chat.attach.openFailed'));
     }
   }
   return (
@@ -65,7 +67,7 @@ export function AttachmentChip({ a }: { a: MessageAttachment }) {
         >
           {a.filename}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{formatSize(a.sizeBytes)}</span>
+        <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{formatSize(a.sizeBytes, t)}</span>
       </div>
     </button>
   );

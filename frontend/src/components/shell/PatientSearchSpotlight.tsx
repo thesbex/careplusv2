@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import * as Dialog from '@radix-ui/react-dialog';
 import { api } from '@/lib/api/client';
 import { Search } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Topbar global patient search ("spotlight"). Opens via the .cp-search button
@@ -25,13 +26,13 @@ interface PatientHit {
 
 interface Page<T> { content: T[] }
 
-function ageOf(birth: string | null): string {
+function ageOf(birth: string | null, t: (key: string, vars?: Record<string, string | number>) => string): string {
   if (!birth) return '';
   const d = new Date(birth);
   const now = new Date();
   let age = now.getFullYear() - d.getFullYear();
   if (now.getMonth() - d.getMonth() < 0 || (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())) age--;
-  return `${age} ans`;
+  return t('ui.spotlight.years', { n: age });
 }
 
 interface Props {
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
+  const { t } = useT();
   const [q, setQ] = useState('');
   const [active, setActive] = useState(0);
   const [results, setResults] = useState<PatientHit[]>([]);
@@ -131,7 +133,7 @@ export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
           }}
         >
           <Dialog.Title style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
-            Rechercher un patient
+            {t('ui.spotlight.title')}
           </Dialog.Title>
           <div style={{
             display: 'flex',
@@ -146,7 +148,7 @@ export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
               value={q}
               onChange={(e) => { setQ(e.target.value); setActive(0); }}
               onKeyDown={onKeyDown}
-              placeholder="Nom, téléphone, CIN…"
+              placeholder={t('ui.spotlight.placeholder')}
               autoFocus
               style={{
                 flex: 1,
@@ -158,27 +160,27 @@ export function PatientSearchSpotlight({ open, onOpenChange }: Props) {
                 color: 'var(--ink)',
               }}
             />
-            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>Esc pour fermer</span>
+            <span style={{ fontSize: 11, color: 'var(--ink-4)' }}>{t('ui.spotlight.escToClose')}</span>
           </div>
           <div style={{ maxHeight: '50vh', overflowY: 'auto' }}>
             {trimmed.length < 2 && (
               <div style={{ padding: 18, fontSize: 12.5, color: 'var(--ink-3)' }}>
-                Tapez au moins 2 caractères pour lancer la recherche.
+                {t('ui.spotlight.minChars')}
               </div>
             )}
             {trimmed.length >= 2 && isFetching && results.length === 0 && (
               <div style={{ padding: 18, fontSize: 12.5, color: 'var(--ink-3)' }}>
-                Recherche en cours…
+                {t('ui.spotlight.searching')}
               </div>
             )}
             {trimmed.length >= 2 && !isFetching && results.length === 0 && (
               <div style={{ padding: 18, fontSize: 12.5, color: 'var(--ink-3)' }}>
-                Aucun patient trouvé pour « {trimmed} ».
+                {t('ui.spotlight.noResult', { q: trimmed })}
               </div>
             )}
             {results.map((p, i) => {
               const isActive = i === active;
-              const tags = [ageOf(p.birthDate), p.cin, p.phone].filter(Boolean).join(' · ');
+              const tags = [ageOf(p.birthDate, t), p.cin, p.phone].filter(Boolean).join(' · ');
               return (
                 <button
                   type="button"

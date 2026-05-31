@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Select } from '@/components/ui/Input';
@@ -17,8 +18,6 @@ import {
   useDeleteExpense,
 } from './hooks/useExpenses';
 import {
-  CATEGORY_LABELS,
-  PERIODICITY_LABELS,
   CATEGORY_ORDER,
   PERIODICITY_ORDER,
   formatMad,
@@ -58,6 +57,9 @@ const EMPTY_FORM: FormState = {
 };
 
 export default function ChargesMobilePage() {
+  const { t } = useT();
+  const catLabel = (c: ExpenseCategory) => t(`charges.cat.${c}`);
+  const perLabel = (p: ExpensePeriodicity) => t(`charges.per.${p}`);
   const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<ExpenseCategory | ''>('');
   const { expenses, isLoading } = useExpenses(
@@ -97,16 +99,16 @@ export default function ChargesMobilePage() {
 
   async function handleSave() {
     if (!form.label.trim()) {
-      toast.error('Le libellé est requis.');
+      toast.error(t('charges.err.labelRequired'));
       return;
     }
     const amount = Number(form.amount);
     if (!form.amount.trim() || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Le montant doit être un nombre positif.');
+      toast.error(t('charges.err.amountPositive'));
       return;
     }
     if (!form.expenseDate) {
-      toast.error('La date est requise.');
+      toast.error(t('charges.err.dateRequired'));
       return;
     }
     const body: ExpenseRequest = {
@@ -121,10 +123,10 @@ export default function ChargesMobilePage() {
     try {
       if (editingId) {
         await updateExpense({ id: editingId, body });
-        toast.success('Charge mise à jour.');
+        toast.success(t('charges.toast.updated'));
       } else {
         await createExpense(body);
-        toast.success('Charge ajoutée.');
+        toast.success(t('charges.toast.added'));
       }
       setSheetOpen(false);
       setForm(EMPTY_FORM);
@@ -133,19 +135,19 @@ export default function ChargesMobilePage() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
-          : "Échec de l'enregistrement.",
+          ? t('charges.err.forbidden')
+          : t('charges.err.saveFailed'),
       );
     }
   }
 
   async function handleDelete(e: ExpenseResponse) {
-    if (!confirm(`Supprimer la charge « ${e.label} » ?`)) return;
+    if (!confirm(t('charges.confirmDelete', { label: e.label }))) return;
     try {
       await deleteExpense(e.id);
-      toast.success('Charge supprimée.');
+      toast.success(t('charges.toast.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('charges.err.deleteFailed'));
     }
   }
 
@@ -157,12 +159,12 @@ export default function ChargesMobilePage() {
       topbar={
         <MTopbar
           left={
-            <MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />
+            <MIconBtn icon="ChevronLeft" label={t('charges.back')} onClick={() => navigate('/parametres')} />
           }
-          title="Charges"
-          sub={`${expenses.length} charge${expenses.length > 1 ? 's' : ''}`}
+          title={t('charges.title')}
+          sub={t('charges.count', { n: expenses.length, s: expenses.length > 1 ? 's' : '' })}
           right={
-            <MIconBtn icon="Plus" label="Ajouter une charge" onClick={openCreate} />
+            <MIconBtn icon="Plus" label={t('charges.add')} onClick={openCreate} />
           }
         />
       }
@@ -176,7 +178,7 @@ export default function ChargesMobilePage() {
             display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
           }}
         >
-          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>Total {year}</span>
+          <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('charges.totalYear', { year })}</span>
           <span style={{ fontSize: 15, fontWeight: 700 }} className="tnum">{formatMad(yearTotal)}</span>
         </div>
 
@@ -185,12 +187,12 @@ export default function ChargesMobilePage() {
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as ExpenseCategory | '')}
           className="m-input"
-          aria-label="Filtrer par catégorie"
+          aria-label={t('charges.filter.byCategoryAria')}
           style={{ marginBottom: 14 }}
         >
-          <option value="">Toutes les catégories</option>
+          <option value="">{t('charges.filter.allCategories')}</option>
           {CATEGORY_ORDER.map((c) => (
-            <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+            <option key={c} value={c}>{catLabel(c)}</option>
           ))}
         </Select>
 
@@ -198,11 +200,11 @@ export default function ChargesMobilePage() {
         <div className="m-card">
           {isLoading ? (
             <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-              Chargement…
+              {t('charges.loading')}
             </div>
           ) : expenses.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucune charge enregistrée.
+              {t('charges.empty')}
             </div>
           ) : (
             expenses.map((e) => (
@@ -220,7 +222,7 @@ export default function ChargesMobilePage() {
                 <div className="m-row-pri">
                   <div className="m-row-main">{e.label}</div>
                   <div className="m-row-sub">
-                    {CATEGORY_LABELS[e.category]} · {PERIODICITY_LABELS[e.periodicity]} ·{' '}
+                    {catLabel(e.category)} · {perLabel(e.periodicity)} ·{' '}
                     <span className="tnum">{e.expenseDate}</span>
                     {e.supplier ? ` · ${e.supplier}` : ''}
                   </div>
@@ -255,49 +257,49 @@ export default function ChargesMobilePage() {
           >
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2 style={{ fontSize: 15, fontWeight: 650, margin: 0, flex: 1 }}>
-                {editingId ? 'Modifier la charge' : 'Nouvelle charge'}
+                {editingId ? t('charges.editTitle') : t('charges.newTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setSheetOpen(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--ink-3)' }}
-                aria-label="Fermer"
+                aria-label={t('charges.close')}
               >
                 ×
               </button>
             </div>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
-              <MField label="Catégorie *">
+              <MField label={t('charges.form.category')}>
                 <Select
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value as ExpenseCategory })}
                   className="m-input"
                 >
                   {CATEGORY_ORDER.map((c) => (
-                    <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                    <option key={c} value={c}>{catLabel(c)}</option>
                   ))}
                 </Select>
               </MField>
-              <MField label="Libellé *">
+              <MField label={t('charges.form.label')}>
                 <input
                   type="text"
                   className="m-input"
                   value={form.label}
                   onChange={(e) => setForm({ ...form, label: e.target.value })}
-                  placeholder="ex. Facture Lydec avril"
+                  placeholder={t('charges.form.labelPlaceholder')}
                 />
               </MField>
-              <MField label="Montant (MAD) *">
+              <MField label={t('charges.form.amount')}>
                 <input
                   type="text"
                   inputMode="decimal"
                   className="m-input"
                   value={form.amount}
                   onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/[^0-9.]/g, '') })}
-                  placeholder="ex. 1250.00"
+                  placeholder={t('charges.form.amountPlaceholder')}
                 />
               </MField>
-              <MField label="Date *">
+              <MField label={t('charges.form.date')}>
                 <input
                   type="date"
                   className="m-input"
@@ -305,33 +307,33 @@ export default function ChargesMobilePage() {
                   onChange={(e) => setForm({ ...form, expenseDate: e.target.value })}
                 />
               </MField>
-              <MField label="Périodicité *">
+              <MField label={t('charges.form.periodicity')}>
                 <Select
                   value={form.periodicity}
                   onChange={(e) => setForm({ ...form, periodicity: e.target.value as ExpensePeriodicity })}
                   className="m-input"
                 >
                   {PERIODICITY_ORDER.map((p) => (
-                    <option key={p} value={p}>{PERIODICITY_LABELS[p]}</option>
+                    <option key={p} value={p}>{perLabel(p)}</option>
                   ))}
                 </Select>
               </MField>
-              <MField label="Fournisseur">
+              <MField label={t('charges.form.supplier')}>
                 <input
                   type="text"
                   className="m-input"
                   value={form.supplier}
                   onChange={(e) => setForm({ ...form, supplier: e.target.value })}
-                  placeholder="ex. Lydec, Maroc Telecom…"
+                  placeholder={t('charges.form.supplierPlaceholder')}
                 />
               </MField>
-              <MField label="Notes">
+              <MField label={t('charges.form.notes')}>
                 <textarea
                   className="m-input"
                   rows={3}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Remarque interne (optionnel)"
+                  placeholder={t('charges.form.notesPlaceholder')}
                   style={{ resize: 'vertical' }}
                 />
               </MField>
@@ -350,7 +352,7 @@ export default function ChargesMobilePage() {
                     border: 0, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer',
                   }}
                 >
-                  Supprimer
+                  {t('charges.form.delete')}
                 </button>
               )}
               <button
@@ -363,7 +365,7 @@ export default function ChargesMobilePage() {
                   border: 0, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, fontWeight: 600, cursor: 'pointer',
                 }}
               >
-                {editingId ? 'Enregistrer' : 'Ajouter la charge'}
+                {editingId ? t('charges.form.save') : t('charges.form.create')}
               </button>
             </div>
           </div>

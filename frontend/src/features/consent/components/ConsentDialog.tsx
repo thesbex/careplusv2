@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useConsentTemplates, useGenerateConsent } from '../hooks/useConsentTemplates';
 import {
-  CONSENT_TYPE_LABELS,
   CONSENT_PLACEHOLDERS,
   type ConsentGenerateRequest,
 } from '../types';
@@ -26,6 +26,7 @@ interface ConsentDialogProps {
 }
 
 export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogProps) {
+  const { t } = useT();
   const { templates } = useConsentTemplates();
   const { generate, isPending } = useGenerateConsent(patientId);
 
@@ -53,11 +54,11 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
 
   async function submit() {
     if (!title.trim()) {
-      toast.error('Le titre est requis.');
+      toast.error(t('consent.err.titleRequired'));
       return;
     }
     if (body.trim().length < 10) {
-      toast.error('Le corps du consentement doit faire au moins 10 caractères.');
+      toast.error(t('consent.err.bodyMin'));
       return;
     }
     const payload: ConsentGenerateRequest = {
@@ -68,7 +69,7 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
     setDownloading(true);
     try {
       const { documentId } = await generate(payload);
-      toast.success('Consentement généré.');
+      toast.success(t('consent.toast.generated'));
       // Téléchargement immédiat du PDF — même mécanisme que DocumentsPanel
       // (blob via axios car le JWT est en mémoire, pas en cookie).
       try {
@@ -79,13 +80,13 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
         window.open(url, '_blank', 'noopener,noreferrer');
         setTimeout(() => URL.revokeObjectURL(url), 1_000);
       } catch {
-        toast.error('Aperçu PDF impossible (document enregistré dans le dossier).');
+        toast.error(t('consent.err.pdfPreview'));
       }
       onOpenChange(false);
     } catch (e: unknown) {
       const msg =
         (e as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-        'Génération du consentement refusée.';
+        t('consent.err.generateRefused');
       toast.error(msg);
     } finally {
       setDownloading(false);
@@ -119,48 +120,50 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
         >
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 14 }}>
             <Dialog.Title style={{ fontSize: 15, fontWeight: 600, margin: 0, flex: 1 }}>
-              Consentement éclairé
+              {t('consent.dialog.title')}
             </Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('consent.dialog.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
           </div>
           <Dialog.Description style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>
-            Le consentement est généré en PDF avec l'en-tête du cabinet et le corps
-            ci-dessous, puis rattaché au dossier du patient.
+            {t('consent.dialog.description')}
           </Dialog.Description>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, marginBottom: 12 }}>
-            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Modèle</span>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('consent.dialog.templateLabel')}</span>
             <Select
               value={templateId}
               onChange={(e) => pickTemplate(e.target.value)}
-              aria-label="Modèle de consentement"
+              aria-label={t('consent.dialog.templateAria')}
               style={{
                 height: 34, padding: '0 10px',
                 border: '1px solid var(--border)', borderRadius: 6,
                 fontFamily: 'inherit', fontSize: 13, background: 'var(--surface)',
               }}
             >
-              <option value="">— Rédaction libre —</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {CONSENT_TYPE_LABELS[t.type]} — {t.title}
+              <option value="">{t('consent.dialog.templateFree')}</option>
+              {templates.map((tmpl) => (
+                <option key={tmpl.id} value={tmpl.id}>
+                  {t('consent.dialog.templateOption', {
+                    type: t(`consent.type.${tmpl.type}`),
+                    title: tmpl.title,
+                  })}
                 </option>
               ))}
             </Select>
           </label>
 
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, marginBottom: 12 }}>
-            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>Titre *</span>
+            <span style={{ color: 'var(--ink-3)', fontWeight: 600 }}>{t('consent.dialog.titleLabel')}</span>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="ex. Consentement à l'acte opératoire"
-              aria-label="Titre du consentement"
+              placeholder={t('consent.dialog.titlePlaceholder')}
+              aria-label={t('consent.dialog.titleAria')}
               style={{
                 height: 34, padding: '0 10px',
                 border: '1px solid var(--border)', borderRadius: 6,
@@ -172,9 +175,9 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Saisissez le corps du consentement…"
+            placeholder={t('consent.dialog.bodyPlaceholder')}
             rows={10}
-            aria-label="Corps du consentement"
+            aria-label={t('consent.dialog.bodyAria')}
             style={{
               width: '100%',
               border: '1px solid var(--border)',
@@ -187,7 +190,7 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
             }}
           />
           <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 6, lineHeight: 1.6 }}>
-            Variables remplacées à la génération :{' '}
+            {t('consent.dialog.placeholdersHint')}{' '}
             {CONSENT_PLACEHOLDERS.map((p) => (
               <code
                 key={p}
@@ -203,10 +206,10 @@ export function ConsentDialog({ open, onOpenChange, patientId }: ConsentDialogPr
 
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
             <Dialog.Close asChild>
-              <Button>Annuler</Button>
+              <Button>{t('common.cancel')}</Button>
             </Dialog.Close>
             <Button variant="primary" onClick={() => { void submit(); }} disabled={busy}>
-              {busy ? 'Génération…' : 'Générer & imprimer'}
+              {busy ? t('consent.dialog.generating') : t('consent.dialog.generate')}
             </Button>
           </div>
         </Dialog.Content>

@@ -49,12 +49,15 @@ export function useCreateAppointment() {
   return {
     createAppointment: mutation.mutateAsync,
     isPending: mutation.isPending,
+    // Backend detail/message (already localized server-side or technical) is
+    // surfaced verbatim; the generic fallback is an i18n key resolved by the
+    // consumer via t() (#122).
     error: mutation.error
       ? (mutation.error as { response?: { data?: { detail?: string; message?: string } } })
           .response?.data?.detail ??
         (mutation.error as { response?: { data?: { message?: string } } })
           .response?.data?.message ??
-        'Erreur lors de la création du RDV.'
+        'rdv.err.create'
       : null,
   };
 }

@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { api } from '@/lib/api/client';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 /**
  * Deactivates (DELETE) a vaccine from the catalog.
@@ -11,6 +12,7 @@ import { toProblemDetail } from '@/lib/api/problemJson';
  */
 export function useDeactivateVaccine() {
   const qc = useQueryClient();
+  const { t } = useT();
 
   const mutation = useMutation({
     mutationFn: (vaccineId: string) =>
@@ -21,7 +23,7 @@ export function useDeactivateVaccine() {
     onError: (err) => {
       const problem = toProblemDetail(err);
       if (problem.status === 422 || problem.type?.includes('PNI_PROTECTED')) {
-        toast.error('Vaccin PNI : désactivation interdite');
+        toast.error(t('vacc.param.catalog.pniProtected'));
       } else {
         toast.error(problem.title, problem.detail ? { description: problem.detail } : undefined);
       }

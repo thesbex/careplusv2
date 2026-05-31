@@ -1,5 +1,6 @@
 import { AgendaBlock } from './AgendaBlock';
-import { HOURS, ROW_PX, pxFromMin, toMin } from '../fixtures';
+import { useT } from '@/lib/i18n/I18nProvider';
+import { ROW_PX, pxFromMin, toMin, absMin, topPxAt, DEFAULT_FIRST_HOUR, DEFAULT_LAST_HOUR } from '../fixtures';
 import type { Appointment, DayKey, WeekDay } from '../types';
 
 /**
@@ -122,8 +123,40 @@ interface AgendaGridProps {
   lunchBreaks?: Partial<Record<DayKey, { start: string; end: string }>>;
 }
 
-const FIRST_HOUR = 8;
 const SNAP_MIN = 5;
+
+/**
+ * Fenêtre horaire à afficher : par défaut 08:00–20:00 (libellés 08..19), élargie
+ * pour englober tout RDV/pause hors de cette plage. Sans ça, un RDV du soir
+ * (≥ 20h) ou tôt le matin (< 8h) était positionné dans le vide sous/au-dessus de
+ * l'axe des heures — la grille s'arrêtait à 19h tandis qu'un RDV de 23h50 se
+ * retrouvait ~400 px plus bas dans le vide (bug user Image #5).
+ */
+function computeHourWindow(
+  appointments: Appointment[],
+  lunchBreaks?: Partial<Record<DayKey, { start: string; end: string }>>,
+): { firstHour: number; hours: number[] } {
+  let first = DEFAULT_FIRST_HOUR;
+  let last = DEFAULT_LAST_HOUR;
+  for (const a of appointments) {
+    const startMin = absMin(a.start);
+    const endMin = startMin + a.dur;
+    first = Math.min(first, Math.floor(startMin / 60));
+    last = Math.max(last, Math.ceil(endMin / 60));
+  }
+  if (lunchBreaks) {
+    for (const lb of Object.values(lunchBreaks)) {
+      if (!lb) continue;
+      first = Math.min(first, Math.floor(absMin(lb.start) / 60));
+      last = Math.max(last, Math.ceil(absMin(lb.end) / 60));
+    }
+  }
+  first = Math.max(0, first);
+  last = Math.min(24, last);
+  const hours: number[] = [];
+  for (let h = first; h < last; h++) hours.push(h);
+  return { firstHour: first, hours };
+}
 
 /**
  * Pause déjeuner — purement visuel, configurable PAR JOUR (user 2026-05-28 :
@@ -133,9 +166,10 @@ const SNAP_MIN = 5;
  * settings quand le module sera prêt — pour l'instant, default exporté depuis
  * AgendaPage avec une heuristique Maroc (Lun-Ven 12-14, Sam aucune pause).
  */
-function PauseDejBlock({ start, end, standalone = false }: { start: string; end: string; standalone?: boolean }) {
-  const top = pxFromMin(toMin(start));
-  const height = pxFromMin(toMin(end) - toMin(start));
+function PauseDejBlock({ start, end, firstHour, standalone = false }: { start: string; end: string; firstHour: number; standalone?: boolean }) {
+  const { t } = useT();
+  const top = topPxAt(start, firstHour);
+  const height = pxFromMin(absMin(end) - absMin(start));
   // Libellé "12 – 14H" (extrait des heures), pas un format figé.
   const sH = start.split(':')[0]?.replace(/^0/, '') ?? '12';
   const eH = end.split(':')[0]?.replace(/^0/, '') ?? '14';
@@ -146,21 +180,22 @@ function PauseDejBlock({ start, end, standalone = false }: { start: string; end:
       aria-hidden={standalone ? undefined : 'true'}
       role={standalone ? 'note' : undefined}
     >
-      <span className="ag-pause-label">Pause déjeuner · {sH} – {eH}H</span>
+      <span className="ag-pause-label">{t('agenda.grid.lunch', { start: sH, end: eH })}</span>
     </div>
   );
 }
 
-function snapTimeFromY(yPx: number, totalRows: number): string {
+function snapTimeFromY(yPx: number, totalRows: number, firstHour: number): string {
   const max = totalRows * 60;
   const totalMin = Math.max(0, Math.min(max - SNAP_MIN, (yPx / ROW_PX) * 60));
   const snapped = Math.round(totalMin / SNAP_MIN) * SNAP_MIN;
-  const h = FIRST_HOUR + Math.floor(snapped / 60);
+  const h = firstHour + Math.floor(snapped / 60);
   const m = snapped % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, today, now, leaveDays, jourMode = false, reasonColors, doctorLanes, practitionerMap, lunchBreaks }: AgendaGridProps) {
+  const { t } = useT();
   // Default `now` to the actual wall-clock when the page didn't pass one.
   // Hardcoding "09:47" (the design fixture) used to leak into production —
   // today = Sunday at 22h showed a phantom line at 09:47 on Thursday.
@@ -168,7 +203,12 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
     const d = new Date();
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   })();
-  const nowTop = pxFromMin(toMin(effectiveNow));
+  // Fenêtre horaire dynamique : on ne regarde que les RDV des jours réellement
+  // affichés (un RDV tardif de mardi ne doit pas étirer une vue Jour=lundi).
+  const dayKeySet = new Set(days.map((d) => d.key));
+  const shownAppointments = appointments.filter((a) => dayKeySet.has(a.day));
+  const { firstHour, hours } = computeHourWindow(shownAppointments, lunchBreaks);
+  const nowTop = topPxAt(effectiveNow, firstHour);
   // Multi-doctor lane mode : 1 jour affiché + N médecins → N colonnes.
   // Sinon, mode standard : 1 colonne par jour (jour ou semaine).
   const multiDoctor = jourMode && doctorLanes && doctorLanes.length > 0 && days.length === 1;
@@ -185,7 +225,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                 <div key={lane.id} className="ag-header-cell ag-lane-header today">
                   {lane.dotColor && <span className="ag-lane-dot" style={{ background: lane.dotColor }} />}
                   <span className="ag-lane-name">{lane.name}</span>
-                  <span className="ag-day-count">{count} RDV</span>
+                  <span className="ag-day-count">{t('agenda.grid.rdvCount', { n: count })}</span>
                 </div>
               );
             })
@@ -197,16 +237,16 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                   <span className="d-lbl">{d.label}</span>
                   <span className="d-num">{d.date}</span>
                   {jourMode && (
-                    <span className="ag-day-count">{dayItemCount} RDV programmés</span>
+                    <span className="ag-day-count">{t('agenda.grid.rdvScheduled', { n: dayItemCount })}</span>
                   )}
                 </div>
               );
             })}
       </div>
       <div className="ag-scroll scroll">
-        <div className="ag-grid" style={{ height: HOURS.length * ROW_PX, gridTemplateColumns: colTemplate }}>
+        <div className="ag-grid" style={{ height: hours.length * ROW_PX, gridTemplateColumns: colTemplate }}>
           <div className="ag-hourcol">
-            {HOURS.map((h) => (
+            {hours.map((h) => (
               <div key={h} className="ag-hour-label tnum">
                 {String(h).padStart(2, '0')}:00
               </div>
@@ -231,19 +271,20 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                       if (!onSlotClick) return;
                       if ((e.target as HTMLElement).closest('.ag-block')) return;
                       const rect = e.currentTarget.getBoundingClientRect();
-                      const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
+                      const time = snapTimeFromY(e.clientY - rect.top, hours.length, firstHour);
                       onSlotClick(dKey, time);
                     }}
                   >
-                    {HOURS.map((h) => (<div key={h} className="ag-hour-cell" />))}
+                    {hours.map((h) => (<div key={h} className="ag-hour-cell" />))}
                     {lunchBreaks?.[dKey] && (
                       <PauseDejBlock
                         start={lunchBreaks[dKey]!.start}
                         end={lunchBreaks[dKey]!.end}
+                        firstHour={firstHour}
                       />
                     )}
                     {today && dKey === today && (
-                      <div className="ag-now" style={{ top: nowTop }} aria-label={`Heure actuelle ${effectiveNow}`}>
+                      <div className="ag-now" style={{ top: nowTop }} aria-label={t('agenda.grid.nowAria', { time: effectiveNow })}>
                         <span className="ag-now-lbl tnum">{effectiveNow}</span>
                       </div>
                     )}
@@ -257,6 +298,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                         <AgendaBlock
                           key={`${lane.id}-${i}`}
                           a={a}
+                          firstHour={firstHour}
                           {...(onSelect ? { onClick: onSelect } : {})}
                           draggable={!!onMove}
                           {...(color ? { reasonColor: color } : {})}
@@ -290,7 +332,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                 // Ignore clicks that bubbled from an existing appointment block.
                 if ((e.target as HTMLElement).closest('.ag-block')) return;
                 const rect = e.currentTarget.getBoundingClientRect();
-                const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
+                const time = snapTimeFromY(e.clientY - rect.top, hours.length, firstHour);
                 onSlotClick(d.key, time);
               }}
               onDragOver={(e) => {
@@ -304,22 +346,23 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                 const id = e.dataTransfer.getData('text/plain');
                 if (!id) return;
                 const rect = e.currentTarget.getBoundingClientRect();
-                const time = snapTimeFromY(e.clientY - rect.top, HOURS.length);
+                const time = snapTimeFromY(e.clientY - rect.top, hours.length, firstHour);
                 onMove(id, d.key, time);
               }}
             >
-              {HOURS.map((h) => (
+              {hours.map((h) => (
                 <div key={h} className="ag-hour-cell" />
               ))}
               {lunchBreaks?.[d.key] && (
                 <PauseDejBlock
                   start={lunchBreaks[d.key]!.start}
                   end={lunchBreaks[d.key]!.end}
+                  firstHour={firstHour}
                   standalone={days.length === 1}
                 />
               )}
               {today && d.key === today && (
-                <div className="ag-now" style={{ top: nowTop }} aria-label={`Heure actuelle ${effectiveNow}`}>
+                <div className="ag-now" style={{ top: nowTop }} aria-label={t('agenda.grid.nowAria', { time: effectiveNow })}>
                   <span className="ag-now-lbl tnum">{effectiveNow}</span>
                 </div>
               )}
@@ -333,6 +376,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
                     <AgendaBlock
                       key={`${d.key}-${i}`}
                       a={a}
+                      firstHour={firstHour}
                       {...(onSelect ? { onClick: onSelect } : {})}
                       draggable={!!onMove}
                       {...(color ? { reasonColor: color } : {})}

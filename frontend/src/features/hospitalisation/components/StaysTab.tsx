@@ -9,15 +9,9 @@
  * l'historique d'un séjour terminé était inatteignable.
  */
 import { useState } from 'react';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { usePatientStays, type StayStatus } from '../hooks/useStays';
 import { StayDetailPanel } from './StayPanels';
-
-const STATUS_LABEL: Record<StayStatus, string> = {
-  EN_COURS: 'En cours',
-  SORTI: 'À régler',
-  FACTURE: 'Clôturé',
-  ANNULE: 'Annulé',
-};
 
 const STATUS_COLOR: Record<StayStatus, string> = {
   EN_COURS: '#dc2626',
@@ -32,13 +26,14 @@ function fmt(iso: string | null): string {
 }
 
 export function StaysTab({ patientId }: { patientId: string }) {
+  const { t } = useT();
   const { stays, isLoading, error } = usePatientStays(patientId);
   const [openStayId, setOpenStayId] = useState<string | null>(null);
 
-  if (isLoading) return <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>Chargement…</div>;
-  if (error) return <div style={{ padding: 16, color: 'var(--danger)', fontSize: 12 }}>{error}</div>;
+  if (isLoading) return <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 12 }}>{t('hospit.staysTab.loading')}</div>;
+  if (error) return <div style={{ padding: 16, color: 'var(--danger)', fontSize: 12 }}>{t(error)}</div>;
   if (stays.length === 0) {
-    return <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>Aucun séjour hospitalier.</div>;
+    return <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>{t('hospit.staysTab.empty')}</div>;
   }
 
   return (
@@ -68,12 +63,12 @@ export function StaysTab({ patientId }: { patientId: string }) {
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 10px', borderRadius: 999,
                   background: 'var(--bg-alt)', color: STATUS_COLOR[s.status], fontWeight: 600 }}>
-                  {STATUS_LABEL[s.status]}
+                  {t(`hospit.status.${s.status}`)}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)' }}>{open ? '▲' : '▼'}</span>
               </div>
               {s.admissionReason && (
-                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>Motif : {s.admissionReason}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>{t('hospit.staysTab.reason', { reason: s.admissionReason })}</div>
               )}
               <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
                 {s.assignments.map((a) => a.bedLabel).filter(Boolean).join(' → ') || '—'}

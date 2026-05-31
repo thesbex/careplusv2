@@ -1600,7 +1600,7 @@ export default function PatientsListPage() {
 
         {/* Split: table + detail rail */}
         <div className={`pat-split ${selectedPatient && !showNew ? '' : 'no-rail'}`}>
-          <div className="ptbl">
+          <div className={`ptbl${density === 'compact' ? ' compact' : ''}`}>
             <div className="ptbl-head">
               <div>
                 <span

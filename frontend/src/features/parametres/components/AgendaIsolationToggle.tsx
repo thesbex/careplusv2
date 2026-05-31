@@ -77,7 +77,7 @@ export function AgendaIsolationToggle() {
             checked={agendaStrictIsolation}
             disabled={!isAdminOrDoctor || isPending || isLoading}
             onChange={(e) => void handleToggle(e.target.checked)}
-            aria-label="Activer le cloisonnement"
+            aria-label={t('settings.iso.toggleAria')}
             style={{ width: 18, height: 18, marginTop: 2 }}
           />
           <div style={{ flex: 1 }}>

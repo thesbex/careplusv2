@@ -7,6 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar } from '@/components/shell/MTopbar';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useStockArticle } from './hooks/useStockArticle';
 import { useStockLots } from './hooks/useStockLots';
 import { useStockMovements } from './hooks/useStockMovements';
@@ -68,6 +69,7 @@ function SectionHeader({
 }
 
 export default function StockArticleDetailPageMobile() {
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
@@ -86,9 +88,9 @@ export default function StockArticleDetailPageMobile() {
 
   if (articleLoading) {
     return (
-      <MScreen topbar={<MTopbar title="Stock interne" />}>
+      <MScreen topbar={<MTopbar title={t('stock.title')} />}>
         <div style={{ padding: 16, color: 'var(--ink-3)', fontSize: 13 }}>
-          Chargement…
+          {t('stock.detail.loadingShort')}
         </div>
       </MScreen>
     );
@@ -96,9 +98,9 @@ export default function StockArticleDetailPageMobile() {
 
   if (articleError || !article) {
     return (
-      <MScreen topbar={<MTopbar title="Stock interne" />}>
+      <MScreen topbar={<MTopbar title={t('stock.title')} />}>
         <div style={{ padding: 16, color: 'var(--danger)', fontSize: 13 }}>
-          {articleError ?? 'Article introuvable.'}
+          {articleError ?? t('stock.detail.notFound')}
         </div>
       </MScreen>
     );
@@ -109,12 +111,12 @@ export default function StockArticleDetailPageMobile() {
       topbar={
         <MTopbar
           title={article.label}
-          sub={CATEGORY_LABEL[article.category]}
+          sub={t(CATEGORY_LABEL[article.category])}
           left={
             <button
               type="button"
               onClick={() => navigate('/stock')}
-              aria-label="Retour"
+              aria-label={t('stock.back')}
               style={{
                 background: 'none',
                 border: 'none',
@@ -132,7 +134,7 @@ export default function StockArticleDetailPageMobile() {
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
-                aria-label="Modifier"
+                aria-label={t('common.edit')}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -143,7 +145,7 @@ export default function StockArticleDetailPageMobile() {
                   fontFamily: 'inherit',
                 }}
               >
-                Modifier
+                {t('common.edit')}
               </button>
             ) : undefined
           }
@@ -165,11 +167,11 @@ export default function StockArticleDetailPageMobile() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>Code</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>{t('stock.detail.code')}</div>
               <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700 }}>{article.code}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>Quantité</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-3)', marginBottom: 2 }}>{t('stock.detail.qty')}</div>
               <div
                 style={{
                   fontSize: 26,
@@ -186,7 +188,7 @@ export default function StockArticleDetailPageMobile() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 16, fontSize: 12, color: 'var(--ink-2)' }}>
-            <span>Seuil : {article.minThreshold}</span>
+            <span>{t('stock.detail.threshold', { n: article.minThreshold })}</span>
             {article.supplierName && <span>{article.supplierName}</span>}
             {article.location && <span>{article.location}</span>}
           </div>
@@ -209,7 +211,7 @@ export default function StockArticleDetailPageMobile() {
               cursor: 'pointer',
             }}
           >
-            + Entrée de stock
+            {t('stock.quick.inFull')}
           </button>
           <button
             type="button"
@@ -228,7 +230,7 @@ export default function StockArticleDetailPageMobile() {
               opacity: canOut ? 1 : 0.5,
             }}
           >
-            − Sortie de stock
+            {t('stock.quick.outFull')}
           </button>
           <button
             type="button"
@@ -245,7 +247,7 @@ export default function StockArticleDetailPageMobile() {
               cursor: 'pointer',
             }}
           >
-            Ajuster le stock
+            {t('stock.quick.adjustFull')}
           </button>
         </div>
 
@@ -253,7 +255,7 @@ export default function StockArticleDetailPageMobile() {
         {article.tracksLots && (
           <div>
             <SectionHeader
-              title={`Lots actifs (${lots.length})`}
+              title={t('stock.lots.titleCount', { n: lots.length })}
               open={lotsOpen}
               onToggle={() => setLotsOpen((v) => !v)}
             />
@@ -267,7 +269,7 @@ export default function StockArticleDetailPageMobile() {
               >
                 {lots.length === 0 ? (
                   <div style={{ padding: 16, fontSize: 13, color: 'var(--ink-3)' }}>
-                    Aucun lot actif
+                    {t('stock.lots.empty')}
                   </div>
                 ) : (
                   lots.map((lot) => {
@@ -300,13 +302,13 @@ export default function StockArticleDetailPageMobile() {
                                   fontWeight: 600,
                                 }}
                               >
-                                {formatDate(lot.expiresOn)} · {diffDays}j
+                                {t('stock.lots.expiryWithDays', { date: formatDate(lot.expiresOn), n: diffDays })}
                               </span>
                             ) : (
                               <span style={{ color: 'var(--ink-3)' }}>{formatDate(lot.expiresOn)}</span>
                             )}
                             <span style={{ marginLeft: 10, color: 'var(--ink-2)' }}>
-                              Qté : {lot.quantity}
+                              {t('stock.lots.qty', { n: lot.quantity })}
                             </span>
                           </div>
                         </div>
@@ -327,7 +329,7 @@ export default function StockArticleDetailPageMobile() {
                               cursor: 'pointer',
                             }}
                           >
-                            Inactiver
+                            {t('stock.lots.inactivate')}
                           </button>
                         )}
                       </div>
@@ -342,7 +344,7 @@ export default function StockArticleDetailPageMobile() {
         {/* History section */}
         <div>
           <SectionHeader
-            title={`Historique (${movements.length})`}
+            title={t('stock.history.titleCount', { n: movements.length })}
             open={histOpen}
             onToggle={() => setHistOpen((v) => !v)}
           />
@@ -356,7 +358,7 @@ export default function StockArticleDetailPageMobile() {
             >
               {movements.length === 0 ? (
                 <div style={{ padding: 16, fontSize: 13, color: 'var(--ink-3)' }}>
-                  Aucun mouvement
+                  {t('stock.history.emptyShort')}
                 </div>
               ) : (
                 movements.map((m) => (
@@ -388,7 +390,7 @@ export default function StockArticleDetailPageMobile() {
                               : 'var(--primary)',
                         }}
                       >
-                        {MOVEMENT_TYPE_LABEL[m.type]}
+                        {t(MOVEMENT_TYPE_LABEL[m.type])}
                       </span>
                       <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
                         {m.quantity} {article.unit}
@@ -399,7 +401,7 @@ export default function StockArticleDetailPageMobile() {
                     </div>
                     {article.tracksLots && m.lotNumber && (
                       <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontFamily: 'monospace', marginTop: 2 }}>
-                        Lot : {m.lotNumber}
+                        {t('stock.history.lotLine', { lot: m.lotNumber })}
                       </div>
                     )}
                     {m.reason && (

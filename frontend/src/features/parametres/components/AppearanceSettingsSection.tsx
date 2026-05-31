@@ -27,9 +27,10 @@ import {
 } from '@/lib/theme/appearance';
 
 function SuperAdminBadge({ label }: { label: string }) {
+  const { t } = useT();
   return (
     <span
-      title="Réservé au super administrateur"
+      title={t('settings.superAdminTooltip')}
       style={{
         fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
         color: 'var(--primary)', background: 'var(--primary-soft)',

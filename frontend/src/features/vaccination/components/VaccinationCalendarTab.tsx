@@ -5,6 +5,7 @@
  */
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { Print } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { useVaccinationCalendar } from '../hooks/useVaccinationCalendar';
@@ -15,7 +16,6 @@ import { useDownloadBooklet } from '../hooks/useDownloadBooklet';
 import { DoseCard } from './DoseCard';
 import { RecordDoseDrawer } from './RecordDoseDrawer';
 import type { VaccinationCalendarEntry, AgeGroup, DrawerMode } from '../types';
-import { AGE_GROUP_LABEL } from '../types';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { DeferDoseSchema } from '../schemas';
 import type { DeferDoseValues } from '../schemas';
@@ -69,6 +69,7 @@ interface DeferModalProps {
 }
 
 function DeferModal({ dose, onConfirm, onCancel, isPending }: DeferModalProps) {
+  const { t } = useT();
   const form = useForm<DeferDoseValues>({
     resolver: zodResolver(DeferDoseSchema),
     defaultValues: { reason: '' },
@@ -81,7 +82,7 @@ function DeferModal({ dose, onConfirm, onCancel, isPending }: DeferModalProps) {
   return (
     <div
       role="dialog"
-      aria-label="Reporter la dose"
+      aria-label={t('vacc.defer.title')}
       aria-modal="true"
       style={{
         position: 'fixed',
@@ -105,7 +106,7 @@ function DeferModal({ dose, onConfirm, onCancel, isPending }: DeferModalProps) {
         }}
       >
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
-          Reporter la dose
+          {t('vacc.defer.title')}
         </div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', marginBottom: 14 }}>
           {dose.vaccineName} — {dose.doseLabel}
@@ -116,12 +117,12 @@ function DeferModal({ dose, onConfirm, onCancel, isPending }: DeferModalProps) {
               htmlFor="defer-reason"
               style={{ fontSize: 12, fontWeight: 550, color: 'var(--ink-2)', display: 'block', marginBottom: 4 }}
             >
-              Motif de report *
+              {t('vacc.defer.reasonLabel')}
             </label>
             <textarea
               id="defer-reason"
               {...form.register('reason')}
-              placeholder="Ex. Fièvre, contre-indication temporaire…"
+              placeholder={t('vacc.defer.reasonPlaceholder')}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -143,9 +144,9 @@ function DeferModal({ dose, onConfirm, onCancel, isPending }: DeferModalProps) {
             )}
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <Button type="button" variant="ghost" onClick={onCancel}>Annuler</Button>
+            <Button type="button" variant="ghost" onClick={onCancel}>{t('vacc.defer.cancel')}</Button>
             <Button type="submit" variant="primary" disabled={isPending}>
-              {isPending ? 'Report…' : 'Reporter'}
+              {isPending ? t('vacc.defer.submitting') : t('vacc.defer.submit')}
             </Button>
           </div>
         </form>
@@ -161,6 +162,7 @@ interface VaccinationCalendarTabProps {
 }
 
 export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProps) {
+  const { t } = useT();
   const { calendar, isLoading, error } = useVaccinationCalendar(patientId);
   const { download: downloadBooklet, isLoading: isBookletLoading } = useDownloadBooklet(patientId);
   const deferMutation = useDeferDose(patientId);
@@ -188,42 +190,42 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
   async function handleDefer(dose: VaccinationCalendarEntry, reason: string) {
     const doseId = dose.id;
     if (!doseId) {
-      toast.error('Cette dose n\'a pas encore d\'identifiant. Rechargez la page.');
+      toast.error(t('vacc.toast.noId'));
       return;
     }
     try {
       await deferMutation.mutateAsync({ doseId, body: { reason } });
-      toast.success('Dose reportée.');
+      toast.success(t('vacc.defer.success'));
       setDeferDose(null);
     } catch {
-      toast.error('Erreur lors du report de la dose.');
+      toast.error(t('vacc.defer.error'));
     }
   }
 
   async function handleSkip(dose: VaccinationCalendarEntry) {
     if (!dose.id) {
-      toast.error('Cette dose n\'a pas encore d\'identifiant. Rechargez la page.');
+      toast.error(t('vacc.toast.noId'));
       return;
     }
-    if (!confirm(`Marquer "${dose.vaccineName} — ${dose.doseLabel}" comme non administrée ?`)) {
+    if (!confirm(t('vacc.confirm.skip', { dose: `${dose.vaccineName} — ${dose.doseLabel}` }))) {
       return;
     }
     try {
       await skipMutation.mutateAsync(dose.id);
-      toast.success('Dose marquée comme non administrée.');
+      toast.success(t('vacc.toast.skipped'));
     } catch {
-      toast.error('Erreur lors de l\'opération.');
+      toast.error(t('vacc.toast.skipError'));
     }
   }
 
   async function handleDelete(dose: VaccinationCalendarEntry) {
     if (!dose.id) return;
-    if (!confirm(`Supprimer la dose "${dose.vaccineName} — ${dose.doseLabel}" ?`)) return;
+    if (!confirm(t('vacc.confirm.delete', { dose: `${dose.vaccineName} — ${dose.doseLabel}` }))) return;
     try {
       await deleteMutation.mutateAsync(dose.id);
-      toast.success('Dose supprimée.');
+      toast.success(t('vacc.toast.deleted'));
     } catch {
-      toast.error('Erreur lors de la suppression.');
+      toast.error(t('vacc.toast.deleteError'));
     }
   }
 
@@ -238,7 +240,7 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
             borderRadius: 'var(--r-md)',
             animation: 'pulse 1.4s infinite',
           }}
-          aria-label="Chargement du calendrier vaccinal…"
+          aria-label={t('vacc.cal.loadingAria')}
         />
       </div>
     );
@@ -269,9 +271,9 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
         }}
       >
         <div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>Vaccination</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{t('vacc.cal.title')}</div>
           <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 2 }}>
-            Carnet PNI marocain
+            {t('vacc.cal.pniBooklet')}
           </div>
         </div>
         <Button
@@ -281,7 +283,7 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
           style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <Print style={{ width: 13, height: 13 }} />
-          {isBookletLoading ? 'Chargement…' : 'Imprimer carnet'}
+          {isBookletLoading ? t('vacc.loading') : t('vacc.cal.print')}
         </Button>
       </div>
 
@@ -295,7 +297,7 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
             fontSize: 13,
           }}
         >
-          Patient hors plage pédiatrique — pas de calendrier vaccinal applicable.
+          {t('vacc.cal.empty')}
         </div>
       )}
 
@@ -330,7 +332,7 @@ export function VaccinationCalendarTab({ patientId }: VaccinationCalendarTabProp
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {AGE_GROUP_LABEL[group]}
+                    {t(`vacc.ageGroup.${group}`)}
                   </div>
                 </div>
 

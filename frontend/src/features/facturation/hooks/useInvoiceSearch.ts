@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { InvoiceSearchFilters, InvoiceSearchResponse } from '../types';
 
 /**
@@ -7,6 +8,7 @@ import type { InvoiceSearchFilters, InvoiceSearchResponse } from '../types';
  * Replaces the legacy {@code useInvoices(status)} for the Facturation screen.
  */
 export function useInvoiceSearch(filters: InvoiceSearchFilters, page = 0, size = 50) {
+  const { t } = useT();
   const params = filtersToParams(filters, page, size);
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['invoices-search', params],
@@ -29,7 +31,7 @@ export function useInvoiceSearch(filters: InvoiceSearchFilters, page = 0, size =
     totalPaid: data?.totalPaid ?? 0,
     totalRemaining: data?.totalRemaining ?? 0,
     isLoading,
-    error: error ? 'Impossible de charger les factures.' : null,
+    error: error ? t('factu.error.loadList') : null,
     refetch,
   };
 }

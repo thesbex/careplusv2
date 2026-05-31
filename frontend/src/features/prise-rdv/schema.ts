@@ -11,7 +11,9 @@ export const reasonOptionSchema = z.object({
 });
 
 export const slotOptionSchema = z.object({
-  time: z.string().regex(/^\d{2}:\d{2}$/, 'Format HH:MM requis'),
+  // i18n (#122) : le message porte une clé de traduction ; le consommateur la
+  // passe à t(error.message) (les schémas zod ne peuvent pas appeler useT).
+  time: z.string().regex(/^\d{2}:\d{2}$/, 'rdv.valid.timeFormat'),
   available: z.boolean(),
 });
 
@@ -20,10 +22,10 @@ export const rdvFormSchema = z.object({
   patientId: z.string().nullable(),
   /** Patient search query (not submitted — drives the search UI). */
   patientQuery: z.string(),
-  /** "JJ/MM/AAAA" */
-  date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Format JJ/MM/AAAA requis'),
+  /** "JJ/MM/AAAA" — message = clé i18n (voir slotOptionSchema). */
+  date: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'rdv.valid.dateFormat'),
   /** "HH:MM" */
-  time: z.string().regex(/^\d{2}:\d{2}$/, 'Format HH:MM requis'),
+  time: z.string().regex(/^\d{2}:\d{2}$/, 'rdv.valid.timeFormat'),
   durationMin: z.number().int().min(5).max(120),
   reasonId: z.string().nullable(),
   notes: z.string().optional(),

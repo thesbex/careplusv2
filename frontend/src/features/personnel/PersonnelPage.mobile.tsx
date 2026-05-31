@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { Select } from '@/components/ui/Input';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useStaffList,
   useStaffSummary,
@@ -23,9 +24,9 @@ import {
   useDeleteSalaryPayment,
 } from './hooks/useStaff';
 import {
-  ROLE_LABELS,
+  ROLE_LABEL_KEYS,
   ROLE_ORDER,
-  LEAVE_TYPE_LABELS,
+  LEAVE_TYPE_LABEL_KEYS,
   LEAVE_TYPE_ORDER,
   formatMad,
   formatDays,
@@ -72,6 +73,7 @@ const EMPTY_STAFF_FORM: StaffFormState = {
 };
 
 export default function PersonnelMobilePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const { staff, isLoading } = useStaffList();
   const { createStaff, isPending: creating } = useCreateStaff();
@@ -105,18 +107,18 @@ export default function PersonnelMobilePage() {
 
   async function handleSave() {
     if (!form.fullName.trim()) {
-      toast.error('Le nom est requis.');
+      toast.error(t('staff.err.nameRequired'));
       return;
     }
     if (!form.hireDate) {
-      toast.error('La date de recrutement est requise.');
+      toast.error(t('staff.err.hireDateRequired'));
       return;
     }
     let salary: number | undefined;
     if (form.monthlySalary.trim()) {
       const n = Number(form.monthlySalary);
       if (Number.isNaN(n) || n < 0) {
-        toast.error('Le salaire doit être un nombre positif.');
+        toast.error(t('staff.err.salaryPositive'));
         return;
       }
       salary = n;
@@ -133,10 +135,10 @@ export default function PersonnelMobilePage() {
     try {
       if (editingId) {
         await updateStaff({ id: editingId, body });
-        toast.success('Membre mis à jour.');
+        toast.success(t('staff.toast.updated'));
       } else {
         await createStaff(body);
-        toast.success('Membre ajouté.');
+        toast.success(t('staff.toast.added'));
       }
       setFormOpen(false);
       setForm(EMPTY_STAFF_FORM);
@@ -145,21 +147,21 @@ export default function PersonnelMobilePage() {
       const e = err as { response?: { status?: number } };
       toast.error(
         e.response?.status === 403
-          ? 'Permission refusée (rôle ADMIN requis).'
-          : "Échec de l'enregistrement.",
+          ? t('staff.err.forbidden')
+          : t('staff.err.saveFailed'),
       );
     }
   }
 
   async function handleDelete(s: StaffResponse) {
-    if (!confirm(`Supprimer le membre « ${s.fullName} » ?`)) return;
+    if (!confirm(t('staff.confirmDelete', { name: s.fullName }))) return;
     try {
       await deleteStaff(s.id);
       if (detailId === s.id) setDetailId(null);
       setFormOpen(false);
-      toast.success('Membre supprimé.');
+      toast.success(t('staff.toast.deleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
@@ -170,10 +172,10 @@ export default function PersonnelMobilePage() {
       onTabChange={() => undefined}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-          title="Personnel"
-          sub={`${staff.length} membre${staff.length > 1 ? 's' : ''}`}
-          right={<MIconBtn icon="Plus" label="Ajouter un membre" onClick={openCreate} />}
+          left={<MIconBtn icon="ChevronLeft" label={t('staff.back')} onClick={() => navigate('/parametres')} />}
+          title={t('staff.title')}
+          sub={t('staff.count', { n: staff.length, s: staff.length > 1 ? 's' : '' })}
+          right={<MIconBtn icon="Plus" label={t('staff.add')} onClick={openCreate} />}
         />
       }
     >
@@ -181,11 +183,11 @@ export default function PersonnelMobilePage() {
         <div className="m-card">
           {isLoading ? (
             <div style={{ padding: 20, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-              Chargement…
+              {t('staff.loading')}
             </div>
           ) : staff.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun membre du personnel.
+              {t('staff.empty')}
             </div>
           ) : (
             staff.map((s) => (
@@ -204,11 +206,11 @@ export default function PersonnelMobilePage() {
                   <div className="m-row-main">
                     {s.fullName}
                     {!s.active && (
-                      <span style={{ color: 'var(--ink-3)', fontWeight: 400 }}> · inactif</span>
+                      <span style={{ color: 'var(--ink-3)', fontWeight: 400 }}> · {t('staff.inactiveSuffix')}</span>
                     )}
                   </div>
                   <div className="m-row-sub">
-                    {ROLE_LABELS[s.role]}
+                    {t(ROLE_LABEL_KEYS[s.role])}
                     {s.phone ? ` · ${s.phone}` : ''}
                   </div>
                 </div>
@@ -223,30 +225,30 @@ export default function PersonnelMobilePage() {
 
       {formOpen && (
         <Sheet
-          title={editingId ? 'Modifier le membre' : 'Nouveau membre'}
+          title={editingId ? t('staff.editTitle') : t('staff.newTitle')}
           onClose={() => setFormOpen(false)}
         >
-          <MField label="Nom complet *">
+          <MField label={t('staff.form.fullName')}>
             <input
               type="text"
               className="m-input"
               value={form.fullName}
               onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              placeholder="ex. Fatima Zahra Bennani"
+              placeholder={t('staff.form.fullNamePlaceholder')}
             />
           </MField>
-          <MField label="Poste *">
+          <MField label={t('staff.form.role')}>
             <Select
               className="m-input"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as StaffRole })}
             >
               {ROLE_ORDER.map((r) => (
-                <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                <option key={r} value={r}>{t(ROLE_LABEL_KEYS[r])}</option>
               ))}
             </Select>
           </MField>
-          <MField label="Date de recrutement *">
+          <MField label={t('staff.form.hireDate')}>
             <input
               type="date"
               className="m-input"
@@ -254,23 +256,23 @@ export default function PersonnelMobilePage() {
               onChange={(e) => setForm({ ...form, hireDate: e.target.value })}
             />
           </MField>
-          <MField label="Salaire mensuel (MAD)">
+          <MField label={t('staff.form.salary')}>
             <input
               type="text"
               inputMode="decimal"
               className="m-input"
               value={form.monthlySalary}
               onChange={(e) => setForm({ ...form, monthlySalary: e.target.value.replace(/[^0-9.]/g, '') })}
-              placeholder="ex. 4500"
+              placeholder={t('staff.form.salaryPlaceholder')}
             />
           </MField>
-          <MField label="Téléphone">
+          <MField label={t('staff.form.phone')}>
             <input
               type="text"
               className="m-input"
               value={form.phone}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              placeholder="ex. 0612345678"
+              placeholder={t('staff.form.phonePlaceholder')}
             />
           </MField>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
@@ -279,15 +281,15 @@ export default function PersonnelMobilePage() {
               checked={form.active}
               onChange={(e) => setForm({ ...form, active: e.target.checked })}
             />
-            Membre actif
+            {t('staff.form.active')}
           </label>
-          <MField label="Notes">
+          <MField label={t('staff.form.notes')}>
             <textarea
               className="m-input"
               rows={3}
               value={form.notes}
               onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Remarque interne (optionnel)"
+              placeholder={t('staff.form.notesPlaceholder')}
               style={{ resize: 'vertical' }}
             />
           </MField>
@@ -305,7 +307,7 @@ export default function PersonnelMobilePage() {
                   border: 0, borderRadius: 8, fontFamily: 'inherit', fontSize: 14, cursor: 'pointer',
                 }}
               >
-                Supprimer
+                {t('staff.form.delete')}
               </button>
             )}
             <button
@@ -314,7 +316,7 @@ export default function PersonnelMobilePage() {
               onClick={() => { void handleSave(); }}
               style={primaryBtn}
             >
-              {editingId ? 'Enregistrer' : 'Ajouter le membre'}
+              {editingId ? t('staff.form.save') : t('staff.form.create')}
             </button>
           </div>
         </Sheet>
@@ -340,6 +342,7 @@ function DetailSheet({
   onClose: () => void;
   onEdit: () => void;
 }) {
+  const { t } = useT();
   const { summary } = useStaffSummary(member.id);
   const { entries } = useLeaveEntries(member.id);
   const { payments } = useSalaryPayments(member.id);
@@ -363,12 +366,12 @@ function DetailSheet({
 
   async function handleAddLeave() {
     if (!leaveForm.startDate) {
-      toast.error('La date est requise.');
+      toast.error(t('staff.err.dateRequired'));
       return;
     }
     const daysNum = leaveForm.days.trim() ? Number(leaveForm.days) : undefined;
     if (daysNum !== undefined && (Number.isNaN(daysNum) || daysNum <= 0)) {
-      toast.error('Le nombre de jours doit être positif.');
+      toast.error(t('staff.err.daysPositive'));
       return;
     }
     const body: LeaveEntryRequest = {
@@ -379,35 +382,35 @@ function DetailSheet({
     };
     try {
       await createLeave({ staffId: member.id, body });
-      toast.success('Entrée ajoutée.');
+      toast.success(t('staff.toast.entryAdded'));
       setLeaveForm({ type: 'CONGE', startDate: todayLocal(), days: '1', notes: '' });
     } catch {
-      toast.error("Échec de l'ajout.");
+      toast.error(t('staff.err.addFailed'));
     }
   }
 
   async function handleDeleteLeave(id: string) {
-    if (!confirm('Supprimer cette entrée ?')) return;
+    if (!confirm(t('staff.confirmDeleteEntry'))) return;
     try {
       await deleteLeave({ id, staffId: member.id });
-      toast.success('Entrée supprimée.');
+      toast.success(t('staff.toast.entryDeleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
   async function handleAddPayment() {
     if (!payForm.period) {
-      toast.error('La période est requise.');
+      toast.error(t('staff.err.periodRequired'));
       return;
     }
     const amount = Number(payForm.amount);
     if (!payForm.amount.trim() || Number.isNaN(amount) || amount <= 0) {
-      toast.error('Le montant doit être un nombre positif.');
+      toast.error(t('staff.err.amountPositive'));
       return;
     }
     if (!payForm.paidAt) {
-      toast.error('La date de paiement est requise.');
+      toast.error(t('staff.err.paidAtRequired'));
       return;
     }
     const body: SalaryPaymentRequest = {
@@ -418,51 +421,51 @@ function DetailSheet({
     };
     try {
       await createPayment({ staffId: member.id, body });
-      toast.success('Paiement enregistré.');
+      toast.success(t('staff.toast.paymentAdded'));
       setPayForm({ period: thisMonthLocal(), amount: payForm.amount, paidAt: todayLocal(), notes: '' });
     } catch {
-      toast.error("Échec de l'enregistrement.");
+      toast.error(t('staff.err.saveFailed'));
     }
   }
 
   async function handleDeletePayment(id: string) {
-    if (!confirm('Supprimer ce paiement ?')) return;
+    if (!confirm(t('staff.confirmDeletePayment'))) return;
     try {
       await deletePayment({ id, staffId: member.id });
-      toast.success('Paiement supprimé.');
+      toast.success(t('staff.toast.paymentDeleted'));
     } catch {
-      toast.error('Suppression impossible.');
+      toast.error(t('staff.err.deleteFailed'));
     }
   }
 
   return (
-    <Sheet title={member.fullName} sub={ROLE_LABELS[member.role]} onClose={onClose}>
+    <Sheet title={member.fullName} sub={t(ROLE_LABEL_KEYS[member.role])} onClose={onClose}>
       <button type="button" onClick={onEdit} style={{ ...primaryBtn, background: 'var(--surface-2)', color: 'var(--ink)' }}>
-        Modifier la fiche
+        {t('staff.editCard')}
       </button>
 
       {/* Récap congés */}
-      <h3 style={sectionTitle}>Congés</h3>
+      <h3 style={sectionTitle}>{t('staff.leaveSection')}</h3>
       {summary ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
           <div style={{ fontWeight: 700, fontSize: 15 }}>
-            Solde congés : {formatDays(summary.leaveBalanceDays)} j
+            {t('staff.leaveBalance', { n: formatDays(summary.leaveBalanceDays) })}
           </div>
           <div style={{ color: 'var(--ink-3)' }}>
-            Acquis : {formatDays(summary.accruedLeaveDays)} j ({summary.monthsWorked} mois × 1,5)
+            {t('staff.leaveAccrued', { n: formatDays(summary.accruedLeaveDays), months: summary.monthsWorked })}
           </div>
-          <div style={{ color: 'var(--ink-3)' }}>Pris : {formatDays(summary.takenLeaveDays)} j</div>
-          <div style={{ color: 'var(--ink-3)' }}>Absences : {summary.absencesCount}</div>
-          <div style={{ color: 'var(--ink-3)' }}>Retards : {summary.latenessCount}</div>
+          <div style={{ color: 'var(--ink-3)' }}>{t('staff.leaveTaken', { n: formatDays(summary.takenLeaveDays) })}</div>
+          <div style={{ color: 'var(--ink-3)' }}>{t('staff.absences', { n: summary.absencesCount })}</div>
+          <div style={{ color: 'var(--ink-3)' }}>{t('staff.lateness', { n: summary.latenessCount })}</div>
         </div>
       ) : (
-        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('staff.loading')}</div>
       )}
 
       {/* Entrées congé/absence/retard */}
-      <h3 style={sectionTitle}>Congés, absences & retards</h3>
+      <h3 style={sectionTitle}>{t('staff.entries.title')}</h3>
       {entries.length === 0 ? (
-        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucune entrée.</div>
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('staff.entries.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {entries.map((e) => (
@@ -473,33 +476,33 @@ function DetailSheet({
                 padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8,
               }}
             >
-              <span style={{ fontWeight: 600, minWidth: 56 }}>{LEAVE_TYPE_LABELS[e.type]}</span>
+              <span style={{ fontWeight: 600, minWidth: 56 }}>{t(LEAVE_TYPE_LABEL_KEYS[e.type])}</span>
               <span className="tnum">{e.startDate}</span>
-              <span style={{ color: 'var(--ink-3)' }}>{formatDays(e.days)} j</span>
+              <span style={{ color: 'var(--ink-3)' }}>{t('staff.entries.daysUnit', { n: formatDays(e.days) })}</span>
               <button
                 type="button"
                 onClick={() => { void handleDeleteLeave(e.id); }}
-                aria-label="Supprimer l'entrée"
+                aria-label={t('staff.entries.deleteAria')}
                 style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 13 }}
               >
-                Suppr.
+                {t('staff.entries.deleteShort')}
               </button>
             </div>
           ))}
         </div>
       )}
-      <MField label="Type">
+      <MField label={t('staff.entries.formType')}>
         <Select
           className="m-input"
           value={leaveForm.type}
           onChange={(e) => setLeaveForm({ ...leaveForm, type: e.target.value as LeaveType })}
         >
-          {LEAVE_TYPE_ORDER.map((t) => (
-            <option key={t} value={t}>{LEAVE_TYPE_LABELS[t]}</option>
+          {LEAVE_TYPE_ORDER.map((lt) => (
+            <option key={lt} value={lt}>{t(LEAVE_TYPE_LABEL_KEYS[lt])}</option>
           ))}
         </Select>
       </MField>
-      <MField label="Date">
+      <MField label={t('staff.entries.formDate')}>
         <input
           type="date"
           className="m-input"
@@ -507,33 +510,33 @@ function DetailSheet({
           onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
         />
       </MField>
-      <MField label="Jours">
+      <MField label={t('staff.entries.formDays')}>
         <input
           type="text"
           inputMode="decimal"
           className="m-input"
           value={leaveForm.days}
           onChange={(e) => setLeaveForm({ ...leaveForm, days: e.target.value.replace(/[^0-9.]/g, '') })}
-          placeholder="ex. 1"
+          placeholder={t('staff.entries.formDaysPlaceholder')}
         />
       </MField>
-      <MField label="Notes">
+      <MField label={t('staff.entries.formNotes')}>
         <input
           type="text"
           className="m-input"
           value={leaveForm.notes}
           onChange={(e) => setLeaveForm({ ...leaveForm, notes: e.target.value })}
-          placeholder="Optionnel"
+          placeholder={t('staff.entries.formNotesPlaceholder')}
         />
       </MField>
       <button type="button" disabled={addingLeave} onClick={() => { void handleAddLeave(); }} style={primaryBtn}>
-        Ajouter congé/absence/retard
+        {t('staff.entries.addBtn')}
       </button>
 
       {/* Paiements */}
-      <h3 style={sectionTitle}>Paiements de salaire</h3>
+      <h3 style={sectionTitle}>{t('staff.payments.title')}</h3>
       {payments.length === 0 ? (
-        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Aucun paiement.</div>
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('staff.payments.empty')}</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {payments.map((p) => (
@@ -550,16 +553,16 @@ function DetailSheet({
               <button
                 type="button"
                 onClick={() => { void handleDeletePayment(p.id); }}
-                aria-label="Supprimer le paiement"
+                aria-label={t('staff.payments.deleteAria')}
                 style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontSize: 13 }}
               >
-                Suppr.
+                {t('staff.payments.deleteShort')}
               </button>
             </div>
           ))}
         </div>
       )}
-      <MField label="Période">
+      <MField label={t('staff.payments.period')}>
         <input
           type="month"
           className="m-input"
@@ -567,17 +570,17 @@ function DetailSheet({
           onChange={(e) => setPayForm({ ...payForm, period: e.target.value })}
         />
       </MField>
-      <MField label="Montant (MAD)">
+      <MField label={t('staff.payments.amount')}>
         <input
           type="text"
           inputMode="decimal"
           className="m-input"
           value={payForm.amount}
           onChange={(e) => setPayForm({ ...payForm, amount: e.target.value.replace(/[^0-9.]/g, '') })}
-          placeholder="ex. 4500"
+          placeholder={t('staff.payments.amountPlaceholder')}
         />
       </MField>
-      <MField label="Payé le">
+      <MField label={t('staff.payments.paidAt')}>
         <input
           type="date"
           className="m-input"
@@ -585,17 +588,17 @@ function DetailSheet({
           onChange={(e) => setPayForm({ ...payForm, paidAt: e.target.value })}
         />
       </MField>
-      <MField label="Notes">
+      <MField label={t('staff.payments.notes')}>
         <input
           type="text"
           className="m-input"
           value={payForm.notes}
           onChange={(e) => setPayForm({ ...payForm, notes: e.target.value })}
-          placeholder="Optionnel"
+          placeholder={t('staff.payments.notesPlaceholder')}
         />
       </MField>
       <button type="button" disabled={addingPayment} onClick={() => { void handleAddPayment(); }} style={primaryBtn}>
-        Enregistrer un paiement
+        {t('staff.payments.addBtn')}
       </button>
     </Sheet>
   );
@@ -622,6 +625,7 @@ function Sheet({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useT();
   return (
     <div
       role="dialog"
@@ -650,7 +654,7 @@ function Sheet({
             type="button"
             onClick={onClose}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: 'var(--ink-3)' }}
-            aria-label="Fermer"
+            aria-label={t('staff.close')}
           >
             ×
           </button>

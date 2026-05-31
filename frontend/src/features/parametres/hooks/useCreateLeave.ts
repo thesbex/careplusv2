@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { Leave } from '../types';
 
 export interface CreateLeavePayload {
@@ -15,6 +16,7 @@ export interface CreateLeavePayload {
  * tiers via le selector du tab Congés.
  */
 export function useCreateLeave(practitionerId?: string) {
+  const { t } = useT();
   const queryClient = useQueryClient();
   const fallbackUserId = useAuthStore((s) => s.user?.id);
   const targetId = practitionerId ?? fallbackUserId;
@@ -36,7 +38,7 @@ export function useCreateLeave(practitionerId?: string) {
     isPending: mutation.isPending,
     error: mutation.error
       ? (mutation.error as { response?: { data?: { message?: string } } })
-          .response?.data?.message ?? 'Erreur lors de la création du congé.'
+          .response?.data?.message ?? t('settings.errors.createLeave')
       : null,
   };
 }

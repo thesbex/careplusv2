@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { Leave } from '../types';
 
 /**
@@ -11,6 +12,7 @@ import type { Leave } from '../types';
  * pas d'overlay — agréger n'aurait pas de sens visuel).
  */
 export function useLeaves(practitionerId?: string): { leaves: Leave[]; isLoading: boolean; error: string | null } {
+  const { t } = useT();
   const fallbackUserId = useAuthStore((s) => s.user?.id);
   const targetId = practitionerId ?? fallbackUserId;
 
@@ -27,6 +29,6 @@ export function useLeaves(practitionerId?: string): { leaves: Leave[]; isLoading
   return {
     leaves: data ?? [],
     isLoading,
-    error: error ? 'Impossible de charger les congés.' : null,
+    error: error ? t('settings.errors.loadLeaves') : null,
   };
 }

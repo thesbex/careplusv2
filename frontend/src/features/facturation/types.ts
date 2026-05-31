@@ -47,6 +47,13 @@ export interface InvoiceLineDraft {
   unitPrice: number;
 }
 
+/**
+ * Libellés FR de secours (i18n #122). `STATUS_LABEL` / `PAYMENT_MODE_LABEL`
+ * restent en français : ce module ne peut pas appeler `useT()`. Les écrans
+ * traduisent via `t(invoiceStatusKey(s))` / `t(paymentModeKey(m))` ; ces maps
+ * servent de fallback fr (et restent utilisées telles quelles par les sites hors
+ * facturation qui les importent — ex. dossier-patient — jusqu'à leur recâblage).
+ */
 export const STATUS_LABEL: Record<InvoiceStatus, string> = {
   BROUILLON: 'Brouillon',
   EMISE: 'Émise',
@@ -62,6 +69,16 @@ export const PAYMENT_MODE_LABEL: Record<PaymentMode, string> = {
   VIREMENT: 'Virement',
   TIERS_PAYANT: 'Tiers payant',
 };
+
+/** Clé i18n du libellé d'un statut de facture : `t(invoiceStatusKey(status))`. */
+export function invoiceStatusKey(status: InvoiceStatus): string {
+  return `factu.status.${status}`;
+}
+
+/** Clé i18n du libellé d'un mode de paiement : `t(paymentModeKey(mode))`. */
+export function paymentModeKey(mode: PaymentMode): string {
+  return `factu.mode.${mode}`;
+}
 
 // ── Search / filter types (mirror backend /api/invoices/search) ─────────────
 

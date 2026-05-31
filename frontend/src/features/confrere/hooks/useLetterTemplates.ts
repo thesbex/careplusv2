@@ -25,7 +25,9 @@ export function useLetterTemplates() {
   return {
     templates: data ?? EMPTY,
     isLoading,
-    error: error ? 'Impossible de charger les modèles de courrier.' : null,
+    // i18n (#122) : clé de traduction (les hooks ne peuvent pas appeler useT) ;
+    // le consommateur (LetterTemplatesTab) passe la valeur à t().
+    error: error ? 'confrere.tpl.err.loadList' : null,
   };
 }
 

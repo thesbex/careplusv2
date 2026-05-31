@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { InvoiceSearchFilters } from './types';
 import { useInvoiceExport } from './hooks/useInvoiceExport';
 
@@ -11,6 +12,7 @@ interface Props {
  * Hidden via {@code data-export-allowed} (caller decides; usually MEDECIN/ADMIN only).
  */
 export function ExportButton({ filters }: Props) {
+  const { t } = useT();
   const { exportInvoices, isExporting, error, clearError } = useInvoiceExport();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -32,14 +34,14 @@ export function ExportButton({ filters }: Props) {
           disabled={isExporting}
           onClick={() => exportInvoices(filters, 'csv')}
         >
-          {isExporting ? 'Préparation…' : 'Exporter'}
+          {isExporting ? t('factu.export.preparing') : t('factu.export.action')}
         </button>
         <button
           type="button"
           className="fa-export-caret"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label="Choisir le format d'export"
+          aria-label={t('factu.export.chooseFormat')}
           disabled={isExporting}
           onClick={() => setMenuOpen((o) => !o)}
         >
@@ -56,7 +58,7 @@ export function ExportButton({ filters }: Props) {
               exportInvoices(filters, 'csv');
             }}
           >
-            Exporter en CSV (.csv)
+            {t('factu.export.csv')}
           </button>
           <button
             type="button"
@@ -66,14 +68,14 @@ export function ExportButton({ filters }: Props) {
               exportInvoices(filters, 'xlsx');
             }}
           >
-            Exporter en Excel (.xlsx)
+            {t('factu.export.xlsx')}
           </button>
         </div>
       )}
       {error && (
         <div role="alert" className="fa-export-error">
           {error}
-          <button type="button" onClick={clearError} aria-label="Fermer">×</button>
+          <button type="button" onClick={clearError} aria-label={t('factu.drawer.close')}>×</button>
         </div>
       )}
     </div>

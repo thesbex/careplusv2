@@ -59,6 +59,7 @@ import {
 import { useAuthStore } from '@/lib/auth/authStore';
 import { toProblemDetail } from '@/lib/api/problemJson';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { OnboardingSidebar } from './components/OnboardingSidebar';
 import { AddDoctorModal } from './components/AddDoctorModal';
 import './onboarding.css';
@@ -72,14 +73,14 @@ type StepKey =
   | 'documents'
   | 'recap';
 
-const STEPS: { key: StepKey; label: string }[] = [
-  { key: 'cabinet', label: 'Cabinet' },
-  { key: 'medecin', label: 'Médecin' },
-  { key: 'horaires', label: 'Horaires' },
-  { key: 'equipe', label: 'Équipe' },
-  { key: 'tarifs', label: 'Tarifs' },
-  { key: 'documents', label: 'Documents' },
-  { key: 'recap', label: 'Prêt' },
+const STEPS: { key: StepKey; labelKey: string }[] = [
+  { key: 'cabinet', labelKey: 'onboarding.step.cabinet' },
+  { key: 'medecin', labelKey: 'onboarding.step.medecin' },
+  { key: 'horaires', labelKey: 'onboarding.step.horaires' },
+  { key: 'equipe', labelKey: 'onboarding.step.equipe' },
+  { key: 'tarifs', labelKey: 'onboarding.step.tarifs' },
+  { key: 'documents', labelKey: 'onboarding.step.documents' },
+  { key: 'recap', labelKey: 'onboarding.step.recap' },
 ];
 
 const EMPTY_CLINIC: ClinicSettingsForm = {
@@ -98,17 +99,18 @@ const EMPTY_CLINIC: ClinicSettingsForm = {
   establishmentType: 'CABINET',
 };
 
-const ESTABLISHMENT_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'CENTRE_MEDICAL'; label: string; sub: string }[] = [
-  { value: 'CABINET', label: 'Cabinet individuel', sub: 'Un seul médecin' },
-  { value: 'CLINIQUE', label: 'Cabinet de groupe', sub: '2 à 5 médecins associés' },
-  { value: 'CENTRE_MEDICAL', label: 'Centre médical', sub: '6+ praticiens, multi-spécialités' },
+const ESTABLISHMENT_OPTIONS: { value: 'CABINET' | 'CLINIQUE' | 'CENTRE_MEDICAL'; labelKey: string; subKey: string }[] = [
+  { value: 'CABINET', labelKey: 'onboarding.estab.cabinet.label', subKey: 'onboarding.estab.cabinet.sub' },
+  { value: 'CLINIQUE', labelKey: 'onboarding.estab.clinique.label', subKey: 'onboarding.estab.clinique.sub' },
+  { value: 'CENTRE_MEDICAL', labelKey: 'onboarding.estab.centre.label', subKey: 'onboarding.estab.centre.sub' },
 ];
 
-const LEGAL_FORM_OPTIONS = [
-  'Profession libérale (individuelle)',
-  'SCM — Société civile de moyens',
-  'SCP — Société civile professionnelle',
-  'SARL médicale',
+// La valeur stockée reste la chaîne FR (compat backend) ; on traduit seulement le libellé affiché.
+const LEGAL_FORM_OPTIONS: { value: string; labelKey: string }[] = [
+  { value: 'Profession libérale (individuelle)', labelKey: 'onboarding.legalForm.liberal' },
+  { value: 'SCM — Société civile de moyens', labelKey: 'onboarding.legalForm.scm' },
+  { value: 'SCP — Société civile professionnelle', labelKey: 'onboarding.legalForm.scp' },
+  { value: 'SARL médicale', labelKey: 'onboarding.legalForm.sarl' },
 ];
 
 interface InvitedUser {
@@ -120,11 +122,11 @@ interface InvitedUser {
   role: 'SECRETAIRE' | 'ASSISTANT' | 'MEDECIN' | 'ADMIN';
 }
 
-const HOUR_TEMPLATES: { key: string; label: string; sub: string; week: WorkingHoursView }[] = [
+const HOUR_TEMPLATES: { key: string; labelKey: string; subKey: string; week: WorkingHoursView }[] = [
   {
     key: 'classique',
-    label: 'Cabinet classique',
-    sub: 'Lun–Sam, 8:30–19:00',
+    labelKey: 'onboarding.horaires.tpl.classique',
+    subKey: 'onboarding.horaires.tpl.classiqueSub',
     week: {
       days: [1, 2, 3, 4, 5].map((d) => ({
         dayOfWeek: d,
@@ -141,8 +143,8 @@ const HOUR_TEMPLATES: { key: string; label: string; sub: string; week: WorkingHo
   },
   {
     key: 'continue',
-    label: 'Journée continue',
-    sub: 'Lun–Ven, 9:00–17:00',
+    labelKey: 'onboarding.horaires.tpl.continue',
+    subKey: 'onboarding.horaires.tpl.continueSub',
     week: {
       days: [1, 2, 3, 4, 5].map((d) => ({
         dayOfWeek: d,
@@ -156,8 +158,8 @@ const HOUR_TEMPLATES: { key: string; label: string; sub: string; week: WorkingHo
   },
   {
     key: 'matinees',
-    label: 'Demi-journées',
-    sub: 'Matins seulement',
+    labelKey: 'onboarding.horaires.tpl.matinees',
+    subKey: 'onboarding.horaires.tpl.matineesSub',
     week: {
       days: [1, 2, 3, 4, 5, 6].map((d) => ({
         dayOfWeek: d,
@@ -171,6 +173,7 @@ const HOUR_TEMPLATES: { key: string; label: string; sub: string; week: WorkingHo
 ];
 
 export default function OnboardingPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const sessionUser = useAuthStore((s) => s.user);
   const { state: onboardingState } = useOnboardingState();
@@ -284,7 +287,7 @@ export default function OnboardingPage() {
   async function handleLogoFile(file: File) {
     try {
       await uploadLogo(file);
-      toast.success('Logo téléversé.');
+      toast.success(t('onboarding.toast.logoUploaded'));
     } catch (err) {
       const p = toProblemDetail(err);
       toast.error(p.title, p.detail ? { description: p.detail } : undefined);
@@ -298,12 +301,12 @@ export default function OnboardingPage() {
   async function handleNext() {
     if (step.key === 'cabinet') {
       if (!clinic.name || !clinic.address || !clinic.city || !clinic.phone) {
-        toast.error('Nom, adresse, ville et téléphone sont obligatoires.');
+        toast.error(t('onboarding.toast.requiredCabinet'));
         return;
       }
       try {
         await updateClinic(clinic);
-        toast.success('Cabinet enregistré.');
+        toast.success(t('onboarding.toast.cabinetSaved'));
         advanceTo(stepIdx + 1);
       } catch (err) {
         const p = toProblemDetail(err);
@@ -311,12 +314,12 @@ export default function OnboardingPage() {
       }
     } else if (step.key === 'medecin') {
       if (!sessionUser?.id) {
-        toast.error('Session invalide — reconnectez-vous.');
+        toast.error(t('onboarding.toast.invalidSession'));
         return;
       }
       try {
         await updateCredentials({ userId: sessionUser.id, form: credentials });
-        toast.success('Profil médecin enregistré.');
+        toast.success(t('onboarding.toast.medecinSaved'));
         advanceTo(stepIdx + 1);
       } catch (err) {
         const p = toProblemDetail(err);
@@ -325,7 +328,7 @@ export default function OnboardingPage() {
     } else if (step.key === 'horaires') {
       try {
         await updateWorkingHours(hours);
-        toast.success('Horaires enregistrés.');
+        toast.success(t('onboarding.toast.hoursSaved'));
         advanceTo(stepIdx + 1);
       } catch (err) {
         const p = toProblemDetail(err);
@@ -336,7 +339,7 @@ export default function OnboardingPage() {
     } else if (step.key === 'tarifs') {
       try {
         await updateTier({ tier: 'PREMIUM', discountPercent: premiumDiscount });
-        toast.success('Tarifs enregistrés.');
+        toast.success(t('onboarding.toast.tarifsSaved'));
         advanceTo(stepIdx + 1);
       } catch (err) {
         const p = toProblemDetail(err);
@@ -357,7 +360,7 @@ export default function OnboardingPage() {
 
   async function handleAddInvited() {
     if (!draft.email || draft.password.length < 12 || !draft.firstName || !draft.lastName) {
-      toast.error('Email, mot de passe (≥ 12 car.), prénom et nom requis.');
+      toast.error(t('onboarding.toast.memberRequired'));
       return;
     }
     try {
@@ -371,7 +374,7 @@ export default function OnboardingPage() {
       });
       setInvited((list) => [...list, draft]);
       setDraft({ email: '', password: '', firstName: '', lastName: '', phone: '', role: 'SECRETAIRE' });
-      toast.success('Membre ajouté.');
+      toast.success(t('onboarding.toast.memberAdded'));
     } catch (err) {
       const p = toProblemDetail(err);
       toast.error(p.title, p.detail ? { description: p.detail } : undefined);
@@ -382,7 +385,7 @@ export default function OnboardingPage() {
     if (!sessionUser?.id) return;
     try {
       await uploadSignature({ userId: sessionUser.id, file });
-      toast.success('Signature téléversée.');
+      toast.success(t('onboarding.toast.signatureUploaded'));
     } catch (err) {
       const p = toProblemDetail(err);
       toast.error(p.title, p.detail ? { description: p.detail } : undefined);
@@ -406,7 +409,7 @@ export default function OnboardingPage() {
     isSavingClinic || isSavingTier || isCreatingUser || isSavingMedecin || isSavingHours;
 
   // Compute footer label dynamically — mirrors the prototype "Continuer — <next>"
-  const nextLabel = stepIdx < STEPS.length - 1 ? STEPS[stepIdx + 1]!.label : null;
+  const nextLabel = stepIdx < STEPS.length - 1 ? t(STEPS[stepIdx + 1]!.labelKey) : null;
 
   return (
     <div className="ob-root">
@@ -415,24 +418,24 @@ export default function OnboardingPage() {
         <span className="ob-topbar-name">
           <BrandWordmark />
         </span>
-        <Pill style={{ marginLeft: 10 }}>Configuration initiale</Pill>
-        <span className="ob-topbar-session">Session : {sessionLabel}</span>
+        <Pill style={{ marginLeft: 10 }}>{t('onboarding.topbar.pill')}</Pill>
+        <span className="ob-topbar-session">{t('onboarding.topbar.session', { name: sessionLabel })}</span>
         <button
           type="button"
           className="ob-topbar-logout"
           onClick={() => void handleLogout()}
-          aria-label="Se déconnecter"
+          aria-label={t('onboarding.topbar.logout')}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
-          Déconnexion
+          {t('onboarding.topbar.logout')}
         </button>
       </header>
 
-      <nav className="ob-rail" aria-label="Étapes de configuration">
+      <nav className="ob-rail" aria-label={t('onboarding.steps.aria')}>
         <ol className="ob-steps">
           {STEPS.map((s, i) => {
             const done = i < stepIdx;
@@ -445,7 +448,7 @@ export default function OnboardingPage() {
                   aria-current={active ? 'step' : undefined}
                 >
                   <span className="ob-step-circle">{done ? <Check /> : i + 1}</span>
-                  <span className="ob-step-label">{s.label}</span>
+                  <span className="ob-step-label">{t(s.labelKey)}</span>
                 </li>
                 {!isLast && (
                   <li
@@ -462,7 +465,7 @@ export default function OnboardingPage() {
       <div className="ob-body">
         <div className="ob-content scroll">
           <div className="ob-content-inner">
-            <div className="ob-eyebrow">Étape {stepIdx + 1} sur {STEPS.length}</div>
+            <div className="ob-eyebrow">{t('onboarding.eyebrow', { n: stepIdx + 1, total: STEPS.length })}</div>
 
             {step.key === 'cabinet' && (
               <CabinetStep clinic={clinic} setField={setClinicField} />
@@ -524,7 +527,7 @@ export default function OnboardingPage() {
               <RecapStep
                 clinic={clinic}
                 practitionerFullName={
-                  sessionUser ? `Dr. ${sessionUser.firstName} ${sessionUser.lastName}` : 'Praticien principal'
+                  sessionUser ? `Dr. ${sessionUser.firstName} ${sessionUser.lastName}` : t('onboarding.recap.mainPractitioner')
                 }
                 credentials={credentials}
                 hasSignature={!!signatureMeta}
@@ -553,12 +556,12 @@ export default function OnboardingPage() {
           onClick={() => advanceTo(Math.max(0, stepIdx - 1))}
           disabled={stepIdx === 0 || isPending}
         >
-          <ChevronLeft /> Précédent
+          <ChevronLeft /> {t('onboarding.nav.prev')}
         </Button>
         <div className="ob-footer-right">
           {step.key !== 'recap' && (
             <Button variant="ghost" onClick={() => advanceTo(stepIdx + 1)} disabled={isPending}>
-              Passer cette étape
+              {t('onboarding.nav.skip')}
             </Button>
           )}
           <Button
@@ -568,12 +571,12 @@ export default function OnboardingPage() {
             disabled={isPending}
           >
             {step.key === 'recap'
-              ? 'Ouvrir mon cabinet'
+              ? t('onboarding.nav.open')
               : isPending
-                ? 'Enregistrement…'
+                ? t('onboarding.nav.saving')
                 : nextLabel
-                  ? `Continuer — ${nextLabel}`
-                  : 'Continuer'}
+                  ? t('onboarding.nav.continueTo', { next: nextLabel })
+                  : t('onboarding.nav.continue')}
             {step.key !== 'recap' && <ChevronRight />}
           </Button>
         </div>
@@ -593,18 +596,16 @@ function CabinetStep({
   clinic: ClinicSettingsForm;
   setField: <K extends keyof ClinicSettingsForm>(k: K, v: ClinicSettingsForm[K]) => void;
 }) {
+  const { t } = useT();
   return (
     <>
-      <h1 className="ob-title">Présentez-nous votre cabinet</h1>
-      <p className="ob-sub">
-        Ces informations administratives constituent l’identité légale de votre cabinet.
-        Elles seront utilisées pour les documents officiels et la facturation.
-      </p>
+      <h1 className="ob-title">{t('onboarding.cabinet.title')}</h1>
+      <p className="ob-sub">{t('onboarding.cabinet.sub')}</p>
 
       {/* Type de cabinet — 3-card selector wired to V034 establishment_type */}
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 10 }}>
-          Type de cabinet
+          {t('onboarding.cabinet.typeLabel')}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           {ESTABLISHMENT_OPTIONS.map((opt) => {
@@ -635,10 +636,10 @@ function CabinetStep({
                     color: selected ? 'var(--primary)' : 'var(--ink)',
                   }}
                 >
-                  {opt.label}
+                  {t(opt.labelKey)}
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 400, lineHeight: 1.4 }}>
-                  {opt.sub}
+                  {t(opt.subKey)}
                 </span>
               </button>
             );
@@ -648,20 +649,20 @@ function CabinetStep({
 
       {/* Identité */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 10 }}>
-        Identité du cabinet
+        {t('onboarding.cabinet.identityLabel')}
       </div>
       <Panel className="ob-form-panel">
         <Field>
-          <FieldLabel>Raison sociale *</FieldLabel>
+          <FieldLabel>{t('onboarding.cabinet.name')}</FieldLabel>
           <Input
             value={clinic.name}
             onChange={(e) => setField('name', e.target.value)}
-            placeholder="Cabinet Médical El Amrani"
+            placeholder={t('onboarding.cabinet.namePlaceholder')}
           />
         </Field>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
           <Field>
-            <FieldLabel>Forme juridique</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.legalForm')}</FieldLabel>
             <Select
               value={clinic.legalForm ?? ''}
               onChange={(e) => setField('legalForm', e.target.value)}
@@ -676,16 +677,16 @@ function CabinetStep({
                 width: '100%',
               }}
             >
-              <option value="">— Sélectionner —</option>
+              <option value="">{t('onboarding.cabinet.selectPlaceholder')}</option>
               {LEGAL_FORM_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
+                <option key={opt.value} value={opt.value}>
+                  {t(opt.labelKey)}
                 </option>
               ))}
             </Select>
           </Field>
           <Field>
-            <FieldLabel>Téléphone *</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.phone')}</FieldLabel>
             <Input
               value={clinic.phone}
               onChange={(e) => setField('phone', e.target.value)}
@@ -695,7 +696,7 @@ function CabinetStep({
         </div>
         <Grid2>
           <Field>
-            <FieldLabel>Email du cabinet</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.email')}</FieldLabel>
             <Input
               value={clinic.email}
               onChange={(e) => setField('email', e.target.value)}
@@ -703,7 +704,7 @@ function CabinetStep({
             />
           </Field>
           <Field>
-            <FieldLabel>Ville *</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.city')}</FieldLabel>
             <Input
               value={clinic.city}
               onChange={(e) => setField('city', e.target.value)}
@@ -712,7 +713,7 @@ function CabinetStep({
           </Field>
         </Grid2>
         <Field>
-          <FieldLabel>Adresse *</FieldLabel>
+          <FieldLabel>{t('onboarding.cabinet.address')}</FieldLabel>
           <Input
             value={clinic.address}
             onChange={(e) => setField('address', e.target.value)}
@@ -723,12 +724,12 @@ function CabinetStep({
 
       {/* Mentions légales */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', margin: '22px 0 10px' }}>
-        Mentions légales (apparaissent sur ordonnances et factures)
+        {t('onboarding.cabinet.legalMentions')}
       </div>
       <Panel className="ob-form-panel">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           <Field>
-            <FieldLabel>ICE *</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.ice')}</FieldLabel>
             <Input
               value={clinic.ice}
               onChange={(e) => setField('ice', e.target.value)}
@@ -736,7 +737,7 @@ function CabinetStep({
             />
           </Field>
           <Field>
-            <FieldLabel>RC</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.rc')}</FieldLabel>
             <Input
               value={clinic.rc ?? ''}
               onChange={(e) => setField('rc', e.target.value)}
@@ -744,7 +745,7 @@ function CabinetStep({
             />
           </Field>
           <Field>
-            <FieldLabel>IF</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.if')}</FieldLabel>
             <Input
               value={clinic.ifNo ?? ''}
               onChange={(e) => setField('ifNo', e.target.value)}
@@ -754,7 +755,7 @@ function CabinetStep({
         </div>
         <Grid2>
           <Field>
-            <FieldLabel>INPE (cabinet)</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.inpe')}</FieldLabel>
             <Input
               value={clinic.inpe}
               onChange={(e) => setField('inpe', e.target.value)}
@@ -762,7 +763,7 @@ function CabinetStep({
             />
           </Field>
           <Field>
-            <FieldLabel>RIB</FieldLabel>
+            <FieldLabel>{t('onboarding.cabinet.rib')}</FieldLabel>
             <Input
               value={clinic.rib}
               onChange={(e) => setField('rib', e.target.value)}
@@ -794,13 +795,11 @@ function MedecinStep({
   doctors: AdminUser[];
   onAddClick: () => void;
 }) {
+  const { t } = useT();
   return (
     <>
-      <h1 className="ob-title">Qui exerce dans le cabinet&nbsp;?</h1>
-      <p className="ob-sub">
-        Listez tous les médecins du cabinet — vous-même et vos associés. Chacun aura son propre compte,
-        sa signature numérique et son agenda personnel.
-      </p>
+      <h1 className="ob-title">{t('onboarding.medecin.title')}</h1>
+      <p className="ob-sub">{t('onboarding.medecin.sub')}</p>
 
       <div
         style={{
@@ -811,7 +810,7 @@ function MedecinStep({
         }}
       >
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)' }}>
-          Médecins du cabinet · {doctors.length}
+          {t('onboarding.medecin.countLabel', { n: doctors.length })}
         </div>
       </div>
 
@@ -856,12 +855,12 @@ function MedecinStep({
                         letterSpacing: '0.02em',
                       }}
                     >
-                      VOUS
+                      {t('onboarding.medecin.you')}
                     </span>
                   )}
                 </div>
                 <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-                  {isMe ? 'Administrateur principal' : 'Médecin associé'} · {d.email}
+                  {isMe ? t('onboarding.medecin.adminPrincipal') : t('onboarding.medecin.associate')} · {d.email}
                 </div>
               </div>
             </div>
@@ -870,17 +869,17 @@ function MedecinStep({
               <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <Grid2>
                   <Field>
-                    <FieldLabel>Spécialité</FieldLabel>
+                    <FieldLabel>{t('onboarding.medecin.specialty')}</FieldLabel>
                     <Input
                       value={credentials.specialty}
                       onChange={(e) =>
                         setCredentials({ ...credentials, specialty: e.target.value })
                       }
-                      placeholder="Médecine générale"
+                      placeholder={t('onboarding.medecin.specialtyPlaceholder')}
                     />
                   </Field>
                   <Field>
-                    <FieldLabel>N° INPE</FieldLabel>
+                    <FieldLabel>{t('onboarding.medecin.inpe')}</FieldLabel>
                     <Input
                       value={credentials.inpe}
                       onChange={(e) => setCredentials({ ...credentials, inpe: e.target.value })}
@@ -890,7 +889,7 @@ function MedecinStep({
                 </Grid2>
                 <Grid2>
                   <Field>
-                    <FieldLabel>N° Ordre (CNOM)</FieldLabel>
+                    <FieldLabel>{t('onboarding.medecin.cnom')}</FieldLabel>
                     <Input
                       value={credentials.cnom}
                       onChange={(e) => setCredentials({ ...credentials, cnom: e.target.value })}
@@ -898,7 +897,7 @@ function MedecinStep({
                     />
                   </Field>
                   <Field>
-                    <FieldLabel>N° conv. CNOPS</FieldLabel>
+                    <FieldLabel>{t('onboarding.medecin.cnops')}</FieldLabel>
                     <Input
                       value={credentials.cnops}
                       onChange={(e) => setCredentials({ ...credentials, cnops: e.target.value })}
@@ -921,13 +920,13 @@ function MedecinStep({
                   gap: '12px 22px',
                 }}
               >
-                <DoctorField label="Spécialité" value={d.specialty} />
-                <DoctorField label="N° INPE" value={d.inpe} mono />
-                <DoctorField label="N° Ordre CNOM" value={d.cnom} mono />
-                <DoctorField label="N° conv. CNOPS" value={d.cnops} mono />
+                <DoctorField label={t('onboarding.medecin.specialty')} value={d.specialty} />
+                <DoctorField label={t('onboarding.medecin.inpe')} value={d.inpe} mono />
+                <DoctorField label={t('onboarding.medecin.cnom')} value={d.cnom} mono />
+                <DoctorField label={t('onboarding.medecin.cnops')} value={d.cnops} mono />
                 <DoctorField
-                  label="Signature"
-                  value={d.hasSignature ? 'Téléversée' : 'À configurer'}
+                  label={t('onboarding.medecin.signature')}
+                  value={d.hasSignature ? t('onboarding.medecin.signatureUploaded') : t('onboarding.medecin.signatureTodo')}
                   tone={d.hasSignature ? 'ok' : 'warn'}
                 />
               </div>
@@ -951,10 +950,10 @@ function MedecinStep({
         }}
       >
         <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, marginBottom: 4 }}>
-          + Ajouter un médecin associé
+          {t('onboarding.medecin.addAssociate')}
         </div>
         <div style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-          Crée son compte avec sa spécialité et ses identifiants professionnels.
+          {t('onboarding.medecin.addAssociateHint')}
         </div>
       </button>
     </>
@@ -1038,6 +1037,7 @@ function SignatureRow({
   hasSignature: boolean;
   isUploadingSig: boolean;
 }) {
+  const { t } = useT();
   return (
     <div
       style={{
@@ -1059,7 +1059,7 @@ function SignatureRow({
           minWidth: 80,
         }}
       >
-        Signature
+        {t('onboarding.medecin.signature')}
       </span>
       <label
         style={{
@@ -1085,10 +1085,10 @@ function SignatureRow({
           style={{ display: 'none' }}
         />
         {isUploadingSig
-          ? 'Téléversement…'
+          ? t('onboarding.sig.uploading')
           : hasSignature
-            ? 'Remplacer'
-            : 'Téléverser (PNG/JPEG, ≤ 500 Ko)'}
+            ? t('onboarding.sig.replace')
+            : t('onboarding.sig.upload')}
       </label>
       {hasSignature && (
         <span
@@ -1100,14 +1100,12 @@ function SignatureRow({
             alignItems: 'center',
           }}
         >
-          <Check /> Enregistrée
+          <Check /> {t('onboarding.sig.saved')}
         </span>
       )}
     </div>
   );
 }
-
-const DAY_LABELS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
 function HorairesStep({
   hours,
@@ -1116,6 +1114,7 @@ function HorairesStep({
   hours: WorkingHoursView;
   setHours: (h: WorkingHoursView) => void;
 }) {
+  const { t } = useT();
   function setDay(dow: number, mut: (d: WorkingHoursDay) => WorkingHoursDay) {
     setHours({
       days: hours.days.map((d) => (d.dayOfWeek === dow ? mut(d) : d)),
@@ -1129,14 +1128,11 @@ function HorairesStep({
 
   return (
     <>
-      <h1 className="ob-title">Quand recevez-vous vos patients&nbsp;?</h1>
-      <p className="ob-sub">
-        Ces horaires déterminent les créneaux proposés par l’agenda et les messages envoyés aux patients.
-        Vous pourrez les modifier à tout moment depuis les paramètres.
-      </p>
+      <h1 className="ob-title">{t('onboarding.horaires.title')}</h1>
+      <p className="ob-sub">{t('onboarding.horaires.sub')}</p>
 
       <div className="ob-section">
-        <div className="ob-section-label">Démarrer depuis un modèle</div>
+        <div className="ob-section-label">{t('onboarding.horaires.fromTemplate')}</div>
         <div className="ob-templates">
           {HOUR_TEMPLATES.map((m) => (
             <button
@@ -1145,8 +1141,8 @@ function HorairesStep({
               className="ob-template"
               onClick={() => applyTemplate(m.key)}
             >
-              <span className="ob-template-t">{m.label}</span>
-              <span className="ob-template-sub">{m.sub}</span>
+              <span className="ob-template-t">{t(m.labelKey)}</span>
+              <span className="ob-template-sub">{t(m.subKey)}</span>
             </button>
           ))}
         </div>
@@ -1158,7 +1154,7 @@ function HorairesStep({
           const a = d.slots[1] ?? { startTime: '', endTime: '' };
           return (
             <div key={d.dayOfWeek} className="ob-hours-row">
-              <span className="ob-hours-day">{DAY_LABELS[d.dayOfWeek]}</span>
+              <span className="ob-hours-day">{t(`onboarding.day.${d.dayOfWeek}`)}</span>
               <label className="ob-hours-toggle">
                 <input
                   type="checkbox"
@@ -1173,7 +1169,7 @@ function HorairesStep({
                     }))
                   }
                 />
-                {d.active ? 'Ouvert' : 'Fermé'}
+                {d.active ? t('onboarding.horaires.open') : t('onboarding.horaires.closed')}
               </label>
               {d.active ? (
                 <>
@@ -1259,7 +1255,7 @@ function HorairesStep({
                           fontFamily: 'inherit',
                         }}
                       >
-                        + Ajouter après-midi
+                        {t('onboarding.horaires.addAfternoon')}
                       </button>
                     )}
                   </div>
@@ -1278,13 +1274,13 @@ function HorairesStep({
 
       <div className="ob-options">
         <label>
-          <input type="checkbox" defaultChecked /> Pause déjeuner automatique
+          <input type="checkbox" defaultChecked /> {t('onboarding.horaires.opt.lunch')}
         </label>
         <label>
-          <input type="checkbox" /> Créneau urgences réservé
+          <input type="checkbox" /> {t('onboarding.horaires.opt.urgency')}
         </label>
         <label>
-          <input type="checkbox" defaultChecked /> Respecter les jours fériés marocains
+          <input type="checkbox" defaultChecked /> {t('onboarding.horaires.opt.holidays')}
         </label>
       </div>
     </>
@@ -1304,61 +1300,59 @@ function EquipeStep({
   onAdd: () => void;
   isPending: boolean;
 }) {
+  const { t } = useT();
   return (
     <>
-      <h1 className="ob-title">Qui travaille avec vous&nbsp;?</h1>
-      <p className="ob-sub">
-        Ajoutez votre secrétaire, infirmier·e et médecins associés. Chacun reçoit un accès personnel avec ses
-        propres droits — vous restez maître du périmètre exact.
-      </p>
+      <h1 className="ob-title">{t('onboarding.equipe.title')}</h1>
+      <p className="ob-sub">{t('onboarding.equipe.sub')}</p>
       <Panel className="ob-form-panel">
         <Grid2>
           <Field>
-            <FieldLabel>Prénom</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.firstName')}</FieldLabel>
             <Input value={draft.firstName} onChange={(e) => setDraft({ ...draft, firstName: e.target.value })} />
           </Field>
           <Field>
-            <FieldLabel>Nom</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.lastName')}</FieldLabel>
             <Input value={draft.lastName} onChange={(e) => setDraft({ ...draft, lastName: e.target.value })} />
           </Field>
         </Grid2>
         <Grid2>
           <Field>
-            <FieldLabel>Email</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.email')}</FieldLabel>
             <Input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
           </Field>
           <Field>
-            <FieldLabel>Téléphone</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.phone')}</FieldLabel>
             <Input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
           </Field>
         </Grid2>
         <Grid2>
           <Field>
-            <FieldLabel>Mot de passe initial (≥ 12 caractères)</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.password')}</FieldLabel>
             <Input type="password" value={draft.password} onChange={(e) => setDraft({ ...draft, password: e.target.value })} />
           </Field>
           <Field>
-            <FieldLabel>Rôle</FieldLabel>
+            <FieldLabel>{t('onboarding.equipe.role')}</FieldLabel>
             <Select
               value={draft.role}
               onChange={(e) => setDraft({ ...draft, role: e.target.value as InvitedUser['role'] })}
               style={{ height: 36, border: '1px solid var(--border)', borderRadius: 6, padding: '0 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--surface)' }}
             >
-              <option value="SECRETAIRE">Secrétaire</option>
-              <option value="ASSISTANT">Assistant(e)</option>
-              <option value="MEDECIN">Médecin</option>
-              <option value="ADMIN">Administrateur</option>
+              <option value="SECRETAIRE">{t('onboarding.equipe.role.secretaire')}</option>
+              <option value="ASSISTANT">{t('onboarding.equipe.role.assistant')}</option>
+              <option value="MEDECIN">{t('onboarding.equipe.role.medecin')}</option>
+              <option value="ADMIN">{t('onboarding.equipe.role.admin')}</option>
             </Select>
           </Field>
         </Grid2>
         <Button onClick={onAdd} disabled={isPending}>
-          + Ajouter ce membre
+          {t('onboarding.equipe.add')}
         </Button>
       </Panel>
 
       {invited.length > 0 && (
         <Panel className="ob-form-panel" style={{ marginTop: 16 }}>
-          <h3 className="ob-section-title">Déjà ajoutés ({invited.length})</h3>
+          <h3 className="ob-section-title">{t('onboarding.equipe.alreadyAdded', { n: invited.length })}</h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
             {invited.map((u, i) => (
               <li key={i} style={{ fontSize: 12.5, padding: '6px 10px', background: 'var(--bg-alt)', borderRadius: 6 }}>
@@ -1381,15 +1375,12 @@ function TarifsStep({
   setPremiumDiscount: (n: number) => void;
   acts: ActMeta[];
 }) {
+  const { t } = useT();
   const activeActs = acts.filter((a) => a.active);
   return (
     <>
-      <h1 className="ob-title">Vos tarifs et actes médicaux</h1>
-      <p className="ob-sub">
-        Voici la nomenclature des actes facturables avec leur éligibilité par assurance.
-        L’édition fine se fait depuis Paramétrage › Catalogue. La remise Premium ci-dessous
-        s’applique automatiquement aux factures patients Premium.
-      </p>
+      <h1 className="ob-title">{t('onboarding.tarifs.title')}</h1>
+      <p className="ob-sub">{t('onboarding.tarifs.sub')}</p>
 
       <Panel className="ob-form-panel" style={{ padding: 0 }}>
         <div
@@ -1406,16 +1397,16 @@ function TarifsStep({
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <span>Code</span>
-          <span>Acte</span>
-          <span style={{ textAlign: 'right' }}>Prix MAD</span>
+          <span>{t('onboarding.tarifs.col.code')}</span>
+          <span>{t('onboarding.tarifs.col.acte')}</span>
+          <span style={{ textAlign: 'right' }}>{t('onboarding.tarifs.col.price')}</span>
           <span style={{ textAlign: 'center' }}>CNOPS</span>
           <span style={{ textAlign: 'center' }}>CNSS</span>
           <span style={{ textAlign: 'center' }}>RAMED</span>
         </div>
         {activeActs.length === 0 && (
           <div style={{ padding: '24px 16px', fontSize: 12.5, color: 'var(--ink-3)' }}>
-            Aucun acte configuré.
+            {t('onboarding.tarifs.empty')}
           </div>
         )}
         {activeActs.map((a, i) => {
@@ -1464,7 +1455,7 @@ function TarifsStep({
 
       <Panel className="ob-form-panel" style={{ marginTop: 16 }}>
         <Field>
-          <FieldLabel>Remise patient Premium (%)</FieldLabel>
+          <FieldLabel>{t('onboarding.tarifs.premiumDiscount')}</FieldLabel>
           <Input
             type="number"
             min={0}
@@ -1474,8 +1465,7 @@ function TarifsStep({
             onChange={(e) => setPremiumDiscount(Number(e.target.value) || 0)}
           />
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 6 }}>
-            La remise s’applique automatiquement à toute facture issue d’une consultation patient Premium.
-            L’aperçu à droite reflète le calcul en temps réel.
+            {t('onboarding.tarifs.premiumHint')}
           </div>
         </Field>
       </Panel>
@@ -1484,6 +1474,7 @@ function TarifsStep({
 }
 
 function Mark({ on }: { on: boolean }) {
+  const { t } = useT();
   if (on) {
     return (
       <span
@@ -1497,7 +1488,7 @@ function Mark({ on }: { on: boolean }) {
           color: '#2F8F6B',
           justifySelf: 'center',
         }}
-        aria-label="Éligible"
+        aria-label={t('onboarding.tarifs.eligible')}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12" />
@@ -1519,7 +1510,7 @@ function Mark({ on }: { on: boolean }) {
         fontSize: 11,
         justifySelf: 'center',
       }}
-      aria-label="Non éligible"
+      aria-label={t('onboarding.tarifs.notEligible')}
     >
       —
     </span>
@@ -1553,11 +1544,12 @@ function DocumentsStep({
   activeTab: 'ORDONNANCE' | 'FACTURE' | 'CERTIFICAT' | 'CR';
   onTabChange: (t: 'ORDONNANCE' | 'FACTURE' | 'CERTIFICAT' | 'CR') => void;
 }) {
+  const { t } = useT();
   const tabs: { key: 'ORDONNANCE' | 'FACTURE' | 'CERTIFICAT' | 'CR'; label: string }[] = [
-    { key: 'ORDONNANCE', label: 'Ordonnance' },
-    { key: 'FACTURE', label: 'Facture' },
-    { key: 'CERTIFICAT', label: 'Certificat médical' },
-    { key: 'CR', label: 'Compte-rendu' },
+    { key: 'ORDONNANCE', label: t('onboarding.documents.tab.ordonnance') },
+    { key: 'FACTURE', label: t('onboarding.documents.tab.facture') },
+    { key: 'CERTIFICAT', label: t('onboarding.documents.tab.certificat') },
+    { key: 'CR', label: t('onboarding.documents.tab.cr') },
   ];
 
   const footerMentions = [
@@ -1570,11 +1562,8 @@ function DocumentsStep({
 
   return (
     <>
-      <h1 className="ob-title">Vos documents officiels</h1>
-      <p className="ob-sub">
-        Personnalisez l’en-tête de vos ordonnances, factures et certificats. Ces informations apparaîtront
-        sur tous les documents A4 imprimés ou exportés en PDF.
-      </p>
+      <h1 className="ob-title">{t('onboarding.documents.title')}</h1>
+      <p className="ob-sub">{t('onboarding.documents.sub')}</p>
 
       {/* Tab bar */}
       <div
@@ -1589,7 +1578,7 @@ function DocumentsStep({
           width: 'fit-content',
         }}
         role="tablist"
-        aria-label="Type de document"
+        aria-label={t('onboarding.documents.tabsAria')}
       >
         {tabs.map((t) => {
           const on = t.key === activeTab;
@@ -1623,7 +1612,7 @@ function DocumentsStep({
       {/* Logo */}
       <div style={{ marginBottom: 22 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8 }}>
-          Logo du cabinet
+          {t('onboarding.documents.logoLabel')}
         </div>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
           <label
@@ -1640,13 +1629,13 @@ function DocumentsStep({
               overflow: 'hidden',
               cursor: 'pointer',
             }}
-            aria-label="Téléverser ou remplacer le logo"
+            aria-label={t('onboarding.documents.logoUploadAria')}
           >
             {hasLogo ? (
               <img
                 key={logoUploadedAt ?? 'logo'}
                 src={`/api/settings/clinic/logo?t=${encodeURIComponent(logoUploadedAt ?? '')}`}
-                alt="Logo du cabinet"
+                alt={t('onboarding.documents.logoAlt')}
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
               />
             ) : (
@@ -1672,23 +1661,23 @@ function DocumentsStep({
           />
           <div style={{ fontSize: 12, color: 'var(--ink-3)', lineHeight: 1.6 }}>
             {isUploadingLogo ? (
-              <span style={{ color: 'var(--primary)' }}>Téléversement…</span>
+              <span style={{ color: 'var(--primary)' }}>{t('onboarding.documents.logoUploading')}</span>
             ) : hasLogo ? (
               <>
-                <span style={{ color: '#2F8F6B', fontWeight: 600 }}>Logo enregistré.</span> Cliquez sur la
-                vignette pour le remplacer.
+                <span style={{ color: '#2F8F6B', fontWeight: 600 }}>{t('onboarding.documents.logoSaved')}</span>{' '}
+                {t('onboarding.documents.logoSavedHint')}
                 <br />
-                Recommandé : 400 × 400 px, max 500 Ko.
+                {t('onboarding.documents.logoReco')}
               </>
             ) : (
               <>
-                Glissez votre logo ici ou{' '}
-                <span style={{ color: 'var(--primary)', fontWeight: 500 }}>parcourez</span>
+                {t('onboarding.documents.logoBrowsePre')}{' '}
+                <span style={{ color: 'var(--primary)', fontWeight: 500 }}>{t('onboarding.documents.logoBrowse')}</span>
                 <br />
-                Recommandé : 400 × 400 px minimum, fond transparent
+                {t('onboarding.documents.logoRecoMin')}
                 <br />
                 <span style={{ color: 'var(--ink-4)' }}>
-                  Apparaîtra sur l’en-tête de tous les documents A4
+                  {t('onboarding.documents.logoOnHeader')}
                 </span>
               </>
             )}
@@ -1698,21 +1687,21 @@ function DocumentsStep({
 
       {/* En-tête */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8 }}>
-        En-tête
+        {t('onboarding.documents.header')}
       </div>
       <Panel className="ob-form-panel" style={{ marginBottom: 18 }}>
         <Grid2>
-          <ReadField label="Nom du cabinet" value={clinic.name} />
-          <ReadField label="Spécialité" value={practitionerSpecialty} />
+          <ReadField label={t('onboarding.documents.headerCabinetName')} value={clinic.name} />
+          <ReadField label={t('onboarding.documents.headerSpecialty')} value={practitionerSpecialty} />
         </Grid2>
         <Grid2>
-          <ReadField label="Adresse" value={clinic.address} />
-          <ReadField label="Téléphone" value={clinic.phone} mono />
+          <ReadField label={t('onboarding.documents.headerAddress')} value={clinic.address} />
+          <ReadField label={t('onboarding.documents.headerPhone')} value={clinic.phone} mono />
         </Grid2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
-          <ReadField label="N° INPE" value={practitionerInpe} mono />
-          <ReadField label="N° Ordre" value={practitionerCnom} mono />
-          <ReadField label="ICE" value={clinic.ice} mono />
+          <ReadField label={t('onboarding.documents.headerInpe')} value={practitionerInpe} mono />
+          <ReadField label={t('onboarding.documents.headerCnom')} value={practitionerCnom} mono />
+          <ReadField label={t('onboarding.documents.headerIce')} value={clinic.ice} mono />
         </div>
         <div
           style={{
@@ -1724,14 +1713,13 @@ function DocumentsStep({
             lineHeight: 1.5,
           }}
         >
-          Ces valeurs proviennent des étapes Cabinet et Médecin. Pour les modifier, revenez aux étapes
-          correspondantes.
+          {t('onboarding.documents.headerNote')}
         </div>
       </Panel>
 
       {/* Signature et cachet */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8 }}>
-        Signature et cachet
+        {t('onboarding.documents.sigStamp')}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
         <Panel style={{ padding: 14, textAlign: 'center' }}>
@@ -1745,7 +1733,7 @@ function DocumentsStep({
               marginBottom: 8,
             }}
           >
-            Signature
+            {t('onboarding.documents.signature')}
           </div>
           <div
             style={{
@@ -1759,7 +1747,7 @@ function DocumentsStep({
               background: 'var(--surface)',
             }}
           >
-            {hasSignature ? 'Signature scannée enregistrée ✓' : 'À téléverser depuis l’étape Médecin'}
+            {hasSignature ? t('onboarding.documents.signatureSaved') : t('onboarding.documents.signatureTodo')}
           </div>
         </Panel>
         <Panel style={{ padding: 14, textAlign: 'center', opacity: 0.6 }}>
@@ -1773,7 +1761,7 @@ function DocumentsStep({
               marginBottom: 8,
             }}
           >
-            Cachet officiel
+            {t('onboarding.documents.stamp')}
           </div>
           <div
             style={{
@@ -1787,14 +1775,14 @@ function DocumentsStep({
               color: 'var(--ink-3)',
             }}
           >
-            (Bientôt disponible dans Paramétrage)
+            {t('onboarding.documents.stampSoon')}
           </div>
         </Panel>
       </div>
 
       {/* Pied de page — auto-computed */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', marginBottom: 8 }}>
-        Pied de page (auto-calculé depuis vos mentions légales)
+        {t('onboarding.documents.footer')}
       </div>
       <Panel className="ob-form-panel" style={{ marginBottom: 14 }}>
         <div
@@ -1809,29 +1797,29 @@ function DocumentsStep({
           }}
         >
           {clinic.name ? `${clinic.name} · ` : ''}
-          {footerMentions || '— renseignez ICE/RC/IF à l’étape Cabinet —'}
+          {footerMentions || t('onboarding.documents.footerEmpty')}
         </div>
       </Panel>
 
       {/* 3 options — visual */}
       <div style={{ display: 'flex', gap: 18, fontSize: 12.5, color: 'var(--ink-2)', flexWrap: 'wrap' }}>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', opacity: 0.7 }}>
-          <input type="checkbox" defaultChecked disabled /> Filigrane « Original » sur la copie patient
+          <input type="checkbox" defaultChecked disabled /> {t('onboarding.documents.opt.watermark')}
         </label>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', opacity: 0.7 }}>
-          <input type="checkbox" defaultChecked disabled /> QR code pour vérification
+          <input type="checkbox" defaultChecked disabled /> {t('onboarding.documents.opt.qr')}
         </label>
         <label style={{ display: 'flex', gap: 6, alignItems: 'center', opacity: 0.7 }}>
-          <input type="checkbox" disabled /> Bilingue français / arabe
+          <input type="checkbox" disabled /> {t('onboarding.documents.opt.bilingual')}
         </label>
       </div>
       <div style={{ fontSize: 11, color: 'var(--ink-4)', marginTop: 4 }}>
-        Ces options s’activeront dans Paramétrage › Documents (v1.1).
+        {t('onboarding.documents.optNote')}
       </div>
 
       {/* Templates inventory — concise */}
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink-2)', margin: '22px 0 8px' }}>
-        Modèles préconfigurés ({templates.length})
+        {t('onboarding.documents.templates', { n: templates.length })}
       </div>
       <Panel className="ob-form-panel" style={{ padding: 12 }}>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1920,41 +1908,42 @@ function RecapStep({
   templateCount: number;
   onGoToStep: (idx: number) => void;
 }) {
+  const { t } = useT();
   const checks = [
     {
       stepIdx: 0,
-      title: 'Cabinet configuré',
+      title: t('onboarding.recap.check.cabinet'),
       desc:
         clinic.name
           ? `${clinic.name}${clinic.city ? ` · ${clinic.city}` : ''}${
               clinic.ice ? ` · ICE ${clinic.ice}` : ''
             }`
-          : 'Identité du cabinet à compléter',
+          : t('onboarding.recap.check.cabinetEmpty'),
       ok: !!clinic.name && !!clinic.city,
     },
     {
       stepIdx: 1,
-      title: 'Profil médecin',
+      title: t('onboarding.recap.check.medecin'),
       desc:
         credentials.specialty || credentials.inpe
           ? `${practitionerFullName}${credentials.specialty ? ` · ${credentials.specialty}` : ''}${
               credentials.inpe ? ` · INPE ${credentials.inpe}` : ''
             }${hasSignature ? ' · signature ✓' : ''}`
-          : 'Spécialité et N° INPE non renseignés',
+          : t('onboarding.recap.check.medecinEmpty'),
       ok: !!credentials.specialty || !!credentials.inpe,
     },
     {
       stepIdx: 2,
-      title: "Horaires d'ouverture",
+      title: t('onboarding.recap.check.horaires'),
       desc:
         activeDays > 0
           ? `${activeDays} jour${activeDays > 1 ? 's' : ''} d'ouverture configuré${activeDays > 1 ? 's' : ''}`
-          : 'Aucun jour ouvert',
+          : t('onboarding.recap.check.horairesNone'),
       ok: activeDays > 0,
     },
     {
       stepIdx: 3,
-      title: 'Équipe',
+      title: t('onboarding.recap.check.equipe'),
       desc:
         doctorCount + invitedCount > 1
           ? `${doctorCount} médecin${doctorCount > 1 ? 's' : ''}${
@@ -1962,42 +1951,39 @@ function RecapStep({
                 ? ` · ${invitedCount} invitation${invitedCount > 1 ? 's' : ''} en attente`
                 : ''
             }`
-          : 'Solo cabinet — ajoutez des associés depuis Paramétrage si besoin',
+          : t('onboarding.recap.check.equipeSolo'),
       ok: doctorCount > 0,
     },
     {
       stepIdx: 4,
-      title: 'Tarifs et actes',
+      title: t('onboarding.recap.check.tarifs'),
       desc: actCount > 0
         ? `${actCount} acte${actCount > 1 ? 's' : ''} configuré${actCount > 1 ? 's' : ''} · remise Premium active`
-        : 'Aucun acte configuré',
+        : t('onboarding.recap.check.tarifsNone'),
       ok: actCount > 0,
     },
     {
       stepIdx: 5,
-      title: 'Documents officiels',
+      title: t('onboarding.recap.check.documents'),
       desc:
         templateCount > 0
           ? `${templateCount} modèle${templateCount > 1 ? 's' : ''} prêt${templateCount > 1 ? 's' : ''} — en-tête personnalisé`
-          : 'Aucun modèle configuré',
+          : t('onboarding.recap.check.documentsNone'),
       ok: templateCount > 0,
     },
   ];
 
   const nextSteps = [
-    { t: 'Importer vos patients existants', d: 'CSV, Excel ou export d’un autre logiciel — jusqu’à 5 000 fiches', cta: 'Importer →' },
-    { t: 'Activer la prise de RDV en ligne', d: 'Lien partageable + intégration Google Maps', cta: 'Activer →' },
-    { t: 'Connecter votre messagerie', d: 'Envoyer ordonnances et factures par e-mail signé', cta: 'Configurer →' },
-    { t: 'Tester une consultation', d: 'Patient fictif pour explorer le flux sans risque', cta: 'Démarrer la visite →' },
+    { t: t('onboarding.recap.next.import.t'), d: t('onboarding.recap.next.import.d'), cta: t('onboarding.recap.next.import.cta') },
+    { t: t('onboarding.recap.next.online.t'), d: t('onboarding.recap.next.online.d'), cta: t('onboarding.recap.next.online.cta') },
+    { t: t('onboarding.recap.next.mail.t'), d: t('onboarding.recap.next.mail.d'), cta: t('onboarding.recap.next.mail.cta') },
+    { t: t('onboarding.recap.next.test.t'), d: t('onboarding.recap.next.test.d'), cta: t('onboarding.recap.next.test.cta') },
   ];
 
   return (
     <>
-      <h1 className="ob-title">Bienvenue sur careplus</h1>
-      <p className="ob-sub">
-        Votre cabinet est entièrement configuré. Vous pouvez maintenant ouvrir l’application, importer
-        vos patients et commencer à recevoir des rendez-vous en ligne.
-      </p>
+      <h1 className="ob-title">{t('onboarding.recap.title')}</h1>
+      <p className="ob-sub">{t('onboarding.recap.sub')}</p>
 
       {/* Success banner */}
       <div
@@ -2032,10 +2018,10 @@ function RecapStep({
         </span>
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: '#1F5C46' }}>
-            Tout est prêt — votre cabinet est opérationnel
+            {t('onboarding.recap.bannerTitle')}
           </div>
           <div style={{ fontSize: 12, color: '#2F8F6B', marginTop: 2 }}>
-            Vos données sont chiffrées et synchronisées sur les serveurs marocains.
+            {t('onboarding.recap.bannerBody')}
           </div>
         </div>
       </div>
@@ -2051,7 +2037,7 @@ function RecapStep({
           letterSpacing: '0.06em',
         }}
       >
-        Récapitulatif de votre configuration
+        {t('onboarding.recap.summary')}
       </div>
       <Panel className="ob-form-panel" style={{ padding: 0, overflow: 'hidden', marginBottom: 26 }}>
         {checks.map((c, i) => (
@@ -2112,7 +2098,7 @@ function RecapStep({
                 e.currentTarget.style.color = 'var(--ink-3)';
               }}
             >
-              Modifier
+              {t('onboarding.recap.edit')}
             </button>
           </div>
         ))}
@@ -2129,7 +2115,7 @@ function RecapStep({
           letterSpacing: '0.06em',
         }}
       >
-        Prochaines étapes recommandées
+        {t('onboarding.recap.nextSteps')}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {nextSteps.map((s) => (

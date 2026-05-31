@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Select } from '@/components/ui/Input';
 import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { AgendaToolbar } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
@@ -83,6 +84,7 @@ function formatPageDate(d: Date): string {
 
 export default function AgendaPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [weekOffset, setWeekOffset] = useState(0);
   const [view, setView] = useState<AgendaView>('semaine');
   const [selectedDay, setSelectedDay] = useState<DayKey>(currentDayKey);
@@ -318,7 +320,10 @@ export default function AgendaPage() {
   // Mois subtitle per maquette : "Avril 2026 · 142 rendez-vous".
   const moisLabel =
     view === 'mois'
-      ? `${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)} · ${monthAppointments.length} rendez-vous`
+      ? t('agenda.header.moisCount', {
+          label: `${monthLabel.charAt(0).toUpperCase()}${monthLabel.slice(1)}`,
+          n: monthAppointments.length,
+        })
       : monthLabel;
   const headerLabel = view === 'mois' ? moisLabel : view === 'jour' ? jourLabel ?? weekLabel : weekLabel;
 
@@ -388,7 +393,7 @@ export default function AgendaPage() {
 
   async function handleDragMove(appointmentId: string, dayKey: DayKey, time: string) {
     if (!canCreateRdv) {
-      toast.error("Vous n'avez pas les droits pour déplacer un rendez-vous.");
+      toast.error(t('agenda.toast.noMoveRight'));
       return;
     }
     const apt = appointments.find((a) => a.id === appointmentId);
@@ -402,11 +407,11 @@ export default function AgendaPage() {
         startAt,
         durationMinutes: apt.dur,
       });
-      toast.success('Rendez-vous déplacé.');
+      toast.success(t('agenda.toast.moved'));
       void refetch();
     } catch (err) {
       const conflict = extractConflictMessage(err);
-      toast.error(conflict ?? 'Échec du déplacement du rendez-vous.');
+      toast.error(conflict ?? t('agenda.toast.moveErr'));
     }
   }
 
@@ -435,7 +440,7 @@ export default function AgendaPage() {
     <>
       <Screen
         active="agenda"
-        title="Agenda"
+        title={t('nav.agenda')}
         sub={headerLabel}
         pageDate={pageDate}
         topbarRight={
@@ -447,7 +452,7 @@ export default function AgendaPage() {
                 setShowRDV(true);
               }}
             >
-              <Plus /> Nouveau RDV
+              <Plus /> {t('agenda.newRdv')}
             </Button>
           ) : undefined
         }
@@ -515,16 +520,16 @@ export default function AgendaPage() {
           >
             {showPractitionerSelector && (
               <label className="ag-filter-label">
-                Médecin
+                {t('agenda.filter.doctor')}
                 <Select
-                  aria-label="Filtrer par médecin"
+                  aria-label={t('agenda.filter.doctorAria')}
                   className="ag-filter-select"
                   value={practitionerFilter}
                   onChange={(e) =>
                     changePractitionerFilter(e.target.value as PractitionerIdFilter)
                   }
                 >
-                  <option value={ALL_PRACTITIONERS}>Tous les médecins</option>
+                  <option value={ALL_PRACTITIONERS}>{t('agenda.filter.allDoctors')}</option>
                   {activePractitioners.map((p) => (
                     <option key={p.id} value={p.id}>
                       Dr {p.lastName} {p.firstName}
@@ -536,14 +541,14 @@ export default function AgendaPage() {
             )}
             {showRoomSelector && (
               <label className="ag-filter-label">
-                Salle
+                {t('agenda.filter.room')}
                 <Select
-                  aria-label="Filtrer par salle"
+                  aria-label={t('agenda.filter.roomAria')}
                   className="ag-filter-select"
                   value={roomFilter}
                   onChange={(e) => setRoomFilter(e.target.value)}
                 >
-                  <option value="ALL">Toutes les salles</option>
+                  <option value="ALL">{t('agenda.filter.allRooms')}</option>
                   {activeRooms.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.name}
@@ -556,14 +561,14 @@ export default function AgendaPage() {
                 solo (un médecin a souvent envie d'isoler ses urgences). */}
             {reasons.length > 0 && (
               <label className="ag-filter-label">
-                Motif
+                {t('agenda.filter.reason')}
                 <Select
-                  aria-label="Filtrer par motif de prestation"
+                  aria-label={t('agenda.filter.reasonAria')}
                   className="ag-filter-select"
                   value={reasonFilter}
                   onChange={(e) => setReasonFilter(e.target.value)}
                 >
-                  <option value="ALL">Tous les motifs</option>
+                  <option value="ALL">{t('agenda.filter.allReasons')}</option>
                   {reasons.map((r) => (
                     <option key={r.id} value={r.id}>
                       {r.label}
@@ -617,9 +622,9 @@ export default function AgendaPage() {
                 + nom) puis Statuts. La légende inline du toolbar reste pour
                 les écrans single-doctor où la rangée médecin n'a pas de sens. */}
             {view === 'semaine' && activePractitioners.length >= 2 && (
-              <div className="ag-week-legend" aria-label="Légende médecins et statuts">
+              <div className="ag-week-legend" aria-label={t('agenda.legend.aria')}>
                 <div className="ag-week-legend-row">
-                  <span className="ag-week-legend-title">Médecins</span>
+                  <span className="ag-week-legend-title">{t('agenda.legend.doctors')}</span>
                   {activePractitioners.map((p) => {
                     const meta = practitionerMap[p.id];
                     if (!meta) return null;
@@ -632,13 +637,13 @@ export default function AgendaPage() {
                   })}
                 </div>
                 <div className="ag-week-legend-row">
-                  <span className="ag-week-legend-title">Statuts</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />Confirmé</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DEF0E6', borderLeftColor: '#2F8F6B' }} />Arrivé</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#FBEFE3', borderLeftColor: '#C68A2E' }} />En attente</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: 'var(--ds2-navy, #1E4DAB)', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />En cours</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-coral, #C2553A)' }} />En retard</span>
-                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#F2F1EC', borderLeftColor: '#9B9B9B' }} />Terminé</span>
+                  <span className="ag-week-legend-title">{t('agenda.legend.statuses')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />{t('agenda.status.confirmed')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DEF0E6', borderLeftColor: '#2F8F6B' }} />{t('agenda.status.arrived')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#FBEFE3', borderLeftColor: '#C68A2E' }} />{t('agenda.status.waiting')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: 'var(--ds2-navy, #1E4DAB)', borderLeftColor: 'var(--ds2-navy, #1E4DAB)' }} />{t('agenda.status.inProgress')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#DCE5F5', borderLeftColor: 'var(--ds2-coral, #C2553A)' }} />{t('agenda.status.late')}</span>
+                  <span className="ag-week-legend-item"><i className="ag-leg-swatch" style={{ background: '#F2F1EC', borderLeftColor: '#9B9B9B' }} />{t('agenda.status.done')}</span>
                 </div>
               </div>
             )}

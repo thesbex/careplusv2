@@ -8,28 +8,13 @@
  * .pr-drawer = 101). N'attrape pas les clics (pointer-events: none) ; le
  * blocage anti double-clic vit sur le bouton lui-même via `disabled`.
  */
+import { useT } from '@/lib/i18n/I18nProvider';
+
 type PdfType = 'CERT' | 'DRUG' | 'LAB' | 'IMAGING' | 'SICK_LEAVE';
 
 interface Props {
   open: boolean;
   type?: PdfType;
-}
-
-function labelFor(type: PdfType | undefined): string {
-  switch (type) {
-    case 'CERT':
-      return 'Certificat';
-    case 'DRUG':
-      return "l'Ordonnance";
-    case 'LAB':
-      return "Bon d'analyses";
-    case 'IMAGING':
-      return "Bon d'imagerie";
-    case 'SICK_LEAVE':
-      return "l'Arrêt de travail";
-    default:
-      return 'document';
-  }
 }
 
 /** Spinner SVG inline — évite d'étendre le set d'icônes maison
@@ -55,8 +40,9 @@ function Spinner() {
 }
 
 export function PdfGenerationOverlay({ open, type }: Props) {
+  const { t } = useT();
   if (!open) return null;
-  const label = labelFor(type);
+  const label = t(`presc.gen.label.${type ?? 'default'}`);
   return (
     <div
       className="pdf-gen-overlay"
@@ -66,8 +52,8 @@ export function PdfGenerationOverlay({ open, type }: Props) {
       <div className="pdf-gen-card">
         <Spinner />
         <div className="pdf-gen-text">
-          <div className="pdf-gen-title">Génération du {label} en cours…</div>
-          <div className="pdf-gen-sub">Cela peut prendre quelques secondes</div>
+          <div className="pdf-gen-title">{t('presc.gen.title', { label })}</div>
+          <div className="pdf-gen-sub">{t('presc.gen.sub')}</div>
         </div>
       </div>
     </div>

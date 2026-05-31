@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel } from '@/components/ui/Panel';
 import { Select } from '@/components/ui/Input';
 import { Plus } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { AdmissionForm, StayDetailPanel } from './components/StayPanels';
 import { BedWall } from './components/BedWall';
 import { useStayQueue, type StayQueueEntry } from './hooks/useStays';
@@ -28,12 +29,12 @@ const NAV_MAP = {
 /** Code couleur stable par médecin (mirror agenda multi-doctor). */
 const DOCTOR_PALETTE = ['#1E4DAB', '#2F8F6B', '#C68A2E', '#C2553A', '#5A4FCF'];
 
-/** Pastille de statut de séjour (worklist + historique). */
-const STAY_STATUS_META: Record<string, { label: string; bg: string; fg: string }> = {
-  EN_COURS: { label: 'En cours', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
-  SORTI: { label: 'À régler', bg: 'var(--amber-soft)', fg: '#6e4a0a' },
-  FACTURE: { label: 'Clôturé', bg: 'var(--success-soft)', fg: '#0a4630' },
-  ANNULE: { label: 'Annulé', bg: '#e1ded2', fg: '#595549' },
+/** Pastille de statut de séjour (worklist + historique). `labelKey` résolu via t(). */
+const STAY_STATUS_META: Record<string, { labelKey: string; bg: string; fg: string }> = {
+  EN_COURS: { labelKey: 'hospit.status.EN_COURS', bg: 'var(--primary-soft)', fg: 'var(--primary)' },
+  SORTI: { labelKey: 'hospit.status.SORTI', bg: 'var(--amber-soft)', fg: '#6e4a0a' },
+  FACTURE: { labelKey: 'hospit.status.FACTURE', bg: 'var(--success-soft)', fg: '#0a4630' },
+  ANNULE: { labelKey: 'hospit.status.ANNULE', bg: '#e1ded2', fg: '#595549' },
 };
 
 function StayCard({
@@ -47,13 +48,16 @@ function StayCard({
   onOpen: () => void;
   isSelected: boolean;
 }) {
+  const { t } = useT();
   const initials = `${stay.patientFirstName.charAt(0)}${stay.patientLastName.charAt(0)}`.toUpperCase();
   const fullName = `${stay.patientLastName} ${stay.patientFirstName}`;
-  const statusMeta = STAY_STATUS_META[stay.status]
-    ?? { label: stay.status, bg: 'var(--bg-alt)', fg: 'var(--ink-3)' };
+  const meta = STAY_STATUS_META[stay.status];
+  const statusMeta = meta
+    ? { label: t(meta.labelKey), bg: meta.bg, fg: meta.fg }
+    : { label: stay.status, bg: 'var(--bg-alt)', fg: 'var(--ink-3)' };
   const dayLabel = stay.status !== 'EN_COURS'
-    ? (stay.dischargedAt ? `Sorti le ${new Date(stay.dischargedAt).toLocaleDateString('fr-MA')}` : statusMeta.label)
-    : stay.daysSoFar === 0 ? 'Admis aujourd\'hui' : `Jour ${stay.daysSoFar + 1}`;
+    ? (stay.dischargedAt ? t('hospit.card.dischargedOn', { date: new Date(stay.dischargedAt).toLocaleDateString('fr-MA') }) : statusMeta.label)
+    : stay.daysSoFar === 0 ? t('hospit.card.admittedToday') : t('hospit.card.day', { n: stay.daysSoFar + 1 });
   return (
     <button
       type="button"
@@ -63,19 +67,22 @@ function StayCard({
         display: 'flex',
         alignItems: 'center',
         gap: 14,
-        padding: '12px 16px',
-        background: isSelected ? 'var(--ds2-navy-soft, var(--primary-soft))' : 'var(--surface)',
-        border: `1px solid ${isSelected ? 'var(--ds2-navy, var(--primary))' : 'var(--border)'}`,
-        borderRadius: 8,
+        padding: '13px 16px',
+        background: isSelected ? 'var(--primary-soft)' : 'var(--surface)',
+        border: 'none',
+        borderRadius: 14,
+        boxShadow: isSelected
+          ? 'inset 0 0 0 1px var(--primary)'
+          : 'var(--ds2-shadow-sm, 0 1px 2px rgba(20,30,50,.04), 0 8px 20px -16px rgba(20,30,50,.22))',
         cursor: 'pointer',
         textAlign: 'left',
         fontFamily: 'inherit',
-        transition: 'border-color 0.12s ease, box-shadow 0.12s ease',
+        transition: 'background 0.12s ease, box-shadow 0.12s ease',
       }}
     >
       {/* Avatar patient (initiales) */}
       <div style={{
-        width: 38, height: 38, borderRadius: 8,
+        width: 38, height: 38, borderRadius: 10,
         background: 'var(--ds2-navy, var(--primary))', color: '#fff',
         display: 'grid', placeItems: 'center',
         fontWeight: 700, fontSize: 13, letterSpacing: 0.02,
@@ -113,7 +120,7 @@ function StayCard({
           )}
         </div>
         <div style={{ fontSize: 12, color: 'var(--ink-3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {stay.admissionReason ?? 'Motif non renseigné'}
+          {stay.admissionReason ?? t('hospit.card.noReason')}
         </div>
       </div>
 
@@ -130,39 +137,48 @@ function StayCard({
 
       {/* CTA */}
       <span style={{
-        fontSize: 12, fontWeight: 600,
-        color: 'var(--ds2-navy, var(--primary))',
-        padding: '6px 12px', border: '1px solid var(--ds2-navy, var(--primary))',
-        borderRadius: 6,
+        fontSize: 12, fontWeight: 700,
+        color: 'var(--primary)',
+        padding: '7px 13px', border: 'none',
+        background: 'var(--primary-soft)',
+        borderRadius: 999,
       }}>
-        {isSelected ? 'Ouvert' : 'Gérer →'}
+        {isSelected ? t('hospit.card.open') : t('hospit.card.manage')}
       </span>
     </button>
   );
 }
 
-function KpiTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function KpiTile({ label, value, sub, hero, dot }: { label: string; value: string; sub?: string; hero?: boolean; dot?: string }) {
   return (
     <div style={{
-      flex: 1, minWidth: 0,
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 'var(--r-md)', padding: '12px 14px',
+      flex: 1, minWidth: 0, position: 'relative', overflow: 'hidden',
+      background: 'var(--surface)', border: 'none',
+      borderRadius: 16, boxShadow: 'var(--ds2-shadow-sm, 0 1px 2px rgba(20,30,50,.04), 0 10px 34px -20px rgba(20,30,50,.2))',
+      padding: '16px 18px',
     }}>
+      {hero && (
+        <span style={{ position: 'absolute', left: 0, top: 0, right: 0, height: 3, background: 'var(--primary)' }} />
+      )}
       <div style={{
-        fontSize: 10.5, color: 'var(--ink-3)', fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '0.06em',
-      }}>{label}</div>
+        fontSize: 12, color: hero ? 'var(--primary)' : 'var(--ink-3)', fontWeight: 600,
+        display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        {dot && <span style={{ width: 7, height: 7, borderRadius: '50%', background: dot, flexShrink: 0 }} />}
+        {label}
+      </div>
       <div className="tnum" style={{
-        fontSize: 22, fontWeight: 700, color: 'var(--ds2-ink, var(--ink))',
-        letterSpacing: '-0.02em', marginTop: 2,
+        fontSize: 27, fontWeight: 800, color: 'var(--ink)',
+        letterSpacing: '-0.03em', marginTop: 8, lineHeight: 1,
       }}>{value}</div>
-      {sub && <div style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 12, color: 'var(--ink-3)', marginTop: 7, fontWeight: 500 }}>{sub}</div>}
     </div>
   );
 }
 
 export default function HospitalisationPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const { stays: rawStays } = useStayQueue(); // EN_COURS — base des KPI + mur de lits
   const { board } = useBedBoard();
   const { data: practitioners } = usePractitioners();
@@ -244,21 +260,21 @@ export default function HospitalisationPage() {
   return (
     <Screen
       active="sejours"
-      title="Hospitalisation"
-      sub={`${rawStays.length} patient${rawStays.length > 1 ? 's' : ''} hospitalisé${rawStays.length > 1 ? 's' : ''} · ${occupied}/${total} lits`}
+      title={t('hospit.title')}
+      sub={t(rawStays.length > 1 ? 'hospit.subPlural' : 'hospit.sub', { n: rawStays.length, occupied, total })}
       topbarRight={
         <Button
           className="cp-ds2-primary"
           onClick={() => { setAdmitting((v) => !v); setOpenStay(null); }}
         >
-          <Plus /> {admitting ? 'Fermer' : 'Nouvelle admission'}
+          <Plus /> {admitting ? t('hospit.close') : t('hospit.newAdmission')}
         </Button>
       }
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
       <div style={{ padding: 24, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }} className="scroll">
         {/* Bascule Liste / Mur de lits (refresh) */}
-        <div role="tablist" aria-label="Vue" style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 8, alignSelf: 'flex-start' }}>
+        <div role="tablist" aria-label={t('hospit.viewAria')} style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 8, alignSelf: 'flex-start' }}>
           {(['liste', 'mur'] as const).map((v) => (
             <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)}
               style={{
@@ -268,7 +284,7 @@ export default function HospitalisationPage() {
                 color: view === v ? 'var(--ink)' : 'var(--ink-3)',
                 boxShadow: view === v ? '0 0 0 1px var(--border)' : 'none',
               }}>
-              {v === 'liste' ? 'Liste' : 'Mur de lits'}
+              {v === 'liste' ? t('hospit.view.liste') : t('hospit.view.mur')}
             </button>
           ))}
         </div>
@@ -294,9 +310,9 @@ export default function HospitalisationPage() {
         {view === 'liste' && (
           <>
         {/* Segment statut : revenir sur l'historique des séjours clôturés. */}
-        <div role="tablist" aria-label="Statut des séjours"
+        <div role="tablist" aria-label={t('hospit.statusSegAria')}
           style={{ display: 'flex', gap: 2, background: 'var(--bg-alt)', padding: 2, borderRadius: 8, alignSelf: 'flex-start' }}>
-          {([['encours', 'En cours'], ['historique', 'Historique'], ['tous', 'Tous']] as const).map(([k, label]) => (
+          {([['encours', 'hospit.seg.encours'], ['historique', 'hospit.seg.historique'], ['tous', 'hospit.seg.tous']] as const).map(([k, labelKey]) => (
             <button key={k} type="button" role="tab" aria-selected={statusSeg === k} onClick={() => setStatusSeg(k)}
               style={{
                 padding: '6px 14px', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: 'inherit',
@@ -305,31 +321,37 @@ export default function HospitalisationPage() {
                 color: statusSeg === k ? 'var(--ink)' : 'var(--ink-3)',
                 boxShadow: statusSeg === k ? '0 0 0 1px var(--border)' : 'none',
               }}>
-              {label}
+              {t(labelKey)}
             </button>
           ))}
         </div>
         {/* KPI bar — refonte 2026-05-28 */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 4 }}>
           <KpiTile
-            label="Patients hospitalisés"
+            hero
+            label={t('hospit.kpi.inpatients')}
             value={String(rawStays.length)}
-            sub={todayAdmits > 0 ? `${todayAdmits} admission${todayAdmits > 1 ? 's' : ''} aujourd'hui` : 'aucune admission aujourd\'hui'}
+            sub={todayAdmits > 0
+              ? t(todayAdmits > 1 ? 'hospit.kpi.admitsTodayPlural' : 'hospit.kpi.admitsToday', { n: todayAdmits })
+              : t('hospit.kpi.noAdmitsToday')}
           />
           <KpiTile
-            label="Lits occupés"
+            label={t('hospit.kpi.bedsOccupied')}
+            dot="var(--danger)"
             value={total > 0 ? `${occupied} / ${total}` : '—'}
-            sub={total > 0 ? `${occupancyRate} % d'occupation` : 'aucun lit configuré'}
+            sub={total > 0 ? t('hospit.kpi.occupancyRate', { n: occupancyRate }) : t('hospit.kpi.noBeds')}
           />
           <KpiTile
-            label="Lits libres"
+            label={t('hospit.kpi.bedsFree')}
+            dot="var(--success)"
             value={String(free)}
-            sub={free === 0 && total > 0 ? 'complet' : `disponibles pour admission`}
+            sub={free === 0 && total > 0 ? t('hospit.kpi.full') : t('hospit.kpi.availableForAdmission')}
           />
           <KpiTile
-            label="Durée moyenne"
-            value={avgDays === '—' ? '—' : `${avgDays} j`}
-            sub="patients en cours"
+            label={t('hospit.kpi.avgStay')}
+            dot="var(--amber)"
+            value={avgDays === '—' ? '—' : t('hospit.kpi.days', { n: avgDays })}
+            sub={t('hospit.kpi.currentPatients')}
           />
         </div>
 
@@ -338,14 +360,14 @@ export default function HospitalisationPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 10, alignItems: 'end' }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Rechercher
+                {t('hospit.filter.search')}
               </span>
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nom patient, motif, lit…"
-                aria-label="Rechercher un séjour"
+                placeholder={t('hospit.filter.searchPlaceholder')}
+                aria-label={t('hospit.filter.searchAria')}
                 style={{
                   height: 32, padding: '0 8px',
                   border: '1px solid var(--border)', borderRadius: 6,
@@ -355,19 +377,19 @@ export default function HospitalisationPage() {
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Service
+                {t('hospit.filter.ward')}
               </span>
               <Select
                 value={wardFilter}
                 onChange={(e) => setWardFilter(e.target.value)}
-                aria-label="Filtrer par service"
+                aria-label={t('hospit.filter.wardAria')}
                 style={{
                   height: 32, padding: '0 8px',
                   border: '1px solid var(--border)', borderRadius: 6,
                   fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
                 }}
               >
-                <option value="ALL">Tous les services</option>
+                <option value="ALL">{t('hospit.filter.allWards')}</option>
                 {wards.map((w) => (
                   <option key={w.wardId} value={w.wardLabel}>{w.wardLabel}</option>
                 ))}
@@ -375,19 +397,19 @@ export default function HospitalisationPage() {
             </label>
             <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11 }}>
               <span style={{ color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                Médecin
+                {t('hospit.filter.doctor')}
               </span>
               <Select
                 value={medecinFilter}
                 onChange={(e) => setMedecinFilter(e.target.value)}
-                aria-label="Filtrer par médecin"
+                aria-label={t('hospit.filter.doctorAria')}
                 style={{
                   height: 32, padding: '0 8px',
                   border: '1px solid var(--border)', borderRadius: 6,
                   fontFamily: 'inherit', fontSize: 12.5, background: 'var(--surface)',
                 }}
               >
-                <option value="ALL">Tous les médecins</option>
+                <option value="ALL">{t('hospit.filter.allDoctors')}</option>
                 {stayDoctors.map((p) => (
                   <option key={p.id} value={p.id}>Dr {p.lastName}</option>
                 ))}
@@ -403,13 +425,13 @@ export default function HospitalisationPage() {
                   cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', color: 'var(--primary)',
                 }}
               >
-                Réinitialiser
+                {t('hospit.filter.reset')}
               </button>
             )}
           </div>
           {hasActiveFilter && (
             <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-3)' }}>
-              {stays.length} résultat{stays.length > 1 ? 's' : ''} (sur {listStays.length})
+              {t(stays.length > 1 ? 'hospit.filter.resultsPlural' : 'hospit.filter.results', { n: stays.length, total: listStays.length })}
             </div>
           )}
         </Panel>
@@ -417,24 +439,24 @@ export default function HospitalisationPage() {
         {/* Liste séjours en cards riches */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {isLoading && (
-            <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: 16 }}>Chargement…</div>
+            <div style={{ color: 'var(--ink-3)', fontSize: 13, padding: 16 }}>{t('hospit.list.loading')}</div>
           )}
           {error && (
-            <div style={{ color: 'var(--danger)', fontSize: 13, padding: 16 }}>{error}</div>
+            <div style={{ color: 'var(--danger)', fontSize: 13, padding: 16 }}>{t(error)}</div>
           )}
           {!isLoading && listStays.length === 0 && (
             <Panel style={{ padding: 32, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
                 {statusSeg === 'encours'
-                  ? 'Aucun patient hospitalisé. Cliquez sur « Nouvelle admission » pour démarrer un séjour.'
-                  : 'Aucun séjour dans l\'historique pour ce filtre.'}
+                  ? t('hospit.list.emptyEncours')
+                  : t('hospit.list.emptyHistorique')}
               </div>
             </Panel>
           )}
           {!isLoading && listStays.length > 0 && stays.length === 0 && (
             <Panel style={{ padding: 24, textAlign: 'center' }}>
               <div style={{ fontSize: 13, color: 'var(--ink-3)' }}>
-                Aucun séjour ne correspond aux filtres.
+                {t('hospit.list.noMatch')}
               </div>
             </Panel>
           )}

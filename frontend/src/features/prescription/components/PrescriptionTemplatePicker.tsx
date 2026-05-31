@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Doc, Search } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
+import type { I18nContextValue } from '@/lib/i18n/I18nProvider';
 import {
   usePrescriptionTemplates,
   type PrescriptionTemplate,
@@ -23,6 +25,7 @@ interface PrescriptionTemplatePickerProps {
 const MOBILE_BREAKPOINT = 768;
 
 export function PrescriptionTemplatePicker({ type, onLoad, disabled }: PrescriptionTemplatePickerProps) {
+  const { t } = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [isMobile, setIsMobile] = useState(false);
@@ -34,7 +37,7 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
   const filtered = useMemo(() => {
     if (!query.trim()) return templates;
     const q = query.toLowerCase();
-    return templates.filter((t) => t.name.toLowerCase().includes(q));
+    return templates.filter((tpl) => tpl.name.toLowerCase().includes(q));
   }, [templates, query]);
 
   // Detect mobile via window.innerWidth — pas de matchMedia hook ici, simple suffit.
@@ -71,11 +74,14 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
     if (open) setQuery('');
   }, [open]);
 
-  function handlePick(t: PrescriptionTemplate) {
-    onLoad(t);
+  function handlePick(tpl: PrescriptionTemplate) {
+    onLoad(tpl);
     setOpen(false);
     toast.success(
-      `Modèle « ${t.name} » ajouté (${t.lineCount} ligne${t.lineCount > 1 ? 's' : ''}).`,
+      t(tpl.lineCount > 1 ? 'presc.tpl.added.many' : 'presc.tpl.added.one', {
+        name: tpl.name,
+        n: tpl.lineCount,
+      }),
     );
   }
 
@@ -92,16 +98,16 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
         size="sm"
         onClick={() => setOpen((v) => !v)}
         disabled={disabled === true || isLoading}
-        aria-label="Charger un modèle"
+        aria-label={t('presc.tpl.load')}
       >
-        <Doc /> Charger un modèle
+        <Doc /> {t('presc.tpl.load')}
       </Button>
 
       {open && !isMobile && (
         <div
           ref={popoverRef}
           role="dialog"
-          aria-label="Choisir un modèle"
+          aria-label={t('presc.tpl.choose')}
           style={{
             position: 'absolute',
             top: 64,
@@ -124,6 +130,7 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
             setQuery={setQuery}
             onPick={handlePick}
             type={type}
+            t={t}
           />
         </div>
       )}
@@ -132,7 +139,7 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Choisir un modèle"
+          aria-label={t('presc.tpl.choose')}
           style={{
             position: 'fixed',
             inset: 0,
@@ -164,11 +171,11 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
                 alignItems: 'center',
               }}
             >
-              <strong style={{ flex: 1, fontSize: 14 }}>Charger un modèle</strong>
+              <strong style={{ flex: 1, fontSize: 14 }}>{t('presc.tpl.load')}</strong>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Fermer"
+                aria-label={t('presc.tpl.close')}
                 style={{
                   background: 'none',
                   border: 'none',
@@ -187,6 +194,7 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
               setQuery={setQuery}
               onPick={handlePick}
               type={type}
+              t={t}
             />
           </div>
         </div>
@@ -196,14 +204,15 @@ export function PrescriptionTemplatePicker({ type, onLoad, disabled }: Prescript
 }
 
 function PickerBody({
-  templates, isLoading, query, setQuery, onPick, type,
+  templates, isLoading, query, setQuery, onPick, type, t,
 }: {
   templates: PrescriptionTemplate[];
   isLoading: boolean;
   query: string;
   setQuery: (v: string) => void;
-  onPick: (t: PrescriptionTemplate) => void;
+  onPick: (tpl: PrescriptionTemplate) => void;
   type: TemplateType;
+  t: I18nContextValue['t'];
 }) {
   return (
     <>
@@ -225,7 +234,7 @@ function PickerBody({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Rechercher un modèle…"
+          placeholder={t('presc.tpl.search.ph')}
           autoFocus
           style={{
             width: '100%',
@@ -237,33 +246,33 @@ function PickerBody({
             fontFamily: 'inherit',
             background: 'var(--surface)',
           }}
-          aria-label="Rechercher dans mes modèles"
+          aria-label={t('presc.tpl.search.aria')}
         />
       </div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {isLoading && (
-          <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>Chargement…</div>
+          <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>{t('presc.tpl.loading')}</div>
         )}
         {!isLoading && templates.length === 0 && (
           <div style={{ padding: 16, fontSize: 12, color: 'var(--ink-3)' }}>
             {query
-              ? 'Aucun modèle ne correspond.'
+              ? t('presc.tpl.noMatch')
               : (
                 <>
-                  Aucun modèle {type === 'DRUG' ? 'médicament' : type === 'LAB' ? 'analyse' : "d'imagerie"} créé.
+                  {t(`presc.tpl.empty.${type}`)}
                   <br />
                   <a href="/parametres" style={{ color: 'var(--primary)' }}>
-                    Créer depuis Paramétrage → Modèles d&apos;ordonnance
+                    {t('presc.tpl.empty.link')}
                   </a>
                 </>
               )}
           </div>
         )}
-        {templates.map((t) => (
+        {templates.map((tpl) => (
           <button
-            key={t.id}
+            key={tpl.id}
             type="button"
-            onClick={() => onPick(t)}
+            onClick={() => onPick(tpl)}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -278,9 +287,11 @@ function PickerBody({
               textAlign: 'left',
             }}
           >
-            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>{t.name}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink-1)' }}>{tpl.name}</span>
             <span style={{ fontSize: 11.5, color: 'var(--ink-3)' }}>
-              {t.lineCount} ligne{t.lineCount > 1 ? 's' : ''}
+              {t(tpl.lineCount > 1 ? 'presc.tpl.lineCount.many' : 'presc.tpl.lineCount.one', {
+                n: tpl.lineCount,
+              })}
             </span>
           </button>
         ))}

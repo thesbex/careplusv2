@@ -9,6 +9,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 export interface PractitionerView {
   id: string;
@@ -21,6 +22,7 @@ export interface PractitionerView {
 const STABLE_EMPTY: PractitionerView[] = [];
 
 export function usePractitioners() {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['practitioners'],
     queryFn: () =>
@@ -30,6 +32,6 @@ export function usePractitioners() {
   return {
     practitioners: data ?? STABLE_EMPTY,
     isLoading,
-    error: error ? 'Impossible de charger la liste des médecins.' : null,
+    error: error ? t('settings.errors.loadPractitioners') : null,
   };
 }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockArticle } from '../types';
 
 type ArticleDetail = StockArticle;
@@ -9,6 +10,7 @@ type ArticleDetail = StockArticle;
  * GET /api/stock/articles/:id
  */
 export function useStockArticle(id: string | undefined) {
+  const { t } = useT();
   const { data, isLoading, error } = useQuery({
     queryKey: ['stock', 'article', id],
     queryFn: () =>
@@ -20,6 +22,6 @@ export function useStockArticle(id: string | undefined) {
   return {
     article: data ?? null,
     isLoading,
-    error: error ? "Impossible de charger l'article." : null,
+    error: error ? t('stock.err.loadArticle') : null,
   };
 }

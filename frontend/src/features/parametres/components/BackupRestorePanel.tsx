@@ -45,7 +45,7 @@ export function BackupRestorePanel() {
     api
       .get<BackupFile[]>('/admin/backups')
       .then((r) => setFiles(r.data))
-      .catch(() => setError('Impossible de lister les sauvegardes.'))
+      .catch(() => setError(t('settings.backup.listError')))
       .finally(() => setLoading(false));
   }
 
@@ -64,12 +64,12 @@ export function BackupRestorePanel() {
       const res = await api
         .post<{ message: string }>('/admin/backups/restore', { fileName: target.name })
         .then((r) => r.data);
-      toast.success('Restauration terminée.', { description: res.message });
+      toast.success(t('settings.backup.restoreDone'), { description: res.message });
       setTarget(null);
       setConfirmText('');
     } catch (err) {
       const ax = err as { response?: { data?: { detail?: string; title?: string } } };
-      toast.error('Restauration impossible', {
+      toast.error(t('settings.backup.restoreErr'), {
         description: ax.response?.data?.detail ?? ax.response?.data?.title,
       });
     } finally {
@@ -136,7 +136,7 @@ export function BackupRestorePanel() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Confirmer la restauration"
+          aria-label={t('settings.backup.confirmAria')}
           style={{
             position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.45)',
             display: 'grid', placeItems: 'center', zIndex: 1000,
@@ -154,16 +154,16 @@ export function BackupRestorePanel() {
               {t('settings.backup.confirmTitle')}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--ink-2)', lineHeight: 1.5 }}>
-              Vous allez remplacer <strong>toutes les données actuelles</strong> par la sauvegarde{' '}
-              <span className="mono">{target.name}</span>. Cette action est{' '}
-              <strong>irréversible</strong>. Pour confirmer, saisissez{' '}
-              <strong>RESTAURER</strong> ci-dessous.
+              {t('settings.backup.confirmBody', {
+                file: target.name,
+                keyword: t('settings.backup.confirmKeyword'),
+              })}
             </div>
             <input
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="RESTAURER"
-              aria-label="Confirmation"
+              placeholder={t('settings.backup.confirmKeyword')}
+              aria-label={t('settings.backup.confirmInputAria')}
               style={{
                 height: 36, padding: '0 10px', border: '1px solid var(--border)',
                 borderRadius: 6, fontFamily: 'inherit', fontSize: 13,
@@ -173,7 +173,7 @@ export function BackupRestorePanel() {
               <Button onClick={() => setTarget(null)} disabled={restoring}>{t('common.cancel')}</Button>
               <Button
                 variant="danger"
-                disabled={restoring || confirmText !== 'RESTAURER'}
+                disabled={restoring || confirmText !== t('settings.backup.confirmKeyword')}
                 onClick={() => void doRestore()}
               >
                 {restoring ? t('common.saving') : t('settings.backup.confirmDo')}

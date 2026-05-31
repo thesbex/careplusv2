@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useInternalRequests,
   useClaimInternalRequest,
@@ -54,11 +55,19 @@ const TAB_MAP: Record<MobileTab, string> = {
   menu: '/parametres',
 };
 
-const TABS: { id: InternalStatus; label: string }[] = [
-  { id: 'PENDING', label: 'En attente' },
-  { id: 'IN_PROGRESS', label: 'En cours' },
-  { id: 'DONE', label: 'Traitées' },
+const TABS: { id: InternalStatus; labelKey: string }[] = [
+  { id: 'PENDING', labelKey: 'ir.tab.pending' },
+  { id: 'IN_PROGRESS', labelKey: 'ir.tab.inProgress' },
+  { id: 'DONE', labelKey: 'ir.tab.done' },
 ];
+
+// Suffixe d'état affiché dans le sous-titre (lowercase) — clé par statut.
+const STATUS_KEY: Record<InternalStatus, string> = {
+  PENDING: 'ir.status.pending',
+  IN_PROGRESS: 'ir.status.inProgress',
+  DONE: 'ir.status.done',
+  CANCELLED: 'ir.status.done',
+};
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—';
@@ -72,6 +81,7 @@ function formatDateTime(iso: string | null): string {
 }
 
 export default function QueuePage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { service: serviceParam } = useParams<{ service: string }>();
@@ -84,26 +94,26 @@ export default function QueuePage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploadingLineId, setUploadingLineId] = useState<string | null>(null);
 
-  const title = service === 'LAB' ? 'Laboratoire' : 'Radiologie';
-  const ctaLabel = service === 'LAB' ? 'Prendre en charge' : 'Prendre en charge';
+  const title = service === 'LAB' ? t('ir.title.lab') : t('ir.title.radio');
+  const ctaLabel = t('ir.claim');
 
   async function handleClaim(lineId: string) {
     try {
       await claim(lineId);
-      toast.success('Demande prise en charge.');
+      toast.success(t('ir.toast.claimed'));
     } catch {
-      toast.error('Échec de la prise en charge.');
+      toast.error(t('ir.toast.claimFailed'));
     }
   }
 
   async function handleCancel(lineId: string) {
     // eslint-disable-next-line no-alert
-    if (!window.confirm('Annuler cette demande ?')) return;
+    if (!window.confirm(t('ir.confirmCancel'))) return;
     try {
       await cancel(lineId);
-      toast.success('Demande annulée.');
+      toast.success(t('ir.toast.cancelled'));
     } catch {
-      toast.error("Annulation impossible.");
+      toast.error(t('ir.toast.cancelFailed'));
     }
   }
 
@@ -118,9 +128,9 @@ export default function QueuePage() {
     if (!file || !uploadingLineId) return;
     try {
       await attach({ lineId: uploadingLineId, file });
-      toast.success('Résultat téléversé.');
+      toast.success(t('ir.toast.resultUploaded'));
     } catch {
-      toast.error('Échec du téléversement du résultat.');
+      toast.error(t('ir.toast.uploadFailed'));
     } finally {
       setUploadingLineId(null);
     }
@@ -143,7 +153,7 @@ export default function QueuePage() {
       // Libère la mémoire un peu plus tard (le browser doit avoir le temps d'ouvrir).
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
-      toast.error('Impossible d\'ouvrir le résultat.');
+      toast.error(t('ir.toast.openFailed'));
     }
   }
 
@@ -158,21 +168,21 @@ export default function QueuePage() {
         overflowX: 'auto',
       }}
       role="tablist"
-      aria-label="Onglets queue"
+      aria-label={t('ir.tabsAria')}
     >
-      {TABS.map((t) => (
+      {TABS.map((tabItem) => (
         <button
-          key={t.id}
+          key={tabItem.id}
           type="button"
           role="tab"
-          aria-selected={tab === t.id}
-          onClick={() => setTab(t.id)}
+          aria-selected={tab === tabItem.id}
+          onClick={() => setTab(tabItem.id)}
           style={{
             padding: '6px 14px',
             border: '1px solid var(--border)',
             borderRadius: 999,
-            background: tab === t.id ? 'var(--primary)' : 'var(--surface)',
-            color: tab === t.id ? 'white' : 'var(--ink-2)',
+            background: tab === tabItem.id ? 'var(--primary)' : 'var(--surface)',
+            color: tab === tabItem.id ? 'white' : 'var(--ink-2)',
             fontFamily: 'inherit',
             fontSize: 12.5,
             fontWeight: 550,
@@ -180,7 +190,7 @@ export default function QueuePage() {
             whiteSpace: 'nowrap',
           }}
         >
-          {t.label}
+          {t(tabItem.labelKey)}
         </button>
       ))}
     </div>
@@ -189,16 +199,16 @@ export default function QueuePage() {
   const list = (
     <div style={{ padding: isMobile ? 12 : 24, overflow: 'auto', flex: 1 }} className="scroll">
       {isLoading && (
-        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>Chargement…</div>
+        <div style={{ color: 'var(--ink-3)', fontSize: 13 }}>{t('ir.loading')}</div>
       )}
       {error && (
-        <div style={{ color: 'var(--danger)', fontSize: 13 }}>{error}</div>
+        <div style={{ color: 'var(--danger)', fontSize: 13 }}>{t('ir.err.load')}</div>
       )}
       {!isLoading && !error && rows.length === 0 && (
         <Panel>
-          <PanelHeader>Rien à afficher</PanelHeader>
+          <PanelHeader>{t('ir.empty.title')}</PanelHeader>
           <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13, textAlign: 'center' }}>
-            Aucune demande {tab === 'PENDING' ? 'en attente' : tab === 'IN_PROGRESS' ? 'en cours' : 'traitée'}.
+            {t('ir.empty.body', { status: t(STATUS_KEY[tab]) })}
           </div>
         </Panel>
       )}
@@ -220,10 +230,10 @@ export default function QueuePage() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             <strong style={{ fontSize: 14 }}>{row.testName ?? '—'}</strong>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Patient : {row.patientName ?? '—'}
+              {t('ir.patient', { name: row.patientName ?? '—' })}
             </span>
             <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-              Demandé par : {row.doctorName ?? '—'}
+              {t('ir.requestedBy', { name: row.doctorName ?? '—' })}
             </span>
             <span style={{ fontSize: 11, color: 'var(--ink-3)', marginLeft: 'auto' }}>
               {formatDateTime(row.assignedAt)}
@@ -233,7 +243,7 @@ export default function QueuePage() {
             {tab === 'PENDING' && (
               <>
                 <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
-                  Annuler
+                  {t('ir.cancel')}
                 </Button>
                 <Button variant="primary" size="sm" disabled={isClaiming} onClick={() => void handleClaim(row.lineId)}>
                   {ctaLabel}
@@ -243,7 +253,7 @@ export default function QueuePage() {
             {tab === 'IN_PROGRESS' && (
               <>
                 <Button variant="ghost" size="sm" disabled={isCancelling} onClick={() => void handleCancel(row.lineId)}>
-                  Annuler
+                  {t('ir.cancel')}
                 </Button>
                 <Button
                   variant="primary"
@@ -251,14 +261,14 @@ export default function QueuePage() {
                   disabled={isUploading}
                   onClick={() => pickResult(row.lineId)}
                 >
-                  {isUploading && uploadingLineId === row.lineId ? 'Téléversement…' : 'Téléverser résultat'}
+                  {isUploading && uploadingLineId === row.lineId ? t('ir.uploading') : t('ir.uploadResult')}
                 </Button>
               </>
             )}
             {tab === 'DONE' && (
               <>
                 <span style={{ fontSize: 12, color: 'var(--ink-3)', marginRight: 'auto' }}>
-                  Résultat attaché à la consultation
+                  {t('ir.resultAttached')}
                 </span>
                 {row.resultDocumentId && (
                   <Button
@@ -266,7 +276,7 @@ export default function QueuePage() {
                     size="sm"
                     onClick={() => void viewResult(row.resultDocumentId!)}
                   >
-                    Voir le résultat
+                    {t('ir.viewResult')}
                   </Button>
                 )}
               </>
@@ -295,9 +305,9 @@ export default function QueuePage() {
         onTabChange={(t) => navigate(TAB_MAP[t])}
         topbar={
           <MTopbar
-            left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
+            left={<MIconBtn icon="ChevronLeft" label={t('ir.back')} onClick={() => navigate('/parametres')} />}
             title={title}
-            sub={`${rows.length} demande${rows.length > 1 ? 's' : ''} ${tab.toLowerCase()}`}
+            sub={t('ir.sub', { n: rows.length, s: rows.length > 1 ? 's' : '', status: t(STATUS_KEY[tab]) })}
           />
         }
       >
@@ -312,7 +322,7 @@ export default function QueuePage() {
       // V038 — pas de slot dédié dans la sidebar pour la queue, on n'active rien.
       active="dashboard"
       title={title}
-      sub={`${rows.length} demande${rows.length > 1 ? 's' : ''} ${tab.toLowerCase()}`}
+      sub={t('ir.sub', { n: rows.length, s: rows.length > 1 ? 's' : '', status: t(STATUS_KEY[tab]) })}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
       {tabBar}

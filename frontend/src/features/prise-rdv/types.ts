@@ -17,5 +17,10 @@ export interface PatientCandidate {
   name: string;
   phone: string;
   lastVisit: string;
+  /** Literal display tags (e.g. fixture badges). Localized labels such as the
+   *  age are carried via `ageYears` and formatted at render time with t(). */
   tags: string[];
+  /** Age in years, or null when the birthdate is unknown. Rendered via
+   *  t('rdv.years', { n }) so the unit is localized (#122). */
+  ageYears?: number | null;
 }

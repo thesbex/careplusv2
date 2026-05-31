@@ -15,12 +15,13 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Plus } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
-  STATUS_LABEL,
-  OUTCOME_LABEL,
-  PRESENTATION_LABEL,
-  ULTRASOUND_KIND_LABEL,
-  VISIT_PLAN_STATUS_LABEL,
+  STATUS_LABEL_KEY,
+  OUTCOME_LABEL_KEY,
+  PRESENTATION_LABEL_KEY,
+  ULTRASOUND_KIND_LABEL_KEY,
+  VISIT_PLAN_STATUS_LABEL_KEY,
   type Pregnancy,
   type Trimester,
 } from '../types';
@@ -42,6 +43,8 @@ import '../grossesse.css';
 interface PregnancyTabProps {
   patientId: string;
 }
+
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
 const PLAN_TARGETS: number[] = [12, 20, 26, 30, 34, 36, 38, 40];
 
@@ -69,35 +72,37 @@ function fmtDateTime(iso: string | null | undefined): string {
   });
 }
 
-function PregnancyHeaderStats({ pregnancy }: { pregnancy: Pregnancy }) {
+function PregnancyHeaderStats({ pregnancy, t }: { pregnancy: Pregnancy; t: Tr }) {
   return (
     <div className="gr-header">
       <div className="gr-header-stats">
         <div className="gr-stat">
-          <span className="gr-stat-label">SA actuelle</span>
+          <span className="gr-stat-label">{t('gross.stat.saCurrent')}</span>
           <span className="gr-stat-value">
             {pregnancy.saWeeks ?? '—'}
             {pregnancy.saWeeks != null && (
               <span style={{ fontSize: 12, color: 'var(--ink-3)', marginLeft: 4 }}>
-                sem {pregnancy.saDays != null ? `+${pregnancy.saDays}j` : ''}
+                {t('gross.stat.weeks')} {pregnancy.saDays != null ? `+${pregnancy.saDays}j` : ''}
               </span>
             )}
           </span>
         </div>
         <div className="gr-stat">
-          <span className="gr-stat-label">DPA</span>
+          <span className="gr-stat-label">{t('gross.stat.dpa')}</span>
           <span className="gr-stat-value">{fmtDate(pregnancy.dueDate)}</span>
           <span className="gr-stat-sub">
-            {pregnancy.dueDateSource === 'ECHO_T1' ? 'Corrigée par écho T1' : 'Naegele'}
+            {pregnancy.dueDateSource === 'ECHO_T1'
+              ? t('gross.stat.dpaEchoT1')
+              : t('gross.stat.dpaNaegele')}
           </span>
         </div>
         <div className="gr-stat">
-          <span className="gr-stat-label">DDR</span>
+          <span className="gr-stat-label">{t('gross.stat.ddr')}</span>
           <span className="gr-stat-value">{fmtDate(pregnancy.lmpDate)}</span>
         </div>
         {pregnancy.gravidity != null && (
           <div className="gr-stat">
-            <span className="gr-stat-label">G / P / A / V</span>
+            <span className="gr-stat-label">{t('gross.stat.gpav')}</span>
             <span className="gr-stat-value">
               {pregnancy.gravidity ?? 0}/{pregnancy.parity ?? 0}/{pregnancy.abortions ?? 0}/
               {pregnancy.livingChildren ?? 0}
@@ -109,12 +114,12 @@ function PregnancyHeaderStats({ pregnancy }: { pregnancy: Pregnancy }) {
   );
 }
 
-function PlanTimeline({ pregnancyId }: { pregnancyId: string }) {
+function PlanTimeline({ pregnancyId, t }: { pregnancyId: string; t: Tr }) {
   const { plan } = usePregnancyPlan(pregnancyId);
   const byWeeks = new Map(plan.map((p) => [p.targetSaWeeks, p]));
 
   return (
-    <div className="gr-plan" aria-label="Plan de visites prénatales">
+    <div className="gr-plan" aria-label={t('gross.tab.planAria')}>
       {PLAN_TARGETS.map((sa) => {
         const entry = byWeeks.get(sa);
         const status = entry?.status ?? 'PLANIFIEE';
@@ -124,8 +129,11 @@ function PlanTimeline({ pregnancyId }: { pregnancyId: string }) {
             className={`gr-plan-chip ${status.toLowerCase()}`}
             title={
               entry
-                ? `${VISIT_PLAN_STATUS_LABEL[entry.status]} — cible ${fmtDate(entry.targetDate)}`
-                : `SA ${sa} — non planifiée`
+                ? t('gross.tab.planTitle', {
+                    label: t(VISIT_PLAN_STATUS_LABEL_KEY[entry.status]),
+                    date: fmtDate(entry.targetDate),
+                  })
+                : t('gross.tab.planNotPlanned', { sa })
             }
           >
             SA {sa}
@@ -137,6 +145,7 @@ function PlanTimeline({ pregnancyId }: { pregnancyId: string }) {
 }
 
 export function PregnancyTab({ patientId }: PregnancyTabProps) {
+  const { t } = useT();
   const { pregnancy, isLoading: loadingCurrent } = useCurrentPregnancy(patientId);
   const { pregnancies, isLoading: loadingHistory } = usePregnancies(patientId);
 
@@ -167,7 +176,7 @@ export function PregnancyTab({ patientId }: PregnancyTabProps) {
             borderRadius: 'var(--r-md)',
             animation: 'pulse 1.4s infinite',
           }}
-          aria-label="Chargement de la grossesse…"
+          aria-label={t('gross.tab.loading')}
         />
       </div>
     );
@@ -180,7 +189,7 @@ export function PregnancyTab({ patientId }: PregnancyTabProps) {
       <div className="gr-tab" data-testid="pregnancy-tab-empty">
         <div className="gr-section" style={{ textAlign: 'center', padding: '32px 16px' }}>
           <div style={{ fontSize: 14, color: 'var(--ink-2)', marginBottom: 12 }}>
-            Pas de grossesse en cours pour cette patiente.
+            {t('gross.tab.emptyDesktop')}
           </div>
           {canDeclare && (
             <Button
@@ -189,12 +198,12 @@ export function PregnancyTab({ patientId }: PregnancyTabProps) {
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
               <Plus style={{ width: 14, height: 14 }} />
-              Déclarer une grossesse
+              {t('gross.action.declare')}
             </Button>
           )}
         </div>
 
-        {closed.length > 0 && <ObstetricHistorySection pregnancies={closed} loading={loadingHistory} />}
+        {closed.length > 0 && <ObstetricHistorySection pregnancies={closed} loading={loadingHistory} t={t} />}
 
         <PregnancyDeclareDialog
           patientId={patientId}
@@ -225,11 +234,13 @@ export function PregnancyTab({ patientId }: PregnancyTabProps) {
         onOpenUs={() => setUsOpen(true)}
         onOpenClose={() => setCloseOpen(true)}
         onOpenCreateChild={() => setCreateChildOpen(true)}
+        t={t}
       />
 
       <ObstetricHistorySection
         pregnancies={pregnancies.filter((p) => p.id !== pregnancy.id && p.status !== 'EN_COURS')}
         loading={loadingHistory}
+        t={t}
       />
 
       {/* Drawers + dialogs */}
@@ -263,6 +274,7 @@ interface CurrentPregnancySectionProps {
   onOpenUs: () => void;
   onOpenClose: () => void;
   onOpenCreateChild: () => void;
+  t: Tr;
 }
 
 function CurrentPregnancySection({
@@ -277,6 +289,7 @@ function CurrentPregnancySection({
   onOpenUs,
   onOpenClose,
   onOpenCreateChild,
+  t,
 }: CurrentPregnancySectionProps) {
   const { visits } = usePregnancyVisits(pregnancy.id);
   const { ultrasounds } = usePregnancyUltrasounds(pregnancy.id);
@@ -288,15 +301,15 @@ function CurrentPregnancySection({
 
       <div className="gr-section">
         <div className="gr-section-title">
-          Grossesse en cours{' '}
+          {t('gross.tab.current')}{' '}
           <span className={`gr-status-pill ${pregnancy.status}`}>
-            {STATUS_LABEL[pregnancy.status]}
+            {t(STATUS_LABEL_KEY[pregnancy.status])}
           </span>
         </div>
-        <PregnancyHeaderStats pregnancy={pregnancy} />
+        <PregnancyHeaderStats pregnancy={pregnancy} t={t} />
 
         <div style={{ marginTop: 14 }}>
-          <PlanTimeline pregnancyId={pregnancy.id} />
+          <PlanTimeline pregnancyId={pregnancy.id} t={t} />
         </div>
 
         {/* Notes saisies à la déclaration / mise à jour de la grossesse —
@@ -314,7 +327,7 @@ function CurrentPregnancySection({
                 marginBottom: 6,
               }}
             >
-              Note
+              {t('gross.tab.note')}
             </div>
             <div
               style={{
@@ -335,12 +348,12 @@ function CurrentPregnancySection({
         <div className="gr-actions" style={{ marginTop: 14 }}>
           {canRecordVisit && (
             <Button variant="primary" size="sm" onClick={onOpenVisit}>
-              Saisir visite
+              {t('gross.action.recordVisit')}
             </Button>
           )}
           {canRecordUs && (
             <Button variant="ghost" size="sm" onClick={onOpenUs}>
-              Saisir écho
+              {t('gross.action.recordUs')}
             </Button>
           )}
           {canPrescribeBio &&
@@ -354,12 +367,12 @@ function CurrentPregnancySection({
             ))}
           {canClose && pregnancy.status === 'EN_COURS' && (
             <Button variant="ghost" size="sm" onClick={onOpenClose}>
-              Clôturer la grossesse
+              {t('gross.action.close')}
             </Button>
           )}
           {showCreateChildCta && canCreateChild && (
             <Button variant="primary" size="sm" onClick={onOpenCreateChild}>
-              Créer la fiche enfant
+              {t('gross.action.createChild')}
             </Button>
           )}
         </div>
@@ -367,20 +380,20 @@ function CurrentPregnancySection({
 
       {/* Visits table */}
       <div className="gr-section">
-        <div className="gr-section-title">Visites enregistrées</div>
+        <div className="gr-section-title">{t('gross.visits.title')}</div>
         {visits.length === 0 ? (
-          <div className="gr-empty">Aucune visite enregistrée.</div>
+          <div className="gr-empty">{t('gross.visits.empty')}</div>
         ) : (
-          <table className="gr-table" aria-label="Visites">
+          <table className="gr-table" aria-label={t('gross.visits.aria')}>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>SA</th>
-                <th>Poids</th>
-                <th>TA</th>
-                <th>BCF</th>
-                <th>HU</th>
-                <th>Présent.</th>
+                <th>{t('gross.col.date')}</th>
+                <th>{t('gross.col.sa')}</th>
+                <th>{t('gross.col.weight')}</th>
+                <th>{t('gross.col.ta')}</th>
+                <th>{t('gross.col.bcf')}</th>
+                <th>{t('gross.col.hu')}</th>
+                <th>{t('gross.col.presentation')}</th>
               </tr>
             </thead>
             <tbody>
@@ -398,7 +411,7 @@ function CurrentPregnancySection({
                   </td>
                   <td>{v.fetalHeartRateBpm != null ? `${v.fetalHeartRateBpm}` : '—'}</td>
                   <td>{v.fundalHeightCm != null ? `${v.fundalHeightCm} cm` : '—'}</td>
-                  <td>{v.presentation ? PRESENTATION_LABEL[v.presentation] : '—'}</td>
+                  <td>{v.presentation ? t(PRESENTATION_LABEL_KEY[v.presentation]) : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -408,25 +421,25 @@ function CurrentPregnancySection({
 
       {/* Ultrasounds table */}
       <div className="gr-section">
-        <div className="gr-section-title">Échographies</div>
+        <div className="gr-section-title">{t('gross.us.title')}</div>
         {ultrasounds.length === 0 ? (
-          <div className="gr-empty">Aucune échographie enregistrée.</div>
+          <div className="gr-empty">{t('gross.us.empty')}</div>
         ) : (
-          <table className="gr-table" aria-label="Échographies">
+          <table className="gr-table" aria-label={t('gross.us.aria')}>
             <thead>
               <tr>
-                <th>Type</th>
-                <th>Date</th>
-                <th>SA</th>
-                <th>Conclusions</th>
-                <th>Corrige DPA</th>
-                <th>Compte-rendu</th>
+                <th>{t('gross.us.col.type')}</th>
+                <th>{t('gross.col.date')}</th>
+                <th>{t('gross.us.col.sa')}</th>
+                <th>{t('gross.us.col.findings')}</th>
+                <th>{t('gross.us.col.correctsDpa')}</th>
+                <th>{t('gross.us.col.report')}</th>
               </tr>
             </thead>
             <tbody>
               {ultrasounds.map((u) => (
                 <tr key={u.id}>
-                  <td>{ULTRASOUND_KIND_LABEL[u.kind]}</td>
+                  <td>{t(ULTRASOUND_KIND_LABEL_KEY[u.kind])}</td>
                   <td>{fmtDate(u.performedAt)}</td>
                   <td>
                     {u.saWeeksAtExam}+{u.saDaysAtExam}
@@ -434,9 +447,9 @@ function CurrentPregnancySection({
                   <td style={{ maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {u.findings ?? '—'}
                   </td>
-                  <td>{u.correctsDueDate ? 'Oui' : '—'}</td>
+                  <td>{u.correctsDueDate ? t('gross.us.yes') : '—'}</td>
                   <td>
-                    <UltrasoundCrPdfButton pregnancyId={pregnancy.id} ultrasoundId={u.id} />
+                    <UltrasoundCrPdfButton pregnancyId={pregnancy.id} ultrasoundId={u.id} t={t} />
                   </td>
                 </tr>
               ))}
@@ -455,9 +468,11 @@ function CurrentPregnancySection({
 function UltrasoundCrPdfButton({
   pregnancyId,
   ultrasoundId,
+  t,
 }: {
   pregnancyId: string;
   ultrasoundId: string;
+  t: Tr;
 }) {
   const [busy, setBusy] = useState(false);
   return (
@@ -465,15 +480,15 @@ function UltrasoundCrPdfButton({
       variant="ghost"
       size="sm"
       disabled={busy}
-      aria-label="Télécharger le compte-rendu PDF"
+      aria-label={t('gross.us.crPdfAria')}
       onClick={() => {
         setBusy(true);
         downloadUltrasoundCrPdf(pregnancyId, ultrasoundId)
-          .catch(() => toast.error('Compte-rendu PDF indisponible.'))
+          .catch(() => toast.error(t('gross.us.crPdfUnavailable')))
           .finally(() => setBusy(false));
       }}
     >
-      {busy ? '…' : 'Compte-rendu PDF'}
+      {busy ? '…' : t('gross.us.crPdf')}
     </Button>
   );
 }
@@ -481,37 +496,38 @@ function UltrasoundCrPdfButton({
 interface ObstetricHistorySectionProps {
   pregnancies: Pregnancy[];
   loading: boolean;
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
-function ObstetricHistorySection({ pregnancies, loading }: ObstetricHistorySectionProps) {
+function ObstetricHistorySection({ pregnancies, loading, t }: ObstetricHistorySectionProps) {
   return (
     <div className="gr-section" data-testid="obstetric-history">
-      <div className="gr-section-title">Antécédents obstétricaux</div>
+      <div className="gr-section-title">{t('gross.history.title')}</div>
       {loading ? (
-        <div className="gr-empty">Chargement…</div>
+        <div className="gr-empty">{t('common.loading')}</div>
       ) : pregnancies.length === 0 ? (
-        <div className="gr-empty">Aucun antécédent obstétrical.</div>
+        <div className="gr-empty">{t('gross.history.empty')}</div>
       ) : (
         <div>
           {pregnancies.map((p) => (
             <div key={p.id} className="gr-history-row">
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {p.outcome ? OUTCOME_LABEL[p.outcome] : 'Issue inconnue'}
+                  {p.outcome ? t(OUTCOME_LABEL_KEY[p.outcome]) : t('gross.history.unknownOutcome')}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                  DDR {fmtDate(p.lmpDate)} — Fin {fmtDate(p.endedAt)}
+                  {t('gross.history.ddrEnd', { ddr: fmtDate(p.lmpDate), end: fmtDate(p.endedAt) })}
                 </div>
               </div>
               <span className={`gr-status-pill ${p.status}`}>
-                {STATUS_LABEL[p.status]}
+                {t(STATUS_LABEL_KEY[p.status])}
               </span>
               {p.childPatientId && (
                 <a
                   href={`/patients/${p.childPatientId}`}
                   style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}
                 >
-                  Fiche enfant →
+                  {t('gross.history.childRecord')}
                 </a>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 interface CheckInArgs {
   appointmentId: string;
@@ -9,6 +10,7 @@ interface CheckInArgs {
 }
 
 export function useCheckIn() {
+  const { t } = useT();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -33,6 +35,6 @@ export function useCheckIn() {
       return mutation.mutateAsync(args);
     },
     isPending: mutation.isPending,
-    error: mutation.error ? 'Erreur lors de la déclaration d\'arrivée.' : null,
+    error: mutation.error ? t('salle.toast.checkInErr') : null,
   };
 }

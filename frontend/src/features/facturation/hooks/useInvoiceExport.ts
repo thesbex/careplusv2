@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { InvoiceSearchFilters } from '../types';
 import { filtersToParams } from './useInvoiceSearch';
 
@@ -10,6 +11,7 @@ import { filtersToParams } from './useInvoiceSearch';
  * client (which adds the Bearer header) and pipe it through {@code URL.createObjectURL}.
  */
 export function useInvoiceExport() {
+  const { t } = useT();
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,11 +42,11 @@ export function useInvoiceExport() {
     } catch (e: unknown) {
       const err = e as { response?: { status?: number; data?: unknown } };
       if (err.response?.status === 422) {
-        setError("Trop de résultats à exporter. Affinez vos filtres (max 10 000 factures).");
+        setError(t('factu.export.tooMany'));
       } else if (err.response?.status === 403) {
-        setError("Export réservé aux médecins et administrateurs.");
+        setError(t('factu.export.forbidden'));
       } else {
-        setError("Échec de l'export. Réessayez ou contactez le support.");
+        setError(t('factu.export.failed'));
       }
     } finally {
       setIsExporting(false);

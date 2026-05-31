@@ -22,10 +22,11 @@ import { Input, Select, Textarea } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
 import { DocumentUploadButton } from '@/components/ui/DocumentUploadButton';
 import { usePatientDocuments } from '@/features/dossier-patient/hooks/usePatientDocuments';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { RecordUltrasoundSchema, type RecordUltrasoundValues } from '../schemas';
 import { useRecordUltrasound } from '../hooks/useRecordUltrasound';
 import {
-  ULTRASOUND_KIND_LABEL,
+  ULTRASOUND_KIND_LABEL_KEY,
   toLocalDate,
   type Pregnancy,
   type UltrasoundKind,
@@ -44,6 +45,7 @@ export function PregnancyUltrasoundDrawer({
   open,
   onOpenChange,
 }: PregnancyUltrasoundDrawerProps) {
+  const { t } = useT();
   const recordUs = useRecordUltrasound(pregnancy.id, pregnancy.patientId);
   const { upload, isUploading } = usePatientDocuments(pregnancy.patientId);
   const [documentId, setDocumentId] = useState<string | null>(null);
@@ -52,9 +54,9 @@ export function PregnancyUltrasoundDrawer({
     try {
       const doc = await upload({ file, type: 'IMAGERIE' });
       setDocumentId(doc.id);
-      toast.success('Compte-rendu attaché.');
+      toast.success(t('gross.us.crAttached'));
     } catch {
-      toast.error('Échec du téléversement du compte-rendu.');
+      toast.error(t('gross.us.uploadError'));
     }
   }
 
@@ -87,12 +89,12 @@ export function PregnancyUltrasoundDrawer({
           values.kind === 'T1_DATATION' ? values.correctsDueDate : false,
         ...(documentId ? { documentId } : {}),
       });
-      toast.success('Échographie enregistrée.');
+      toast.success(t('gross.us.success'));
       form.reset();
       setDocumentId(null);
       onOpenChange(false);
     } catch {
-      toast.error('Impossible d\'enregistrer l\'échographie.');
+      toast.error(t('gross.us.error'));
     }
   }
 
@@ -109,11 +111,11 @@ export function PregnancyUltrasoundDrawer({
     >
       <Dialog.Portal>
         <Dialog.Overlay className="gr-overlay" />
-        <Dialog.Content className="gr-drawer" aria-label="Saisir une échographie">
+        <Dialog.Content className="gr-drawer" aria-label={t('gross.us.drawerTitle')}>
           <div className="gr-drawer-header">
-            <Dialog.Title className="gr-drawer-title">Saisir une échographie</Dialog.Title>
+            <Dialog.Title className="gr-drawer-title">{t('gross.us.drawerTitle')}</Dialog.Title>
             <Dialog.Close asChild>
-              <Button variant="ghost" size="sm" iconOnly aria-label="Fermer">
+              <Button variant="ghost" size="sm" iconOnly aria-label={t('common.close')}>
                 <Close />
               </Button>
             </Dialog.Close>
@@ -128,12 +130,12 @@ export function PregnancyUltrasoundDrawer({
           >
             <div className="gr-field">
               <label htmlFor="grus-kind" className="gr-label">
-                Type d&apos;échographie *
+                {t('gross.us.kindLabel')}
               </label>
               <Select id="grus-kind" {...form.register('kind')}>
                 {KINDS.map((k) => (
                   <option key={k} value={k}>
-                    {ULTRASOUND_KIND_LABEL[k]}
+                    {t(ULTRASOUND_KIND_LABEL_KEY[k])}
                   </option>
                 ))}
               </Select>
@@ -141,7 +143,7 @@ export function PregnancyUltrasoundDrawer({
 
             <div className="gr-field">
               <label htmlFor="grus-performedAt" className="gr-label">
-                Date *
+                {t('gross.us.dateLabel')}
               </label>
               <Input
                 id="grus-performedAt"
@@ -151,7 +153,7 @@ export function PregnancyUltrasoundDrawer({
               />
               {form.formState.errors.performedAt && (
                 <div className="gr-error">
-                  {form.formState.errors.performedAt.message}
+                  {t(form.formState.errors.performedAt.message ?? '')}
                 </div>
               )}
             </div>
@@ -159,7 +161,7 @@ export function PregnancyUltrasoundDrawer({
             <div className="gr-grid-2">
               <div className="gr-field">
                 <label htmlFor="grus-saw" className="gr-label">
-                  SA semaines *
+                  {t('gross.us.saWeeksLabel')}
                 </label>
                 <Input
                   id="grus-saw"
@@ -170,13 +172,13 @@ export function PregnancyUltrasoundDrawer({
                 />
                 {form.formState.errors.saWeeksAtExam && (
                   <div className="gr-error">
-                    {form.formState.errors.saWeeksAtExam.message}
+                    {t(form.formState.errors.saWeeksAtExam.message ?? '')}
                   </div>
                 )}
               </div>
               <div className="gr-field">
                 <label htmlFor="grus-sad" className="gr-label">
-                  SA jours
+                  {t('gross.us.saDaysLabel')}
                 </label>
                 <Input
                   id="grus-sad"
@@ -187,48 +189,48 @@ export function PregnancyUltrasoundDrawer({
                 />
                 {form.formState.errors.saDaysAtExam && (
                   <div className="gr-error">
-                    {form.formState.errors.saDaysAtExam.message}
+                    {t(form.formState.errors.saDaysAtExam.message ?? '')}
                   </div>
                 )}
               </div>
             </div>
 
             <div className="gr-field">
-              <span className="gr-label">Biométrie (mm / pourcentile)</span>
+              <span className="gr-label">{t('gross.us.biometryLabel')}</span>
               <div className="gr-grid-2">
                 <Input
                   type="number"
                   step="0.1"
                   placeholder="BIP"
-                  aria-label="BIP — Diamètre bipariétal"
+                  aria-label={t('gross.us.bipAria')}
                   {...form.register('biometry.bip', { valueAsNumber: true })}
                 />
                 <Input
                   type="number"
                   step="0.1"
                   placeholder="PC"
-                  aria-label="PC — Périmètre crânien"
+                  aria-label={t('gross.us.pcAria')}
                   {...form.register('biometry.pc', { valueAsNumber: true })}
                 />
                 <Input
                   type="number"
                   step="0.1"
                   placeholder="DAT"
-                  aria-label="DAT — Diamètre abdominal transverse"
+                  aria-label={t('gross.us.datAria')}
                   {...form.register('biometry.dat', { valueAsNumber: true })}
                 />
                 <Input
                   type="number"
                   step="0.1"
                   placeholder="LF"
-                  aria-label="LF — Longueur fémorale"
+                  aria-label={t('gross.us.lfAria')}
                   {...form.register('biometry.lf', { valueAsNumber: true })}
                 />
                 <Input
                   type="number"
                   step="1"
-                  placeholder="EG (g) — poids estimé"
-                  aria-label="Poids estimé fœtal"
+                  placeholder={t('gross.us.egPlaceholder')}
+                  aria-label={t('gross.us.egAria')}
                   {...form.register('biometry.eg', { valueAsNumber: true })}
                 />
                 <Input
@@ -236,8 +238,8 @@ export function PregnancyUltrasoundDrawer({
                   step="1"
                   min={0}
                   max={100}
-                  placeholder="Percentile"
-                  aria-label="Percentile"
+                  placeholder={t('gross.us.percentilePlaceholder')}
+                  aria-label={t('gross.us.percentileAria')}
                   {...form.register('biometry.percentile', { valueAsNumber: true })}
                 />
               </div>
@@ -245,12 +247,12 @@ export function PregnancyUltrasoundDrawer({
 
             <div className="gr-field">
               <label htmlFor="grus-findings" className="gr-label">
-                Compte-rendu (résumé)
+                {t('gross.us.findingsLabel')}
               </label>
               <Textarea
                 id="grus-findings"
                 rows={4}
-                placeholder="Conclusions, anomalies éventuelles…"
+                placeholder={t('gross.us.findingsPlaceholder')}
                 {...form.register('findings')}
               />
             </div>
@@ -270,32 +272,32 @@ export function PregnancyUltrasoundDrawer({
                     {...form.register('correctsDueDate')}
                     data-testid="us-corrects-duedate"
                   />
-                  Corriger la DPA (échographie de datation)
+                  {t('gross.us.correctsDpaLabel')}
                 </label>
                 <span className="gr-help">
-                  Ajuste la DPA selon la mesure CRL et recalcule le plan de visites.
+                  {t('gross.us.correctsDpaHelp')}
                 </span>
               </div>
             )}
 
             <div className="gr-field">
-              <span className="gr-label">Compte-rendu PDF (optionnel)</span>
+              <span className="gr-label">{t('gross.us.crPdfFieldLabel')}</span>
               <DocumentUploadButton
                 accept="application/pdf,image/*"
                 disabled={isUploading}
                 uploadLabel={
                   isUploading
-                    ? 'Téléversement…'
+                    ? t('gross.us.uploading')
                     : documentId
-                      ? 'Document attaché'
-                      : 'Téléverser le compte-rendu'
+                      ? t('gross.us.docAttached')
+                      : t('gross.us.uploadCr')
                 }
                 onFile={(file) => {
                   void handleUpload(file);
                 }}
               />
               {documentId && (
-                <span className="gr-help">Document attaché : {documentId}</span>
+                <span className="gr-help">{t('gross.us.docAttachedRef', { id: documentId })}</span>
               )}
             </div>
           </form>
@@ -308,11 +310,11 @@ export function PregnancyUltrasoundDrawer({
               disabled={recordUs.isPending}
               style={{ flex: 1 }}
             >
-              {recordUs.isPending ? 'Enregistrement…' : 'Enregistrer l\'écho'}
+              {recordUs.isPending ? t('gross.us.submitting') : t('gross.us.submit')}
             </Button>
             <Dialog.Close asChild>
               <Button type="button" variant="ghost">
-                Annuler
+                {t('common.cancel')}
               </Button>
             </Dialog.Close>
           </div>

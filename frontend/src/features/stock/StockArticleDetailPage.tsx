@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
 import { ChevronLeft, ChevronRight, Edit } from '@/components/icons';
 import { useAuthStore } from '@/lib/auth/authStore';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useStockArticle } from './hooks/useStockArticle';
 import { useStockLots } from './hooks/useStockLots';
 import { useStockMovements } from './hooks/useStockMovements';
@@ -36,6 +37,7 @@ const NAV_MAP = {
 } as const;
 
 function MovementTypePill({ type }: { type: StockMovementType }) {
+  const { t } = useT();
   const configs: Record<StockMovementType, { bg: string; color: string }> = {
     IN: { bg: 'var(--status-arrived-soft, #dcfce7)', color: 'var(--status-arrived, #16a34a)' },
     OUT: { bg: 'var(--amber-soft, #fffbeb)', color: 'var(--amber, #d97706)' },
@@ -54,7 +56,7 @@ function MovementTypePill({ type }: { type: StockMovementType }) {
         whiteSpace: 'nowrap',
       }}
     >
-      {MOVEMENT_TYPE_LABEL[type]}
+      {t(MOVEMENT_TYPE_LABEL[type])}
     </span>
   );
 }
@@ -76,6 +78,7 @@ function formatDateTime(iso: string): string {
 }
 
 function ExpiryBadge({ expiresOn }: { expiresOn: string }) {
+  const { t } = useT();
   const today = new Date();
   const exp = new Date(expiresOn + 'T00:00:00');
   const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
@@ -84,12 +87,13 @@ function ExpiryBadge({ expiresOn }: { expiresOn: string }) {
   const bg = diffDays <= 7 ? 'var(--danger-soft, #fef2f2)' : 'var(--amber-soft, #fffbeb)';
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 999, background: bg, color }}>
-      {formatDate(expiresOn)} · {diffDays}j
+      {t('stock.lots.expiryWithDays', { date: formatDate(expiresOn), n: diffDays })}
     </span>
   );
 }
 
 export default function StockArticleDetailPage() {
+  const { t } = useT();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const userRoles = useAuthStore((s) => s.user?.roles ?? []);
@@ -114,14 +118,14 @@ export default function StockArticleDetailPage() {
     return (
       <Screen
         active="stock"
-        title="Stock interne"
+        title={t('stock.title')}
         onNavigate={(navId) => {
           const path = NAV_MAP[navId as keyof typeof NAV_MAP];
           if (path) navigate(path);
         }}
       >
         <div style={{ padding: 24, color: 'var(--ink-3)', fontSize: 13 }}>
-          Chargement de la fiche article…
+          {t('stock.detail.loading')}
         </div>
       </Screen>
     );
@@ -131,14 +135,14 @@ export default function StockArticleDetailPage() {
     return (
       <Screen
         active="stock"
-        title="Stock interne"
+        title={t('stock.title')}
         onNavigate={(navId) => {
           const path = NAV_MAP[navId as keyof typeof NAV_MAP];
           if (path) navigate(path);
         }}
       >
         <div style={{ padding: 24, color: 'var(--danger)', fontSize: 13 }}>
-          {articleError ?? 'Article introuvable.'}
+          {articleError ?? t('stock.detail.notFound')}
         </div>
       </Screen>
     );
@@ -147,8 +151,8 @@ export default function StockArticleDetailPage() {
   return (
     <Screen
       active="stock"
-      title="Stock interne"
-      sub={`${article.label} · Fiche article`}
+      title={t('stock.title')}
+      sub={t('stock.detail.sheetSub', { label: article.label })}
       onNavigate={(navId) => {
         const path = NAV_MAP[navId as keyof typeof NAV_MAP];
         if (path) navigate(path);
@@ -156,11 +160,11 @@ export default function StockArticleDetailPage() {
       topbarRight={
         <div style={{ display: 'flex', gap: 8 }}>
           <Button size="sm" variant="ghost" onClick={() => navigate('/stock')}>
-            <ChevronLeft /> Retour à la liste
+            <ChevronLeft /> {t('stock.detail.backToList')}
           </Button>
           {canEdit && (
             <Button size="sm" variant="ghost" onClick={() => setEditOpen(true)}>
-              <Edit /> Modifier
+              <Edit /> {t('common.edit')}
             </Button>
           )}
         </div>
@@ -172,7 +176,7 @@ export default function StockArticleDetailPage() {
           <div style={{ padding: '20px 24px', display: 'flex', gap: 32, flexWrap: 'wrap' }}>
             <div style={{ flex: '0 0 auto' }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                Code
+                {t('stock.detail.code')}
               </div>
               <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>
                 {article.code}
@@ -181,7 +185,7 @@ export default function StockArticleDetailPage() {
 
             <div style={{ flex: '1 1 200px' }}>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                Libellé
+                {t('stock.detail.label')}
               </div>
               <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>
                 {article.label}
@@ -190,7 +194,7 @@ export default function StockArticleDetailPage() {
 
             <div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                Catégorie
+                {t('stock.detail.category')}
               </div>
               <span
                 style={{
@@ -202,13 +206,13 @@ export default function StockArticleDetailPage() {
                   color: 'var(--primary)',
                 }}
               >
-                {CATEGORY_LABEL[article.category]}
+                {t(CATEGORY_LABEL[article.category])}
               </span>
             </div>
 
             <div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                Quantité actuelle
+                {t('stock.detail.currentQty')}
               </div>
               <div
                 style={{
@@ -227,7 +231,7 @@ export default function StockArticleDetailPage() {
 
             <div>
               <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                Seuil min
+                {t('stock.detail.minThreshold')}
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink-2)' }}>
                 {article.minThreshold}
@@ -237,7 +241,7 @@ export default function StockArticleDetailPage() {
             {article.supplierName && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Fournisseur
+                  {t('stock.detail.supplier')}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>{article.supplierName}</div>
               </div>
@@ -246,7 +250,7 @@ export default function StockArticleDetailPage() {
             {article.location && (
               <div>
                 <div style={{ fontSize: 11, color: 'var(--ink-3)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-                  Emplacement
+                  {t('stock.detail.location')}
                 </div>
                 <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>{article.location}</div>
               </div>
@@ -256,13 +260,13 @@ export default function StockArticleDetailPage() {
 
         {/* Quick actions */}
         <Panel>
-          <PanelHeader>Mouvements rapides</PanelHeader>
+          <PanelHeader>{t('stock.quick.title')}</PanelHeader>
           <div style={{ padding: '16px 20px', display: 'flex', gap: 12 }}>
             <Button
               variant="primary"
               onClick={() => setMovDrawerMode('IN')}
             >
-              + Entrée
+              {t('stock.quick.in')}
             </Button>
             <Button
               variant="default"
@@ -270,13 +274,13 @@ export default function StockArticleDetailPage() {
               disabled={!canOut}
               style={{ borderColor: 'var(--amber, #d97706)', color: 'var(--amber, #d97706)' }}
             >
-              − Sortie
+              {t('stock.quick.out')}
             </Button>
             <Button
               variant="ghost"
               onClick={() => setMovDrawerMode('ADJUSTMENT')}
             >
-              Ajuster
+              {t('stock.quick.adjust')}
             </Button>
           </div>
         </Panel>
@@ -284,21 +288,25 @@ export default function StockArticleDetailPage() {
         {/* Active lots — medicaments only */}
         {article.tracksLots && (
           <Panel>
-            <PanelHeader>Lots actifs</PanelHeader>
+            <PanelHeader>{t('stock.lots.title')}</PanelHeader>
             {lotsLoading ? (
               <div style={{ padding: '16px 20px', color: 'var(--ink-3)', fontSize: 13 }}>
-                Chargement des lots…
+                {t('stock.lots.loading')}
               </div>
             ) : lots.length === 0 ? (
               <div style={{ padding: '16px 20px', color: 'var(--ink-3)', fontSize: 13 }}>
-                Aucun lot actif
+                {t('stock.lots.empty')}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                      {['Numéro de lot', 'Péremption', 'Quantité'].map((h) => (
+                      {[
+                        t('stock.lots.col.number'),
+                        t('stock.lots.col.expiry'),
+                        t('stock.lots.col.quantity'),
+                      ].map((h) => (
                         <th
                           key={h}
                           scope="col"
@@ -323,7 +331,7 @@ export default function StockArticleDetailPage() {
                           color: 'var(--ink-3)',
                         }}
                       >
-                        <span className="sr-only">Actions</span>
+                        <span className="sr-only">{t('stock.actions')}</span>
                       </th>
                     </tr>
                   </thead>
@@ -346,7 +354,7 @@ export default function StockArticleDetailPage() {
                               variant="danger"
                               onClick={() => setLotToInactivate({ id: lot.id, lotNumber: lot.lotNumber })}
                             >
-                              Inactiver
+                              {t('stock.lots.inactivate')}
                             </Button>
                           )}
                         </td>
@@ -361,21 +369,28 @@ export default function StockArticleDetailPage() {
 
         {/* Movement history */}
         <Panel>
-          <PanelHeader>Historique des mouvements</PanelHeader>
+          <PanelHeader>{t('stock.history.title')}</PanelHeader>
           {movLoading ? (
             <div style={{ padding: '16px 20px', color: 'var(--ink-3)', fontSize: 13 }}>
-              Chargement de l&apos;historique…
+              {t('stock.history.loading')}
             </div>
           ) : movements.length === 0 ? (
             <div style={{ padding: '16px 20px', color: 'var(--ink-3)', fontSize: 13 }}>
-              Aucun mouvement enregistré
+              {t('stock.history.empty')}
             </div>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-                    {['Date', 'Type', 'Quantité', ...(article.tracksLots ? ['Lot'] : []), 'Motif', 'Par qui'].map(
+                    {[
+                      t('stock.history.col.date'),
+                      t('stock.history.col.type'),
+                      t('stock.history.col.quantity'),
+                      ...(article.tracksLots ? [t('stock.history.col.lot')] : []),
+                      t('stock.history.col.reason'),
+                      t('stock.history.col.by'),
+                    ].map(
                       (h) => (
                         <th
                           key={h}
@@ -431,19 +446,19 @@ export default function StockArticleDetailPage() {
                 variant="ghost"
                 disabled={movCurrentPage === 0}
                 onClick={() => setMovPage((p) => p - 1)}
-                aria-label="Page précédente"
+                aria-label={t('stock.prevAria')}
               >
                 <ChevronLeft />
               </Button>
               <span style={{ fontSize: 12, color: 'var(--ink-3)' }}>
-                Page {movCurrentPage + 1} / {movTotalPages}
+                {t('stock.pageOf', { current: movCurrentPage + 1, total: movTotalPages })}
               </span>
               <Button
                 size="sm"
                 variant="ghost"
                 disabled={movCurrentPage >= movTotalPages - 1}
                 onClick={() => setMovPage((p) => p + 1)}
-                aria-label="Page suivante"
+                aria-label={t('stock.nextAria')}
               >
                 <ChevronRight />
               </Button>

@@ -14,6 +14,7 @@ import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input } from '@/components/ui/Input';
 import { useCreateUser } from '@/features/parametres/hooks/useUsers';
 import { toProblemDetail } from '@/lib/api/problemJson';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const EMPTY_FORM = {
   firstName: '',
@@ -28,6 +29,7 @@ const EMPTY_FORM = {
 };
 
 export function AddDoctorModal({ onClose }: { onClose: () => void }) {
+  const { t } = useT();
   const [form, setForm] = useState(EMPTY_FORM);
   const { createUser, isPending } = useCreateUser();
 
@@ -37,7 +39,7 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
 
   async function handleSubmit() {
     if (!form.firstName || !form.lastName || !form.email || form.password.length < 12) {
-      toast.error('Prénom, nom, email et mot de passe (≥ 12 caractères) requis.');
+      toast.error(t('onboarding.addDoctor.required'));
       return;
     }
     try {
@@ -54,7 +56,7 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
       if (form.cnom) payload.cnom = form.cnom;
       if (form.cnops) payload.cnops = form.cnops;
       await createUser(payload);
-      toast.success(`Dr. ${form.firstName} ${form.lastName} ajouté.`);
+      toast.success(t('onboarding.addDoctor.added', { name: `${form.firstName} ${form.lastName}` }));
       onClose();
     } catch (err) {
       const p = toProblemDetail(err);
@@ -66,7 +68,7 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Ajouter un médecin associé"
+      aria-label={t('onboarding.addDoctor.aria')}
       style={{
         position: 'fixed',
         inset: 0,
@@ -126,17 +128,16 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.015em' }}>
-              Ajouter un médecin associé
+              {t('onboarding.addDoctor.title')}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginTop: 3, lineHeight: 1.5 }}>
-              Le médecin recevra ses identifiants par votre soin. Il pourra téléverser sa signature
-              numérique depuis son profil après sa première connexion.
+              {t('onboarding.addDoctor.sub')}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t('onboarding.close')}
             style={{
               background: 'transparent',
               border: 'none',
@@ -153,54 +154,54 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="scroll" style={{ padding: '20px 28px', overflowY: 'auto', flex: 1 }}>
-          <SectionLabel>Identité</SectionLabel>
+          <SectionLabel>{t('onboarding.addDoctor.identity')}</SectionLabel>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
             <Field>
-              <FieldLabel>Prénom *</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.firstName')}</FieldLabel>
               <Input value={form.firstName} onChange={(e) => setField('firstName', e.target.value)} />
             </Field>
             <Field>
-              <FieldLabel>Nom *</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.lastName')}</FieldLabel>
               <Input value={form.lastName} onChange={(e) => setField('lastName', e.target.value)} />
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 18 }}>
             <Field>
-              <FieldLabel>E-mail professionnel *</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.email')}</FieldLabel>
               <Input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="r.bennani@cabinet.ma" />
             </Field>
             <Field>
-              <FieldLabel>Téléphone mobile</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.phone')}</FieldLabel>
               <Input value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+212 6.." />
             </Field>
           </div>
 
-          <SectionLabel>Mot de passe initial</SectionLabel>
+          <SectionLabel>{t('onboarding.addDoctor.passwordSection')}</SectionLabel>
           <Field>
-            <FieldLabel>Mot de passe (≥ 12 caractères) *</FieldLabel>
+            <FieldLabel>{t('onboarding.addDoctor.password')}</FieldLabel>
             <Input type="password" value={form.password} onChange={(e) => setField('password', e.target.value)} />
           </Field>
 
           <div style={{ marginTop: 18 }}>
-            <SectionLabel>Spécialité &amp; identifiants professionnels</SectionLabel>
+            <SectionLabel>{t('onboarding.addDoctor.credSection')}</SectionLabel>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Field>
-              <FieldLabel>Spécialité</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.specialty')}</FieldLabel>
               <Input value={form.specialty} onChange={(e) => setField('specialty', e.target.value)} placeholder="Cardiologie" />
             </Field>
             <Field>
-              <FieldLabel>N° INPE</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.inpe')}</FieldLabel>
               <Input value={form.inpe} onChange={(e) => setField('inpe', e.target.value)} placeholder="18 / 924 / 22" />
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field>
-              <FieldLabel>N° Ordre CNOM</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.cnom')}</FieldLabel>
               <Input value={form.cnom} onChange={(e) => setField('cnom', e.target.value)} placeholder="CNOM-10247-CASA" />
             </Field>
             <Field>
-              <FieldLabel>N° conv. CNOPS</FieldLabel>
+              <FieldLabel>{t('onboarding.addDoctor.cnops')}</FieldLabel>
               <Input value={form.cnops} onChange={(e) => setField('cnops', e.target.value)} placeholder="2022-CARD-3914" />
             </Field>
           </div>
@@ -218,10 +219,10 @@ export function AddDoctorModal({ onClose }: { onClose: () => void }) {
           }}
         >
           <Button onClick={onClose} disabled={isPending}>
-            Annuler
+            {t('common.cancel')}
           </Button>
           <Button variant="primary" onClick={() => void handleSubmit()} disabled={isPending}>
-            {isPending ? 'Ajout…' : 'Ajouter le médecin'}
+            {isPending ? t('onboarding.addDoctor.submitting') : t('onboarding.addDoctor.submit')}
           </Button>
         </div>
       </div>

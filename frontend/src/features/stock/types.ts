@@ -94,14 +94,19 @@ export interface PageView<T> {
 
 // ── UI helpers ─────────────────────────────────────────────────────────────
 
+/**
+ * i18n (#122) — ces maps renvoient désormais des CLÉS de traduction
+ * (`stock.cat.*` / `stock.mov.*`), pas des libellés FR en dur. Le composant
+ * appelle `t(CATEGORY_LABEL_KEY[cat])`. Cf. messages.stock.ts.
+ */
 export const CATEGORY_LABEL: Record<StockArticleCategory, string> = {
-  MEDICAMENT_INTERNE: 'Médicament',
-  DOSSIER_PHYSIQUE: 'Dossier physique',
-  CONSOMMABLE: 'Consommable',
+  MEDICAMENT_INTERNE: 'stock.cat.MEDICAMENT_INTERNE',
+  DOSSIER_PHYSIQUE: 'stock.cat.DOSSIER_PHYSIQUE',
+  CONSOMMABLE: 'stock.cat.CONSOMMABLE',
 };
 
 export const MOVEMENT_TYPE_LABEL: Record<StockMovementType, string> = {
-  IN: 'Entrée',
-  OUT: 'Sortie',
-  ADJUSTMENT: 'Ajustement',
+  IN: 'stock.mov.IN',
+  OUT: 'stock.mov.OUT',
+  ADJUSTMENT: 'stock.mov.ADJUSTMENT',
 };

@@ -2,6 +2,10 @@
  * Zod schemas for the Grossesse module.
  * Aligned on OMS 2016 thresholds — see docs/plans/2026-05-03-grossesse-design.md.
  * exactOptionalPropertyTypes: true → use .optional() rather than nullable for unset.
+ *
+ * i18n (#122) : zod runs at module load, before any React context, so messages
+ * here are stored as i18n KEY strings (`gross.valid.*`). The form components
+ * resolve them at render time via `t(errors.<field>.message)`.
  */
 import { z } from 'zod';
 import { toLocalDate } from './types';
@@ -17,12 +21,12 @@ const dateOnlyRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 const isoDate = z
   .string()
-  .min(1, 'Date requise')
-  .regex(dateOnlyRegex, 'Format YYYY-MM-DD attendu');
+  .min(1, 'gross.valid.dateRequired')
+  .regex(dateOnlyRegex, 'gross.valid.dateFormat');
 
 const isoDateNotInFuture = isoDate.refine(
   (v) => v <= today(),
-  'La date ne peut pas être dans le futur',
+  'gross.valid.dateFuture',
 );
 
 // ── Declare ─────────────────────────────────────────────────────────────────
@@ -57,10 +61,10 @@ export type ClosePregnancyValues = z.infer<typeof ClosePregnancySchema>;
 export const CreateChildSchema = z.object({
   firstName: z
     .string()
-    .min(1, 'Prénom requis')
+    .min(1, 'gross.valid.firstNameRequired')
     .max(80)
-    .regex(/^[a-zA-ZÀ-ÿ؀-ۿ\s'-]{1,}$/, 'Prénom invalide'),
-  sex: z.enum(['M', 'F'], { required_error: 'Sexe requis' }),
+    .regex(/^[a-zA-ZÀ-ÿ؀-ۿ\s'-]{1,}$/, 'gross.valid.firstNameInvalid'),
+  sex: z.enum(['M', 'F'], { required_error: 'gross.valid.sexRequired' }),
 });
 export type CreateChildValues = z.infer<typeof CreateChildSchema>;
 
@@ -87,33 +91,33 @@ export const UrineDipSchema = z.object({
 export const RecordVisitSchema = z.object({
   recordedAt: z
     .string()
-    .min(1, 'Date / heure requise')
-    .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'Date invalide' }),
+    .min(1, 'gross.valid.dateTimeRequired')
+    .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'gross.valid.dateInvalid' }),
   weightKg: z
-    .number({ invalid_type_error: 'Poids invalide' })
-    .min(30, 'Poids hors plage (30-180 kg)')
-    .max(180, 'Poids hors plage (30-180 kg)')
+    .number({ invalid_type_error: 'gross.valid.weightInvalid' })
+    .min(30, 'gross.valid.weightRange')
+    .max(180, 'gross.valid.weightRange')
     .optional(),
   bpSystolic: z
-    .number({ invalid_type_error: 'TA invalide' })
-    .min(60, 'TA systolique hors plage (60-220)')
-    .max(220, 'TA systolique hors plage (60-220)')
+    .number({ invalid_type_error: 'gross.valid.taInvalid' })
+    .min(60, 'gross.valid.taSysRange')
+    .max(220, 'gross.valid.taSysRange')
     .optional(),
   bpDiastolic: z
-    .number({ invalid_type_error: 'TA invalide' })
-    .min(30, 'TA diastolique hors plage (30-140)')
-    .max(140, 'TA diastolique hors plage (30-140)')
+    .number({ invalid_type_error: 'gross.valid.taInvalid' })
+    .min(30, 'gross.valid.taDiaRange')
+    .max(140, 'gross.valid.taDiaRange')
     .optional(),
   urineDip: UrineDipSchema.optional(),
   fundalHeightCm: z
-    .number({ invalid_type_error: 'HU invalide' })
-    .min(5, 'HU hors plage (5-50 cm)')
-    .max(50, 'HU hors plage (5-50 cm)')
+    .number({ invalid_type_error: 'gross.valid.huInvalid' })
+    .min(5, 'gross.valid.huRange')
+    .max(50, 'gross.valid.huRange')
     .optional(),
   fetalHeartRateBpm: z
-    .number({ invalid_type_error: 'BCF invalide' })
-    .min(100, 'BCF hors plage (100-200 bpm)')
-    .max(200, 'BCF hors plage (100-200 bpm)')
+    .number({ invalid_type_error: 'gross.valid.bcfInvalid' })
+    .min(100, 'gross.valid.bcfRange')
+    .max(200, 'gross.valid.bcfRange')
     .optional(),
   fetalMovementsPerceived: z.boolean().optional(),
   presentation: presentationEnum.optional(),
@@ -143,15 +147,15 @@ export const RecordUltrasoundSchema = z.object({
   kind: kindEnum,
   performedAt: isoDate,
   saWeeksAtExam: z
-    .number({ invalid_type_error: 'SA semaines requis' })
+    .number({ invalid_type_error: 'gross.valid.saWeeksRequired' })
     .int()
-    .min(6, 'SA hors plage (6-44)')
-    .max(44, 'SA hors plage (6-44)'),
+    .min(6, 'gross.valid.saRange')
+    .max(44, 'gross.valid.saRange'),
   saDaysAtExam: z
-    .number({ invalid_type_error: 'SA jours requis' })
+    .number({ invalid_type_error: 'gross.valid.saDaysRequired' })
     .int()
-    .min(0, 'SA jours 0-6')
-    .max(6, 'SA jours 0-6'),
+    .min(0, 'gross.valid.saDaysRange')
+    .max(6, 'gross.valid.saDaysRange'),
   findings: z.string().max(4000).optional(),
   biometry: z
     .object({

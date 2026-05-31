@@ -10,6 +10,8 @@
  * are placeholders rendered with "—" until the backend exposes them — they
  * keep the layout intact so the screen reads as in the maquette.
  */
+import { useT } from '@/lib/i18n/I18nProvider';
+import type { I18nContextValue } from '@/lib/i18n/I18nProvider';
 import type { AppointmentApi } from '../hooks/useAppointments';
 
 interface MonthSidebarProps {
@@ -31,6 +33,7 @@ const sectionTitle: React.CSSProperties = {
 };
 
 export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
+  const { t } = useT();
   const total = appointments.length;
 
   // Per-day count : drives both « Jours les plus chargés » AND la densité heatmap.
@@ -52,7 +55,7 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
   // Top motifs : iso maquette user 2026-05-28 « TOP MOTIFS » list.
   const byReason = new Map<string, number>();
   for (const a of appointments) {
-    const r = a.reasonLabel?.trim() || 'Sans motif';
+    const r = a.reasonLabel?.trim() || t('agenda.sidebar.noReason');
     byReason.set(r, (byReason.get(r) ?? 0) + 1);
   }
   const maxReason = Array.from(byReason.values()).reduce((m, v) => Math.max(m, v), 0);
@@ -112,7 +115,13 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
 
   function exportCsv() {
     const rows = [
-      ['date', 'heure', 'patient', 'motif', 'statut'],
+      [
+        t('agenda.csv.date'),
+        t('agenda.csv.time'),
+        t('agenda.csv.patient'),
+        t('agenda.csv.reason'),
+        t('agenda.csv.status'),
+      ],
       ...appointments.map((a) => {
         const d = new Date(a.startAt);
         const date = d.toISOString().slice(0, 10);
@@ -140,23 +149,33 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
   }
 
   const stats = [
-    { l: 'Total RDV', v: total > 0 ? String(total) : '—', d: 'sur le mois affiché' },
+    { l: t('agenda.sidebar.stat.totalRdv'), v: total > 0 ? String(total) : '—', d: t('agenda.sidebar.stat.totalRdvDesc') },
     {
-      l: 'Taux de remplissage',
+      l: t('agenda.sidebar.stat.fillRate'),
       v: total > 0 ? `${fillRate} %` : '—',
-      d: 'base 80 créneaux/semaine',
+      d: t('agenda.sidebar.stat.fillRateDesc'),
     },
     {
-      l: 'Patients distincts',
+      l: t('agenda.sidebar.stat.distinctPatients'),
       v: uniquePatients > 0 ? String(uniquePatients) : '—',
-      d: total > 0 ? `${Math.round((uniquePatients / total) * 100)} % du volume` : '—',
+      d: total > 0
+        ? t('agenda.sidebar.stat.distinctPatientsDesc', { pct: Math.round((uniquePatients / total) * 100) })
+        : '—',
     },
     {
-      l: 'Annulations',
+      l: t('agenda.sidebar.stat.cancellations'),
       v: String(cancelled),
       d: total > 0
-        ? `${((cancelled / total) * 100).toFixed(1)} % — ${cancelled === 0 ? 'aucune' : cancelled < total * 0.05 ? 'bas' : 'élevé'}`
-        : 'aucune',
+        ? t('agenda.sidebar.stat.cancelDesc', {
+            pct: ((cancelled / total) * 100).toFixed(1),
+            level:
+              cancelled === 0
+                ? t('agenda.sidebar.stat.cancelNone')
+                : cancelled < total * 0.05
+                  ? t('agenda.sidebar.stat.cancelLow')
+                  : t('agenda.sidebar.stat.cancelHigh'),
+          })
+        : t('agenda.sidebar.stat.cancelNone'),
     },
   ];
 
@@ -166,12 +185,12 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
   // month). Outside the current month, just show the month name.
   const monthOnly = monthLabel.split(/\s+/)[0] ?? monthLabel;
   const headerMonth = `${monthOnly.charAt(0).toUpperCase()}${monthOnly.slice(1)}`;
-  const headerSub = buildHeaderSub(monthLabel);
+  const headerSub = buildHeaderSub(monthLabel, t);
 
   return (
     <>
       <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>Vue d&apos;ensemble — {headerMonth}</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>{t('agenda.sidebar.overview', { month: headerMonth })}</div>
         <div style={{ fontSize: 11, color: 'var(--ink-3)', marginTop: 2 }}>{headerSub}</div>
       </div>
       <div style={{ flex: 1, overflow: 'auto', padding: 14 }} className="scroll">
@@ -217,7 +236,7 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
             Mini calendrier 7 colonnes × N rangs, intensité saphir = charge. */}
         {total > 0 && (
           <>
-            <div style={sectionTitle}>Densité</div>
+            <div style={sectionTitle}>{t('agenda.sidebar.density')}</div>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(7, 1fr)',
@@ -235,7 +254,7 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
                 gap: 3,
                 marginBottom: 14,
               }}
-              aria-label="Carte de densité du mois"
+              aria-label={t('agenda.sidebar.densityMapAria')}
             >
               {heatmapCells.map((c, i) => (
                 <div
@@ -246,12 +265,12 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
                     borderRadius: 3,
                     border: c.day === null ? 'none' : '1px solid var(--border)',
                   }}
-                  title={c.iso ? `${c.iso} : ${c.count} RDV` : ''}
+                  title={c.iso ? t('agenda.month.rdvCountTitle', { iso: c.iso, n: c.count }) : ''}
                 />
               ))}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--ink-3)', marginBottom: 16 }}>
-              <span>Moins</span>
+              <span>{t('agenda.sidebar.less')}</span>
               {[0, 0.2, 0.4, 0.7, 1].map((r, i) => (
                 <span key={i} style={{
                   width: 10, height: 10, borderRadius: 2,
@@ -259,13 +278,13 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
                   border: '1px solid var(--border)',
                 }} />
               ))}
-              <span>Plus</span>
+              <span>{t('agenda.sidebar.more')}</span>
             </div>
 
             {/* Top motifs — iso maquette user 2026-05-28 « TOP MOTIFS ». */}
             {topMotifs.length > 0 && (
               <>
-                <div style={sectionTitle}>Top motifs</div>
+                <div style={sectionTitle}>{t('agenda.sidebar.topReasons')}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
                   {topMotifs.map(([label, n]) => {
                     const pct = maxReason > 0 ? Math.round((n / maxReason) * 100) : 0;
@@ -287,15 +306,15 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
           </>
         )}
 
-        <div style={sectionTitle}>Jours les plus chargés</div>
+        <div style={sectionTitle}>{t('agenda.sidebar.busiestDays')}</div>
         {topDays.length === 0 && (
           <div style={{ fontSize: 12, color: 'var(--ink-3)', padding: '8px 0' }}>
-            Aucun rendez-vous ce mois.
+            {t('agenda.sidebar.noRdvThisMonth')}
           </div>
         )}
-        {topDays.map((t) => (
+        {topDays.map((day) => (
           <div
-            key={t.iso}
+            key={day.iso}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -304,9 +323,9 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
               borderBottom: '1px dashed var(--border)',
             }}
           >
-            <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{t.label}</span>
+            <span style={{ fontSize: 12.5, color: 'var(--ink-2)' }}>{day.label}</span>
             <span className="tnum" style={{ fontSize: 12.5, fontWeight: 600 }}>
-              {t.n} RDV
+              {t('agenda.sidebar.dayRdvCount', { n: day.n })}
             </span>
           </div>
         ))}
@@ -330,7 +349,7 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
             opacity: total === 0 ? 0.6 : 1,
           }}
         >
-          Exporter le mois (CSV)
+          {t('agenda.sidebar.exportCsv')}
         </button>
       </div>
     </>
@@ -344,14 +363,18 @@ export function MonthSidebar({ monthLabel, appointments }: MonthSidebarProps) {
  *   - Otherwise                                       →
  *     "{N} jours" or just the month label
  */
-function buildHeaderSub(monthLabel: string): string {
+function buildHeaderSub(monthLabel: string, t: I18nContextValue['t']): string {
   const today = new Date();
   const todayMonthLower = MONTH_LABELS[today.getMonth()] ?? '';
   const displayedMonth = monthLabel.split(/\s+/)[0]?.toLowerCase() ?? '';
   if (displayedMonth.startsWith(todayMonthLower.replace('.', ''))) {
     const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     const remaining = last.getDate() - today.getDate();
-    return `Au ${today.getDate()} ${todayMonthLower} · ${remaining} jours restants`;
+    return t('agenda.sidebar.headerSub', {
+      day: today.getDate(),
+      month: todayMonthLower,
+      remaining,
+    });
   }
   return monthLabel;
 }

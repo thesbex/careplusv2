@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Screen } from '@/components/shell/Screen';
 import { Sparkles, Send, Plus, Trash } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import {
   useAiConfig,
   useAssistantConversations,
@@ -25,6 +26,7 @@ import { MessageThread } from './components/MessageThread';
 import './assistant.css';
 
 export default function AssistantPage() {
+  const { t } = useT();
   const [params, setParams] = useSearchParams();
   const patientId = params.get('patient');
   const patientName = params.get('patientName');
@@ -39,7 +41,7 @@ export default function AssistantPage() {
   const [draft, setDraft] = useState('');
   // Contexte patient en attente pour la PROCHAINE nouvelle conversation.
   const [pendingPatient, setPendingPatient] = useState<{ id: string; name: string } | null>(
-    patientId ? { id: patientId, name: patientName ?? 'ce patient' } : null,
+    patientId ? { id: patientId, name: patientName ?? t('ai.thisPatient') } : null,
   );
   const threadEndRef = useRef<HTMLDivElement>(null);
 
@@ -88,19 +90,19 @@ export default function AssistantPage() {
   return (
     <Screen
       active="assistant"
-      title="Assistant IA"
-      sub={config ? `${providerLabel(config.provider)} · ${config.model}` : 'Aide à la décision clinique'}
+      title={t('ai.title')}
+      sub={config ? `${providerLabel(config.provider)} · ${config.model}` : t('ai.subDefault')}
     >
       <div className="cp-ai-layout">
         {/* ── Rail conversations ── */}
-        <aside className="cp-ai-rail" aria-label="Mes conversations">
+        <aside className="cp-ai-rail" aria-label={t('ai.conversationsAria')}>
           <button type="button" className="cp-ai-new" onClick={startNew}>
             <Plus />
-            <span>Nouvelle conversation</span>
+            <span>{t('ai.newConversation')}</span>
           </button>
           <div className="cp-ai-conv-list" role="list">
             {conversations.length === 0 && (
-              <p className="cp-ai-empty-rail">Aucune conversation pour l'instant.</p>
+              <p className="cp-ai-empty-rail">{t('ai.emptyRail')}</p>
             )}
             {conversations.map((c) => (
               <div
@@ -109,13 +111,13 @@ export default function AssistantPage() {
                 className={`cp-ai-conv ${selectedId === c.id ? 'is-active' : ''}`}
               >
                 <button type="button" className="cp-ai-conv-btn" onClick={() => selectConversation(c.id)}>
-                  {c.patientId && <span className="cp-ai-conv-tag" title="Conversation liée à un dossier">⚕</span>}
+                  {c.patientId && <span className="cp-ai-conv-tag" title={t('ai.linkedToRecord')}>⚕</span>}
                   <span className="cp-ai-conv-title">{c.title}</span>
                 </button>
                 <button
                   type="button"
                   className="cp-ai-conv-del"
-                  aria-label="Supprimer la conversation"
+                  aria-label={t('ai.deleteConversation')}
                   onClick={() => remove(c.id)}
                 >
                   <Trash />
@@ -129,18 +131,15 @@ export default function AssistantPage() {
         <section className="cp-ai-main">
           {!configured && (
             <div className="cp-ai-banner" role="status">
-              <strong>Assistant non configuré.</strong> Renseignez une clé API
-              (<code>GEMINI_API_KEY</code>) côté serveur pour activer l'assistant.
+              <strong>{t('ai.notConfigured')}</strong> {t('ai.notConfiguredHint')}
             </div>
           )}
 
           {!selectedId && pendingPatient && (
             <div className="cp-ai-context-note" role="status">
-              Contexte joint : un résumé clinique du dossier de{' '}
-              <strong>{pendingPatient.name}</strong> sera transmis au modèle avec votre première
-              question.
+              {t('ai.contextNote', { name: pendingPatient.name })}
               <button type="button" className="cp-ai-context-clear" onClick={() => setPendingPatient(null)}>
-                Retirer
+                {t('ai.contextClear')}
               </button>
             </div>
           )}
@@ -149,10 +148,9 @@ export default function AssistantPage() {
             {!conversation && !ask.isPending && (
               <div className="cp-ai-welcome">
                 <Sparkles />
-                <h2>Comment puis-je vous aider ?</h2>
+                <h2>{t('ai.welcomeTitle')}</h2>
                 <p>
-                  Posologies, interactions, conduite à tenir, synthèse de dossier… L'assistant est une
-                  aide à la décision ; le jugement clinique final vous revient.
+                  {t('ai.welcomeText')}
                 </p>
               </div>
             )}
@@ -165,14 +163,14 @@ export default function AssistantPage() {
 
           {ask.isError && (
             <p className="cp-ai-error" role="alert">
-              L'assistant n'a pas pu répondre. Réessayez dans un instant.
+              {t('ai.error')}
             </p>
           )}
 
           <div className="cp-ai-composer">
             <textarea
               className="cp-ai-input"
-              placeholder={configured ? 'Posez votre question…' : 'Assistant indisponible'}
+              placeholder={configured ? t('ai.placeholder') : t('ai.placeholderUnavailable')}
               value={draft}
               disabled={!configured || ask.isPending}
               rows={2}
@@ -189,7 +187,7 @@ export default function AssistantPage() {
               className="cp-ai-send"
               disabled={!canSend}
               onClick={() => void send()}
-              aria-label="Envoyer"
+              aria-label={t('ai.send')}
             >
               <Send />
             </button>

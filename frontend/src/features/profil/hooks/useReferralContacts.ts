@@ -45,7 +45,7 @@ export function useReferralContacts() {
   return {
     contacts: data ?? EMPTY,
     isLoading,
-    error: error ? 'Impossible de charger le carnet de confrères.' : null,
+    error: error ? 'profil.referrals.loadFailed' : null,
   };
 }
 

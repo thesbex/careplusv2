@@ -10,6 +10,7 @@ import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import type { MobileTab } from '@/components/shell/MTabs';
 import { Avatar } from '@/components/ui/Avatar';
 import { Filter, Warn, Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 
 const TAB_MAP: Record<MobileTab, string> = {
   agenda: '/agenda',
@@ -25,12 +26,9 @@ import {
 } from './hooks/usePregnancyQueue';
 import type { Trimester } from './types';
 
-const TRIMESTERS: { id: Trimester | 'ALL'; label: string }[] = [
-  { id: 'ALL', label: 'Toutes' },
-  { id: 'T1', label: 'T1' },
-  { id: 'T2', label: 'T2' },
-  { id: 'T3', label: 'T3' },
-];
+const TRIMESTER_IDS: (Trimester | 'ALL')[] = ['ALL', 'T1', 'T2', 'T3'];
+
+type Tr = (key: string, vars?: Record<string, string | number>) => string;
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—';
@@ -43,18 +41,18 @@ function formatDate(iso: string | null): string {
   });
 }
 
-function relativeFromNow(iso: string | null): string {
+function relativeFromNow(iso: string | null, t: Tr): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
   const days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Aujourd'hui";
-  if (days === 1) return 'Hier';
-  if (days < 30) return `il y a ${days} j`;
+  if (days <= 0) return t('gross.rel.today');
+  if (days === 1) return t('gross.rel.yesterday');
+  if (days < 30) return t('gross.rel.daysAgo', { n: days });
   const months = Math.floor(days / 30);
-  if (months < 12) return `il y a ${months} mois`;
+  if (months < 12) return t('gross.rel.monthsAgo', { n: months });
   const years = Math.floor(months / 12);
-  return `il y a ${years} an${years > 1 ? 's' : ''}`;
+  return t('gross.rel.yearsAgo', { n: years, s: years > 1 ? 's' : '' });
 }
 
 function PregnancyCard({
@@ -64,6 +62,7 @@ function PregnancyCard({
   entry: PregnancyQueueEntry;
   onOpen: (e: PregnancyQueueEntry) => void;
 }) {
+  const { t } = useT();
   const initials =
     `${entry.patientFirstName[0] ?? ''}${entry.patientLastName[0] ?? ''}`.toUpperCase();
   return (
@@ -112,7 +111,9 @@ function PregnancyCard({
               <span style={{ fontWeight: 600 }}>{entry.trimester}</span>
             </div>
             <div style={{ fontSize: 11.5, color: 'var(--ink-3)', marginTop: 2 }}>
-              Dernière visite : {relativeFromNow(entry.lastVisitAt)}
+              {t('gross.queue.lastVisitLabel', {
+                value: relativeFromNow(entry.lastVisitAt, t),
+              })}
             </div>
           </div>
         </div>
@@ -188,11 +189,12 @@ function FilterSheet({
   onQChange,
   onReset,
 }: FilterSheetProps) {
+  const { t } = useT();
   if (!open) return null;
   return (
     <div
       role="dialog"
-      aria-label="Filtres"
+      aria-label={t('gross.queue.filters')}
       data-testid="pq-filter-sheet"
       style={{
         position: 'fixed',
@@ -219,10 +221,10 @@ function FilterSheet({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <strong style={{ fontSize: 14, flex: 1 }}>Filtres</strong>
+          <strong style={{ fontSize: 14, flex: 1 }}>{t('gross.queue.filters')}</strong>
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t('gross.queue.closeFilters')}
             onClick={onClose}
             style={{
               background: 'transparent',
@@ -247,14 +249,14 @@ function FilterSheet({
               marginBottom: 4,
             }}
           >
-            Recherche
+            {t('gross.queue.searchLabel')}
           </label>
           <input
             id="pq-mob-q"
             type="search"
             value={q}
             onChange={(e) => onQChange(e.target.value)}
-            placeholder="Nom de patiente…"
+            placeholder={t('gross.queue.searchPlaceholderMobile')}
             style={{
               width: '100%',
               height: 40,
@@ -271,16 +273,17 @@ function FilterSheet({
 
         <div>
           <div style={{ fontSize: 11.5, color: 'var(--ink-3)', fontWeight: 600, marginBottom: 6 }}>
-            Trimestre
+            {t('gross.queue.trimester')}
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {TRIMESTERS.map((t) => {
-              const active = t.id === 'ALL' ? trimester == null : trimester === t.id;
+            {TRIMESTER_IDS.map((id) => {
+              const active = id === 'ALL' ? trimester == null : trimester === id;
+              const label = id === 'ALL' ? t('gross.queue.trimester.all') : id;
               return (
                 <button
-                  key={t.id}
+                  key={id}
                   type="button"
-                  onClick={() => onTrimesterChange(t.id === 'ALL' ? null : t.id)}
+                  onClick={() => onTrimesterChange(id === 'ALL' ? null : id)}
                   style={{
                     padding: '6px 12px',
                     border: '1px solid var(--border)',
@@ -293,7 +296,7 @@ function FilterSheet({
                     cursor: 'pointer',
                   }}
                 >
-                  {t.label}
+                  {label}
                 </button>
               );
             })}
@@ -314,7 +317,7 @@ function FilterSheet({
             checked={withAlerts}
             onChange={(e) => onWithAlertsChange(e.target.checked)}
           />
-          Avec alertes uniquement
+          {t('gross.queue.withAlertsOnly')}
         </label>
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
@@ -333,7 +336,7 @@ function FilterSheet({
               cursor: 'pointer',
             }}
           >
-            Réinitialiser
+            {t('gross.queue.reset')}
           </button>
           <button
             type="button"
@@ -351,7 +354,7 @@ function FilterSheet({
               cursor: 'pointer',
             }}
           >
-            Appliquer
+            {t('gross.queue.apply')}
           </button>
         </div>
       </div>
@@ -361,6 +364,7 @@ function FilterSheet({
 
 export default function PregnancesQueuePageMobile() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [trimester, setTrimester] = useState<Trimester | null>(null);
   const [withAlerts, setWithAlerts] = useState(false);
   const [q, setQ] = useState('');
@@ -396,14 +400,14 @@ export default function PregnancesQueuePageMobile() {
       onTabChange={(t) => navigate(TAB_MAP[t])}
       topbar={
         <MTopbar
-          left={<MIconBtn icon="ChevronLeft" label="Retour" onClick={() => navigate('/parametres')} />}
-          title="Grossesses"
-          sub="Suivi PSGA"
+          left={<MIconBtn icon="ChevronLeft" label={t('gross.queue.back')} onClick={() => navigate('/parametres')} />}
+          title={t('gross.queue.title')}
+          sub={t('gross.queue.subMobile')}
           right={
             <button
               type="button"
               onClick={() => setFilterOpen(true)}
-              aria-label="Filtres"
+              aria-label={t('gross.queue.filters')}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -418,7 +422,7 @@ export default function PregnancesQueuePageMobile() {
               }}
             >
               <Filter />
-              {filtersActive ? 'Filtres ●' : 'Filtres'}
+              {filtersActive ? t('gross.queue.filtersActive') : t('gross.queue.filters')}
             </button>
           }
         />
@@ -444,7 +448,7 @@ export default function PregnancesQueuePageMobile() {
           <div
             style={{ textAlign: 'center', padding: 24, fontSize: 13, color: 'var(--ink-3)' }}
           >
-            Chargement…
+            {t('gross.queue.loading')}
           </div>
         )}
 
@@ -457,7 +461,7 @@ export default function PregnancesQueuePageMobile() {
               fontSize: 14,
             }}
           >
-            Aucune grossesse en cours.
+            {t('gross.queue.empty')}
           </div>
         )}
 
@@ -485,13 +489,13 @@ export default function PregnancesQueuePageMobile() {
               cursor: 'pointer',
             }}
           >
-            Charger plus ({totalElements - entries.length} restants)
+            {t('gross.queue.loadMore', { n: totalElements - entries.length })}
           </button>
         )}
 
         {isLoading && entries.length > 0 && (
           <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--ink-3)', padding: 12 }}>
-            Chargement…
+            {t('gross.queue.loading')}
           </div>
         )}
       </div>

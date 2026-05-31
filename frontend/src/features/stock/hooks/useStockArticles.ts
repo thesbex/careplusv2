@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useT } from '@/lib/i18n/I18nProvider';
 import type { StockArticle, PageView } from '../types';
 
 export interface StockArticlesFilters {
@@ -17,6 +18,7 @@ export interface StockArticlesFilters {
  * staleTime: 30 s.
  */
 export function useStockArticles(filters: StockArticlesFilters = {}) {
+  const { t } = useT();
   const params: Record<string, string | number | boolean> = {
     page: filters.page ?? 0,
     size: filters.size ?? 20,
@@ -40,6 +42,6 @@ export function useStockArticles(filters: StockArticlesFilters = {}) {
     totalPages: data?.totalPages ?? 0,
     currentPage: data?.number ?? 0,
     isLoading,
-    error: error ? 'Impossible de charger les articles.' : null,
+    error: error ? t('stock.err.loadArticles') : null,
   };
 }

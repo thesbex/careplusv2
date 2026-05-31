@@ -18,6 +18,15 @@ export interface QueueColumn {
 
 const UNASSIGNED = '__unassigned__';
 
+/** Fallback labels (i18n). Callers pass translated strings; defaults keep the
+ *  pure helper usable from tests / non-React code without a provider. */
+export interface QueueGroupingLabels {
+  /** Label for entries with no practitionerId. Default: "Non affecté". */
+  unassigned?: string;
+  /** Fallback practitioner name when an entry carries no name. Default: "Médecin". */
+  doctorFallback?: string;
+}
+
 /**
  * Build one column per practitioner that is either active OR has entries, plus
  * an "Non affecté" column when some entries carry no practitionerId.
@@ -27,7 +36,10 @@ const UNASSIGNED = '__unassigned__';
 export function groupQueueByPractitioner(
   queue: QueueEntry[],
   activePractitioners: PractitionerView[],
+  labels: QueueGroupingLabels = {},
 ): QueueColumn[] {
+  const unassignedLabel = labels.unassigned ?? 'Non affecté';
+  const doctorFallback = labels.doctorFallback ?? 'Médecin';
   const byId = new Map<string, QueueEntry[]>();
   let unassigned: QueueEntry[] = [];
 
@@ -60,13 +72,13 @@ export function groupQueueByPractitioner(
   //    still have a patient mid-flow). Fall back to the entry's name.
   for (const [pid, entries] of byId) {
     if (seen.has(pid)) continue;
-    const name = entries[0]?.practitionerName ?? 'Médecin';
+    const name = entries[0]?.practitionerName ?? doctorFallback;
     columns.push({ practitionerId: pid, label: name, entries });
   }
 
   // 3. Unassigned bucket last, only when non-empty.
   if (unassigned.length > 0) {
-    columns.push({ practitionerId: null, label: 'Non affecté', entries: unassigned });
+    columns.push({ practitionerId: null, label: unassignedLabel, entries: unassigned });
   }
 
   return columns;

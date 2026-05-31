@@ -14,6 +14,7 @@ import { Screen } from '@/components/shell/Screen';
 import { MScreen } from '@/components/shell/MScreen';
 import { MTopbar, MIconBtn } from '@/components/shell/MTopbar';
 import { useIsMobile } from '@/lib/responsive/useMediaQuery';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
 import { PrescriptionTemplatesTab } from '@/features/parametres/components/PrescriptionTemplatesTab';
@@ -42,10 +43,12 @@ const NAV_MAP = {
 } as const;
 
 export default function ProfilPage() {
+  const { t } = useT();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const user = useAuthStore((s) => s.user);
   const isMedecin = (user?.roles ?? []).includes('MEDECIN');
+  const rolesLabel = (sep: string) => (user?.roles ?? []).map((r) => t(`role.${r}`)).join(sep);
 
   // Section groups — two grid columns on desktop, stacked single column on mobile.
   const leftColumn = (
@@ -59,16 +62,16 @@ export default function ProfilPage() {
           padding: 18,
         }}
       >
-        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Identité</div>
+        <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{t('profil.identity.title')}</div>
         <div style={{ fontSize: 13, color: 'var(--ink-2)' }}>
           <div>
-            <strong>Nom :</strong> {user?.firstName} {user?.lastName}
+            <strong>{t('profil.identity.name')}</strong> {user?.firstName} {user?.lastName}
           </div>
           <div>
-            <strong>Email :</strong> {user?.email}
+            <strong>{t('profil.identity.email')}</strong> {user?.email}
           </div>
           <div>
-            <strong>Rôles :</strong> {(user?.roles ?? []).join(', ')}
+            <strong>{t('profil.identity.roles')}</strong> {rolesLabel(', ')}
           </div>
         </div>
       </div>
@@ -91,8 +94,7 @@ export default function ProfilPage() {
             color: 'var(--ink-3)',
           }}
         >
-          La signature scannée n'est utilisée que par les médecins (sur les
-          ordonnances, certificats et carnets de vaccination qu'ils génèrent).
+          {t('profil.signatureNote')}
         </div>
       )}
     </div>
@@ -112,10 +114,10 @@ export default function ProfilPage() {
       }}
     >
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-        Mes modèles d'ordonnance
+        {t('profil.templates.rx.title')}
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
-        Modèles personnels réutilisables en consultation (médicaments, analyses, imagerie).
+        {t('profil.templates.rx.hint')}
       </div>
       <PrescriptionTemplatesTab />
     </div>
@@ -132,10 +134,10 @@ export default function ProfilPage() {
       }}
     >
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-        Mes modèles de consultation (SOAP)
+        {t('profil.templates.soap.title')}
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
-        Pré-remplissent les sections Subjectif / Objectif / Analyse / Plan depuis l'écran de consultation.
+        {t('profil.templates.soap.hint')}
       </div>
       <SoapTemplatesTab />
     </div>
@@ -154,10 +156,10 @@ export default function ProfilPage() {
       }}
     >
       <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>
-        Mes modèles de courrier au confrère
+        {t('profil.templates.letter.title')}
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--ink-3)', marginBottom: 14 }}>
-        Modèles personnels (titre + contenu) pour pré-remplir une lettre adressée à un confrère.
+        {t('profil.templates.letter.hint')}
       </div>
       <LetterTemplatesTab mode="own" />
     </div>
@@ -177,11 +179,11 @@ export default function ProfilPage() {
             left={
               <MIconBtn
                 icon="ChevronLeft"
-                label="Retour"
+                label={t('profil.back')}
                 onClick={() => navigate('/parametres')}
               />
             }
-            title="Mon profil"
+            title={t('profil.title')}
           />
         }
       >
@@ -199,10 +201,10 @@ export default function ProfilPage() {
   return (
     <Screen
       active="agenda"
-      title="Mon profil"
+      title={t('profil.title')}
       sub={
         user
-          ? `${user.firstName} ${user.lastName} · ${user.roles.join(' · ')}`
+          ? `${user.firstName} ${user.lastName} · ${rolesLabel(' · ')}`
           : ''
       }
       onNavigate={(id) => navigate(NAV_MAP[id])}

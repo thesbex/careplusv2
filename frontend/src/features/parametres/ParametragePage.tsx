@@ -2,7 +2,7 @@
  * Screen 13 — Paramétrage (desktop).
  * 4 onglets : Cabinet (settings) / Tarifs (tier discounts) / Utilisateurs / Congés.
  */
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Screen } from '@/components/shell/Screen';
@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, FieldLabel } from '@/components/ui/Field';
 import { Input, Select } from '@/components/ui/Input';
 import { Panel, PanelHeader } from '@/components/ui/Panel';
-import { Trash } from '@/components/icons';
+import { Trash, ChevronLeft, ChevronRight } from '@/components/icons';
 import {
   useClinicSettings,
   useUpdateClinicSettings,
@@ -130,7 +130,7 @@ function SuperAdminBadge() {
   const { t } = useT();
   return (
     <span
-      title="Réservé au super administrateur"
+      title={t('settings.superAdminTooltip')}
       style={{
         fontSize: 10,
         fontWeight: 700,
@@ -809,6 +809,98 @@ function DroitsTab() {
   );
 }
 
+// ── Barre d'onglets avec flèches (au lieu d'une scrollbar) ────────────────────
+/**
+ * Bande d'onglets Paramètres défilable. Au lieu d'une scrollbar, on affiche une
+ * flèche ‹ quand il reste des onglets à gauche et une flèche › quand il en reste
+ * à droite. Clic = défilement doux ; l'onglet actif est ramené dans la vue.
+ */
+function ParamTabsBar({
+  tabs,
+  active,
+  onSelect,
+  ariaLabel,
+}: {
+  tabs: { id: Tab; label: string }[];
+  active: Tab;
+  onSelect: (id: Tab) => void;
+  ariaLabel: string;
+}) {
+  const { t } = useT();
+  const stripRef = useRef<HTMLDivElement>(null);
+  const [canL, setCanL] = useState(false);
+  const [canR, setCanR] = useState(false);
+
+  function update() {
+    const el = stripRef.current;
+    if (!el) return;
+    setCanL(el.scrollLeft > 2);
+    setCanR(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }
+
+  useEffect(() => {
+    update();
+    const el = stripRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+    // re-mesure quand le nombre d'onglets change (rôle / capabilities).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs.length]);
+
+  // Ramène l'onglet actif dans la vue quand il change.
+  useEffect(() => {
+    const el = stripRef.current;
+    const btn = el?.querySelector<HTMLElement>('.params-tab.on');
+    btn?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [active]);
+
+  function nudge(dir: 1 | -1) {
+    stripRef.current?.scrollBy({ left: dir * 220, behavior: 'smooth' });
+  }
+
+  return (
+    <div className="params-tabs-wrap">
+      <button
+        type="button"
+        className={`params-tabs-arrow left${canL ? '' : ' hidden'}`}
+        aria-label={t('settings.tabs.prev')}
+        tabIndex={canL ? 0 : -1}
+        onClick={() => nudge(-1)}
+      >
+        <ChevronLeft />
+      </button>
+      <div className="params-tabs" role="tablist" aria-label={ariaLabel} ref={stripRef}>
+        {tabs.map((tb) => (
+          <button
+            key={tb.id}
+            type="button"
+            role="tab"
+            aria-selected={active === tb.id}
+            onClick={() => onSelect(tb.id)}
+            className={`params-tab${active === tb.id ? ' on' : ''}`}
+          >
+            {tb.label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className={`params-tabs-arrow right${canR ? '' : ' hidden'}`}
+        aria-label={t('settings.tabs.next')}
+        tabIndex={canR ? 0 : -1}
+        onClick={() => nudge(1)}
+      >
+        <ChevronRight />
+      </button>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ParametragePage() {
@@ -827,20 +919,7 @@ export default function ParametragePage() {
       sub={tabs.find((tb) => tb.id === tab)?.label ?? ''}
       onNavigate={(id) => navigate(NAV_MAP[id])}
     >
-      <div className="params-tabs" role="tablist" aria-label={t('settings.tabsAria')}>
-        {tabs.map((tb) => (
-          <button
-            key={tb.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === tb.id}
-            onClick={() => setTab(tb.id)}
-            className={`params-tab${tab === tb.id ? ' on' : ''}`}
-          >
-            {tb.label}
-          </button>
-        ))}
-      </div>
+      <ParamTabsBar tabs={tabs} active={tab} onSelect={setTab} ariaLabel={t('settings.tabsAria')} />
       <div style={{ padding: 24, overflow: 'auto', flex: 1 }} className="scroll">
         {tab === 'cabinet' && <CabinetTab />}
         {tab === 'tarifs' && <TarifsTab />}

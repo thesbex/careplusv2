@@ -35,7 +35,9 @@ export function useConfrereLetters(consultationId: string | undefined) {
   return {
     letters: data ?? EMPTY,
     isLoading,
-    error: error ? 'Impossible de charger les courriers confrère.' : null,
+    // i18n (#122) : clé de traduction (les hooks ne peuvent pas appeler useT) ;
+    // le consommateur passe la valeur à t().
+    error: error ? 'confrere.err.loadLetters' : null,
   };
 }
 

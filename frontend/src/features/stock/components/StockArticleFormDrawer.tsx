@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/Button';
 import { Input, Select } from '@/components/ui/Input';
 import { Close } from '@/components/icons';
+import { useT } from '@/lib/i18n/I18nProvider';
 import { UpsertArticleSchema } from '../schemas';
 import type { UpsertArticleValues } from '../schemas';
 import { useUpsertArticle } from '../hooks/useUpsertArticle';
@@ -31,9 +32,9 @@ interface StockArticleFormDrawerProps {
 }
 
 const CATEGORY_OPTIONS = [
-  { value: 'MEDICAMENT_INTERNE', label: 'Médicament' },
-  { value: 'DOSSIER_PHYSIQUE', label: 'Dossier physique' },
-  { value: 'CONSOMMABLE', label: 'Consommable' },
+  { value: 'MEDICAMENT_INTERNE', labelKey: 'stock.cat.MEDICAMENT_INTERNE' },
+  { value: 'DOSSIER_PHYSIQUE', labelKey: 'stock.cat.DOSSIER_PHYSIQUE' },
+  { value: 'CONSOMMABLE', labelKey: 'stock.cat.CONSOMMABLE' },
 ] as const;
 
 /** Random 8-char hex (uppercase) for auto-generated DOSSIER codes. */
@@ -48,6 +49,7 @@ export function StockArticleFormDrawer({
   open,
   onClose,
 }: StockArticleFormDrawerProps) {
+  const { t } = useT();
   const { suppliers } = useStockSuppliers();
   const upsert = useUpsertArticle(mode);
 
@@ -143,23 +145,23 @@ export function StockArticleFormDrawer({
         ...(values.location ? { location: values.location } : {}),
       };
       await upsert.mutateAsync({ ...(article?.id ? { id: article.id } : {}), body });
-      toast.success(mode === 'create' ? 'Article créé' : 'Article modifié');
+      toast.success(mode === 'create' ? t('stock.form.toast.created') : t('stock.form.toast.updated'));
       onClose();
     } catch (err) {
       const pd = toProblemDetail(err);
       if (pd?.type?.includes('CODE_DUPLICATE')) {
-        toast.error('Ce code article existe déjà');
+        toast.error(t('stock.form.err.codeDuplicate'));
       } else if (pd?.type?.includes('CATEGORY_LOCKED')) {
-        toast.error('La catégorie ne peut pas être modifiée après des mouvements');
+        toast.error(t('stock.form.err.categoryLocked'));
       } else {
-        toast.error(pd?.detail ?? "Impossible d'enregistrer l'article");
+        toast.error(pd?.detail ?? t('stock.form.err.generic'));
       }
     }
   }
 
   if (!open) return null;
 
-  const title = mode === 'create' ? 'Ajouter un article' : "Modifier l'article";
+  const title = mode === 'create' ? t('stock.form.addTitle') : t('stock.form.editTitle');
 
   return (
     <div
@@ -204,7 +206,7 @@ export function StockArticleFormDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Fermer"
+            aria-label={t('common.close')}
             style={{
               background: 'none',
               border: 'none',
@@ -236,11 +238,11 @@ export function StockArticleFormDrawer({
                 htmlFor="art-code"
                 style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
               >
-                Code article *
+                {t('stock.form.code')}
               </label>
               <Input
                 id="art-code"
-                placeholder="ex. BETADINE-125"
+                placeholder={t('stock.form.codePlaceholder')}
                 readOnly={mode === 'edit'}
                 {...register('code')}
                 aria-invalid={Boolean(errors.code)}
@@ -248,7 +250,7 @@ export function StockArticleFormDrawer({
               />
               {errors.code && (
                 <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                  {errors.code.message}
+                  {t(errors.code.message ?? '')}
                 </div>
               )}
             </div>
@@ -260,21 +262,21 @@ export function StockArticleFormDrawer({
               htmlFor="art-label"
               style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
             >
-              Libellé *
+              {t('stock.form.label')}
             </label>
             <Input
               id="art-label"
               placeholder={
                 isDossier
-                  ? 'ex. Dossier famille Bennani'
-                  : 'ex. Bétadine 10% flacon 125 mL'
+                  ? t('stock.form.labelPlaceholderDossier')
+                  : t('stock.form.labelPlaceholder')
               }
               {...register('label')}
               aria-invalid={Boolean(errors.label)}
             />
             {errors.label && (
               <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.label.message}
+                {t(errors.label.message ?? '')}
               </div>
             )}
           </div>
@@ -285,7 +287,7 @@ export function StockArticleFormDrawer({
               htmlFor="art-category"
               style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
             >
-              Catégorie *
+              {t('stock.form.category')}
             </label>
             <Controller
               control={control}
@@ -310,7 +312,7 @@ export function StockArticleFormDrawer({
                 >
                   {CATEGORY_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
-                      {o.label}
+                      {t(o.labelKey)}
                     </option>
                   ))}
                 </Select>
@@ -318,7 +320,7 @@ export function StockArticleFormDrawer({
             />
             {errors.category && (
               <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.category.message}
+                {t(errors.category.message ?? '')}
               </div>
             )}
           </div>
@@ -330,17 +332,17 @@ export function StockArticleFormDrawer({
                 htmlFor="art-unit"
                 style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
               >
-                Unité *
+                {t('stock.form.unit')}
               </label>
               <Input
                 id="art-unit"
-                placeholder="ex. flacon, boîte, unité, mL"
+                placeholder={t('stock.form.unitPlaceholder')}
                 {...register('unit')}
                 aria-invalid={Boolean(errors.unit)}
               />
               {errors.unit && (
                 <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                  {errors.unit.message}
+                  {t(errors.unit.message ?? '')}
                 </div>
               )}
             </div>
@@ -353,7 +355,7 @@ export function StockArticleFormDrawer({
                 htmlFor="art-threshold"
                 style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
               >
-                Seuil d&apos;alerte stock faible
+                {t('stock.form.threshold')}
               </label>
               <Input
                 id="art-threshold"
@@ -364,7 +366,7 @@ export function StockArticleFormDrawer({
               />
               {errors.minThreshold && (
                 <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                  {errors.minThreshold.message}
+                  {t(errors.minThreshold.message ?? '')}
                 </div>
               )}
             </div>
@@ -377,7 +379,7 @@ export function StockArticleFormDrawer({
                 htmlFor="art-supplier"
                 style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
               >
-                Fournisseur
+                {t('stock.form.supplier')}
               </label>
               <Controller
                 control={control}
@@ -399,7 +401,7 @@ export function StockArticleFormDrawer({
                       color: 'var(--ink)',
                     }}
                   >
-                    <option value="">— Aucun fournisseur —</option>
+                    <option value="">{t('stock.form.noSupplier')}</option>
                     {suppliers
                       .filter((s) => s.active)
                       .map((s) => (
@@ -419,21 +421,21 @@ export function StockArticleFormDrawer({
               htmlFor="art-location"
               style={{ display: 'block', fontSize: 12.5, fontWeight: 600, marginBottom: 6, color: 'var(--ink-2)' }}
             >
-              Emplacement{isDossier ? ' *' : ''}
+              {isDossier ? t('stock.form.locationRequired') : t('stock.form.location')}
             </label>
             <Input
               id="art-location"
               placeholder={
                 isDossier
-                  ? 'ex. Salle archives, étagère A, casier 12'
-                  : 'ex. Armoire 1, tiroir B'
+                  ? t('stock.form.locationPlaceholderDossier')
+                  : t('stock.form.locationPlaceholder')
               }
               {...register('location')}
               aria-invalid={Boolean(errors.location)}
             />
             {errors.location && (
               <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 4 }}>
-                {errors.location.message}
+                {t(errors.location.message ?? '')}
               </div>
             )}
           </div>
@@ -450,7 +452,7 @@ export function StockArticleFormDrawer({
               htmlFor="art-active"
               style={{ fontSize: 13, color: 'var(--ink-2)', cursor: 'pointer' }}
             >
-              Article actif
+              {t('stock.form.active')}
             </label>
           </div>
 
@@ -462,13 +464,13 @@ export function StockArticleFormDrawer({
               disabled={isSubmitting || upsert.isPending}
             >
               {isSubmitting || upsert.isPending
-                ? 'Enregistrement…'
+                ? t('common.saving')
                 : mode === 'create'
-                ? 'Ajouter'
-                : 'Enregistrer'}
+                ? t('stock.form.submitAdd')
+                : t('stock.form.submitSave')}
             </Button>
             <Button type="button" variant="ghost" onClick={onClose}>
-              Annuler
+              {t('common.cancel')}
             </Button>
           </div>
         </form>

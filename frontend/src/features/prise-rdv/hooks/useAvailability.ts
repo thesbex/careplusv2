@@ -64,5 +64,8 @@ export function useAvailability(
     ? `${count} créneau${count > 1 ? 'x' : ''} disponible${count > 1 ? 's' : ''}`
     : date ? 'Aucun créneau disponible' : 'Sélectionnez une date';
 
-  return { slots, hintText, isLoading, error: error ? 'Créneaux indisponibles.' : null };
+  // i18n (#122) : `error` porte une clé de traduction (le consommateur fait t()).
+  // `hintText` n'est jamais rendu par les écrans (contrat hook hérité, utilisé
+  // seulement par les tests) — laissé tel quel, non visible par l'utilisateur.
+  return { slots, hintText, isLoading, error: error ? 'rdv.err.loadSlots' : null };
 }
