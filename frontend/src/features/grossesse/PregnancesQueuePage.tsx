@@ -256,7 +256,7 @@ export default function PregnancesQueuePage() {
       }}
       topbarRight={undefined}
     >
-      <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 16, flex: 1, minHeight: 0, overflowY: 'auto' }}>
         {/* Trimester chips */}
         <div
           style={{ display: 'flex', gap: 6 }}
@@ -368,8 +368,10 @@ export default function PregnancesQueuePage() {
           </div>
         )}
 
-        {/* Table */}
-        <Panel style={{ overflow: 'hidden', padding: 0 }}>
+        {/* Table — flexShrink:0 : sinon le Panel (overflow:hidden → min-height auto = 0)
+            se comprime dans le conteneur flex et rogne les lignes au lieu de
+            laisser le wrapper défiler. */}
+        <Panel style={{ overflow: 'hidden', padding: 0, flexShrink: 0 }}>
           <div style={{ overflowX: 'auto' }}>
             <table
               style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}
