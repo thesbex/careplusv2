@@ -100,6 +100,13 @@ public class User {
     @Column(name = "password_change_required", nullable = false)
     private boolean passwordChangeRequired = false;
 
+    /**
+     * V073 — apparence PERSONNELLE (JSON : font, tone, accent, dark...).
+     * {@code null} = l'utilisateur suit le défaut d'apparence du cabinet (V072).
+     */
+    @Column(name = "appearance", length = 2000)
+    private String appearance;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "identity_user_role",
@@ -175,4 +182,7 @@ public class User {
 
     public boolean isPasswordChangeRequired() { return passwordChangeRequired; }
     public void setPasswordChangeRequired(boolean v) { this.passwordChangeRequired = v; }
+
+    public String getAppearance() { return appearance; }
+    public void setAppearance(String appearance) { this.appearance = appearance; }
 }

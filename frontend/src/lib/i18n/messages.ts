@@ -86,6 +86,15 @@ const fr: Dict = {
   'settings.appearance.font': 'Police',
   'settings.appearance.reset': 'Annuler',
   'settings.appearance.unsaved': 'Modifications non enregistrées',
+  'settings.appearance.myTitle': 'Mon apparence',
+  'settings.appearance.cabinetTitle': 'Apparence par défaut du cabinet',
+  'settings.appearance.personalHint':
+    "Ces réglages personnalisent uniquement votre affichage. Ils n'affectent pas les autres utilisateurs.",
+  'settings.appearance.usingCabinet': "Vous utilisez actuellement le défaut d'apparence du cabinet.",
+  'settings.appearance.resetToCabinet': 'Réinitialiser au défaut du cabinet',
+  'settings.appearance.resetDone': 'Apparence réinitialisée au défaut du cabinet.',
+  'security.captureRestricted':
+    "Captures d'écran restreintes — cette session est identifiée et tracée.",
 
   'topbar.searchPatient': 'Rechercher un patient par nom, téléphone, CIN…',
   'topbar.notifications': 'Notifications',
@@ -281,6 +290,15 @@ const en: Dict = {
   'settings.appearance.font': 'Font',
   'settings.appearance.reset': 'Cancel',
   'settings.appearance.unsaved': 'Unsaved changes',
+  'settings.appearance.myTitle': 'My appearance',
+  'settings.appearance.cabinetTitle': 'Cabinet default appearance',
+  'settings.appearance.personalHint':
+    'These settings personalize only your own display. They do not affect other users.',
+  'settings.appearance.usingCabinet': "You are currently using the cabinet's default appearance.",
+  'settings.appearance.resetToCabinet': 'Reset to cabinet default',
+  'settings.appearance.resetDone': 'Appearance reset to the cabinet default.',
+  'security.captureRestricted':
+    'Screenshots are restricted — this session is identified and traced.',
 
   'topbar.searchPatient': 'Search a patient by name, phone, ID…',
   'topbar.notifications': 'Notifications',
@@ -474,6 +492,15 @@ const ar: Dict = {
   'settings.appearance.font': 'الخط',
   'settings.appearance.reset': 'إلغاء',
   'settings.appearance.unsaved': 'تغييرات غير محفوظة',
+  'settings.appearance.myTitle': 'مظهري',
+  'settings.appearance.cabinetTitle': 'المظهر الافتراضي للعيادة',
+  'settings.appearance.personalHint':
+    'هذه الإعدادات تخصّص عرضك الشخصي فقط ولا تؤثّر على المستخدمين الآخرين.',
+  'settings.appearance.usingCabinet': 'أنت تستخدم حاليًا المظهر الافتراضي للعيادة.',
+  'settings.appearance.resetToCabinet': 'إعادة التعيين إلى الافتراضي للعيادة',
+  'settings.appearance.resetDone': 'تمت إعادة المظهر إلى الافتراضي للعيادة.',
+  'security.captureRestricted':
+    'لقطات الشاشة مقيّدة — هذه الجلسة محددة الهوية ومتتبَّعة.',
 
   'topbar.searchPatient': 'ابحث عن مريض بالاسم أو الهاتف أو رقم التعريف…',
   'topbar.notifications': 'الإشعارات',
@@ -669,6 +696,15 @@ const es: Dict = {
   'settings.appearance.font': 'Fuente',
   'settings.appearance.reset': 'Cancelar',
   'settings.appearance.unsaved': 'Cambios sin guardar',
+  'settings.appearance.myTitle': 'Mi apariencia',
+  'settings.appearance.cabinetTitle': 'Apariencia predeterminada del consultorio',
+  'settings.appearance.personalHint':
+    'Estos ajustes personalizan solo tu propia visualización. No afectan a otros usuarios.',
+  'settings.appearance.usingCabinet': 'Actualmente usas la apariencia predeterminada del consultorio.',
+  'settings.appearance.resetToCabinet': 'Restablecer al predeterminado del consultorio',
+  'settings.appearance.resetDone': 'Apariencia restablecida al predeterminado del consultorio.',
+  'security.captureRestricted':
+    'Capturas de pantalla restringidas: esta sesión está identificada y rastreada.',
 
   'topbar.searchPatient': 'Buscar un paciente por nombre, teléfono, DNI…',
   'topbar.notifications': 'Notificaciones',

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, type SidebarProps, type NavScreen } from './Sidebar';
 import { PatientSearchSpotlight } from './PatientSearchSpotlight';
+import { ScreenProtection } from './ScreenProtection';
 import { useSalleBadgeCount } from './useSalleBadgeCount';
 import { SpotlightContext } from './spotlightContext';
 import { NAV_MAP, pathToSidebarScreen } from '@/lib/router/navMap';
@@ -83,6 +84,7 @@ export function AppLayout() {
           <Outlet />
         </div>
         <PatientSearchSpotlight open={searchOpen} onOpenChange={setSearchOpen} />
+        <ScreenProtection />
       </div>
     </SpotlightContext.Provider>
   );

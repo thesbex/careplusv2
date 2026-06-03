@@ -9,6 +9,8 @@ import ma.careplus.identity.application.RolePermissionResolver;
 import ma.careplus.identity.application.UserService;
 import ma.careplus.identity.domain.User;
 import ma.careplus.identity.infrastructure.web.dto.ChangePasswordRequest;
+import ma.careplus.identity.infrastructure.web.dto.MeAppearanceView;
+import ma.careplus.identity.infrastructure.web.dto.UpdateMeAppearanceRequest;
 import ma.careplus.identity.infrastructure.web.dto.UserView;
 import ma.careplus.identity.infrastructure.web.mapper.UserMapper;
 import ma.careplus.shared.error.BusinessException;
@@ -23,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -109,5 +112,44 @@ public class UserController {
                 hash, id);
         log.info("User {} changed their password", id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * V073 — Apparence personnelle de l'utilisateur courant.
+     *
+     * <p>Renvoie le JSON d'apparence perso, ou {@code null} si l'utilisateur suit
+     * le défaut d'apparence du cabinet (V072). Le front résout :
+     * override perso → défaut cabinet → défaut application.
+     */
+    @GetMapping("/me/appearance")
+    @Operation(summary = "Get current user's personal appearance override")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<MeAppearanceView> myAppearance(Authentication authentication) {
+        User user = userService.getCurrentUser(authentication);
+        return ResponseEntity.ok(new MeAppearanceView(user.getAppearance()));
+    }
+
+    /**
+     * V073 — Enregistre (ou réinitialise) l'apparence personnelle.
+     *
+     * <p>Disponible à TOUT utilisateur authentifié (chacun gère son propre
+     * affichage, pas de garde super admin contrairement au défaut cabinet).
+     * Un corps avec {@code appearance == null} efface l'override : l'utilisateur
+     * retombe sur le défaut d'apparence du cabinet.
+     */
+    @PutMapping("/me/appearance")
+    @Operation(summary = "Set or reset current user's personal appearance override")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional
+    public ResponseEntity<MeAppearanceView> updateMyAppearance(
+            Authentication authentication,
+            @Valid @RequestBody UpdateMeAppearanceRequest req) {
+        User user = userService.getCurrentUser(authentication);
+        String json = req.appearance();
+        jdbc.update(
+                "UPDATE identity_user SET appearance = ?, updated_at = now() WHERE id = ?",
+                json, user.getId());
+        log.info("User {} updated their personal appearance (reset={})", user.getId(), json == null);
+        return ResponseEntity.ok(new MeAppearanceView(json));
     }
 }
