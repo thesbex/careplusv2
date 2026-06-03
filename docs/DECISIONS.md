@@ -523,6 +523,103 @@ des écrans) ; quelques couleurs codées en dur dans des écrans profonds peuven
 ajustement ultérieur. ITs `SettingsController` (round-trip `appearance` + garde 403) à
 ajouter en 2e passe.
 
+## ADR-045 — Apparence personnelle par utilisateur (override du défaut cabinet)
+
+**2026-06-02** · Status: accepted · étend ADR-044
+
+Demande produit : « le paramétrage de l'apparence doit être associé à chaque utilisateur ;
+chacun doit pouvoir personnaliser son affichage, pas un réglage général à tous ». ADR-044
+avait fait de l'apparence un réglage **cabinet** unique (super admin). On garde ce défaut
+cabinet et on ajoute un **override personnel**.
+
+**Résolution.** Le thème effectif appliqué par `AppearanceProvider` est :
+**override perso → défaut cabinet (V072) → défaut application**. L'override est un objet
+d'apparence complet (pas un patch champ-par-champ) ; `null` = suit le défaut cabinet.
+
+**Persistance.** Nouvelle colonne `identity_user.appearance` (**V073**, VARCHAR 2000, JSON
+opaque comme la valeur cabinet). Endpoints dédiés `GET`/`PUT /api/users/me/appearance`,
+ouverts à **tout utilisateur authentifié** (chacun gère le sien — pas de garde super admin,
+contrairement au défaut cabinet). Endpoints isolés préférés à l'ajout d'un champ sur
+`UserView`/`/me` pour ne pas faire rippler le DTO d'auth.
+
+**IHM.** Le panneau Apparence montre « Mon apparence » (tous) + « Apparence par défaut du
+cabinet » (super admin seulement), avec une action « Réinitialiser au défaut du cabinet »
+(PUT `appearance:null`).
+
+**Robustesse.** Si l'endpoint répond en erreur (backend antérieur à V073, réseau), le front
+traite comme « pas d'override » et retombe sur cabinet/défaut plutôt que de bloquer
+l'application du thème (même esprit que `useClinicSettings`). Le cache local ne sert qu'à
+l'anti-flash ; le backend reste la vérité par utilisateur. Pas de dépendance ajoutée.
+
+## ADR-046 — Dissuasion capture d'écran / enregistrement : filigrane d'identité, pas de blocage dur
+
+**2026-06-02** · Status: accepted
+
+Demande produit : « ne pas permettre les captures d'écran ni les enregistrements vidéo ».
+
+**Limite assumée (honnête).** Une application **web** ne peut pas empêcher techniquement une
+capture OS (Impr.écran, outil Capture, photo d'un téléphone, OBS, partage d'écran) — le
+navigateur n'a pas cet accès. Un vrai blocage exigerait un conteneur natif desktop
+(ex. Electron `setContentProtection(true)`), hors périmètre v1.
+
+**Décision : dissuasion + traçabilité, pas blocage.** Composant `ScreenProtection` monté
+dans `AppLayout` (écrans authentifiés) :
+1. **Filigrane d'identité** répété en diagonale (nom · e-mail · horodatage de l'utilisateur
+   connecté), `position:fixed`, `pointer-events:none`, faible opacité → toute capture /
+   tout enregistrement reste **attribuable** à la session (dissuasif réel).
+2. **Clic droit désactivé** (gêne « Enregistrer l'image »).
+3. **Impr.écran** : meilleure-effort (efface le presse-papiers + toast d'avertissement) —
+   non garanti (touche gérée par l'OS), purement dissuasif.
+
+On n'a **pas** bloqué `copier` / `Ctrl+P` (usages légitimes : copier un téléphone, imprimer
+une ordonnance). Le filigrane reste visible à l'impression (sinon vecteur de capture sans
+traçabilité). Évolution si exigence de blocage dur : wrapper desktop dédié (à arbitrer avec
+ADR-020 packaging).
+
+## ADR-047 — Autorisation de déploiement (anti-déploiement non autorisé) — PROPOSÉ
+
+**2026-06-02** · Status: proposed · revient sur ADR-010 · détail : `docs/design/DEPLOYMENT_AUTHORIZATION.md`
+
+Demande produit : empêcher qu'un technicien réutilise le livrable pour déployer chez
+d'autres clients sans notre accord. ADR-010 avait acté « pas de module de licence en v1 » —
+ce besoin **revient sur** cette position.
+
+**Orientation recommandée (à valider).** Licence **signée hors-ligne** (Ed25519, clé
+publique embarquée, vérifiée au boot) **liée à une empreinte machine**, + couche
+**révocation/renouvellement en ligne** optionnelle (best-effort). Justifié par la réalité
+on-prem marocaine (connectivité intermittente) : boot 100 % hors-ligne, **jamais** de
+lock-out d'un client payant si notre serveur est injoignable (fenêtre de grâce, dégradation
+en lecture seule plutôt que service mort).
+
+**Limite assumée.** Du logiciel sur une machine que le client contrôle ne peut pas être
+inviolable ; l'objectif est de rendre le déploiement non autorisé **coûteux, détectable et
+contractuellement opposable**, pas impossible — le vrai garde-fou final est la clause
+contractuelle « une licence = un cabinet ». Détail (modèle de menace, options, empreinte,
+gestion des clés, comportements d'échec, esquisse d'implémentation) : voir le doc de
+conception. Décision finale à figer avant build.
+
+## ADR-048 — Mode dégradé + import de données (Excel/CSV) — PROPOSÉ
+
+**2026-06-02** · Status: proposed · détail : `docs/design/DEGRADED_MODE_IMPORT.md`
+
+Demande produit : pouvoir travailler en **mode dégradé** (Excel ou autre) quand
+l'application est indisponible, puis **importer** les données une fois l'app revenue.
+
+**Orientation recommandée (à valider).** Deux moitiés : (a) **capture hors-ligne** via un
+modèle Excel/CSV structuré (1 feuille par entité) + un **export-instantané** des données
+courantes pour travailler sur une copie récente pendant la panne ; (b) **import** par
+pipeline upload → parse → validation (toutes les erreurs ligne par ligne) → **dry-run**
+(NEW/DUPLICATE/ERROR) → commit, **idempotent** (clé de dédup par entité). Slice MVP :
+**Patients d'abord**, puis RDV, puis consultations BROUILLON. **Facturation exclue**
+(immuabilité légale, ADR-011).
+
+**Réutilisation.** Généralise le `CatalogImportService` déjà livré (parseur CSV, erreurs
+ligne à ligne). Pour le `.xlsx`, proposition `fastexcel-reader` (org.dhatim, compagnon
+lecture du `fastexcel` déjà au pom — ADR-025) plutôt qu'Apache POI (écarté ADR-009), à
+promouvoir de `test` à `runtime` → **nécessite un ADR de dépendance** (règle
+ADR-015/016/017). Détail (entités/colonnes réelles, intégrité référentielle, RBAC, esquisse
+backend, phasage) : voir le doc de conception. Décision finale à figer avant build.
+
 ---
 
 ## How to add an entry

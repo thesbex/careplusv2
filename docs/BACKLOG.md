@@ -703,6 +703,20 @@ Le module hospitalisation (livré 2026-05-25) a un écran `/hospitalisation` res
 - Pharmacovigilance reporting to CAPM (adverse effects declaration)
 - Integration with Moroccan health insurance electronic claims (none live in 2026)
 
+## Demandes pilote — batch 2026-06-02
+
+Lot de 6 demandes (tracker user). Les 3 « Minor » sont **livrées** ; les 3 « Major » ont un **doc de conception** + ADR proposé, à arbitrer avant build.
+
+### Livré ce jour
+- ~~**Apparence par utilisateur**~~ — **livré** (V073, override perso sur défaut cabinet). ADR-045. QA IHM verte (set/apply/persist/reset, éditeur cabinet réservé super admin).
+- ~~**Scroll écrans Vaccination + Grossesse**~~ — **livré** (wrapper scrollable `flex:1/minHeight:0/overflowY:auto` + `Panel` `flex-shrink:0`). QA IHM verte (défilement jusqu'en bas, données réelles).
+- ~~**Anti-capture d'écran / vidéo**~~ — **livré en DISSUASION** : filigrane d'identité (nom·email·horodatage) + clic droit désactivé + best-effort Impr.écran. ADR-046. ⚠️ Blocage dur impossible en web → wrapper desktop (Electron `setContentProtection`) si exigence ferme.
+
+### À arbitrer (conception prête, pas encore buildé)
+- [ ] **PC de référence + simulation d'installation cliente** (Major) — banc Linux (matériel min + JVM + Postgres + applicatif + sauvegarde périodique) pour répéter les installs avant déplacement. Conception : `docs/ops/INSTALL_SIMULATION.md`. Lié à ADR-006 (la sauvegarde OVH Casablanca chiffrée n'est **pas encore implémentée**) et ADR-020. NB : scripts de backup actuels Windows-only.
+- [ ] **Autorisation de déploiement (anti-déploiement non autorisé)** (Major) — licence signée hors-ligne + empreinte machine + révocation en ligne optionnelle. Conception : `docs/design/DEPLOYMENT_AUTHORIZATION.md`. ADR-047 (proposé, revient sur ADR-010). À trancher : business + custody de la clé privée vendeur.
+- [ ] **Mode dégradé + import de données** (Major) — capture Excel/CSV hors-ligne + export-instantané + import idempotent (dry-run → commit), slice Patients d'abord, facturation exclue. Conception : `docs/design/DEGRADED_MODE_IMPORT.md`. ADR-048 (proposé). Nécessite un ADR de dépendance pour `fastexcel-reader`.
+
 ## How to add an entry
 
 Append under the right theme. No dates, no owners — this is a holding pen until prioritized. When an item is pulled into a sprint, move it to `SPRINT_<NAME>.md` and delete from this file.
