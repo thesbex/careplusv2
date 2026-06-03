@@ -17,6 +17,7 @@ import { useIsMobile } from '@/lib/responsive/useMediaQuery';
 import { useT } from '@/lib/i18n/I18nProvider';
 import { useAuthStore } from '@/lib/auth/authStore';
 import { SignatureSettingsSection } from '@/features/parametres/components/SignatureSettingsSection';
+import { MyAppearanceSection } from '@/features/parametres/components/AppearanceSettingsSection';
 import { PrescriptionTemplatesTab } from '@/features/parametres/components/PrescriptionTemplatesTab';
 import { LetterTemplatesTab } from '@/features/confrere/components/LetterTemplatesTab';
 import { LunchBreakSection } from './components/LunchBreakSection';
@@ -76,6 +77,9 @@ export default function ProfilPage() {
         </div>
       </div>
       <PasswordChangeSection />
+      {/* V073 — apparence personnelle : ici car le Profil est le seul écran que
+          TOUT utilisateur atteint (non-admin & mobile passent par /profil). */}
+      <MyAppearanceSection />
     </div>
   );
 

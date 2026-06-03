@@ -442,38 +442,46 @@ function AppearanceEditor({
   );
 }
 
-export function AppearanceSettingsSection() {
+/**
+ * « Mon apparence » — override personnel, éditable par TOUT utilisateur (V073).
+ * Vit dans la page Profil (accessible à tous, desktop + mobile) — c'est le seul
+ * endroit qu'un non-admin / un mobile atteint, donc l'override perso doit y être.
+ */
+export function MyAppearanceSection() {
+  const { t } = useT();
+  const personal = useMyAppearance();
+  return (
+    <AppearanceEditor
+      testId="appearance-settings"
+      title={t('settings.appearance.myTitle')}
+      hint={t('settings.appearance.personalHint')}
+      current={personal.current}
+      saving={personal.saving}
+      onSave={personal.save}
+      hasOverride={personal.hasOverride}
+      onResetToCabinet={personal.resetToCabinet}
+    />
+  );
+}
+
+/**
+ * « Apparence par défaut du cabinet » — réservé SUPER_ADMIN (V072). Vit dans les
+ * Paramètres desktop. Ne rend rien pour les autres rôles.
+ */
+export function CabinetAppearanceSection() {
   const { t } = useT();
   const isSuperAdmin = useAuthStore((s) => s.hasRole('SUPER_ADMIN'));
-  const personal = useMyAppearance();
   const cabinet = useAppearance();
-
+  if (!isSuperAdmin) return null;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Mon apparence — éditable par tous (V073). */}
-      <AppearanceEditor
-        testId="appearance-settings"
-        title={t('settings.appearance.myTitle')}
-        hint={t('settings.appearance.personalHint')}
-        current={personal.current}
-        saving={personal.saving}
-        onSave={personal.save}
-        hasOverride={personal.hasOverride}
-        onResetToCabinet={personal.resetToCabinet}
-      />
-
-      {/* Défaut cabinet — réservé super admin (V072). */}
-      {isSuperAdmin && (
-        <AppearanceEditor
-          testId="appearance-settings-cabinet"
-          title={t('settings.appearance.cabinetTitle')}
-          hint={t('settings.appearance.hint')}
-          badge={<SuperAdminBadge label={t('settings.superAdminBadge')} />}
-          current={cabinet.current}
-          saving={cabinet.saving}
-          onSave={cabinet.save}
-        />
-      )}
-    </div>
+    <AppearanceEditor
+      testId="appearance-settings-cabinet"
+      title={t('settings.appearance.cabinetTitle')}
+      hint={t('settings.appearance.hint')}
+      badge={<SuperAdminBadge label={t('settings.superAdminBadge')} />}
+      current={cabinet.current}
+      saving={cabinet.saving}
+      onSave={cabinet.save}
+    />
   );
 }

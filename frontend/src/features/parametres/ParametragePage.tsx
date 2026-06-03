@@ -41,7 +41,7 @@ import { OrphanRolesPanel } from './components/OrphanRolesPanel';
 import { ModulesPanel } from './components/ModulesPanel';
 import { BackupRestorePanel } from './components/BackupRestorePanel';
 import { LanguageSettingsSection } from './components/LanguageSettingsSection';
-import { AppearanceSettingsSection } from './components/AppearanceSettingsSection';
+import { CabinetAppearanceSection } from './components/AppearanceSettingsSection';
 import { UtilisateursTab } from './components/UtilisateursTab';
 import { VaccinationParamTab } from '@/features/vaccination/components/VaccinationParamTab';
 import { StockParamTab } from '@/features/stock/components/StockParamTab';
@@ -414,7 +414,7 @@ function CabinetTab() {
     <div style={{ height: 16 }} />
     <LanguageSettingsSection />
     <div style={{ height: 16 }} />
-    <AppearanceSettingsSection />
+    <CabinetAppearanceSection />
     <div style={{ height: 16 }} />
     <ModulesPanel />
     <div style={{ height: 16 }} />
