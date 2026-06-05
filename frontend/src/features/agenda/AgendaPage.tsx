@@ -14,9 +14,10 @@ import { useT } from '@/lib/i18n/I18nProvider';
 import { AgendaToolbar } from './components/AgendaToolbar';
 import type { AgendaView } from './components/AgendaToolbar';
 import { AgendaGrid } from './components/AgendaGrid';
+import { AgendaLegend } from './components/AgendaLegend';
 import { MonthGrid } from './components/MonthGrid';
 import { MonthSidebar } from './components/MonthSidebar';
-import { TodayArrivals } from './components/TodayArrivals';
+import { AgendaRail } from './components/AgendaRail';
 import {
   ALL_PRACTITIONERS,
   type PractitionerIdFilter,
@@ -38,7 +39,7 @@ import './agenda.css';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
-const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
 
 /**
  * Pause déjeuner configurable par jour — user 2026-05-28 a explicitement
@@ -64,7 +65,7 @@ const MONTHS_FR = [
 
 function currentDayKey(): DayKey {
   const dow = new Date().getDay();
-  return dow === 0 ? 'lun' : (DAY_KEYS[dow - 1] ?? 'lun');
+  return dow === 0 ? 'dim' : (DAY_KEYS[dow - 1] ?? 'lun');
 }
 
 function isoOfDate(d: Date): string {
@@ -288,14 +289,36 @@ export default function AgendaPage() {
 
   const visibleDays = view === 'jour' ? days.filter((d) => d.key === selectedDay) : days;
 
-  // Today's RDV count — used as the right-panel total ("X autres RDV
-  // attendus aujourd'hui"). When the displayed week doesn't contain today
-  // (offset != 0, or weekend), `todayKey` is null and we fall back to 0
-  // since the message literally says "aujourd'hui".
-  const todayRdvCount = useMemo(() => {
-    if (todayKey === null) return 0;
-    return appointments.filter((a) => a.day === todayKey).length;
-  }, [appointments, todayKey]);
+  // Rail latéral « Calm Premium » (iso maquette) : reflète le JOUR EN FOCUS
+  // (selectedDay) — en vue Jour le jour affiché, en vue Semaine le jour
+  // sélectionné (défaut aujourd'hui). On peut ainsi lire la charge de n'importe
+  // quel jour en naviguant, pas seulement d'aujourd'hui. Le titre bascule sur
+  // « Aujourd'hui » quand le jour en focus EST aujourd'hui.
+  const railIso = isoOfDayKey(selectedDay);
+  const railIsToday = railIso === isoOfDate(new Date());
+  const railDayAppointments = useMemo(
+    () => appointments.filter((a) => a.day === selectedDay),
+    [appointments, selectedDay],
+  );
+  const railTitle = railIsToday
+    ? t('agenda.today')
+    : (() => {
+        const w = new Date(`${railIso}T00:00:00`).toLocaleDateString('fr-FR', { weekday: 'long' });
+        return w.charAt(0).toUpperCase() + w.slice(1);
+      })();
+  const railTodayLabel = (() => {
+    const f = new Date(`${railIso}T00:00:00`).toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    return f.charAt(0).toUpperCase() + f.slice(1);
+  })();
+  const railNow = (() => {
+    const d = new Date();
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  })();
 
   // For Jour view we surface a friendly "Jeudi 23 avril 2026" label in the
   // toolbar (per design-handoff-v2 / `screens/agenda.jsx::AgendaJourScreen`,
@@ -443,27 +466,16 @@ export default function AgendaPage() {
         title={t('nav.agenda')}
         sub={headerLabel}
         pageDate={pageDate}
-        topbarRight={
-          canCreateRdv ? (
-            <Button
-              className="cp-ds2-primary"
-              onClick={() => {
-                setRdvPrefill(null);
-                setShowRDV(true);
-              }}
-            >
-              <Plus /> {t('agenda.newRdv')}
-            </Button>
-          ) : undefined
-        }
         right={
           view === 'mois' ? (
             <MonthSidebar monthLabel={monthLabel} appointments={monthAppointments} />
           ) : (
-            <TodayArrivals
-              arrivals={arrivals}
-              remaining={Math.max(0, todayRdvCount - arrivals.length)}
-              {...(activePractitioners.length >= 2 ? { practitionerMap } : {})}
+            <AgendaRail
+              title={railTitle}
+              todayLabel={railTodayLabel}
+              appointments={railDayAppointments}
+              waitingCount={arrivals.length}
+              now={railNow}
             />
           )
         }
@@ -500,6 +512,17 @@ export default function AgendaPage() {
           weekLabel={headerLabel}
           onPrev={handlePrev}
           onNext={handleNext}
+          actions={canCreateRdv ? (
+            <Button
+              className="cp-ds2-primary"
+              onClick={() => {
+                setRdvPrefill(null);
+                setShowRDV(true);
+              }}
+            >
+              <Plus /> {t('agenda.newRdv')}
+            </Button>
+          ) : null}
           onToday={() => {
             setWeekOffset(0);
             setSelectedDay(currentDayKey());
@@ -519,25 +542,32 @@ export default function AgendaPage() {
             }}
           >
             {showPractitionerSelector && (
-              <label className="ag-filter-label">
-                {t('agenda.filter.doctor')}
-                <Select
-                  aria-label={t('agenda.filter.doctorAria')}
-                  className="ag-filter-select"
-                  value={practitionerFilter}
-                  onChange={(e) =>
-                    changePractitionerFilter(e.target.value as PractitionerIdFilter)
-                  }
-                >
-                  <option value={ALL_PRACTITIONERS}>{t('agenda.filter.allDoctors')}</option>
-                  {activePractitioners.map((p) => (
-                    <option key={p.id} value={p.id}>
+              <div className="ag-docfilter" role="group" aria-label={t('agenda.filter.doctorAria')}>
+                {activePractitioners.map((p) => {
+                  const meta = practitionerMap[p.id];
+                  const on = practitionerFilter === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`ag-docpill${on ? ' on' : ''}`}
+                      aria-pressed={on}
+                      onClick={() => changePractitionerFilter(p.id)}
+                    >
+                      <span className="ag-docpill-dot" style={{ background: meta?.color ?? 'var(--ds2-navy)' }} />
                       Dr {p.lastName} {p.firstName}
-                      {p.specialty ? ` — ${p.specialty}` : ''}
-                    </option>
-                  ))}
-                </Select>
-              </label>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  className={`ag-docpill${practitionerFilter === ALL_PRACTITIONERS ? ' on' : ''}`}
+                  aria-pressed={practitionerFilter === ALL_PRACTITIONERS}
+                  onClick={() => changePractitionerFilter(ALL_PRACTITIONERS)}
+                >
+                  {t('agenda.filter.allDoctors')}
+                </button>
+              </div>
             )}
             {showRoomSelector && (
               <label className="ag-filter-label">
@@ -589,6 +619,11 @@ export default function AgendaPage() {
           />
         ) : (
           <>
+            <AgendaLegend
+              reasons={reasons}
+              periodLabel={headerLabel}
+              count={appointments.length}
+            />
             <AgendaGrid
               days={visibleDays}
               appointments={appointments}

@@ -58,23 +58,24 @@ describe('<AgendaMobilePage />', () => {
     expect(screen.getByRole('navigation', { name: 'Navigation mobile' })).toBeInTheDocument();
   });
 
-  it('renders a 6-day tab strip (Mon–Sat) with one tab selected', () => {
+  it('renders a 7-day tab strip (Mon–Sun) with one tab selected', () => {
     renderMobileAgenda();
     const tablist = screen.getByRole('tablist', { name: 'Jour' });
     expect(tablist).toBeInTheDocument();
     const tabs = screen.getAllByRole('tab');
-    expect(tabs).toHaveLength(6);
+    expect(tabs).toHaveLength(7);
     const selected = tabs.filter((t) => t.getAttribute('aria-selected') === 'true');
     expect(selected).toHaveLength(1);
   });
 
-  it('renders 1-letter day labels (L M M J V S) per maquette + full a11y name', () => {
+  it('renders 1-letter day labels (L M M J V S D) per maquette + full a11y name', () => {
     renderMobileAgenda();
     const tabs = screen.getAllByRole('tab');
     // 1-letter visual labels (M apparaît 2× pour Mardi+Mercredi — c'est OK,
-    // les tests sélectionnent par index ou aria-label).
+    // les tests sélectionnent par index ou aria-label). Dimanche (« D ») ajouté
+    // avec la semaine 7 jours (iso maquette agenda calm premium).
     const visualLabels = tabs.map((t) => t.querySelector('.dl')?.textContent);
-    expect(visualLabels).toEqual(['L', 'M', 'M', 'J', 'V', 'S']);
+    expect(visualLabels).toEqual(['L', 'M', 'M', 'J', 'V', 'S', 'D']);
     // Le nom accessible doit rester complet (« Lundi 21 », « Mardi 22 »…).
     expect(tabs[0]?.getAttribute('aria-label')).toMatch(/Lundi/);
     expect(tabs[2]?.getAttribute('aria-label')).toMatch(/Mercredi/);

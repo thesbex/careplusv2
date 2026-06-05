@@ -28,7 +28,7 @@ export interface AppointmentApi {
 export const ALL_PRACTITIONERS = 'ALL' as const;
 export type PractitionerIdFilter = string | typeof ALL_PRACTITIONERS;
 
-const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
 
 const STATUS_MAP: Record<string, AppointmentStatus> = {
   PLANIFIE: 'confirmed',
@@ -64,13 +64,13 @@ function weekWindow(offset = 0): { from: string; to: string; days: WeekDay[]; we
   });
 
   const monMonth = MONTH_FR[monday.getMonth()] ?? '';
-  const satMonth = MONTH_FR[saturday.getMonth()] ?? '';
-  const weekLabel = monday.getMonth() === saturday.getMonth()
-    ? `${monday.getDate()} – ${saturday.getDate()} ${monMonth} ${monday.getFullYear()}`
-    : `${monday.getDate()} ${monMonth} – ${saturday.getDate()} ${satMonth} ${monday.getFullYear()}`;
+  const satMonth = MONTH_FR[sunday.getMonth()] ?? '';
+  const weekLabel = monday.getMonth() === sunday.getMonth()
+    ? `${monday.getDate()} – ${sunday.getDate()} ${monMonth} ${monday.getFullYear()}`
+    : `${monday.getDate()} ${monMonth} – ${sunday.getDate()} ${satMonth} ${monday.getFullYear()}`;
 
   const todayDow = now.getDay();
-  const todayKey: DayKey | null = todayDow === 0 ? null : (DAY_KEYS[todayDow - 1] ?? null);
+  const todayKey: DayKey | null = DAY_KEYS[todayDow === 0 ? 6 : todayDow - 1] ?? null;
   const isCurrentWeek = offset === 0;
 
   return { from: monday.toISOString(), to: sunday.toISOString(), days, weekLabel, todayKey: isCurrentWeek ? todayKey : null };

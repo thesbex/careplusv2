@@ -68,12 +68,13 @@ const NAV_MAP = {
   params: '/parametres',
 } as const;
 
-type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'support';
+type Tab = 'cabinet' | 'tarifs' | 'prestations' | 'modeles' | 'utilisateurs' | 'conges' | 'droits' | 'vaccinations' | 'stock' | 'hospitalisation' | 'consentements' | 'courriers' | 'support' | 'sauvegarde';
 
 function buildTabs(
   type: EstablishmentType | undefined,
   hospitalizationEnabled: boolean,
   isAdmin: boolean,
+  isSuperAdmin: boolean,
   t: (k: string) => string,
 ): { id: Tab; label: string }[] {
   return [
@@ -94,6 +95,10 @@ function buildTabs(
     ...(hospitalizationEnabled ? [{ id: 'hospitalisation' as Tab, label: t('settings.tab.hospitalisation') }] : []),
     // Support éditeur — ADMIN uniquement, dernier onglet.
     ...(isAdmin ? [{ id: 'support' as Tab, label: t('settings.tab.support') }] : []),
+    // Sauvegarde & restauration de la base — SUPER_ADMIN uniquement. Onglet
+    // dédié (et non plus une section noyée en bas de « Cabinet ») pour que la
+    // restauration soit trouvable « au niveau du menu ».
+    ...(isSuperAdmin ? [{ id: 'sauvegarde' as Tab, label: t('settings.tab.sauvegarde') }] : []),
   ];
 }
 
@@ -417,8 +422,6 @@ function CabinetTab() {
     <CabinetAppearanceSection />
     <div style={{ height: 16 }} />
     <ModulesPanel />
-    <div style={{ height: 16 }} />
-    <BackupRestorePanel />
     </>
   );
 }
@@ -909,8 +912,9 @@ export default function ParametragePage() {
   const { settings } = useClinicSettings();
   const currentUser = useAuthStore((s) => s.user);
   const isAdmin = (currentUser?.roles ?? []).includes('ADMIN');
+  const isSuperAdmin = (currentUser?.roles ?? []).includes('SUPER_ADMIN');
   const { t } = useT();
-  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false, isAdmin, t);
+  const tabs = buildTabs(settings?.establishmentType, settings?.hospitalizationEnabled ?? false, isAdmin, isSuperAdmin, t);
 
   return (
     <Screen
@@ -944,6 +948,7 @@ export default function ParametragePage() {
         {tab === 'stock' && <StockParamTab />}
         {tab === 'hospitalisation' && <ChambresLitsTab />}
         {tab === 'support' && isAdmin && <SupportTab />}
+        {tab === 'sauvegarde' && isSuperAdmin && <BackupRestorePanel />}
       </div>
     </Screen>
   );

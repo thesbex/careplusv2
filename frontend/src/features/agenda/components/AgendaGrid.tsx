@@ -124,6 +124,7 @@ interface AgendaGridProps {
 }
 
 const SNAP_MIN = 5;
+const WEEKEND = new Set<DayKey>(['sam', 'dim']);
 
 /**
  * Fenêtre horaire à afficher : par défaut 08:00–20:00 (libellés 08..19), élargie
@@ -233,7 +234,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
               const isHighlighted = jourMode || d.key === today;
               const dayItemCount = appointments.filter((a) => a.day === d.key).length;
               return (
-                <div key={d.key} className={`ag-header-cell ${isHighlighted ? 'today' : ''}`}>
+                <div key={d.key} className={`ag-header-cell ${isHighlighted ? 'today' : (WEEKEND.has(d.key) ? 'wk' : '')}`}>
                   <span className="d-lbl">{d.label}</span>
                   <span className="d-num">{d.date}</span>
                   {jourMode && (
@@ -321,7 +322,7 @@ export function AgendaGrid({ days, appointments, onSelect, onSlotClick, onMove, 
               key={d.key}
               className={[
                 'ag-daycol',
-                jourMode || d.key === today ? 'today' : '',
+                jourMode || d.key === today ? 'today' : (WEEKEND.has(d.key) ? 'wk' : ''),
                 leaveDays?.has(d.key) ? 'leave' : '',
                 onSlotClick ? 'clickable' : '',
               ]

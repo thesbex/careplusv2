@@ -29,11 +29,11 @@ import './agenda.css';
 
 const PRACTITIONER_FILTER_KEY = 'agenda.practitionerFilter';
 
-const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+const DAY_KEYS: DayKey[] = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim'];
 
 function todayKey(): DayKey {
   const dow = new Date().getDay(); // 0=Sun
-  return dow === 0 ? 'lun' : (DAY_KEYS[dow - 1] ?? 'lun');
+  return dow === 0 ? 'dim' : (DAY_KEYS[dow - 1] ?? 'lun');
 }
 
 const STATUS_KEY: Record<string, string> = {

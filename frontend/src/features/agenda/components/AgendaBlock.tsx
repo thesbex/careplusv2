@@ -67,7 +67,7 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
   // overflows their 32px box — the reason line crashed into the next slot.
   const compact = a.dur <= 15;
   const medium = !compact && a.dur <= 30;
-  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}${medium ? ' ag-medium' : ''}${late ? ' ag-late' : ''}`;
+  const cls = `ag-block ag-${a.status}${compact ? ' ag-compact' : ''}${medium ? ' ag-medium' : ''}${late ? ' ag-late' : ''}${reasonColor ? ' ag-reason-tinted' : ''}`;
   // Layout côte-à-côte : pourcentage de la colonne occupé par ce bloc + offset
   // selon colIndex. Plus le cluster est dense, plus chaque bloc est étroit.
   // Inset latéral de 4px conservé (ag-block left: 4px) pour le rendu mono-bloc.
@@ -98,7 +98,7 @@ export function AgendaBlock({ a, onClick, draggable, reasonColor, late = false, 
         top,
         height,
         ...colStyle,
-        ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}` } : {}),
+        ...(reasonColor ? { borderLeft: `3px solid ${reasonColor}`, background: `color-mix(in srgb, ${reasonColor} 13%, var(--ds2-surface, #fff))` } : {}),
       }}
       onClick={() => onClick?.(a)}
       title={tooltip}

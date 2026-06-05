@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
+import { useAuthStore } from '@/lib/auth/authStore';
 import { useT } from '@/lib/i18n/I18nProvider';
 
 export type EstablishmentType =
@@ -108,6 +109,15 @@ export interface TierConfig {
 
 export function useClinicSettings() {
   const { t } = useT();
+  // #122 (bug langue) — n'interroger /settings/clinic que lorsqu'on est
+  // authentifié. Ce hook est consommé par I18nProvider/AppearanceProvider qui
+  // sont montés AU-DESSUS du gate d'auth (donc aussi sur l'écran de login).
+  // Sans cette garde, la requête partait non authentifiée → 401 → `null` mis en
+  // cache 60 s (staleTime) ; après une reconnexion (navigation SPA, sans full
+  // reload) le cache restait frais → la langue/apparence cabinet n'étaient pas
+  // relues et l'app retombait en français. Même pattern que useMyAppearanceData
+  // (V073). Un ctrl-F5 marchait car le full reload vidait ce cache.
+  const authed = useAuthStore((s) => !!s.accessToken);
   const { data, isLoading, error } = useQuery({
     queryKey: ['clinic-settings'],
     queryFn: () =>
@@ -115,6 +125,7 @@ export function useClinicSettings() {
         .get<ClinicSettings>('/settings/clinic')
         .then((r) => r.data)
         .catch(() => null),
+    enabled: authed,
     staleTime: 60_000,
   });
 

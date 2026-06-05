@@ -137,8 +137,12 @@ describe('<AgendaPage /> (desktop)', () => {
       screen.getByRole('button', { name: /Mohamed Alami à 09:00, Consultation de suivi/ }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Fatima Zahra Lahlou/ })).toBeInTheDocument();
-    // Allergy chip for Ahmed Cherkaoui (Aspirine, Wed 15:00)
-    expect(screen.getByText('Aspirine')).toBeInTheDocument();
+    // Allergy indicator for Ahmed Cherkaoui (Aspirine, Wed 15:00). Son créneau
+    // de 15 min est rendu en bloc « compact » → l'allergie est une pastille
+    // titrée (« Allergie : Aspirine »), pas du texte. (Avant, ce test trouvait
+    // « Aspirine » dans l'ancien panneau « Arrivées du jour », remplacé par le
+    // rail Calm Premium.)
+    expect(screen.getByTitle('Allergie : Aspirine')).toBeInTheDocument();
   });
 
   it('renders the now-line on Jeudi (today) with the wall-clock label', () => {
@@ -152,18 +156,17 @@ describe('<AgendaPage /> (desktop)', () => {
     expect(lbl?.textContent).toMatch(/^\d{2}:\d{2}$/);
   });
 
-  it("renders the Today's Arrivals right panel with the 3 fixture patients", () => {
+  it('renders the agenda rail (« Calm Premium ») — stats jour + prochains RDV + salle d\'attente', () => {
     renderAgenda();
-    expect(screen.getByText('Arrivées du jour')).toBeInTheDocument();
-    expect(screen.getByText('3 patients')).toBeInTheDocument();
-    // Patient rows
-    ['Mohamed Alami', 'Youssef Ziani', 'Ahmed Cherkaoui'].forEach((name) =>
-      expect(screen.getAllByText(name).length).toBeGreaterThan(0),
-    );
-    // "Ouvrir la salle d'attente" CTA
-    expect(
-      screen.getByRole('button', { name: /Ouvrir la salle d'attente/ }),
-    ).toBeInTheDocument();
+    // Le rail remplace l'ancien panneau « Arrivées du jour » (iso maquette
+    // agenda calm premium). Carte « Prochains RDV » toujours rendue.
+    expect(screen.getByText('Prochains RDV')).toBeInTheDocument();
+    // Carte accent « Salle d'attente » : compteur = file réelle (3 entrées
+    // arrived/vitals/consult dans le mock useQueue) + CTA vers /salle.
+    const waitingCard = screen.getByRole('button', { name: /Ouvrir la salle d'attente/ });
+    expect(waitingCard).toHaveTextContent(/Salle d'attente/);
+    expect(waitingCard).toHaveTextContent('3');
+    expect(waitingCard).toHaveTextContent(/patients en attente/);
   });
 
   it('has no serious a11y violations', async () => {

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/icons';
 import { useT } from '@/lib/i18n/I18nProvider';
 
@@ -10,10 +11,12 @@ interface AgendaToolbarProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
+  /** Slot d'actions aligné à droite (ex. bouton « Nouveau RDV », point 5). */
+  actions?: ReactNode;
 }
 
 export function AgendaToolbar({
-  view, onViewChange, weekLabel, onPrev, onNext, onToday,
+  view, onViewChange, weekLabel, onPrev, onNext, onToday, actions,
 }: AgendaToolbarProps) {
   const { t } = useT();
   return (
@@ -64,6 +67,8 @@ export function AgendaToolbar({
           en multi-praticien. En single-doctor il n'y a pas de légende toolbar
           non plus — les couleurs sont apprises à l'usage, le besoin réel de
           décodage vient surtout du multi-doctor (et la bottom legend le couvre). */}
+
+      {actions && <div className="ag-toolbar-actions">{actions}</div>}
     </div>
   );
 }

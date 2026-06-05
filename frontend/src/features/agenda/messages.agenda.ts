@@ -41,6 +41,7 @@ const fr: Dict = {
   'agenda.legend.aria': 'Légende médecins et statuts',
   'agenda.legend.doctors': 'Médecins',
   'agenda.legend.statuses': 'Statuts',
+  'agenda.legend.types': 'Types',
 
   // ── Agenda — statuts (cartes, pastilles, tooltip) ────────────────────────
   'agenda.status.confirmed': 'Confirmé',
@@ -75,6 +76,18 @@ const fr: Dict = {
   'agenda.arrivals.dossier': 'Dossier',
   'agenda.arrivals.more': '{n} autres RDV attendus aujourd’hui',
   'agenda.arrivals.openWaitingRoom': "Ouvrir la salle d'attente",
+
+  // ── Agenda — rail latéral « Calm Premium » (stats jour / prochains / salle) ─
+  'agenda.rail.confirmed': 'Confirmés',
+  'agenda.rail.waiting': 'En attente',
+  'agenda.rail.inProgress': 'En cours',
+  'agenda.rail.done': 'Terminés',
+  'agenda.rail.nextTitle': 'Prochains RDV',
+  'agenda.rail.noNext': 'Aucun RDV à venir',
+  'agenda.rail.toPlace': 'à placer',
+  'agenda.rail.waitingRoom': "Salle d'attente",
+  'agenda.rail.waitingSuffix': 'patients en attente',
+  'agenda.rail.waitingSuffixOne': 'patient en attente',
 
   // ── Agenda — vue mois (grille + tags) ────────────────────────────────────
   'agenda.month.gridAria': 'Agenda mensuel',
@@ -230,6 +243,7 @@ const en: Dict = {
   'agenda.legend.aria': 'Doctors and statuses legend',
   'agenda.legend.doctors': 'Doctors',
   'agenda.legend.statuses': 'Statuses',
+  'agenda.legend.types': 'Types',
 
   'agenda.status.confirmed': 'Confirmed',
   'agenda.status.arrived': 'Arrived',
@@ -261,6 +275,17 @@ const en: Dict = {
   'agenda.arrivals.dossier': 'Record',
   'agenda.arrivals.more': '{n} more appointments expected today',
   'agenda.arrivals.openWaitingRoom': 'Open the waiting room',
+
+  'agenda.rail.confirmed': 'Confirmed',
+  'agenda.rail.waiting': 'Waiting',
+  'agenda.rail.inProgress': 'In progress',
+  'agenda.rail.done': 'Done',
+  'agenda.rail.nextTitle': 'Next appointments',
+  'agenda.rail.noNext': 'No upcoming appointment',
+  'agenda.rail.toPlace': 'to schedule',
+  'agenda.rail.waitingRoom': 'Waiting room',
+  'agenda.rail.waitingSuffix': 'patients waiting',
+  'agenda.rail.waitingSuffixOne': 'patient waiting',
 
   'agenda.month.gridAria': 'Monthly agenda',
   'agenda.month.cellAria': '{iso}, {n} appointments',
@@ -406,6 +431,7 @@ const ar: Dict = {
   'agenda.legend.aria': 'مفتاح الأطباء والحالات',
   'agenda.legend.doctors': 'الأطباء',
   'agenda.legend.statuses': 'الحالات',
+  'agenda.legend.types': 'الأنواع',
 
   'agenda.status.confirmed': 'مؤكد',
   'agenda.status.arrived': 'وصل',
@@ -437,6 +463,17 @@ const ar: Dict = {
   'agenda.arrivals.dossier': 'الملف',
   'agenda.arrivals.more': '{n} مواعيد أخرى متوقعة اليوم',
   'agenda.arrivals.openWaitingRoom': 'فتح غرفة الانتظار',
+
+  'agenda.rail.confirmed': 'مؤكدة',
+  'agenda.rail.waiting': 'قيد الانتظار',
+  'agenda.rail.inProgress': 'جارية',
+  'agenda.rail.done': 'منتهية',
+  'agenda.rail.nextTitle': 'المواعيد القادمة',
+  'agenda.rail.noNext': 'لا موعد قادم',
+  'agenda.rail.toPlace': 'بانتظار التحديد',
+  'agenda.rail.waitingRoom': 'غرفة الانتظار',
+  'agenda.rail.waitingSuffix': 'مرضى في الانتظار',
+  'agenda.rail.waitingSuffixOne': 'مريض في الانتظار',
 
   'agenda.month.gridAria': 'الأجندة الشهرية',
   'agenda.month.cellAria': '{iso}، {n} موعد',
@@ -582,6 +619,7 @@ const es: Dict = {
   'agenda.legend.aria': 'Leyenda de médicos y estados',
   'agenda.legend.doctors': 'Médicos',
   'agenda.legend.statuses': 'Estados',
+  'agenda.legend.types': 'Tipos',
 
   'agenda.status.confirmed': 'Confirmado',
   'agenda.status.arrived': 'Llegó',
@@ -613,6 +651,17 @@ const es: Dict = {
   'agenda.arrivals.dossier': 'Ficha',
   'agenda.arrivals.more': '{n} citas más previstas hoy',
   'agenda.arrivals.openWaitingRoom': 'Abrir la sala de espera',
+
+  'agenda.rail.confirmed': 'Confirmadas',
+  'agenda.rail.waiting': 'En espera',
+  'agenda.rail.inProgress': 'En curso',
+  'agenda.rail.done': 'Terminadas',
+  'agenda.rail.nextTitle': 'Próximas citas',
+  'agenda.rail.noNext': 'Ninguna cita próxima',
+  'agenda.rail.toPlace': 'por asignar',
+  'agenda.rail.waitingRoom': 'Sala de espera',
+  'agenda.rail.waitingSuffix': 'pacientes en espera',
+  'agenda.rail.waitingSuffixOne': 'paciente en espera',
 
   'agenda.month.gridAria': 'Agenda mensual',
   'agenda.month.cellAria': '{iso}, {n} citas',

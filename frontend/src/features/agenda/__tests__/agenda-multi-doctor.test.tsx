@@ -10,7 +10,7 @@
  *    useWeekAppointments.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { useAuthStore } from '@/lib/auth/authStore';
@@ -140,7 +140,7 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
     expect(screen.queryByLabelText('Filtrer par médecin')).not.toBeInTheDocument();
   });
 
-  it('renders the dropdown with "Tous" + 2 doctor options when ≥ 2 practitioners', () => {
+  it('renders doctor pills + "Tous les médecins" when ≥ 2 practitioners', () => {
     usePractitionersMock.mockReturnValue({
       data: [MED_A, MED_B],
       isLoading: false,
@@ -153,16 +153,16 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
 
     renderPage();
 
-    const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
-    expect(select).toBeInTheDocument();
-    // First option = "Tous", then doctor A then doctor B.
-    const labels = Array.from(select.options).map((o) => o.textContent ?? '');
-    expect(labels[0]).toMatch(/Tous/);
-    expect(labels.find((l) => l.includes('Bennani'))).toBeTruthy();
-    expect(labels.find((l) => l.includes('Idrissi'))).toBeTruthy();
+    // Iso maquette : le filtre médecin est un groupe de pilules (.ag-docpill),
+    // plus un <Select>. Une pilule par médecin + une pilule « Tous les médecins ».
+    const group = screen.getByRole('group', { name: 'Filtrer par médecin' });
+    expect(group).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: /Tous les médecins/ })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: /Bennani/ })).toBeInTheDocument();
+    expect(within(group).getByRole('button', { name: /Idrissi/ })).toBeInTheDocument();
   });
 
-  it('default value is the connected MEDECIN id (not "ALL")', () => {
+  it('default = connected MEDECIN pill is active (aria-pressed) and drives the hook', () => {
     usePractitionersMock.mockReturnValue({
       data: [MED_A, MED_B],
       isLoading: false,
@@ -175,8 +175,8 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
 
     renderPage();
 
-    const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
-    expect(select.value).toBe(MED_A.id);
+    const group = screen.getByRole('group', { name: 'Filtrer par médecin' });
+    expect(within(group).getByRole('button', { name: /Bennani/ })).toHaveAttribute('aria-pressed', 'true');
     // Hook was called with a UUID, not 'ALL'.
     expect(useWeekAppointmentsMock).toHaveBeenCalledWith(
       0,
@@ -184,7 +184,7 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
     );
   });
 
-  it('default value is "ALL" for SECRETAIRE / ADMIN', () => {
+  it('default = "Tous les médecins" pill active for SECRETAIRE / ADMIN', () => {
     usePractitionersMock.mockReturnValue({
       data: [MED_A, MED_B],
       isLoading: false,
@@ -203,15 +203,15 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
 
     renderPage();
 
-    const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
-    expect(select.value).toBe('ALL');
+    const group = screen.getByRole('group', { name: 'Filtrer par médecin' });
+    expect(within(group).getByRole('button', { name: /Tous les médecins/ })).toHaveAttribute('aria-pressed', 'true');
     expect(useWeekAppointmentsMock).toHaveBeenCalledWith(
       0,
       expect.objectContaining({ practitionerIdFilter: 'ALL' }),
     );
   });
 
-  it('changing the dropdown drives the hook with the new practitionerIdFilter', () => {
+  it('clicking a doctor pill drives the hook with the new practitionerIdFilter', () => {
     usePractitionersMock.mockReturnValue({
       data: [MED_A, MED_B],
       isLoading: false,
@@ -224,8 +224,8 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
 
     renderPage();
 
-    const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: MED_B.id } });
+    const group = screen.getByRole('group', { name: 'Filtrer par médecin' });
+    fireEvent.click(within(group).getByRole('button', { name: /Idrissi/ }));
 
     // The latest call should use MED_B.id.
     const lastCallArgs = useWeekAppointmentsMock.mock.calls.at(-1);
@@ -247,13 +247,13 @@ describe('AgendaPage — auto-adaptive practitioner dropdown (Wave 1)', () => {
 
     renderPage();
 
-    const select = screen.getByLabelText('Filtrer par médecin') as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: MED_A.id } });
+    const group = screen.getByRole('group', { name: 'Filtrer par médecin' });
+    fireEvent.click(within(group).getByRole('button', { name: /Bennani/ }));
 
     expect(localStorage.getItem('agenda.practitionerFilter')).toBe(MED_A.id);
 
-    // Switching back to "Tous" clears it.
-    fireEvent.change(select, { target: { value: 'ALL' } });
+    // Cliquer « Tous les médecins » efface la sélection.
+    fireEvent.click(within(group).getByRole('button', { name: /Tous les médecins/ }));
     expect(localStorage.getItem('agenda.practitionerFilter')).toBeNull();
   });
 });

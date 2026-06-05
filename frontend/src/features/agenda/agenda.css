@@ -678,6 +678,22 @@ select.ag-filter-select:hover:not(:disabled) {
 .ag-hour-cell { border-bottom: 1px solid var(--ds2-border); }
 .ag-hour-cell.half { border-bottom: 1px dashed var(--ds2-border); }
 .ag-daycol.today { background: linear-gradient(180deg, rgba(30,77,171,0.04), transparent 200px); }
+.ag-header-cell.wk { background: var(--ds2-surface-2); color: var(--ds2-ink-4); }
+.ag-daycol.wk { background: var(--ds2-surface-2); }
+/* ── Carte-légende « Types » au-dessus de la grille (iso maquette) ──────── */
+.aglegend { display: flex; align-items: center; flex-wrap: wrap; gap: 9px 18px; margin: 0 16px 14px; padding: 13px 18px; background: var(--ds2-surface, #fff); border: 1px solid var(--ds2-border); border-radius: 14px; box-shadow: 0 1px 2px rgba(40,34,22,0.04), 0 10px 34px -20px rgba(40,34,22,0.20); }
+.aglegend-title { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ds2-ink-4); }
+.aglegend-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ds2-ink-2); }
+.aglegend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.aglegend-hint { margin-left: auto; font-size: 12px; color: var(--ds2-ink-4); font-weight: 500; font-style: italic; }
+/* ── Point 4 — filtre médecin en pilules (remplace le <Select>) ────────── */
+.ag-docfilter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ag-docpill { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 13px; border: 1px solid var(--ds2-border); background: var(--ds2-surface-2); border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--ds2-ink-2); cursor: pointer; font-family: inherit; transition: background 0.12s, border-color 0.12s, color 0.12s; }
+.ag-docpill:hover { color: var(--ds2-ink); border-color: var(--ds2-ink-4); }
+.ag-docpill.on { border-color: transparent; background: var(--ds2-navy-soft, #DCE5F5); color: var(--ds2-navy); }
+.ag-docpill-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* ── Point 5 — slot actions (Nouveau RDV) dans la barre d'outils ───────── */
+.ag-toolbar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
 /* Ligne « maintenant » — corail (design officiel) */
 .ag-now { border-top: 1.5px solid var(--ds2-coral); }
@@ -696,6 +712,12 @@ select.ag-filter-select:hover:not(:disabled) {
 
 /* Confirmé / planifié → saphir très clair (iso maquette #F4F7FC) */
 .ag-confirmed { border-left-color: var(--ds2-navy); background: #F4F7FC; }
+/* R053 — bloc teinté par MOTIF : le fond suit la couleur du motif (inline),
+   on neutralise donc le texte blanc hérité de .ag-consult pour rester lisible
+   sur une teinte claire. Le statut reste lisible via la pastille/tooltip. */
+.ag-block.ag-reason-tinted .ag-name { color: var(--ds2-ink); }
+.ag-block.ag-reason-tinted .ag-time,
+.ag-block.ag-reason-tinted .ag-reason { color: var(--ds2-ink-2); }
 .ag-confirmed .ag-time { color: var(--ds2-navy); }
 /* Arrivé → vert */
 .ag-arrived { border-left-color: var(--ds2-green); background: #d9eae0; }
@@ -1041,4 +1063,276 @@ select.ag-filter-select:hover:not(:disabled) {
 .m-tl-block.consult .m-pill.consult {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * CALM PREMIUM — refonte agenda (design « careplus refresh - agenda
+ * (calm premium) », 2026-05-31). Source : maquette HTML officielle.
+ *
+ * Principe : suivre l'ACCENT du thème (mauve par défaut, configurable)
+ * au lieu du saphir figé, cartes RDV sans bordure dure (bord-gauche
+ * accent + ombre douce), calendrier en carte borderless flottante,
+ * teintes chaudes porcelaine. On CONSERVE la sémantique par STATUT
+ * (confirmé / arrivé / en cours / terminé / retard) — plus riche que
+ * le mock (coloré par type) — en l'habillant du langage Calm Premium.
+ *
+ * Écarts assumés (cf. FRONTEND_DESIGN_GAPS) : le rail droit « stats du
+ * jour » (compteur + répartition statuts + barre de remplissage) et la
+ * légende-carte par type ne sont pas portés en v1 — le panneau droit
+ * existant (arrivées réelles) reste la source de vérité.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Calendrier en carte douce, borderless (signature Calm Premium) */
+.ag-grid-wrap {
+  border-radius: 16px;
+  box-shadow: var(--ds2-shadow-sm, 0 1px 2px rgba(40, 34, 22, 0.04), 0 10px 34px -20px rgba(40, 34, 22, 0.2));
+}
+
+/* Cartes RDV : plus de hairline dure → bord-gauche accent + ombre douce */
+.ag-block {
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(40, 34, 22, 0.06);
+}
+.ag-block:hover {
+  filter: none;
+  box-shadow: 0 6px 16px -8px rgba(40, 34, 22, 0.28);
+}
+
+/* Confirmé / planifié → accent très clair (suit le thème, plus le saphir
+ * figé #F4F7FC). La carte la plus fréquente devient mauve-clair = le look
+ * « accent-driven » du mock. */
+.ag-confirmed {
+  background: var(--ds2-navy-soft);
+  border-left-color: var(--ds2-navy);
+}
+.ag-confirmed .ag-time {
+  color: var(--ds2-navy);
+}
+
+/* Colonne du jour + lane médecin : voile accent doux (pas saphir figé) */
+.ag-daycol.today,
+.ag-daycol.ag-lane {
+  background: linear-gradient(180deg, var(--ds2-navy-soft), transparent 240px);
+}
+
+/* Pause déjeuner : rayures neutres chaudes (plus de bleu saphir) */
+.ag-pause-block {
+  background-color: var(--ds2-surface-2);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 8px,
+    rgba(40, 34, 22, 0.04) 8px,
+    rgba(40, 34, 22, 0.04) 16px
+  );
+}
+
+/* Mois — weekend en inset chaud porcelaine (plus de bleu froid #EEF2F8) */
+.ag-month-cell.weekend {
+  background: var(--ds2-surface-2);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * RAIL DROIT « Calm Premium » (.agrail) — iso maquette agenda.
+ * 3 cartes douces flottant sur le panneau (surface-2) : stats du jour,
+ * prochains RDV, salle d'attente (carte accent). Remplace le panneau
+ * « Arrivées du jour ». Le conteneur .cp-rightpanel fournit la largeur
+ * 312px + le fond surface-2 ; on gère ici padding + scroll.
+ * ════════════════════════════════════════════════════════════════════ */
+.agrail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.agrail-card {
+  background: var(--ds2-surface);
+  border-radius: 16px;
+  box-shadow: var(--ds2-shadow-sm, 0 1px 2px rgba(40, 34, 22, 0.04), 0 10px 34px -20px rgba(40, 34, 22, 0.2));
+  padding: 16px 18px;
+  border: none;
+  font-family: inherit;
+  text-align: left;
+  width: 100%;
+}
+.agrail-h {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 13px;
+}
+.agrail-h .t {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ds2-ink);
+}
+.agrail-h .s {
+  font-size: 12px;
+  color: var(--ds2-ink-3);
+  font-weight: 500;
+  margin-top: 2px;
+}
+.agrail-big {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--ds2-navy);
+}
+.agstats {
+  display: flex;
+  flex-direction: column;
+}
+.agstats .st {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+  border-top: 1px solid var(--ds2-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ds2-ink-2);
+}
+.agstats .st:first-child {
+  border-top: none;
+}
+.agstats .st .d {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.agstats .st b {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--ds2-ink);
+}
+.agfill {
+  margin-top: 14px;
+}
+.agfill-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--ds2-surface-2);
+  overflow: hidden;
+  border: 1px solid var(--ds2-border);
+}
+.agfill-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ds2-navy);
+  border-radius: 999px;
+}
+.agfill-lab {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds2-ink-3);
+}
+.agfill-lab b {
+  color: var(--ds2-ink);
+  font-weight: 800;
+}
+.agrail-dsec {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ds2-ink-4);
+  margin-bottom: 10px;
+}
+.agrail-dsec .ln {
+  flex: 1;
+  height: 1px;
+  background: var(--ds2-border);
+}
+.agnext {
+  display: flex;
+  flex-direction: column;
+}
+.agnext-empty {
+  font-size: 12.5px;
+  color: var(--ds2-ink-3);
+  font-weight: 500;
+  padding: 4px 0;
+}
+.agnext .nx {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 9px 0;
+  border-top: 1px solid var(--ds2-border);
+}
+.agnext .nx:first-child {
+  border-top: none;
+}
+.agnext .tm {
+  font-family: var(--ds2-font-mono, var(--font-mono));
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ds2-navy);
+  padding-top: 1px;
+  flex-shrink: 0;
+}
+.agnext .nx b {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ds2-ink);
+  display: block;
+  letter-spacing: -0.01em;
+}
+.agnext .nx span {
+  font-size: 11.5px;
+  color: var(--ds2-ink-3);
+  font-weight: 500;
+}
+.agrail-card.alt {
+  background: var(--ds2-navy);
+  color: #fff;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.agrail-card.alt:hover {
+  filter: brightness(0.94);
+}
+.agrail-card.alt .t {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.agrail-card.alt .wait {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.agrail-card.alt .wait .big {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+/* Légende basse : carte douce enclose (au lieu d'un simple bandeau) */
+.ag-week-legend {
+  border-top: none;
+  border-radius: 14px;
+  box-shadow: var(--ds2-shadow-sm, 0 1px 2px rgba(40, 34, 22, 0.04), 0 10px 34px -20px rgba(40, 34, 22, 0.2));
+  margin: 14px 16px 4px;
+  padding: 13px 18px;
 }

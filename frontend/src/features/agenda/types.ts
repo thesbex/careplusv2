@@ -1,4 +1,4 @@
-export type DayKey = 'lun' | 'mar' | 'mer' | 'jeu' | 'ven' | 'sam';
+export type DayKey = 'lun' | 'mar' | 'mer' | 'jeu' | 'ven' | 'sam' | 'dim';
 
 export type AppointmentStatus = 'confirmed' | 'arrived' | 'vitals' | 'consult' | 'done';
 

@@ -13,6 +13,7 @@ export const WEEK_DAYS: WeekDay[] = [
   { key: 'jeu', label: 'Jeudi', date: '24' },
   { key: 'ven', label: 'Vendredi', date: '25' },
   { key: 'sam', label: 'Samedi', date: '26' },
+  { key: 'dim', label: 'Dimanche', date: '27' },
 ];
 
 export const HOURS = Array.from({ length: 12 }, (_, i) => 8 + i); // 08..19
@@ -43,6 +44,7 @@ export const APPOINTMENTS: Appointment[] = [
   { day: 'ven', start: '15:30', dur: 15, patient: 'Saad Cherradi', reason: 'Résultats imagerie', status: 'confirmed' },
   { day: 'sam', start: '09:00', dur: 30, patient: 'Aicha Semlali', reason: 'Bilan annuel', status: 'confirmed' },
   { day: 'sam', start: '10:30', dur: 15, patient: 'Walid Kadiri', reason: 'Vaccination', status: 'confirmed' },
+  { day: 'dim', start: '10:00', dur: 30, patient: 'Garde — Hicham Naciri', reason: 'Urgence week-end', status: 'confirmed' },
 ];
 
 export const ARRIVALS: Arrival[] = [
